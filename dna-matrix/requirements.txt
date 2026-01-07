@@ -2,13 +2,14 @@
 # (no external dependencies for core models yet)
 
 # Testing
-pytest>=8.0.0
+pytest>=8.0.0,<10.0.0
 
 # API (Phase 3)
-# fastapi>=0.109.0
-# uvicorn>=0.27.0
+# Note: When enabling, also add python-multipart>=0.0.7 (CVE-2024-24762 fix)
+# fastapi>=0.115.0
+# uvicorn>=0.30.0
 
 # Development
 # black>=24.0.0
 # mypy>=1.8.0
-# ruff>=0.1.0
+# ruff>=0.5.0
