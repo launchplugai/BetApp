@@ -10,6 +10,6 @@ uvicorn>=0.30.0
 python-multipart>=0.0.7  # CVE-2024-24762 fix
 
 # Development
-# black>=24.0.0
-# mypy>=1.8.0
-# ruff>=0.5.0
+black>=24.0.0
+mypy>=1.8.0
+ruff>=0.5.0
