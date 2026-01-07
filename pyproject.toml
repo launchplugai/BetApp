@@ -56,4 +56,4 @@ strict = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["dna-matrix*"]
+include = ["app*", "dna-matrix*"]
