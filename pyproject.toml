@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dna-matrix"
+version = "0.1.0"
+description = "DNA Matrix - Semantic identity management system"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.7",
+    "pytest>=8.0.0,<10.0.0",
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+    "ruff>=0.5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["dna-matrix/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+strict = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "dna-matrix*"]
