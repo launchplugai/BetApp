@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import base64
 import os
+import time
+from collections import defaultdict
 from typing import List, Optional
 from uuid import uuid4
 
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.leading_light import (
@@ -70,6 +72,50 @@ router = APIRouter(
     prefix="/leading-light",
     tags=["Leading Light"],
 )
+
+
+# =============================================================================
+# Image Upload Guardrails
+# =============================================================================
+
+# Max file size: 5MB
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
+# Rate limiting: in-memory sliding window
+# Format: {ip_address: [(timestamp1, timestamp2, ...)]}
+_image_upload_requests: dict[str, list[float]] = defaultdict(list)
+IMAGE_RATE_LIMIT = 10  # requests
+IMAGE_RATE_WINDOW = 600  # seconds (10 minutes)
+
+
+def _check_rate_limit(client_ip: str) -> None:
+    """
+    Check if client IP has exceeded rate limit for image uploads.
+
+    Raises:
+        HTTPException: If rate limit exceeded
+    """
+    now = time.time()
+
+    # Get request timestamps for this IP
+    timestamps = _image_upload_requests[client_ip]
+
+    # Remove timestamps outside the window
+    timestamps[:] = [ts for ts in timestamps if now - ts < IMAGE_RATE_WINDOW]
+
+    # Check if limit exceeded
+    if len(timestamps) >= IMAGE_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "Rate limited",
+                "detail": "Too many image uploads. Try again later.",
+                "code": "RATE_LIMITED",
+            },
+        )
+
+    # Add current request
+    timestamps.append(now)
 
 
 # =============================================================================
@@ -914,6 +960,7 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
 
 @router.post("/evaluate/image")
 async def evaluate_from_image(
+    request: Request,
     image: UploadFile = File(...),
     plan: str = Form("free"),
     session_id: Optional[str] = Form(None),
@@ -929,8 +976,35 @@ async def evaluate_from_image(
             },
         )
 
+    # Guardrail 1: Check rate limit
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
+    # Guardrail 2: Validate content type
+    if image.content_type and not image.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Invalid file type",
+                "detail": "Only images are supported",
+                "code": "INVALID_FILE_TYPE",
+            },
+        )
+
     try:
+        # Read image bytes
         image_bytes = await image.read()
+
+        # Guardrail 3: Check file size
+        if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail={
+                    "error": "File too large",
+                    "detail": f"Maximum file size is {MAX_IMAGE_SIZE_BYTES // (1024 * 1024)}MB",
+                    "code": "FILE_TOO_LARGE",
+                },
+            )
         bet_text = await _parse_bet_slip_image(image_bytes)
         blocks = _parse_bet_text(bet_text)
 

@@ -846,7 +846,20 @@ async def dev_panel():
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.detail?.detail || 'Image parsing failed');
+                    // User-friendly error messages based on error code
+                    let errorMessage = data.detail?.detail || 'Image parsing failed';
+                    if (data.detail?.code === 'FILE_TOO_LARGE') {
+                        errorMessage = 'Image is too large. Please use an image under 5MB.';
+                    } else if (data.detail?.code === 'INVALID_FILE_TYPE') {
+                        errorMessage = 'Please upload an image file (JPG, PNG, etc.)';
+                    } else if (data.detail?.code === 'RATE_LIMITED') {
+                        errorMessage = 'Too many uploads. Please wait a few minutes and try again.';
+                    } else if (data.detail?.code === 'NOT_A_BET_SLIP') {
+                        errorMessage = 'This doesn\'t look like a bet slip. Try a different image.';
+                    } else if (data.detail?.code === 'IMAGE_PARSE_NOT_CONFIGURED') {
+                        errorMessage = 'Image parsing is not available right now. Try entering your bet manually.';
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 // Show extracted text
