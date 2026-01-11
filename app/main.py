@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import leading_light
+from app.routers import panel
 from app.voice.router import router as voice_router
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.add_middleware(
 # Include routers
 app.include_router(leading_light.router)
 app.include_router(voice_router)
+app.include_router(panel.router)
 
 
 @app.get("/")
