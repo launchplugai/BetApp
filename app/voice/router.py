@@ -343,7 +343,7 @@ async def get_demo_narration_text(case_name: str):
 
 
 @router.get(
-    "/leading-light/demo/bundle",
+    "/demo/onboarding-bundle",
     responses={
         200: {
             "description": "Complete demo bundle with all cases and progression data",
