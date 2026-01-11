@@ -25,6 +25,14 @@ class DemoCaseContext(TypedDict):
     what_to_notice: str
 
 
+class ProgressionLadder(TypedDict):
+    """Demo case progression metadata."""
+
+    overview: str
+    order: List[str]
+    steps: Dict[str, str]
+
+
 class DemoCaseNarration(TypedDict):
     """Complete narration data for a demo case."""
 
@@ -32,6 +40,7 @@ class DemoCaseNarration(TypedDict):
     plain_english: List[str]
     glossary: List[GlossaryTerm]
     context: DemoCaseContext
+    progression: ProgressionLadder
 
 
 # =============================================================================
@@ -168,6 +177,23 @@ DEMO_CASE_CONTEXT: Dict[str, DemoCaseContext] = {
 }
 
 
+# =============================================================================
+# Demo Progression Ladder
+# =============================================================================
+
+DEMO_PROGRESS_LADDER = {
+    "overview": "These demo cases progress from simple/low-fragility bets to complex/high-risk structures.",
+    "order": ["stable", "loaded", "tense", "critical"],
+    "steps": {
+        "stable": "Few moving parts; low fragility.",
+        "loaded": "More legs; more failure points.",
+        "tense": "Context + correlation adds compounding risk.",
+        "critical": "Multiple red flags exceed safe thresholds.",
+    },
+}
+
+
+
 
 # =============================================================================
 # Public Functions
@@ -209,6 +235,7 @@ def get_demo_case_data(case_name: str) -> Optional[DemoCaseNarration]:
         plain_english=DEMO_CASE_PLAIN_ENGLISH[key],
         glossary=DEMO_CASE_GLOSSARIES[key],
         context=DEMO_CASE_CONTEXT[key],
+        progression=DEMO_PROGRESS_LADDER,
     )
 
 

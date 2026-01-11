@@ -334,4 +334,5 @@ async def get_demo_narration_text(case_name: str):
         "plain_english": data["plain_english"],
         "glossary": data["glossary"],
         "context": data["context"],
+        "progression": data["progression"],
     }
