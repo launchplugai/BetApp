@@ -2,6 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers import leading_light
+
 app = FastAPI(
     title="DNA Matrix",
     description="Semantic identity management system",
@@ -15,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(leading_light.router)
 
 
 @app.get("/")
