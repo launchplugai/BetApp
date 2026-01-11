@@ -6,11 +6,12 @@ Pure functions for computing:
 - BetBlock effective fragility from base + context modifiers
 - ParlayState metrics (rawFragility, legPenalty, finalFragility)
 
-Formulas:
+Canonical Formulas:
 - effectiveFragility = baseFragility + sum(applied context deltas)
 - legPenalty = 8 × (legs ^ 1.5)
-- finalFragility = (sum(effectiveFragility) + legPenalty + correlationPenalty) × correlationMultiplier
-  clamped to [0, 100]
+- sumBlocks = sum(block.effectiveFragility for all blocks)
+- rawFragility = sumBlocks + legPenalty + correlationPenalty
+- finalFragility = rawFragility × correlationMultiplier, clamped [0, 100]
 
 Invariants enforced:
 - Context deltas never reduce fragility (deltas >= 0)
@@ -91,41 +92,58 @@ def compute_leg_penalty(num_legs: int) -> float:
     return 8.0 * (num_legs ** 1.5)
 
 
-def compute_raw_fragility(blocks: Sequence[BetBlock]) -> float:
+def compute_sum_blocks(blocks: Sequence[BetBlock]) -> float:
     """
-    Compute raw fragility as sum of all block effective fragilities.
+    Compute sum of all block effective fragilities.
 
     Args:
         blocks: Sequence of BetBlock objects
 
     Returns:
-        Sum of effective fragilities
+        Sum of effective fragilities (sumBlocks)
     """
     return sum(block.effective_fragility for block in blocks)
 
 
-def compute_final_fragility(
-    raw_fragility: float,
+def compute_raw_fragility(
+    sum_blocks: float,
     leg_penalty: float,
     correlation_penalty: float,
+) -> float:
+    """
+    Compute raw fragility per canonical formula.
+
+    Formula: rawFragility = sumBlocks + legPenalty + correlationPenalty
+
+    Args:
+        sum_blocks: Sum of block effective fragilities
+        leg_penalty: Penalty based on number of legs
+        correlation_penalty: Penalty for correlated blocks (INPUT)
+
+    Returns:
+        Raw fragility value
+    """
+    return sum_blocks + leg_penalty + correlation_penalty
+
+
+def compute_final_fragility(
+    raw_fragility: float,
     correlation_multiplier: float,
 ) -> float:
     """
     Compute final fragility with clamping.
 
-    Formula: finalFragility = (rawFragility + legPenalty + correlationPenalty) × correlationMultiplier
+    Formula: finalFragility = rawFragility × correlationMultiplier
     Then clamp to [0, 100].
 
     Args:
-        raw_fragility: Sum of block effective fragilities
-        leg_penalty: Penalty based on number of legs
-        correlation_penalty: Penalty for correlated blocks (INPUT, not computed here)
-        correlation_multiplier: Multiplier for correlations (INPUT, not computed here)
+        raw_fragility: rawFragility = sumBlocks + legPenalty + correlationPenalty
+        correlation_multiplier: Multiplier for correlations (INPUT)
 
     Returns:
         Final fragility clamped to [0, 100]
     """
-    unclamped = (raw_fragility + leg_penalty + correlation_penalty) * correlation_multiplier
+    unclamped = raw_fragility * correlation_multiplier
     return max(0.0, min(100.0, unclamped))
 
 
@@ -136,6 +154,12 @@ def compute_parlay_metrics(
 ) -> ParlayMetrics:
     """
     Compute all parlay metrics from blocks and correlation inputs.
+
+    Canonical formulas:
+    - sumBlocks = sum(block.effectiveFragility)
+    - legPenalty = 8 × (legs ^ 1.5)
+    - rawFragility = sumBlocks + legPenalty + correlationPenalty
+    - finalFragility = rawFragility × correlationMultiplier, clamped [0, 100]
 
     Args:
         blocks: Sequence of BetBlock objects
@@ -160,12 +184,15 @@ def compute_parlay_metrics(
         )
 
     num_legs = len(blocks)
-    raw_fragility = compute_raw_fragility(blocks)
+    sum_blocks = compute_sum_blocks(blocks)
     leg_penalty = compute_leg_penalty(num_legs)
-    final_fragility = compute_final_fragility(
-        raw_fragility=raw_fragility,
+    raw_fragility = compute_raw_fragility(
+        sum_blocks=sum_blocks,
         leg_penalty=leg_penalty,
         correlation_penalty=correlation_penalty,
+    )
+    final_fragility = compute_final_fragility(
+        raw_fragility=raw_fragility,
         correlation_multiplier=correlation_multiplier,
     )
 
