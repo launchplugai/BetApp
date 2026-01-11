@@ -621,10 +621,6 @@ async def dev_panel():
             color: #aaa;
         }
 
-        #file-input {
-            display: none;
-        }
-
         .extracted-text {
             background: rgba(10, 10, 10, 0.4);
             border: 1px solid rgba(52, 211, 153, 0.3);
@@ -656,14 +652,15 @@ async def dev_panel():
             <div class="import-section">
                 <div class="import-title">Snap or upload your bet slip</div>
                 <div class="import-buttons">
-                    <button class="btn-import" onclick="document.getElementById('file-input').click()">
+                    <button class="btn-import" onclick="document.getElementById('camera-input').click()">
                         📷 Take Photo
                     </button>
-                    <button class="btn-import" onclick="document.getElementById('file-input').click()">
+                    <button class="btn-import" onclick="document.getElementById('library-input').click()">
                         📁 Choose Photo
                     </button>
                 </div>
-                <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleImageUpload(event)">
+                <input type="file" id="camera-input" accept="image/*" capture="environment" onchange="handleImageUpload(event)" style="display: none;">
+                <input type="file" id="library-input" accept="image/*" onchange="handleImageUpload(event)" style="display: none;">
                 <div style="margin-top: 16px; font-size: 11px; color: #666;">
                     Or skip and enter manually below
                 </div>
