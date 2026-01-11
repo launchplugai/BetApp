@@ -763,7 +763,7 @@ async def dev_panel():
 
             // Add input listeners for leg count
             for (let i = 1; i <= 4; i++) {
-                document.getElementById(`leg${i}`).addEventListener('input', updateLegCount);
+                document.getElementById('leg' + i).addEventListener('input', updateLegCount);
             }
         });
 
@@ -806,7 +806,7 @@ async def dev_panel():
         function updateLegCount() {
             let count = 0;
             for (let i = 1; i <= 4; i++) {
-                const value = document.getElementById(`leg${i}`).value.trim();
+                const value = document.getElementById('leg' + i).value.trim();
                 if (value) count++;
             }
             document.getElementById('leg-count').textContent = count;
@@ -815,7 +815,7 @@ async def dev_panel():
         function collectSlipLegs() {
             const legs = [];
             for (let i = 1; i <= 4; i++) {
-                const value = document.getElementById(`leg${i}`).value.trim();
+                const value = document.getElementById('leg' + i).value.trim();
                 if (value) legs.push(value);
             }
             return legs;
@@ -860,16 +860,12 @@ async def dev_panel():
                 }
 
                 // Show extracted text
-                extractedDisplay.innerHTML = `
-                    <div class="extracted-text">
-                        ✓ Extracted: ${data.input.extracted_bet_text}
-                    </div>
-                `;
+                extractedDisplay.innerHTML = '<div class="extracted-text">✓ Extracted: ' + data.input.extracted_bet_text + '</div>';
 
                 // Populate slip editor with extracted legs
                 const legs = data.input.extracted_bet_text.split('\\n').filter(l => l.trim());
                 for (let i = 0; i < 4; i++) {
-                    const input = document.getElementById(`leg${i + 1}`);
+                    const input = document.getElementById('leg' + (i + 1));
                     input.value = legs[i] || '';
                 }
                 updateLegCount();
@@ -878,7 +874,7 @@ async def dev_panel():
                 renderResults(data);
 
             } catch (error) {
-                resultsArea.innerHTML = `<div class="error">${error.message}</div>`;
+                resultsArea.innerHTML = '<div class="error">' + error.message + '</div>';
                 extractedDisplay.innerHTML = '';
             }
         }
@@ -911,7 +907,7 @@ async def dev_panel():
 
                 renderResults(data);
             } catch (error) {
-                resultsArea.innerHTML = `<div class="error">${error.message}</div>`;
+                resultsArea.innerHTML = '<div class="error">' + error.message + '</div>';
             }
         }
 
@@ -920,94 +916,110 @@ async def dev_panel():
             const evaluation = data.evaluation;
             const explain = data.explain;
 
-            const bucketClass = `badge-${interpretation.bucket}`;
+            const bucketClass = 'badge-' + interpretation.bucket;
 
-            let html = `
-                <!-- Verdict Card -->
-                <div class="verdict-card">
-                    <div class="verdict-title">Verdict</div>
-                    <div class="verdict-grid">
-                        <div class="verdict-item">
-                            <div class="verdict-label">Risk Level</div>
-                            <div class="verdict-value">${evaluation.inductor.level.toUpperCase()}</div>
-                        </div>
-                        <div class="verdict-item">
-                            <div class="verdict-label">Fragility</div>
-                            <div class="verdict-value">${evaluation.metrics.final_fragility.toFixed(1)}</div>
-                        </div>
-                    </div>
-                    <div class="verdict-footer">
-                        <div class="verdict-bucket">
-                            <div class="verdict-label">Bucket</div>
-                            <div style="margin-top: 8px;">
-                                <span class="badge ${bucketClass}">${interpretation.bucket}</span>
-                            </div>
-                        </div>
-                        <div class="verdict-recommendation">
-                            <strong>Recommendation:</strong> ${evaluation.recommendation.action.toUpperCase()}<br>
-                            ${evaluation.recommendation.reason}
-                        </div>
-                    </div>
-                </div>
+            let summaryItems = '';
+            for (let i = 0; i < explain.summary.length; i++) {
+                summaryItems += '<li>' + explain.summary[i] + '</li>';
+            }
 
-                <!-- Explanation Card -->
-                <div class="card">
-                    <div class="card-title">Explanation</div>
-                    <div class="card-content">
-                        <p><strong>${interpretation.meaning}</strong></p>
-                        <ul>
-                            ${explain.summary.map(text => `<li>${text}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>
+            let correlationsList = '';
+            if (evaluation.correlations.length > 0) {
+                correlationsList = '<ul style="margin-top: 8px;">';
+                for (let i = 0; i < evaluation.correlations.length; i++) {
+                    const c = evaluation.correlations[i];
+                    correlationsList += '<li><strong>' + c.tag + ':</strong> ' + c.description + ' (Weight: ' + c.weight.toFixed(2) + ')</li>';
+                }
+                correlationsList += '</ul>';
+            } else {
+                correlationsList = '<p style="margin-top: 8px; color: #666;">No correlations detected</p>';
+            }
 
-                <!-- Next Steps Card -->
-                <div class="card">
-                    <div class="card-title">Next Steps</div>
-                    <div class="card-content">
-                        <p><strong>${interpretation.what_to_do}</strong></p>
-                        ${explain.recommended_next_step ? `<p>${explain.recommended_next_step}</p>` : ''}
-                    </div>
-                </div>
+            let nextStepHtml = '';
+            if (explain.recommended_next_step) {
+                nextStepHtml = '<p>' + explain.recommended_next_step + '</p>';
+            }
 
-                <!-- Details Drawer -->
-                <details>
-                    <summary>Metrics</summary>
-                    <div class="metric-grid">
-                        <div class="metric-item">
-                            <div class="metric-label">Raw Fragility</div>
-                            <div class="metric-value">${evaluation.metrics.raw_fragility.toFixed(1)}</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-label">Leg Penalty</div>
-                            <div class="metric-value">${evaluation.metrics.leg_penalty.toFixed(1)}</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-label">Correlation Penalty</div>
-                            <div class="metric-value">${evaluation.metrics.correlation_penalty.toFixed(1)}</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-label">Multiplier</div>
-                            <div class="metric-value">${evaluation.metrics.multiplier.toFixed(2)}x</div>
-                        </div>
-                    </div>
-                </details>
+            let html = '';
+            html += '<!-- Verdict Card -->';
+            html += '<div class="verdict-card">';
+            html += '<div class="verdict-title">Verdict</div>';
+            html += '<div class="verdict-grid">';
+            html += '<div class="verdict-item">';
+            html += '<div class="verdict-label">Risk Level</div>';
+            html += '<div class="verdict-value">' + evaluation.inductor.level.toUpperCase() + '</div>';
+            html += '</div>';
+            html += '<div class="verdict-item">';
+            html += '<div class="verdict-label">Fragility</div>';
+            html += '<div class="verdict-value">' + evaluation.metrics.final_fragility.toFixed(1) + '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="verdict-footer">';
+            html += '<div class="verdict-bucket">';
+            html += '<div class="verdict-label">Bucket</div>';
+            html += '<div style="margin-top: 8px;">';
+            html += '<span class="badge ' + bucketClass + '">' + interpretation.bucket + '</span>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="verdict-recommendation">';
+            html += '<strong>Recommendation:</strong> ' + evaluation.recommendation.action.toUpperCase() + '<br>';
+            html += evaluation.recommendation.reason;
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
 
-                <details>
-                    <summary>Correlations</summary>
-                    ${evaluation.correlations.length > 0
-                        ? `<ul style="margin-top: 8px;">${evaluation.correlations.map(c =>
-                            `<li><strong>${c.tag}:</strong> ${c.description} (Weight: ${c.weight.toFixed(2)})</li>`
-                        ).join('')}</ul>`
-                        : '<p style="margin-top: 8px; color: #666;">No correlations detected</p>'
-                    }
-                </details>
+            html += '<!-- Explanation Card -->';
+            html += '<div class="card">';
+            html += '<div class="card-title">Explanation</div>';
+            html += '<div class="card-content">';
+            html += '<p><strong>' + interpretation.meaning + '</strong></p>';
+            html += '<ul>';
+            html += summaryItems;
+            html += '</ul>';
+            html += '</div>';
+            html += '</div>';
 
-                <details>
-                    <summary>Raw JSON</summary>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                </details>
-            `;
+            html += '<!-- Next Steps Card -->';
+            html += '<div class="card">';
+            html += '<div class="card-title">Next Steps</div>';
+            html += '<div class="card-content">';
+            html += '<p><strong>' + interpretation.what_to_do + '</strong></p>';
+            html += nextStepHtml;
+            html += '</div>';
+            html += '</div>';
+
+            html += '<!-- Details Drawer -->';
+            html += '<details>';
+            html += '<summary>Metrics</summary>';
+            html += '<div class="metric-grid">';
+            html += '<div class="metric-item">';
+            html += '<div class="metric-label">Raw Fragility</div>';
+            html += '<div class="metric-value">' + evaluation.metrics.raw_fragility.toFixed(1) + '</div>';
+            html += '</div>';
+            html += '<div class="metric-item">';
+            html += '<div class="metric-label">Leg Penalty</div>';
+            html += '<div class="metric-value">' + evaluation.metrics.leg_penalty.toFixed(1) + '</div>';
+            html += '</div>';
+            html += '<div class="metric-item">';
+            html += '<div class="metric-label">Correlation Penalty</div>';
+            html += '<div class="metric-value">' + evaluation.metrics.correlation_penalty.toFixed(1) + '</div>';
+            html += '</div>';
+            html += '<div class="metric-item">';
+            html += '<div class="metric-label">Multiplier</div>';
+            html += '<div class="metric-value">' + evaluation.metrics.multiplier.toFixed(2) + 'x</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</details>';
+
+            html += '<details>';
+            html += '<summary>Correlations</summary>';
+            html += correlationsList;
+            html += '</details>';
+
+            html += '<details>';
+            html += '<summary>Raw JSON</summary>';
+            html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            html += '</details>';
 
             document.getElementById('results-area').innerHTML = html;
         }
@@ -1034,25 +1046,25 @@ async def dev_panel():
             playerDiv.innerHTML = '<div class="loading">Loading narration</div>';
 
             try {
-                const textResponse = await fetch(`/leading-light/demo/${caseName}/narration-text`);
+                const textResponse = await fetch('/leading-light/demo/' + caseName + '/narration-text');
                 const textData = await textResponse.json();
 
                 if (!textResponse.ok) {
                     throw new Error(textData.detail?.detail || 'Failed to load narration');
                 }
 
-                const audioUrl = `/leading-light/demo/${caseName}/narration?plan=best`;
+                const audioUrl = '/leading-light/demo/' + caseName + '/narration?plan=best';
 
-                playerDiv.innerHTML = `
-                    <div class="demo-content">
-                        <p style="font-style: italic; color: #aaa; margin-bottom: 12px;">"${textData.narration}"</p>
-                        <audio controls src="${audioUrl}">
-                            Your browser does not support the audio element.
-                        </audio>
-                    </div>
-                `;
+                let playerHtml = '';
+                playerHtml += '<div class="demo-content">';
+                playerHtml += '<p style="font-style: italic; color: #aaa; margin-bottom: 12px;">"' + textData.narration + '"</p>';
+                playerHtml += '<audio controls src="' + audioUrl + '">';
+                playerHtml += 'Your browser does not support the audio element.';
+                playerHtml += '</audio>';
+                playerHtml += '</div>';
+                playerDiv.innerHTML = playerHtml;
             } catch (error) {
-                playerDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                playerDiv.innerHTML = '<div class="error">' + error.message + '</div>';
             }
         }
 
@@ -1063,7 +1075,7 @@ async def dev_panel():
             contentDiv.innerHTML = '<div class="loading">Loading demo notes</div>';
 
             try {
-                const response = await fetch(`/demo/onboarding-bundle?case_name=${caseName}`);
+                const response = await fetch('/demo/onboarding-bundle?case_name=' + caseName);
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -1072,38 +1084,40 @@ async def dev_panel():
 
                 const selected = data.selected;
 
-                contentDiv.innerHTML = `
-                    <div class="demo-content">
-                        <div class="demo-title">Example: ${selected.title}</div>
+                let keyPoints = '';
+                for (let i = 0; i < selected.plain_english.length; i++) {
+                    keyPoints += '<li>' + selected.plain_english[i] + '</li>';
+                }
 
-                        <div class="context-item">
-                            <div class="context-label">Who it's for</div>
-                            <div class="context-value">${selected.context.who_its_for}</div>
-                        </div>
-                        <div class="context-item">
-                            <div class="context-label">Why this case</div>
-                            <div class="context-value">${selected.context.why_this_case}</div>
-                        </div>
-                        <div class="context-item">
-                            <div class="context-label">What to notice</div>
-                            <div class="context-value">${selected.context.what_to_notice}</div>
-                        </div>
-
-                        <div style="margin-top: 16px;">
-                            <div class="subsection-title" style="margin-bottom: 8px;">Key Points</div>
-                            <ul>
-                                ${selected.plain_english.map(text => `<li>${text}</li>`).join('')}
-                            </ul>
-                        </div>
-
-                        <details style="margin-top: 12px;">
-                            <summary>Raw JSON</summary>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        </details>
-                    </div>
-                `;
+                let demoHtml = '';
+                demoHtml += '<div class="demo-content">';
+                demoHtml += '<div class="demo-title">Example: ' + selected.title + '</div>';
+                demoHtml += '<div class="context-item">';
+                demoHtml += '<div class="context-label">Who it\'s for</div>';
+                demoHtml += '<div class="context-value">' + selected.context.who_its_for + '</div>';
+                demoHtml += '</div>';
+                demoHtml += '<div class="context-item">';
+                demoHtml += '<div class="context-label">Why this case</div>';
+                demoHtml += '<div class="context-value">' + selected.context.why_this_case + '</div>';
+                demoHtml += '</div>';
+                demoHtml += '<div class="context-item">';
+                demoHtml += '<div class="context-label">What to notice</div>';
+                demoHtml += '<div class="context-value">' + selected.context.what_to_notice + '</div>';
+                demoHtml += '</div>';
+                demoHtml += '<div style="margin-top: 16px;">';
+                demoHtml += '<div class="subsection-title" style="margin-bottom: 8px;">Key Points</div>';
+                demoHtml += '<ul>';
+                demoHtml += keyPoints;
+                demoHtml += '</ul>';
+                demoHtml += '</div>';
+                demoHtml += '<details style="margin-top: 12px;">';
+                demoHtml += '<summary>Raw JSON</summary>';
+                demoHtml += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                demoHtml += '</details>';
+                demoHtml += '</div>';
+                contentDiv.innerHTML = demoHtml;
             } catch (error) {
-                contentDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                contentDiv.innerHTML = '<div class="error">' + error.message + '</div>';
             }
         }
     </script>
