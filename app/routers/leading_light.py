@@ -12,6 +12,7 @@ from typing import List, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.leading_light import (
     BetBlockSchema,
@@ -530,3 +531,119 @@ async def run_demo(case_name: str, plan: Optional[str] = None) -> EvaluationResp
                 "code": "INTERNAL_ERROR",
             },
         )
+
+
+# =============================================================================
+# Simple Text-Based Evaluate Endpoint (Entry Point)
+# =============================================================================
+
+
+class TextEvaluateRequest(BaseModel):
+    """Request schema for text-based bet evaluation."""
+    bet_text: str = Field(..., min_length=1, description="Bet description as plain text")
+    plan: Optional[str] = Field(default="free", description="Subscription plan tier")
+    session_id: Optional[str] = Field(default=None, description="Optional session identifier")
+
+    @field_validator("bet_text")
+    @classmethod
+    def validate_bet_text(cls, v: str) -> str:
+        """Validate bet_text is not empty or whitespace."""
+        if not v or not v.strip():
+            raise ValueError("bet_text cannot be empty or whitespace")
+        return v.strip()
+
+
+@router.post(
+    "/evaluate/text",
+    responses={
+        200: {"description": "Evaluation with plain-English explanation"},
+        400: {"description": "Invalid request"},
+    },
+    summary="Evaluate bet from text (simple entry point)",
+    description="Accept a bet as plain text and return evaluation with plain-English explanation.",
+)
+async def evaluate_from_text(request: TextEvaluateRequest):
+    """
+    Evaluate a bet from plain text.
+
+    Simple entry point that accepts bet text and returns deterministic evaluation
+    with plain-English explanation wrapper.
+    """
+    # Simple complexity heuristics (deterministic)
+    text_lower = request.bet_text.lower()
+    leg_count = 0
+    
+    # Count potential legs
+    for indicator in ['+', 'and', ',', 'parlay']:
+        if indicator in text_lower:
+            leg_count += text_lower.count(indicator)
+    
+    # Estimate legs (minimum 1)
+    estimated_legs = max(1, min(leg_count, 5))
+    
+    # Detect risk indicators
+    has_weather = any(word in text_lower for word in ['snow', 'wind', 'rain', 'weather'])
+    has_injury = any(word in text_lower for word in ['injury', 'out', 'questionable', 'doubtful'])
+    has_props = any(word in text_lower for word in ['yards', 'points', 'rebounds', 'assists', 'touchdowns'])
+    
+    # Calculate simple fragility (deterministic)
+    base_fragility = estimated_legs * 0.15
+    if has_props:
+        base_fragility += 0.10
+    if has_weather:
+        base_fragility += 0.08
+    if has_injury:
+        base_fragility += 0.08
+    
+    fragility = min(base_fragility, 0.95)
+    
+    # Determine risk level
+    if fragility < 0.25:
+        risk_level = "STABLE"
+        recommended_step = "This structure is within tolerance"
+    elif fragility < 0.45:
+        risk_level = "LOADED"
+        recommended_step = "Monitor closely; consider reducing legs"
+    elif fragility < 0.65:
+        risk_level = "TENSE"
+        recommended_step = "Simplify the bet; multiple risk factors present"
+    else:
+        risk_level = "CRITICAL"
+        recommended_step = "Simplify the bet; high fragility detected"
+    
+    # Build plain-English summary
+    summary = [
+        f"Detected approximately {estimated_legs} leg(s) in this bet",
+        f"Estimated fragility: {fragility:.2f} ({risk_level})",
+    ]
+    
+    if has_props:
+        summary.append("Player props detected - adds outcome variance")
+    if has_weather:
+        summary.append("Weather context mentioned - may affect performance")
+    if has_injury:
+        summary.append("Injury context mentioned - affects player availability")
+    
+    # Build response
+    return {
+        "input": {
+            "bet_text": request.bet_text,
+            "plan": request.plan,
+            "session_id": request.session_id,
+        },
+        "evaluation": {
+            "risk_level": risk_level,
+            "fragility": round(fragility, 3),
+            "estimated_legs": estimated_legs,
+            "indicators": {
+                "has_props": has_props,
+                "has_weather": has_weather,
+                "has_injury": has_injury,
+            },
+        },
+        "explain": {
+            "summary": summary,
+            "alerts": [],
+            "recommended_next_step": recommended_step,
+        },
+    }
