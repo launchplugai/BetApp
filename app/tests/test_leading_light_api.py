@@ -541,3 +541,218 @@ class TestEdgeCases:
                 },
             )
             assert response.status_code == 200
+
+
+# =============================================================================
+# Context Signals Tests
+# =============================================================================
+
+
+class TestContextSignals:
+    """Tests for context_signals API parameter."""
+
+    def test_weather_signal_increases_fragility(self, client):
+        """Weather signal increases fragility via context adapters."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "player_prop",
+                            "selection": "QB Over 250 passing yards",
+                            "base_fragility": 10.0,
+                            "player_id": "player-1",
+                            "correlation_tags": ["passing"],
+                        }
+                    ],
+                    "context_signals": [
+                        {
+                            "type": "weather",
+                            "game_id": "game-123",
+                            "wind_mph": 20,
+                            "precip": False,
+                        }
+                    ],
+                },
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Base fragility 10 + wind delta 4 = 14, plus leg penalty
+            assert data["metrics"]["raw_fragility"] >= 14.0
+
+    def test_injury_signal_increases_fragility(self, client):
+        """Injury signal increases fragility via context adapters."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "player_prop",
+                            "selection": "Star RB Over 100 yards",
+                            "base_fragility": 10.0,
+                            "player_id": "player-1",
+                        }
+                    ],
+                    "context_signals": [
+                        {
+                            "type": "injury",
+                            "player_id": "player-1",
+                            "player_name": "Star RB",
+                            "status": "OUT",
+                            "injury": "Knee",
+                        }
+                    ],
+                },
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Base 10 + injury delta 10 + role delta 3 = 23
+            assert data["metrics"]["raw_fragility"] >= 23.0
+
+    def test_trade_signal_increases_fragility(self, client):
+        """Trade signal increases fragility and adds role delta."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "player_prop",
+                            "selection": "New WR Over 50 yards",
+                            "base_fragility": 10.0,
+                            "player_id": "player-1",
+                        }
+                    ],
+                    "context_signals": [
+                        {
+                            "type": "trade",
+                            "player_id": "player-1",
+                            "player_name": "New WR",
+                            "from_team_id": "team-old",
+                            "to_team_id": "team-new",
+                            "games_affected": 3,
+                        }
+                    ],
+                },
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Base 10 + trade delta 5 + role delta 4 = 19
+            assert data["metrics"]["raw_fragility"] >= 19.0
+
+    def test_multiple_signals_stack(self, client):
+        """Multiple context signals stack their effects."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "player_prop",
+                            "selection": "QB Over 250 passing yards",
+                            "base_fragility": 10.0,
+                            "player_id": "player-1",
+                            "correlation_tags": ["passing"],
+                        }
+                    ],
+                    "context_signals": [
+                        {
+                            "type": "weather",
+                            "game_id": "game-123",
+                            "wind_mph": 15,
+                            "precip": True,
+                        },
+                        {
+                            "type": "injury",
+                            "player_id": "player-1",
+                            "status": "DOUBTFUL",
+                            "injury": "Shoulder",
+                        },
+                    ],
+                },
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Base 10 + weather (4+3) + injury 6 + role 3 = 26
+            assert data["metrics"]["raw_fragility"] >= 26.0
+
+    def test_no_signals_no_change(self, client):
+        """Empty context_signals has no effect."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            # First request without signals
+            response1 = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "spread",
+                            "selection": "Team A -3.5",
+                            "base_fragility": 15.0,
+                        }
+                    ],
+                },
+            )
+
+            # Second request with empty signals
+            response2 = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "spread",
+                            "selection": "Team A -3.5",
+                            "base_fragility": 15.0,
+                        }
+                    ],
+                    "context_signals": [],
+                },
+            )
+
+            assert response1.status_code == 200
+            assert response2.status_code == 200
+            data1 = response1.json()
+            data2 = response2.json()
+            assert data1["metrics"]["raw_fragility"] == data2["metrics"]["raw_fragility"]
+
+    def test_unknown_signal_type_ignored(self, client):
+        """Unknown signal types are ignored without error."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate",
+                json={
+                    "blocks": [
+                        {
+                            "sport": "NFL",
+                            "game_id": "game-123",
+                            "bet_type": "spread",
+                            "selection": "Team A -3.5",
+                            "base_fragility": 15.0,
+                        }
+                    ],
+                    "context_signals": [
+                        {
+                            "type": "unknown_type",
+                        }
+                    ],
+                },
+            )
+
+            assert response.status_code == 200

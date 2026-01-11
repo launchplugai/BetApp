@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.schemas.leading_light import (
     BetBlockSchema,
     ContextModifiersSchema,
+    ContextSignalInputSchema,
     DNAProfileSchema,
     EvaluationRequestSchema,
     EvaluationResponseSchema,
@@ -44,6 +45,7 @@ from core.evaluation import (
     EvaluationResponse,
     evaluate_parlay,
 )
+from core.context_adapters import adapt_and_apply_signals
 
 
 # =============================================================================
@@ -265,6 +267,14 @@ async def evaluate(request: EvaluationRequestSchema) -> EvaluationResponseSchema
         candidates = None
         if request.candidates:
             candidates = [_convert_block(c) for c in request.candidates]
+
+        # Apply context signals if provided
+        if request.context_signals:
+            raw_signals = [
+                signal.model_dump(exclude_none=True)
+                for signal in request.context_signals
+            ]
+            blocks = list(adapt_and_apply_signals(blocks, raw_signals))
 
         # Evaluate parlay
         response = evaluate_parlay(

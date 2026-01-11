@@ -67,6 +67,35 @@ class DNAProfileSchema(BaseModel):
     behavior: BehaviorProfileSchema
 
 
+class ContextSignalInputSchema(BaseModel):
+    """
+    Raw context signal input for adapter processing.
+
+    Each signal should have a "type" field indicating the signal type:
+    - "weather": Weather conditions affecting game
+    - "injury": Player injury report
+    - "trade": Player trade/transaction
+    """
+    type: str  # weather, injury, trade
+
+    # Weather fields
+    game_id: Optional[str] = None
+    wind_mph: Optional[float] = None
+    precip: Optional[bool] = None
+    conditions: Optional[str] = None
+
+    # Injury fields
+    player_id: Optional[str] = None
+    player_name: Optional[str] = None
+    status: Optional[str] = None  # OUT, DOUBTFUL, QUESTIONABLE
+    injury: Optional[str] = None
+
+    # Trade fields
+    from_team_id: Optional[str] = None
+    to_team_id: Optional[str] = None
+    games_affected: Optional[int] = None
+
+
 class EvaluationRequestSchema(BaseModel):
     """
     Request schema for parlay evaluation.
@@ -76,7 +105,8 @@ class EvaluationRequestSchema(BaseModel):
       "blocks": [ ... BetBlock JSON ... ],
       "dna_profile": { ... optional ... },
       "bankroll": 1000.0,
-      "candidates": [ ... optional BetBlock JSON ... ]
+      "candidates": [ ... optional BetBlock JSON ... ],
+      "context_signals": [ ... optional context signals ... ]
     }
     """
     blocks: List[BetBlockSchema]
@@ -84,6 +114,7 @@ class EvaluationRequestSchema(BaseModel):
     bankroll: Optional[float] = Field(default=None, ge=0)
     candidates: Optional[List[BetBlockSchema]] = None
     max_suggestions: int = Field(default=5, ge=1, le=20)
+    context_signals: Optional[List[ContextSignalInputSchema]] = None
 
 
 # =============================================================================
