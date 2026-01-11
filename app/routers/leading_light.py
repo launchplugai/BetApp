@@ -533,6 +533,8 @@ async def run_demo(case_name: str, plan: Optional[str] = None) -> EvaluationResp
         )
 
 
+
+
 # =============================================================================
 # Simple Text-Based Evaluate Endpoint (Entry Point)
 # =============================================================================
@@ -553,97 +555,211 @@ class TextEvaluateRequest(BaseModel):
         return v.strip()
 
 
+def _parse_bet_text(bet_text: str) -> list[BetBlock]:
+    """
+    Parse bet_text into BetBlock objects.
+
+    Minimal parser that creates simple bet blocks from text.
+    Does NOT implement scoring logic - just format conversion.
+    """
+    # Count legs based on delimiters
+    leg_count = 1
+    for delimiter in ['+', ',', 'and ', ' parlay']:
+        if delimiter in bet_text.lower():
+            leg_count = bet_text.lower().count(delimiter) + 1
+            break
+
+    # Cap at reasonable limit
+    leg_count = min(leg_count, 5)
+
+    # Detect bet types from text
+    text_lower = bet_text.lower()
+    is_prop = any(word in text_lower for word in ['yards', 'points', 'rebounds', 'assists', 'touchdowns', 'td'])
+    is_total = any(word in text_lower for word in ['over', 'under', 'o/', 'u/'])
+    is_spread = any(word in text_lower for word in ['-', '+']) and not is_total
+
+    # Determine bet type
+    if is_prop:
+        bet_type = BetType.PLAYER_PROP
+        base_fragility = 0.20  # Props are inherently more fragile
+    elif is_total:
+        bet_type = BetType.TOTAL
+        base_fragility = 0.12
+    elif is_spread:
+        bet_type = BetType.SPREAD
+        base_fragility = 0.10
+    else:
+        bet_type = BetType.ML
+        base_fragility = 0.08
+
+    # Create bet blocks (one per leg)
+    blocks = []
+    default_mod = ContextModifier(applied=False, delta=0.0, reason=None)
+    modifiers = ContextModifiers(
+        weather=default_mod,
+        injury=default_mod,
+        trade=default_mod,
+        role=default_mod,
+    )
+
+    for i in range(leg_count):
+        block = BetBlock(
+            block_id=uuid4(),
+            sport="generic",
+            game_id=f"game_{i+1}",
+            bet_type=bet_type,
+            selection=f"Leg {i+1}",
+            base_fragility=base_fragility,
+            context_modifiers=modifiers,
+            correlation_tags=(),
+            effective_fragility=base_fragility,
+            player_id=None,
+            team_id=None,
+        )
+        blocks.append(block)
+
+    return blocks
+
+
+def _generate_summary(response: EvaluationResponse, leg_count: int) -> list[str]:
+    """Generate plain-English summary bullets from evaluation response."""
+    summary = [
+        f"Detected {leg_count} leg(s) in this bet",
+        f"Risk level: {response.inductor.level.value.upper()}",
+        f"Final fragility: {response.metrics.final_fragility:.2f}",
+    ]
+
+    if response.metrics.correlation_penalty > 0:
+        summary.append(f"Correlation penalty applied: +{response.metrics.correlation_penalty:.2f}")
+
+    if len(response.correlations) > 0:
+        summary.append(f"Found {len(response.correlations)} correlation(s) between legs")
+
+    return summary
+
+
+def _generate_alerts(response: EvaluationResponse) -> list[str]:
+    """Generate alerts from evaluation response."""
+    alerts = []
+
+    # Check for DNA violations
+    if response.dna.violations:
+        for violation in response.dna.violations:
+            alerts.append(violation)
+
+    # Check for high correlation
+    if response.metrics.correlation_multiplier >= 1.5:
+        alerts.append("High correlation detected between selections")
+
+    # Check for critical risk
+    if response.inductor.level.value == "critical":
+        alerts.append("Critical risk level - structure exceeds safe thresholds")
+
+    return alerts
+
+
 @router.post(
     "/evaluate/text",
     responses={
         200: {"description": "Evaluation with plain-English explanation"},
         400: {"description": "Invalid request"},
+        503: {"description": "Service disabled"},
     },
     summary="Evaluate bet from text (simple entry point)",
     description="Accept a bet as plain text and return evaluation with plain-English explanation.",
 )
 async def evaluate_from_text(request: TextEvaluateRequest):
     """
-    Evaluate a bet from plain text.
+    Evaluate a bet from plain text using the canonical evaluation engine.
 
-    Simple entry point that accepts bet text and returns deterministic evaluation
-    with plain-English explanation wrapper.
+    Parses bet_text into BetBlock(s), calls evaluate_parlay, and wraps
+    the response with plain-English explanations.
     """
-    # Simple complexity heuristics (deterministic)
-    text_lower = request.bet_text.lower()
-    leg_count = 0
-    
-    # Count potential legs
-    for indicator in ['+', 'and', ',', 'parlay']:
-        if indicator in text_lower:
-            leg_count += text_lower.count(indicator)
-    
-    # Estimate legs (minimum 1)
-    estimated_legs = max(1, min(leg_count, 5))
-    
-    # Detect risk indicators
-    has_weather = any(word in text_lower for word in ['snow', 'wind', 'rain', 'weather'])
-    has_injury = any(word in text_lower for word in ['injury', 'out', 'questionable', 'doubtful'])
-    has_props = any(word in text_lower for word in ['yards', 'points', 'rebounds', 'assists', 'touchdowns'])
-    
-    # Calculate simple fragility (deterministic)
-    base_fragility = estimated_legs * 0.15
-    if has_props:
-        base_fragility += 0.10
-    if has_weather:
-        base_fragility += 0.08
-    if has_injury:
-        base_fragility += 0.08
-    
-    fragility = min(base_fragility, 0.95)
-    
-    # Determine risk level
-    if fragility < 0.25:
-        risk_level = "STABLE"
-        recommended_step = "This structure is within tolerance"
-    elif fragility < 0.45:
-        risk_level = "LOADED"
-        recommended_step = "Monitor closely; consider reducing legs"
-    elif fragility < 0.65:
-        risk_level = "TENSE"
-        recommended_step = "Simplify the bet; multiple risk factors present"
-    else:
-        risk_level = "CRITICAL"
-        recommended_step = "Simplify the bet; high fragility detected"
-    
-    # Build plain-English summary
-    summary = [
-        f"Detected approximately {estimated_legs} leg(s) in this bet",
-        f"Estimated fragility: {fragility:.2f} ({risk_level})",
-    ]
-    
-    if has_props:
-        summary.append("Player props detected - adds outcome variance")
-    if has_weather:
-        summary.append("Weather context mentioned - may affect performance")
-    if has_injury:
-        summary.append("Injury context mentioned - affects player availability")
-    
-    # Build response
-    return {
-        "input": {
-            "bet_text": request.bet_text,
-            "plan": request.plan,
-            "session_id": request.session_id,
-        },
-        "evaluation": {
-            "risk_level": risk_level,
-            "fragility": round(fragility, 3),
-            "estimated_legs": estimated_legs,
-            "indicators": {
-                "has_props": has_props,
-                "has_weather": has_weather,
-                "has_injury": has_injury,
+    # Check feature flag
+    if not is_leading_light_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Leading Light disabled",
+                "detail": "The Leading Light feature is currently disabled. Set LEADING_LIGHT_ENABLED=true to enable.",
+                "code": "SERVICE_DISABLED",
             },
-        },
-        "explain": {
-            "summary": summary,
-            "alerts": [],
-            "recommended_next_step": recommended_step,
-        },
-    }
+        )
+
+    try:
+        # Parse bet_text into BetBlock(s)
+        blocks = _parse_bet_text(request.bet_text)
+
+        # Call the canonical evaluation engine
+        response = evaluate_parlay(
+            blocks=blocks,
+            dna_profile=None,
+            bankroll=None,
+            candidates=None,
+            max_suggestions=0,
+        )
+
+        # Build plain-English explain wrapper
+        summary = _generate_summary(response, len(blocks))
+        alerts = _generate_alerts(response)
+        recommended_step = response.recommendation.reason
+
+        # Build response
+        return {
+            "input": {
+                "bet_text": request.bet_text,
+                "plan": request.plan,
+                "session_id": request.session_id,
+            },
+            "evaluation": {
+                "parlay_id": str(response.parlay_id),
+                "inductor": {
+                    "level": response.inductor.level.value,
+                    "explanation": response.inductor.explanation,
+                },
+                "metrics": {
+                    "raw_fragility": response.metrics.raw_fragility,
+                    "final_fragility": response.metrics.final_fragility,
+                    "leg_penalty": response.metrics.leg_penalty,
+                    "correlation_penalty": response.metrics.correlation_penalty,
+                    "correlation_multiplier": response.metrics.correlation_multiplier,
+                },
+                "correlations": [
+                    {
+                        "block_a": str(c.block_a),
+                        "block_b": str(c.block_b),
+                        "type": c.type,
+                        "penalty": c.penalty,
+                    }
+                    for c in response.correlations
+                ],
+                "recommendation": {
+                    "action": response.recommendation.action.value,
+                    "reason": response.recommendation.reason,
+                },
+            },
+            "explain": {
+                "summary": summary,
+                "alerts": alerts,
+                "recommended_next_step": recommended_step,
+            },
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Invalid bet text",
+                "detail": str(e),
+                "code": "PARSE_ERROR",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Internal error",
+                "detail": str(e),
+                "code": "INTERNAL_ERROR",
+            },
+        )
