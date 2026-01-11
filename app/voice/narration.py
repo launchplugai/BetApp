@@ -17,12 +17,21 @@ class GlossaryTerm(TypedDict):
     meaning: str
 
 
+class DemoCaseContext(TypedDict):
+    """Context framing for a demo case."""
+
+    who_its_for: str
+    why_this_case: str
+    what_to_notice: str
+
+
 class DemoCaseNarration(TypedDict):
     """Complete narration data for a demo case."""
 
     narration: str
     plain_english: List[str]
     glossary: List[GlossaryTerm]
+    context: DemoCaseContext
 
 
 # =============================================================================
@@ -132,6 +141,35 @@ DEMO_CASE_GLOSSARIES: Dict[str, List[GlossaryTerm]] = {
 
 
 # =============================================================================
+# Context Framing
+# =============================================================================
+
+DEMO_CASE_CONTEXT: Dict[str, DemoCaseContext] = {
+    "stable": {
+        "who_its_for": "A cautious bettor placing a simple wager",
+        "why_this_case": "Shows how low-fragility bets are evaluated",
+        "what_to_notice": "Structure matters more than picking winners",
+    },
+    "loaded": {
+        "who_its_for": "Someone comfortable with moderate-complexity parlays",
+        "why_this_case": "Demonstrates how adding legs increases fragility",
+        "what_to_notice": "Independent bets reduce correlation penalties",
+    },
+    "tense": {
+        "who_its_for": "An experienced bettor evaluating contextual risks",
+        "why_this_case": "Shows how weather and injuries affect fragility scoring",
+        "what_to_notice": "Same-game selections create compounding correlation risk",
+    },
+    "critical": {
+        "who_its_for": "Anyone considering complex same-player props",
+        "why_this_case": "Illustrates when a bet structure exceeds safe thresholds",
+        "what_to_notice": "Multiple red flags combine to push past tolerance limits",
+    },
+}
+
+
+
+# =============================================================================
 # Public Functions
 # =============================================================================
 
@@ -170,6 +208,7 @@ def get_demo_case_data(case_name: str) -> Optional[DemoCaseNarration]:
         narration=DEMO_CASE_NARRATIONS[key],
         plain_english=DEMO_CASE_PLAIN_ENGLISH[key],
         glossary=DEMO_CASE_GLOSSARIES[key],
+        context=DEMO_CASE_CONTEXT[key],
     )
 
 
