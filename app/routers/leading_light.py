@@ -743,6 +743,43 @@ def _interpret_fragility(final_fragility: float) -> dict:
         "what_to_do": what_to_do,
     }
 
+
+def _apply_tier_to_explain_wrapper(plan: str, explain: dict) -> dict:
+    """
+    Apply tier filtering to explain wrapper based on plan.
+
+    Tier rules:
+    - FREE/GOOD: Empty explain (interpretation only in separate field)
+    - BETTER: summary only
+    - BEST: summary + alerts + recommended_next_step
+
+    Args:
+        plan: Plan tier string (free/good/better/best)
+        explain: Original explain dict with summary/alerts/recommended_next_step
+
+    Returns:
+        Filtered explain dict
+    """
+    from app.tiering import parse_plan, Plan
+
+    parsed_plan = parse_plan(plan)
+
+    # FREE and GOOD: return empty explain (interpretation is in separate field)
+    if parsed_plan == Plan.GOOD:
+        return {}
+
+    # BETTER: summary only
+    elif parsed_plan == Plan.BETTER:
+        filtered = {}
+        if "summary" in explain:
+            filtered["summary"] = explain["summary"]
+        return filtered
+
+    # BEST: all fields
+    else:  # Plan.BEST
+        return explain
+
+
 @router.post(
     "/evaluate/text",
     responses={
@@ -792,6 +829,16 @@ async def evaluate_from_text(request: TextEvaluateRequest):
         # Build fragility interpretation
         fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
 
+        # Build explain wrapper (before tier filtering)
+        explain_full = {
+            "summary": summary,
+            "alerts": alerts,
+            "recommended_next_step": recommended_step,
+        }
+
+        # Apply tier filtering to explain wrapper
+        explain_filtered = _apply_tier_to_explain_wrapper(request.plan, explain_full)
+
         # Build response
         return {
             "input": {
@@ -829,11 +876,7 @@ async def evaluate_from_text(request: TextEvaluateRequest):
             "interpretation": {
                 "fragility": fragility_interpretation,
             },
-            "explain": {
-                "summary": summary,
-                "alerts": alerts,
-                "recommended_next_step": recommended_step,
-            },
+            "explain": explain_filtered,
         }
 
     except ValueError as e:
@@ -1021,6 +1064,16 @@ async def evaluate_from_image(
         recommended_step = response.recommendation.reason
         fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
 
+        # Build explain wrapper (before tier filtering)
+        explain_full = {
+            "summary": summary,
+            "alerts": alerts,
+            "recommended_next_step": recommended_step,
+        }
+
+        # Apply tier filtering to explain wrapper
+        explain_filtered = _apply_tier_to_explain_wrapper(plan, explain_full)
+
         return {
             "input": {
                 "image_filename": image.filename,
@@ -1057,11 +1110,7 @@ async def evaluate_from_image(
             "interpretation": {
                 "fragility": fragility_interpretation,
             },
-            "explain": {
-                "summary": summary,
-                "alerts": alerts,
-                "recommended_next_step": recommended_step,
-            },
+            "explain": explain_filtered,
         }
 
     except HTTPException:
