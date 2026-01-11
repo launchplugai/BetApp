@@ -2,7 +2,7 @@
 """
 Developer Panel UI Router.
 
-Provides a clean prototype interface for testing Leading Light endpoints.
+Provides a guided core-loop experience for testing Leading Light endpoints.
 """
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -29,112 +29,142 @@ async def dev_panel():
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
+            background: #0a0a0a;
+            color: #e0e0e0;
             min-height: 100vh;
             padding: 16px;
+            padding-bottom: 80px;
         }
 
         .container {
-            max-width: 640px;
+            max-width: 420px;
             margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
         }
 
         .header {
-            background: #1a1a1a;
-            color: white;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-radius: 8px;
             padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-pills {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .status-enabled {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .status-disabled {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .slip-editor {
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .slip-line {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .slip-line:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .slip-line-number {
+            font-size: 11px;
+            color: #555;
+            margin-right: 12px;
+            min-width: 20px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .slip-line input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            outline: none;
+        }
+
+        .slip-line input::placeholder {
+            color: #555;
+        }
+
+        .slip-helper {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .header-title {
-            font-size: 20px;
+        .legs-count {
+            color: #888;
             font-weight: 600;
-        }
-
-        .header-subtitle {
-            font-size: 12px;
-            color: #999;
-            margin-top: 2px;
-        }
-
-        .copy-link-btn {
-            background: #333;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .copy-link-btn:hover {
-            background: #444;
-        }
-
-        .tabs {
-            display: flex;
-            background: #fafafa;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 14px;
-            text-align: center;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            font-size: 14px;
-            color: #666;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
-        }
-
-        .tab.active {
-            color: #1a1a1a;
-            border-bottom-color: #1a1a1a;
-            background: white;
-        }
-
-        .content {
-            padding: 20px;
-        }
-
-        .tab-panel {
-            display: none;
-        }
-
-        .tab-panel.active {
-            display: block;
-        }
-
-        .card {
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-
-        .card-title {
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 12px;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .card-content {
-            color: #333;
-            font-size: 14px;
-            line-height: 1.6;
         }
 
         .form-group {
@@ -143,81 +173,82 @@ async def dev_panel():
 
         label {
             display: block;
-            margin-bottom: 6px;
-            color: #333;
-            font-weight: 500;
-            font-size: 13px;
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
         }
 
-        select, textarea {
+        select {
             width: 100%;
             padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #e0e0e0;
             font-size: 14px;
-            font-family: inherit;
-            background: white;
+            cursor: pointer;
         }
 
-        textarea {
-            min-height: 80px;
-            resize: vertical;
+        select:focus {
+            outline: none;
+            border-color: #4a9eff;
         }
 
-        button {
+        .btn-primary {
             width: 100%;
-            padding: 12px;
-            background: #1a1a1a;
+            padding: 16px;
+            background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
             color: white;
             border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 600;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             cursor: pointer;
+            transition: all 0.2s;
         }
 
-        button:hover {
-            background: #333;
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
         }
 
-        button:disabled {
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        .preset-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .chip {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 12px;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .chip:hover {
-            border-color: #1a1a1a;
-            color: #1a1a1a;
+            transform: none;
         }
 
         .verdict-card {
-            background: #1a1a1a;
-            color: white;
-            border: none;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+            border: 1px solid #3a3a3a;
+            padding: 24px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+        }
+
+        .verdict-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
         }
 
         .verdict-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-top: 12px;
+            gap: 20px;
+            margin-bottom: 20px;
         }
 
         .verdict-item {
@@ -225,35 +256,85 @@ async def dev_panel():
         }
 
         .verdict-label {
-            font-size: 11px;
+            font-size: 10px;
+            color: #666;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #999;
-            margin-bottom: 4px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
         }
 
         .verdict-value {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
         }
 
-        .risk-badge {
+        .verdict-footer {
+            padding-top: 20px;
+            border-top: 1px solid #2a2a2a;
+        }
+
+        .verdict-bucket {
+            margin-bottom: 12px;
+        }
+
+        .verdict-recommendation {
+            font-size: 13px;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .badge {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 6px 12px;
             border-radius: 4px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .risk-low { background: #d4edda; color: #155724; }
-        .risk-medium { background: #fff3cd; color: #856404; }
-        .risk-high { background: #f8d7da; color: #721c24; }
-        .risk-critical { background: #f5c6cb; color: #491217; }
-        .risk-stable { background: #d4edda; color: #155724; }
-        .risk-loaded { background: #fff3cd; color: #856404; }
-        .risk-tense { background: #f8d7da; color: #721c24; }
+        .badge-low {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .badge-medium {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .badge-high {
+            background: rgba(251, 146, 60, 0.2);
+            color: #fb923c;
+            border: 1px solid rgba(251, 146, 60, 0.3);
+        }
+
+        .badge-critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-stable { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+        .badge-loaded { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+        .badge-tense { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); }
+
+        .card-content {
+            color: #aaa;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .card-content p {
+            margin-bottom: 12px;
+        }
+
+        .card-content strong {
+            color: #e0e0e0;
+        }
 
         ul {
             margin-left: 20px;
@@ -262,50 +343,145 @@ async def dev_panel():
 
         li {
             margin-bottom: 8px;
-            line-height: 1.5;
+            color: #aaa;
+            line-height: 1.6;
         }
 
         details {
-            margin-top: 16px;
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
             border-radius: 6px;
             padding: 12px;
+            margin-top: 12px;
         }
 
         summary {
             cursor: pointer;
+            font-size: 12px;
             font-weight: 600;
-            font-size: 13px;
-            color: #666;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             user-select: none;
+            padding: 4px 0;
+        }
+
+        summary:hover {
+            color: #aaa;
+        }
+
+        details[open] summary {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #1a1a1a;
         }
 
         pre {
-            margin-top: 12px;
-            background: #1a1a1a;
-            color: #f8f8f2;
+            background: #000;
+            color: #34d399;
             padding: 12px;
             border-radius: 4px;
             overflow-x: auto;
             font-size: 11px;
             line-height: 1.5;
+            font-family: 'Courier New', monospace;
+            margin-top: 8px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .metric-item {
+            padding: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+        }
+
+        .metric-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 14px;
+            color: #e0e0e0;
+            font-weight: 600;
         }
 
         .error {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 12px;
-            border-radius: 4px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 16px;
+            border-radius: 6px;
             margin-top: 12px;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: 40px 20px;
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1a1a1a;
+            border-top: 1px solid #2a2a2a;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .bottom-bar button {
+            flex: 1;
+            max-width: 120px;
+            padding: 12px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .bottom-bar button:hover {
+            background: #3a3a3a;
+            border-color: #4a4a4a;
+        }
+
+        .bottom-bar button.primary {
+            background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
+            border: none;
+            color: white;
+        }
+
+        .bottom-bar button.primary:hover {
+            transform: translateY(-1px);
         }
 
         audio {
@@ -313,15 +489,61 @@ async def dev_panel():
             margin-top: 12px;
         }
 
-        .context-grid {
-            display: grid;
-            gap: 12px;
+        .learn-more-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 2px solid #2a2a2a;
+        }
+
+        .subsection {
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .subsection-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 10px;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #3a3a3a;
+        }
+
+        .demo-content {
             margin-top: 12px;
         }
 
+        .demo-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 12px;
+        }
+
         .context-item {
+            margin-bottom: 12px;
             padding-bottom: 12px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #1a1a1a;
         }
 
         .context-item:last-child {
@@ -330,8 +552,8 @@ async def dev_panel():
         }
 
         .context-label {
-            font-size: 11px;
-            color: #999;
+            font-size: 10px;
+            color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 4px;
@@ -339,211 +561,189 @@ async def dev_panel():
 
         .context-value {
             font-size: 13px;
-            color: #333;
+            color: #aaa;
         }
 
-        .link-copied {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #1a1a1a;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 4px;
-            font-size: 13px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .link-copied.show {
-            opacity: 1;
-        }
-
-        .narration-text {
-            font-size: 14px;
-            line-height: 1.8;
-            color: #333;
-            font-style: italic;
-        }
-
-        .action-link {
-            color: #1a1a1a;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 13px;
-        }
-
-        .action-link:hover {
-            text-decoration: underline;
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header with Status -->
         <div class="header">
-            <div>
-                <div class="header-title">Leading Light</div>
-                <div class="header-subtitle">Test Panel</div>
-            </div>
-            <button class="copy-link-btn" onclick="copyLink()">Copy Link</button>
-        </div>
-
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('evaluate')">Evaluate</button>
-            <button class="tab" onclick="switchTab('demo')">Demo</button>
-            <button class="tab" onclick="switchTab('voice')">Voice</button>
-        </div>
-
-        <div class="content">
-            <!-- Evaluate Tab -->
-            <div id="evaluate-panel" class="tab-panel active">
-                <div class="card">
-                    <div class="card-title">Input</div>
-                    <div class="preset-chips">
-                        <span class="chip" onclick="fillBet('Chiefs -3.5')">Chiefs -3.5</span>
-                        <span class="chip" onclick="fillBet('Lakers ML + Under 220.5 + Mahomes over 250 yards')">3-leg parlay</span>
-                        <span class="chip" onclick="fillBet('Kelce TD + Chiefs -3.5 + Mahomes 250+ + Under 48.5')">4-leg complex</span>
-                    </div>
-                    <div class="form-group">
-                        <label>Bet Text</label>
-                        <textarea id="bet-text" placeholder="Enter bet text">Chiefs -3.5</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Plan Tier</label>
-                        <select id="plan">
-                            <option value="free">Free</option>
-                            <option value="good">Good</option>
-                            <option value="better">Better</option>
-                            <option value="best">Best</option>
-                        </select>
-                    </div>
-                    <button onclick="evaluateBet()">Evaluate</button>
-                </div>
-                <div id="evaluate-results"></div>
-            </div>
-
-            <!-- Demo Tab -->
-            <div id="demo-panel" class="tab-panel">
-                <div class="card">
-                    <div class="form-group">
-                        <label>Demo Case</label>
-                        <select id="demo-case">
-                            <option value="stable">Stable</option>
-                            <option value="loaded">Loaded</option>
-                            <option value="tense">Tense</option>
-                            <option value="critical">Critical</option>
-                        </select>
-                    </div>
-                    <button onclick="loadDemo()">Load Demo</button>
-                </div>
-                <div id="demo-results"></div>
-            </div>
-
-            <!-- Voice Tab -->
-            <div id="voice-panel" class="tab-panel">
-                <div class="card">
-                    <div class="form-group">
-                        <label>Demo Case</label>
-                        <select id="voice-case">
-                            <option value="stable">Stable</option>
-                            <option value="loaded">Loaded</option>
-                            <option value="tense">Tense</option>
-                            <option value="critical">Critical</option>
-                        </select>
-                    </div>
-                    <button onclick="loadVoice()">Load Voice</button>
-                </div>
-                <div id="voice-results"></div>
+            <div class="header-title">Leading Light</div>
+            <div class="header-subtitle">Live Test Panel</div>
+            <div class="status-pills">
+                <span id="voice-status" class="status-pill">Voice: Loading...</span>
+                <span id="leading-light-status" class="status-pill">Leading Light: Loading...</span>
             </div>
         </div>
+
+        <!-- Bet Slip Card -->
+        <div class="card">
+            <div class="card-title">Bet Slip</div>
+            <div class="slip-editor">
+                <div class="slip-line">
+                    <span class="slip-line-number">1.</span>
+                    <input type="text" id="leg1" placeholder="Chiefs -3.5" value="Chiefs -3.5">
+                </div>
+                <div class="slip-line">
+                    <span class="slip-line-number">2.</span>
+                    <input type="text" id="leg2" placeholder="Lakers ML">
+                </div>
+                <div class="slip-line">
+                    <span class="slip-line-number">3.</span>
+                    <input type="text" id="leg3" placeholder="Over 220.5">
+                </div>
+                <div class="slip-line">
+                    <span class="slip-line-number">4.</span>
+                    <input type="text" id="leg4" placeholder="Mahomes 250+ yards">
+                </div>
+            </div>
+            <div class="slip-helper">
+                <span>Tip: one line per leg</span>
+                <span class="legs-count"><span id="leg-count">1</span> legs detected</span>
+            </div>
+            <div class="form-group">
+                <label>Plan Tier</label>
+                <select id="plan">
+                    <option value="free">Free</option>
+                    <option value="good">Good</option>
+                    <option value="better">Better</option>
+                    <option value="best">Best</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="evaluateSlip()">Evaluate Slip</button>
+        </div>
+
+        <!-- Results Area -->
+        <div id="results-area"></div>
+
+        <!-- Learn More Section (collapsed by default) -->
+        <details class="learn-more-section" id="learn-more">
+            <summary>Learn More</summary>
+
+            <!-- Voice Narration Subsection -->
+            <div class="subsection">
+                <div class="subsection-title">Voice Narration</div>
+                <div class="form-group">
+                    <label>Demo Case</label>
+                    <select id="voice-case">
+                        <option value="stable">Stable</option>
+                        <option value="loaded">Loaded</option>
+                        <option value="tense">Tense</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+                <button class="btn-secondary" onclick="playNarration()">Play Narration</button>
+                <div id="narration-player"></div>
+            </div>
+
+            <!-- Demo Notes Subsection -->
+            <div class="subsection">
+                <div class="subsection-title">Demo Notes</div>
+                <div class="form-group">
+                    <label>Demo Case</label>
+                    <select id="demo-case">
+                        <option value="stable">Stable</option>
+                        <option value="loaded">Loaded</option>
+                        <option value="tense">Tense</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+                <button class="btn-secondary" onclick="loadDemo()">Load Demo Notes</button>
+                <div id="demo-content"></div>
+            </div>
+        </details>
     </div>
 
-    <div id="link-copied-toast" class="link-copied">Link copied!</div>
+    <!-- Bottom Sticky Bar -->
+    <div class="bottom-bar">
+        <button class="primary" onclick="evaluateSlip()">Evaluate</button>
+        <button onclick="clearResults()">Clear</button>
+        <button onclick="toggleLearnMore()">Learn More</button>
+    </div>
 
     <script>
-        // Parse URL params on load
-        window.addEventListener('DOMContentLoaded', function() {
-            const params = new URLSearchParams(window.location.search);
+        // Load status on page load
+        window.addEventListener('DOMContentLoaded', async function() {
+            await loadStatus();
+            updateLegCount();
 
-            if (params.has('tab')) {
-                switchTab(params.get('tab'), false);
-            }
-
-            if (params.has('bet_text')) {
-                document.getElementById('bet-text').value = decodeURIComponent(params.get('bet_text'));
-            }
-
-            if (params.has('plan')) {
-                document.getElementById('plan').value = params.get('plan');
-            }
-
-            if (params.has('case')) {
-                const caseName = params.get('case');
-                const activeTab = params.get('tab');
-                if (activeTab === 'demo') {
-                    document.getElementById('demo-case').value = caseName;
-                } else if (activeTab === 'voice') {
-                    document.getElementById('voice-case').value = caseName;
-                }
+            // Add input listeners for leg count
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`leg${i}`).addEventListener('input', updateLegCount);
             }
         });
 
-        function switchTab(tabName, updateUrl = true) {
-            // Update tab buttons
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event?.target?.classList.add('active') || document.querySelector(`button[onclick*="${tabName}"]`).classList.add('active');
+        async function loadStatus() {
+            // Check Voice status
+            try {
+                const voiceResponse = await fetch('/voice/status');
+                const voiceData = await voiceResponse.json();
+                const voiceStatus = document.getElementById('voice-status');
+                if (voiceData.enabled) {
+                    voiceStatus.textContent = 'Voice: Enabled';
+                    voiceStatus.className = 'status-pill status-enabled';
+                } else {
+                    voiceStatus.textContent = 'Voice: Disabled';
+                    voiceStatus.className = 'status-pill status-disabled';
+                }
+            } catch (e) {
+                document.getElementById('voice-status').textContent = 'Voice: Error';
+                document.getElementById('voice-status').className = 'status-pill status-disabled';
+            }
 
-            // Update panels
-            document.querySelectorAll('.tab-panel').forEach(panel => {
-                panel.classList.remove('active');
-            });
-            document.getElementById(tabName + '-panel').classList.add('active');
-
-            // Update URL
-            if (updateUrl) {
-                const url = new URL(window.location);
-                url.searchParams.set('tab', tabName);
-                window.history.pushState({}, '', url);
+            // Check Leading Light status
+            try {
+                const llResponse = await fetch('/leading-light/status');
+                const llData = await llResponse.json();
+                const llStatus = document.getElementById('leading-light-status');
+                if (llData.enabled) {
+                    llStatus.textContent = 'Leading Light: Enabled';
+                    llStatus.className = 'status-pill status-enabled';
+                } else {
+                    llStatus.textContent = 'Leading Light: Disabled';
+                    llStatus.className = 'status-pill status-disabled';
+                }
+            } catch (e) {
+                document.getElementById('leading-light-status').textContent = 'Leading Light: Error';
+                document.getElementById('leading-light-status').className = 'status-pill status-disabled';
             }
         }
 
-        function fillBet(text) {
-            document.getElementById('bet-text').value = text;
+        function updateLegCount() {
+            let count = 0;
+            for (let i = 1; i <= 4; i++) {
+                const value = document.getElementById(`leg${i}`).value.trim();
+                if (value) count++;
+            }
+            document.getElementById('leg-count').textContent = count;
         }
 
-        function copyLink() {
-            const activeTab = document.querySelector('.tab.active').textContent.toLowerCase();
-            const url = new URL(window.location.origin + '/panel');
-            url.searchParams.set('tab', activeTab);
+        function collectSlipLegs() {
+            const legs = [];
+            for (let i = 1; i <= 4; i++) {
+                const value = document.getElementById(`leg${i}`).value.trim();
+                if (value) legs.push(value);
+            }
+            return legs;
+        }
 
-            if (activeTab === 'evaluate') {
-                const betText = document.getElementById('bet-text').value;
-                const plan = document.getElementById('plan').value;
-                if (betText) url.searchParams.set('bet_text', betText);
-                if (plan) url.searchParams.set('plan', plan);
-            } else if (activeTab === 'demo') {
-                const caseName = document.getElementById('demo-case').value;
-                url.searchParams.set('case', caseName);
-            } else if (activeTab === 'voice') {
-                const caseName = document.getElementById('voice-case').value;
-                url.searchParams.set('case', caseName);
+        async function evaluateSlip() {
+            const legs = collectSlipLegs();
+            if (legs.length === 0) {
+                alert('Please enter at least one leg');
+                return;
             }
 
-            navigator.clipboard.writeText(url.toString()).then(() => {
-                const toast = document.getElementById('link-copied-toast');
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-            });
-        }
-
-        async function evaluateBet() {
-            const betText = document.getElementById('bet-text').value;
+            const betText = legs.join(' + ');
             const plan = document.getElementById('plan').value;
-            const resultsDiv = document.getElementById('evaluate-results');
+            const resultsArea = document.getElementById('results-area');
 
-            resultsDiv.innerHTML = '<div class="loading">Evaluating...</div>';
+            resultsArea.innerHTML = '<div class="loading">Evaluating slip</div>';
 
             try {
                 const response = await fetch('/leading-light/evaluate/text', {
@@ -558,144 +758,134 @@ async def dev_panel():
                     throw new Error(data.detail?.detail || 'Evaluation failed');
                 }
 
-                const riskClass = `risk-${data.evaluation.inductor.level}`;
-                const bucketClass = `risk-${data.interpretation.fragility.bucket}`;
-                const interpretation = data.interpretation.fragility;
+                renderResults(data);
+            } catch (error) {
+                resultsArea.innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        }
 
-                resultsDiv.innerHTML = `
-                    <div class="card verdict-card">
-                        <div class="card-title" style="color: white;">Verdict</div>
-                        <div class="verdict-grid">
-                            <div class="verdict-item">
-                                <div class="verdict-label">Risk Level</div>
-                                <div class="verdict-value">${data.evaluation.inductor.level.toUpperCase()}</div>
-                            </div>
-                            <div class="verdict-item">
-                                <div class="verdict-label">Fragility</div>
-                                <div class="verdict-value">${data.evaluation.metrics.final_fragility.toFixed(1)}</div>
-                            </div>
+        function renderResults(data) {
+            const interpretation = data.interpretation.fragility;
+            const evaluation = data.evaluation;
+            const explain = data.explain;
+
+            const bucketClass = `badge-${interpretation.bucket}`;
+            const levelClass = `badge-${evaluation.inductor.level}`;
+
+            let html = `
+                <!-- Verdict Card -->
+                <div class="verdict-card">
+                    <div class="verdict-title">Verdict</div>
+                    <div class="verdict-grid">
+                        <div class="verdict-item">
+                            <div class="verdict-label">Risk Level</div>
+                            <div class="verdict-value">${evaluation.inductor.level.toUpperCase()}</div>
                         </div>
-                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #333;">
+                        <div class="verdict-item">
+                            <div class="verdict-label">Fragility</div>
+                            <div class="verdict-value">${evaluation.metrics.final_fragility.toFixed(1)}</div>
+                        </div>
+                    </div>
+                    <div class="verdict-footer">
+                        <div class="verdict-bucket">
                             <div class="verdict-label">Bucket</div>
                             <div style="margin-top: 8px;">
-                                <span class="${bucketClass} risk-badge">${interpretation.bucket}</span>
-                            </div>
-                            <div style="margin-top: 12px; font-size: 13px; color: #ccc;">
-                                <strong>Recommendation:</strong> ${data.evaluation.recommendation.action.toUpperCase()}
+                                <span class="badge ${bucketClass}">${interpretation.bucket}</span>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">Why</div>
-                        <div class="card-content">
-                            <p><strong>${interpretation.meaning}</strong></p>
-                            <ul>
-                                ${data.explain.summary.map(text => `<li>${text}</li>`).join('')}
-                            </ul>
+                        <div class="verdict-recommendation">
+                            <strong>Recommendation:</strong> ${evaluation.recommendation.action.toUpperCase()}<br>
+                            ${evaluation.recommendation.reason}
                         </div>
                     </div>
+                </div>
 
-                    <div class="card">
-                        <div class="card-title">What To Do</div>
-                        <div class="card-content">
-                            <p><strong>${interpretation.what_to_do}</strong></p>
-                            <p style="margin-top: 8px;">${data.evaluation.recommendation.reason}</p>
+                <!-- Explanation Card -->
+                <div class="card">
+                    <div class="card-title">Explanation</div>
+                    <div class="card-content">
+                        <p><strong>${interpretation.meaning}</strong></p>
+                        <ul>
+                            ${explain.summary.map(text => `<li>${text}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Next Steps Card -->
+                <div class="card">
+                    <div class="card-title">Next Steps</div>
+                    <div class="card-content">
+                        <p><strong>${interpretation.what_to_do}</strong></p>
+                        ${explain.recommended_next_step ? `<p>${explain.recommended_next_step}</p>` : ''}
+                    </div>
+                </div>
+
+                <!-- Details Drawer -->
+                <details>
+                    <summary>Metrics</summary>
+                    <div class="metric-grid">
+                        <div class="metric-item">
+                            <div class="metric-label">Raw Fragility</div>
+                            <div class="metric-value">${evaluation.metrics.raw_fragility.toFixed(1)}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Leg Penalty</div>
+                            <div class="metric-value">${evaluation.metrics.leg_penalty.toFixed(1)}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Correlation Penalty</div>
+                            <div class="metric-value">${evaluation.metrics.correlation_penalty.toFixed(1)}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Multiplier</div>
+                            <div class="metric-value">${evaluation.metrics.multiplier.toFixed(2)}x</div>
                         </div>
                     </div>
+                </details>
 
-                    <details>
-                        <summary>Raw JSON</summary>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    </details>
-                `;
-            } catch (error) {
-                resultsDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                <details>
+                    <summary>Correlations</summary>
+                    ${evaluation.correlations.length > 0
+                        ? `<ul style="margin-top: 8px;">${evaluation.correlations.map(c =>
+                            `<li><strong>${c.tag}:</strong> ${c.description} (Weight: ${c.weight.toFixed(2)})</li>`
+                        ).join('')}</ul>`
+                        : '<p style="margin-top: 8px; color: #666;">No correlations detected</p>'
+                    }
+                </details>
+
+                <details>
+                    <summary>Raw JSON</summary>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </details>
+            `;
+
+            document.getElementById('results-area').innerHTML = html;
+        }
+
+        function clearResults() {
+            document.getElementById('results-area').innerHTML = '';
+            // Optionally clear slip
+            // for (let i = 1; i <= 4; i++) {
+            //     document.getElementById(`leg${i}`).value = '';
+            // }
+            // updateLegCount();
+        }
+
+        function toggleLearnMore() {
+            const learnMore = document.getElementById('learn-more');
+            if (learnMore.open) {
+                learnMore.open = false;
+            } else {
+                learnMore.open = true;
+                learnMore.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
-        async function loadDemo() {
-            const caseName = document.getElementById('demo-case').value;
-            const resultsDiv = document.getElementById('demo-results');
-
-            resultsDiv.innerHTML = '<div class="loading">Loading...</div>';
-
-            try {
-                const response = await fetch(`/demo/onboarding-bundle?case_name=${caseName}`);
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.detail?.detail || 'Failed to load demo');
-                }
-
-                const selected = data.selected;
-
-                resultsDiv.innerHTML = `
-                    <div class="card">
-                        <div class="card-title">${selected.title}</div>
-                        <div class="context-grid">
-                            <div class="context-item">
-                                <div class="context-label">Who it's for</div>
-                                <div class="context-value">${selected.context.who_its_for}</div>
-                            </div>
-                            <div class="context-item">
-                                <div class="context-label">Why this case</div>
-                                <div class="context-value">${selected.context.why_this_case}</div>
-                            </div>
-                            <div class="context-item">
-                                <div class="context-label">What to notice</div>
-                                <div class="context-value">${selected.context.what_to_notice}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">Plain English</div>
-                        <div class="card-content">
-                            <ul>
-                                ${selected.plain_english.map(text => `<li>${text}</li>`).join('')}
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">Glossary</div>
-                        <div class="card-content">
-                            ${selected.glossary.map(item =>
-                                `<div style="margin-bottom: 12px;">
-                                    <strong>${item.term}:</strong> ${item.meaning}
-                                </div>`
-                            ).join('')}
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">Progression</div>
-                        <div class="card-content">
-                            <p style="font-size: 12px; color: #666; margin-bottom: 8px;">${data.progression.overview}</p>
-                            ${data.progression.order.map(key =>
-                                `<div style="margin-bottom: 6px; font-size: 13px;">
-                                    <strong>${key}:</strong> ${data.progression.steps[key]}
-                                </div>`
-                            ).join('')}
-                        </div>
-                    </div>
-
-                    <details>
-                        <summary>Raw JSON</summary>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    </details>
-                `;
-            } catch (error) {
-                resultsDiv.innerHTML = `<div class="error">${error.message}</div>`;
-            }
-        }
-
-        async function loadVoice() {
+        async function playNarration() {
             const caseName = document.getElementById('voice-case').value;
-            const resultsDiv = document.getElementById('voice-results');
+            const playerDiv = document.getElementById('narration-player');
 
-            resultsDiv.innerHTML = '<div class="loading">Loading...</div>';
+            playerDiv.innerHTML = '<div class="loading">Loading narration</div>';
 
             try {
                 // Fetch narration text
@@ -708,38 +898,67 @@ async def dev_panel():
 
                 const audioUrl = `/leading-light/demo/${caseName}/narration?plan=best`;
 
-                resultsDiv.innerHTML = `
-                    <div class="card">
-                        <div class="card-title">${textData.title} - Narration</div>
-                        <div class="card-content">
-                            <p class="narration-text">"${textData.narration}"</p>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">Audio Player</div>
+                playerDiv.innerHTML = `
+                    <div class="demo-content">
+                        <p style="font-style: italic; color: #aaa; margin-bottom: 12px;">"${textData.narration}"</p>
                         <audio controls src="${audioUrl}">
                             Your browser does not support the audio element.
                         </audio>
-                        <div style="margin-top: 12px;">
-                            <a href="${audioUrl}" target="_blank" class="action-link">Open in new tab →</a>
-                        </div>
                     </div>
-
-                    <div class="card">
-                        <div class="card-title">Context</div>
-                        <div class="card-content">
-                            <p style="font-size: 13px; margin-bottom: 8px;"><strong>Meaning:</strong> ${textData.plain_english.join(' ')}</p>
-                        </div>
-                    </div>
-
-                    <details>
-                        <summary>Raw JSON</summary>
-                        <pre>${JSON.stringify(textData, null, 2)}</pre>
-                    </details>
                 `;
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                playerDiv.innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        }
+
+        async function loadDemo() {
+            const caseName = document.getElementById('demo-case').value;
+            const contentDiv = document.getElementById('demo-content');
+
+            contentDiv.innerHTML = '<div class="loading">Loading demo notes</div>';
+
+            try {
+                const response = await fetch(`/demo/onboarding-bundle?case_name=${caseName}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail?.detail || 'Failed to load demo');
+                }
+
+                const selected = data.selected;
+
+                contentDiv.innerHTML = `
+                    <div class="demo-content">
+                        <div class="demo-title">Example: ${selected.title}</div>
+
+                        <div class="context-item">
+                            <div class="context-label">Who it's for</div>
+                            <div class="context-value">${selected.context.who_its_for}</div>
+                        </div>
+                        <div class="context-item">
+                            <div class="context-label">Why this case</div>
+                            <div class="context-value">${selected.context.why_this_case}</div>
+                        </div>
+                        <div class="context-item">
+                            <div class="context-label">What to notice</div>
+                            <div class="context-value">${selected.context.what_to_notice}</div>
+                        </div>
+
+                        <div style="margin-top: 16px;">
+                            <div class="subsection-title" style="margin-bottom: 8px;">Key Points</div>
+                            <ul>
+                                ${selected.plain_english.map(text => `<li>${text}</li>`).join('')}
+                            </ul>
+                        </div>
+
+                        <details style="margin-top: 12px;">
+                            <summary>Raw JSON</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            } catch (error) {
+                contentDiv.innerHTML = `<div class="error">${error.message}</div>`;
             }
         }
     </script>
