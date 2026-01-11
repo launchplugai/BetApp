@@ -47,6 +47,17 @@ from core.evaluation import (
 )
 from core.context_adapters import adapt_and_apply_signals
 
+# Import tiering
+from app.tiering import (
+    Plan,
+    parse_plan,
+    validate_context_signals,
+    apply_tier_to_response,
+    get_max_suggestions_for_plan,
+    is_demo_allowed,
+    ContextSignalNotAllowedError,
+)
+
 
 # =============================================================================
 # Router Setup
@@ -248,6 +259,7 @@ async def evaluate(request: EvaluationRequestSchema) -> EvaluationResponseSchema
     Evaluate a parlay using the Leading Light engine.
 
     Returns risk metrics, DNA enforcement, recommendations, and optional suggestions.
+    Response is filtered based on plan tier (good, better, best).
     """
     # Check feature flag
     if not is_leading_light_enabled():
@@ -260,7 +272,20 @@ async def evaluate(request: EvaluationRequestSchema) -> EvaluationResponseSchema
             },
         )
 
+    # Parse plan from request
+    plan = parse_plan(request.plan)
+
     try:
+        # Validate context signals against plan
+        if request.context_signals:
+            raw_signals = [
+                signal.model_dump(exclude_none=True)
+                for signal in request.context_signals
+            ]
+            validate_context_signals(raw_signals, plan)
+        else:
+            raw_signals = []
+
         # Convert request to core types
         blocks = [_convert_block(b) for b in request.blocks]
         dna_profile = _convert_dna_profile(request.dna_profile)
@@ -269,12 +294,14 @@ async def evaluate(request: EvaluationRequestSchema) -> EvaluationResponseSchema
             candidates = [_convert_block(c) for c in request.candidates]
 
         # Apply context signals if provided
-        if request.context_signals:
-            raw_signals = [
-                signal.model_dump(exclude_none=True)
-                for signal in request.context_signals
-            ]
+        if raw_signals:
             blocks = list(adapt_and_apply_signals(blocks, raw_signals))
+
+        # Determine max suggestions based on plan
+        max_suggestions = min(
+            request.max_suggestions,
+            get_max_suggestions_for_plan(plan),
+        )
 
         # Evaluate parlay
         response = evaluate_parlay(
@@ -282,12 +309,24 @@ async def evaluate(request: EvaluationRequestSchema) -> EvaluationResponseSchema
             dna_profile=dna_profile,
             bankroll=request.bankroll,
             candidates=candidates,
-            max_suggestions=request.max_suggestions,
+            max_suggestions=max_suggestions,
         )
 
-        # Convert response to schema
-        return _convert_response(response)
+        # Apply tier filtering to response
+        filtered_response = apply_tier_to_response(plan, response)
 
+        # Convert response to schema
+        return _convert_response(filtered_response)
+
+    except ContextSignalNotAllowedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Context signal not allowed",
+                "detail": str(e),
+                "code": "SIGNAL_NOT_ALLOWED",
+            },
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -326,13 +365,44 @@ async def status_check():
 # =============================================================================
 
 
+def _is_demo_override_enabled() -> bool:
+    """Check if demo override environment variable is set."""
+    return os.environ.get("LEADING_LIGHT_DEMO_OVERRIDE", "false").lower() == "true"
+
+
+def _check_demo_access(plan: Optional[str]) -> None:
+    """
+    Check if demo access is allowed for the given plan.
+
+    Raises HTTPException if not allowed.
+
+    Demo access requires:
+    - plan=BEST, OR
+    - LEADING_LIGHT_DEMO_OVERRIDE=true env var
+    """
+    parsed_plan = parse_plan(plan)
+    env_override = _is_demo_override_enabled()
+
+    if not is_demo_allowed(parsed_plan, env_override):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "Demo access denied",
+                "detail": f"Demo endpoints require plan='best' or LEADING_LIGHT_DEMO_OVERRIDE=true. Current plan: '{parsed_plan.value}'",
+                "code": "DEMO_ACCESS_DENIED",
+            },
+        )
+
+
 @router.get(
     "/demo",
     summary="List available demo cases",
-    description="List all available demo scenarios for testing.",
+    description="List all available demo scenarios for testing. Requires BEST plan or demo override.",
 )
-async def list_demos():
+async def list_demos(plan: Optional[str] = None):
     """List all available demo cases."""
+    _check_demo_access(plan)
+
     from app.demo.leading_light_demo_cases import list_demo_cases
     return {
         "cases": list_demo_cases(),
@@ -342,10 +412,12 @@ async def list_demos():
 @router.get(
     "/demo/{case_name}",
     summary="Get demo case request JSON",
-    description="Get the request JSON payload for a specific demo case.",
+    description="Get the request JSON payload for a specific demo case. Requires BEST plan or demo override.",
 )
-async def get_demo_request(case_name: str):
+async def get_demo_request(case_name: str, plan: Optional[str] = None):
     """Get the request JSON for a demo case."""
+    _check_demo_access(plan)
+
     from app.demo.leading_light_demo_cases import get_demo_case
 
     case = get_demo_case(case_name)
@@ -372,17 +444,19 @@ async def get_demo_request(case_name: str):
     response_model=EvaluationResponseSchema,
     responses={
         200: {"description": "Successful evaluation"},
+        403: {"description": "Demo access denied"},
         404: {"description": "Demo case not found"},
         503: {"description": "Service disabled"},
     },
     summary="Run demo case",
-    description="Execute a demo case and return the evaluation response.",
+    description="Execute a demo case and return the evaluation response. Requires BEST plan or demo override.",
 )
-async def run_demo(case_name: str) -> EvaluationResponseSchema:
+async def run_demo(case_name: str, plan: Optional[str] = None) -> EvaluationResponseSchema:
     """
     Run a demo case and return the evaluation response.
 
     Executes the specified demo case through the full evaluation pipeline.
+    Requires BEST plan or LEADING_LIGHT_DEMO_OVERRIDE=true.
     """
     # Check feature flag
     if not is_leading_light_enabled():
@@ -394,6 +468,9 @@ async def run_demo(case_name: str) -> EvaluationResponseSchema:
                 "code": "SERVICE_DISABLED",
             },
         )
+
+    # Check demo access
+    _check_demo_access(plan)
 
     from app.demo.leading_light_demo_cases import get_demo_case
 

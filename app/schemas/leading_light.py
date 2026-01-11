@@ -106,7 +106,8 @@ class EvaluationRequestSchema(BaseModel):
       "dna_profile": { ... optional ... },
       "bankroll": 1000.0,
       "candidates": [ ... optional BetBlock JSON ... ],
-      "context_signals": [ ... optional context signals ... ]
+      "context_signals": [ ... optional context signals ... ],
+      "plan": "good"  (optional, defaults to "good")
     }
     """
     blocks: List[BetBlockSchema]
@@ -115,6 +116,21 @@ class EvaluationRequestSchema(BaseModel):
     candidates: Optional[List[BetBlockSchema]] = None
     max_suggestions: int = Field(default=5, ge=1, le=20)
     context_signals: Optional[List[ContextSignalInputSchema]] = None
+    plan: Optional[str] = Field(
+        default="good",
+        description="Subscription plan tier: good, better, or best"
+    )
+
+    @field_validator("plan")
+    @classmethod
+    def validate_plan(cls, v: Optional[str]) -> str:
+        """Validate plan is one of good, better, best."""
+        if v is None:
+            return "good"
+        v_lower = v.lower()
+        if v_lower not in ("good", "better", "best"):
+            raise ValueError(f"Invalid plan '{v}'. Must be one of: good, better, best")
+        return v_lower
 
 
 # =============================================================================

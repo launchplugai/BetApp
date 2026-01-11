@@ -227,13 +227,14 @@ class TestRequiredVectors:
                 json={
                     "blocks": [minimal_block],
                     "candidates": candidates,
+                    "plan": "better",  # Required for suggestions
                 },
             )
 
             assert response.status_code == 200
             data = response.json()
 
-            # Suggestions present
+            # Suggestions present (BETTER plan allows suggestions)
             assert data["suggestions"] is not None
             assert len(data["suggestions"]) == 3
 
@@ -609,6 +610,7 @@ class TestContextSignals:
                             "injury": "Knee",
                         }
                     ],
+                    "plan": "better",  # Required for injury signals
                 },
             )
 
@@ -643,6 +645,7 @@ class TestContextSignals:
                             "games_affected": 3,
                         }
                     ],
+                    "plan": "best",  # Required for trade signals
                 },
             )
 
@@ -682,6 +685,7 @@ class TestContextSignals:
                             "injury": "Shoulder",
                         },
                     ],
+                    "plan": "better",  # Required for injury signals
                 },
             )
 
@@ -732,8 +736,8 @@ class TestContextSignals:
             data2 = response2.json()
             assert data1["metrics"]["raw_fragility"] == data2["metrics"]["raw_fragility"]
 
-    def test_unknown_signal_type_ignored(self, client):
-        """Unknown signal types are ignored without error."""
+    def test_unknown_signal_type_rejected(self, client):
+        """Unknown signal types are rejected with 400 error (tier gating)."""
         with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
             response = client.post(
                 "/leading-light/evaluate",
@@ -755,4 +759,7 @@ class TestContextSignals:
                 },
             )
 
-            assert response.status_code == 200
+            # Unknown signal types are rejected by tier gating
+            assert response.status_code == 400
+            data = response.json()
+            assert data["detail"]["code"] == "SIGNAL_NOT_ALLOWED"

@@ -44,7 +44,7 @@ class TestDemoCaseValidation:
 
     def test_stable_case_produces_stable(self, client):
         """STABLE case produces stable inductor."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/stable")
 
             assert response.status_code == 200
@@ -54,7 +54,7 @@ class TestDemoCaseValidation:
 
     def test_loaded_case_produces_loaded(self, client):
         """LOADED case produces loaded inductor."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/loaded")
 
             assert response.status_code == 200
@@ -64,7 +64,7 @@ class TestDemoCaseValidation:
 
     def test_tense_case_produces_tense(self, client):
         """TENSE case produces tense inductor."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/tense")
 
             assert response.status_code == 200
@@ -74,7 +74,7 @@ class TestDemoCaseValidation:
 
     def test_critical_case_produces_critical(self, client):
         """CRITICAL case produces critical inductor."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/critical")
 
             assert response.status_code == 200
@@ -138,36 +138,39 @@ class TestDemoEndpoints:
     """Tests for demo API endpoints."""
 
     def test_list_demos(self, client):
-        """GET /leading-light/demo lists all cases."""
-        response = client.get("/leading-light/demo")
+        """GET /leading-light/demo lists all cases (requires BEST plan)."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
+            response = client.get("/leading-light/demo")
 
-        assert response.status_code == 200
-        data = response.json()
-        assert "cases" in data
-        assert len(data["cases"]) == 4
+            assert response.status_code == 200
+            data = response.json()
+            assert "cases" in data
+            assert len(data["cases"]) == 4
 
-        case_names = [c["name"] for c in data["cases"]]
-        assert "stable" in case_names
-        assert "loaded" in case_names
-        assert "tense" in case_names
-        assert "critical" in case_names
+            case_names = [c["name"] for c in data["cases"]]
+            assert "stable" in case_names
+            assert "loaded" in case_names
+            assert "tense" in case_names
+            assert "critical" in case_names
 
     def test_get_demo_request(self, client):
-        """GET /leading-light/demo/{case_name} returns request JSON."""
-        response = client.get("/leading-light/demo/stable")
+        """GET /leading-light/demo/{case_name} returns request JSON (requires BEST plan)."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
+            response = client.get("/leading-light/demo/stable")
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["name"] == "stable"
-        assert data["expected_inductor"] == "stable"
-        assert "request" in data
-        assert "blocks" in data["request"]
+            assert response.status_code == 200
+            data = response.json()
+            assert data["name"] == "stable"
+            assert data["expected_inductor"] == "stable"
+            assert "request" in data
+            assert "blocks" in data["request"]
 
     def test_get_demo_request_invalid_case(self, client):
-        """GET /leading-light/demo/{invalid} returns 404."""
-        response = client.get("/leading-light/demo/nonexistent")
+        """GET /leading-light/demo/{invalid} returns 404 (with override)."""
+        with patch.dict(os.environ, {"LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
+            response = client.get("/leading-light/demo/nonexistent")
 
-        assert response.status_code == 404
+            assert response.status_code == 404
 
     def test_run_demo_requires_flag(self, client):
         """POST /leading-light/demo/{case} requires feature flag."""
@@ -178,7 +181,7 @@ class TestDemoEndpoints:
 
     def test_run_demo_invalid_case(self, client):
         """POST /leading-light/demo/{invalid} returns 404."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/nonexistent")
 
             assert response.status_code == 404
@@ -194,7 +197,7 @@ class TestContextSignalsInDemos:
 
     def test_tense_case_context_affects_fragility(self, client):
         """Context signals in TENSE case affect fragility and generate alerts."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/tense")
 
             assert response.status_code == 200
@@ -205,7 +208,7 @@ class TestContextSignalsInDemos:
 
     def test_critical_case_correlations_detected(self, client):
         """CRITICAL case detects same_player_multi_props correlation."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/critical")
 
             assert response.status_code == 200
@@ -229,7 +232,7 @@ class TestDemoDeterminism:
 
     def test_stable_deterministic(self, client):
         """STABLE case produces same results on repeated runs."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response1 = client.post("/leading-light/demo/stable")
             response2 = client.post("/leading-light/demo/stable")
 
@@ -241,7 +244,7 @@ class TestDemoDeterminism:
 
     def test_all_cases_deterministic(self, client):
         """All demo cases produce deterministic results."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             for case_name in DEMO_CASES.keys():
                 response1 = client.post(f"/leading-light/demo/{case_name}")
                 response2 = client.post(f"/leading-light/demo/{case_name}")
@@ -308,7 +311,7 @@ class TestDNAInDemos:
 
     def test_critical_case_has_violations(self, client):
         """CRITICAL case exceeds DNA max_legs (4 blocks, max_legs=4)."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/critical")
 
             assert response.status_code == 200
@@ -329,7 +332,7 @@ class TestSuggestionsInDemos:
 
     def test_loaded_case_returns_suggestions(self, client):
         """LOADED case returns suggestions (demonstrates working suggestions)."""
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/loaded")
 
             assert response.status_code == 200
@@ -358,7 +361,7 @@ class TestSuggestionsInDemos:
         because deltaFragility=0 (adding blocks doesn't increase risk past cap).
         This is expected behavior for extreme CRITICAL cases.
         """
-        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true", "LEADING_LIGHT_DEMO_OVERRIDE": "true"}):
             response = client.post("/leading-light/demo/critical")
 
             assert response.status_code == 200
