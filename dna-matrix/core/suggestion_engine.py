@@ -10,14 +10,14 @@ This engine:
 - Computes deltaFragility and addedCorrelation
 - Ranks by lowest added risk
 - Assigns labels based on risk thresholds
+- Checks DNA compatibility when profile provided
 
 No outcome prediction. No external data. Pure simulation.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Sequence
-from uuid import UUID
+from typing import TYPE_CHECKING, List, Optional, Sequence
 
 from core.models.leading_light import (
     BetBlock,
@@ -26,6 +26,9 @@ from core.models.leading_light import (
     SuggestedBlockLabel,
 )
 from core.parlay_reducer import build_parlay_state
+
+if TYPE_CHECKING:
+    from core.dna_enforcement import DNAProfile
 
 
 # =============================================================================
@@ -115,18 +118,34 @@ def generate_reason(
 # =============================================================================
 
 
-def check_dna_compatible(
-    current_parlay: ParlayState,
+def check_dna_compatible_simple(
     new_parlay: ParlayState,
     max_legs: int = DEFAULT_MAX_LEGS,
 ) -> bool:
     """
-    Check if adding the block would violate DNA constraints.
+    Simple DNA compatibility check (no profile).
 
-    Placeholder rules (full implementation in TASK 6):
-    - Must not exceed maxLegs
+    Only checks max legs constraint.
     """
     return len(new_parlay.blocks) <= max_legs
+
+
+def check_dna_compatible_with_profile(
+    candidate: BetBlock,
+    current_legs: int,
+    dna_profile: "DNAProfile",
+) -> bool:
+    """
+    Full DNA compatibility check using profile.
+
+    Checks:
+    - Would adding exceed max_parlay_legs
+    - Is candidate a player_prop when avoid_props is true
+    - Is candidate a live bet when avoid_live_bets is true
+    """
+    # Import here to avoid circular dependency
+    from core.dna_enforcement import check_dna_compatible as dna_check
+    return dna_check(candidate, current_legs, dna_profile)
 
 
 # =============================================================================
@@ -138,11 +157,18 @@ def evaluate_candidate(
     current_parlay: ParlayState,
     candidate: BetBlock,
     max_legs: int = DEFAULT_MAX_LEGS,
+    dna_profile: Optional["DNAProfile"] = None,
 ) -> CandidateEvaluation | None:
     """
     Evaluate a single candidate block.
 
     Returns None if deltaFragility <= 0 (should not happen, but enforced).
+
+    Args:
+        current_parlay: Current parlay state
+        candidate: Candidate block to evaluate
+        max_legs: Maximum legs allowed (used if no dna_profile)
+        dna_profile: Optional DNA profile for full compatibility check
     """
     # Build new parlay state with candidate added
     new_blocks = list(current_parlay.blocks) + [candidate]
@@ -157,7 +183,16 @@ def evaluate_candidate(
         return None
 
     # Check DNA compatibility
-    dna_compatible = check_dna_compatible(current_parlay, new_parlay, max_legs)
+    if dna_profile is not None:
+        # Full check with DNA profile
+        dna_compatible = check_dna_compatible_with_profile(
+            candidate,
+            len(current_parlay.blocks),
+            dna_profile,
+        )
+    else:
+        # Simple check (max legs only)
+        dna_compatible = check_dna_compatible_simple(new_parlay, max_legs)
 
     # Assign label
     label = assign_label(delta_fragility)
@@ -209,6 +244,7 @@ def compute_suggestions(
     candidates: Sequence[BetBlock],
     max_suggestions: int = DEFAULT_MAX_SUGGESTIONS,
     max_legs: int = DEFAULT_MAX_LEGS,
+    dna_profile: Optional["DNAProfile"] = None,
 ) -> List[SuggestedBlock]:
     """
     Compute ranked suggestions for adding blocks to a parlay.
@@ -218,12 +254,14 @@ def compute_suggestions(
     - Computes deltaFragility and addedCorrelation
     - Assigns label and generates reason
     - Ranks by lowest added risk
+    - Checks DNA compatibility when profile provided
 
     Args:
         current_parlay: Current parlay state
         candidates: List of candidate BetBlock objects
         max_suggestions: Maximum number of suggestions to return (default 5)
         max_legs: Maximum legs allowed in parlay (default 10)
+        dna_profile: Optional DNA profile for compatibility checks
 
     Returns:
         List of SuggestedBlock objects, ranked by preference
@@ -231,7 +269,7 @@ def compute_suggestions(
     # Evaluate all candidates
     evaluations: List[CandidateEvaluation] = []
     for candidate in candidates:
-        eval_result = evaluate_candidate(current_parlay, candidate, max_legs)
+        eval_result = evaluate_candidate(current_parlay, candidate, max_legs, dna_profile)
         if eval_result is not None:
             evaluations.append(eval_result)
 

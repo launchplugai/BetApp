@@ -406,3 +406,180 @@ class TestEvaluateCandidate:
         assert eval_result is not None
         assert eval_result.delta_fragility == 8.0  # legPenalty only
         assert eval_result.label == SuggestedBlockLabel.LOWEST_ADDED_RISK
+
+
+# =============================================================================
+# DNA Profile Integration Tests
+# =============================================================================
+
+
+class TestDNAProfileIntegration:
+    """Tests for DNA profile integration with suggestion engine."""
+
+    def test_prop_marked_incompatible_when_avoided(self, zero_modifiers: ContextModifiers):
+        """Player prop marked dnaCompatible=False when profile avoids props."""
+        from core.dna_enforcement import DNAProfile, RiskProfile, BehaviorProfile
+
+        profile = DNAProfile(
+            risk=RiskProfile(
+                tolerance=80,
+                max_parlay_legs=10,
+                max_stake_pct=0.10,
+                avoid_live_bets=False,
+                avoid_props=True,  # Avoid props
+            ),
+            behavior=BehaviorProfile(discipline=0.5),
+        )
+
+        # Create a parlay with a spread bet
+        base_block = make_block(
+            bet_type=BetType.SPREAD,
+            base_fragility=10.0,
+            modifiers=zero_modifiers,
+        )
+        parlay = build_parlay_state([base_block])
+
+        # Create candidates: one spread, one player_prop
+        spread_candidate = make_block(
+            bet_type=BetType.SPREAD,
+            game_id="game-2",
+            base_fragility=5.0,
+            modifiers=zero_modifiers,
+        )
+        prop_candidate = make_block(
+            bet_type=BetType.PLAYER_PROP,
+            game_id="game-3",
+            base_fragility=5.0,
+            modifiers=zero_modifiers,
+        )
+
+        suggestions = compute_suggestions(
+            parlay,
+            [spread_candidate, prop_candidate],
+            dna_profile=profile,
+        )
+
+        # Find the prop suggestion
+        prop_suggestion = next(
+            s for s in suggestions if s.candidate_block_id == prop_candidate.block_id
+        )
+        spread_suggestion = next(
+            s for s in suggestions if s.candidate_block_id == spread_candidate.block_id
+        )
+
+        assert prop_suggestion.dna_compatible is False
+        assert spread_suggestion.dna_compatible is True
+
+    def test_live_marked_incompatible_when_avoided(self, zero_modifiers: ContextModifiers):
+        """Live bet marked dnaCompatible=False when profile avoids live."""
+        from core.dna_enforcement import DNAProfile, RiskProfile, BehaviorProfile
+
+        profile = DNAProfile(
+            risk=RiskProfile(
+                tolerance=80,
+                max_parlay_legs=10,
+                max_stake_pct=0.10,
+                avoid_live_bets=True,  # Avoid live
+                avoid_props=False,
+            ),
+            behavior=BehaviorProfile(discipline=0.5),
+        )
+
+        base_block = make_block(
+            bet_type=BetType.SPREAD,
+            base_fragility=10.0,
+            modifiers=zero_modifiers,
+        )
+        parlay = build_parlay_state([base_block])
+
+        # Create candidates: one regular, one live
+        regular_candidate = make_block(
+            bet_type=BetType.SPREAD,
+            game_id="game-2",
+            base_fragility=5.0,
+            modifiers=zero_modifiers,
+            correlation_tags=(),
+        )
+        live_candidate = make_block(
+            bet_type=BetType.SPREAD,
+            game_id="game-3",
+            base_fragility=5.0,
+            modifiers=zero_modifiers,
+            correlation_tags=("live",),  # Live bet
+        )
+
+        suggestions = compute_suggestions(
+            parlay,
+            [regular_candidate, live_candidate],
+            dna_profile=profile,
+        )
+
+        live_suggestion = next(
+            s for s in suggestions if s.candidate_block_id == live_candidate.block_id
+        )
+        regular_suggestion = next(
+            s for s in suggestions if s.candidate_block_id == regular_candidate.block_id
+        )
+
+        assert live_suggestion.dna_compatible is False
+        assert regular_suggestion.dna_compatible is True
+
+    def test_exceeds_max_legs_marked_incompatible(self, zero_modifiers: ContextModifiers):
+        """Candidate exceeding max legs marked dnaCompatible=False."""
+        from core.dna_enforcement import DNAProfile, RiskProfile, BehaviorProfile
+
+        profile = DNAProfile(
+            risk=RiskProfile(
+                tolerance=80,
+                max_parlay_legs=2,  # Max 2 legs
+                max_stake_pct=0.10,
+                avoid_live_bets=False,
+                avoid_props=False,
+            ),
+            behavior=BehaviorProfile(discipline=0.5),
+        )
+
+        # Create parlay with 2 blocks (at max)
+        blocks = [
+            make_block(game_id="game-1", base_fragility=10.0, modifiers=zero_modifiers),
+            make_block(game_id="game-2", base_fragility=10.0, modifiers=zero_modifiers),
+        ]
+        parlay = build_parlay_state(blocks)
+
+        # Candidate would make 3 legs, exceeding max
+        candidate = make_block(
+            game_id="game-3",
+            base_fragility=5.0,
+            modifiers=zero_modifiers,
+        )
+
+        suggestions = compute_suggestions(
+            parlay,
+            [candidate],
+            dna_profile=profile,
+        )
+
+        assert len(suggestions) == 1
+        assert suggestions[0].dna_compatible is False
+
+    def test_without_profile_uses_max_legs_parameter(self, zero_modifiers: ContextModifiers):
+        """Without DNA profile, max_legs parameter controls compatibility."""
+        base_block = make_block(
+            base_fragility=10.0,
+            modifiers=zero_modifiers,
+        )
+        parlay = build_parlay_state([base_block])
+
+        candidate = make_block(
+            game_id="game-2",
+            base_fragility=5.0,
+            modifiers=zero_modifiers,
+        )
+
+        # With max_legs=2, adding to 1 block is compatible
+        suggestions = compute_suggestions(parlay, [candidate], max_legs=2)
+        assert suggestions[0].dna_compatible is True
+
+        # With max_legs=1, adding would exceed
+        suggestions = compute_suggestions(parlay, [candidate], max_legs=1)
+        assert suggestions[0].dna_compatible is False
