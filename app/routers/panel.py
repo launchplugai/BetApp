@@ -2,7 +2,7 @@
 """
 Developer Panel UI Router.
 
-Provides a guided core-loop experience for testing Leading Light endpoints.
+Provides a guided core-loop experience with image import for testing Leading Light endpoints.
 """
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -12,7 +12,7 @@ router = APIRouter(tags=["Panel"])
 
 @router.get("/panel", response_class=HTMLResponse)
 async def dev_panel():
-    """Render developer testing panel UI."""
+    """Render developer testing panel UI with image import and glassmorphism."""
     html_content = """
 <!DOCTYPE html>
 <html lang="en">
@@ -29,7 +29,7 @@ async def dev_panel():
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #0a0a0a;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
             color: #e0e0e0;
             min-height: 100vh;
             padding: 16px;
@@ -41,78 +41,128 @@ async def dev_panel():
             margin: 0 auto;
         }
 
+        /* Glassmorphism Styles */
+        .glass {
+            background: rgba(20, 20, 24, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
         .header {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.65), rgba(42, 42, 42, 0.65));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            border: 1px solid #333;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
         .header-title {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
             color: #fff;
             margin-bottom: 4px;
+            letter-spacing: 0.5px;
         }
 
         .header-subtitle {
             font-size: 12px;
             color: #888;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
 
         .status-pills {
             display: flex;
             gap: 8px;
-            margin-top: 12px;
+            margin-top: 14px;
         }
 
         .status-pill {
-            padding: 4px 10px;
-            border-radius: 12px;
+            padding: 5px 11px;
+            border-radius: 14px;
             font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             font-weight: 600;
+            background: rgba(0, 0, 0, 0.3);
         }
 
         .status-enabled {
-            background: rgba(52, 211, 153, 0.2);
             color: #34d399;
-            border: 1px solid rgba(52, 211, 153, 0.3);
+            border: 1px solid rgba(52, 211, 153, 0.4);
         }
 
         .status-disabled {
-            background: rgba(239, 68, 68, 0.2);
             color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.4);
         }
 
         .card {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 8px;
+            background: rgba(20, 20, 24, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
         .card-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: #fff;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 1px solid #2a2a2a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .import-section {
+            text-align: center;
+            padding: 24px 16px;
+        }
+
+        .import-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #aaa;
+            margin-bottom: 16px;
+        }
+
+        .import-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-import {
+            flex: 1;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.8) 0%, rgba(79, 70, 229, 0.8) 100%);
+            color: white;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-import:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
         }
 
         .slip-editor {
-            background: #0f0f0f;
-            border: 1px solid #333;
-            border-radius: 6px;
+            background: rgba(10, 10, 10, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             padding: 12px;
             margin-bottom: 12px;
         }
@@ -122,7 +172,7 @@ async def dev_panel():
             align-items: center;
             margin-bottom: 8px;
             padding-bottom: 8px;
-            border-bottom: 1px solid #1a1a1a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .slip-line:last-child {
@@ -176,7 +226,7 @@ async def dev_panel():
             font-size: 11px;
             color: #888;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             margin-bottom: 8px;
             font-weight: 600;
         }
@@ -184,8 +234,8 @@ async def dev_panel():
         select {
             width: 100%;
             padding: 10px;
-            background: #0f0f0f;
-            border: 1px solid #333;
+            background: rgba(10, 10, 10, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 6px;
             color: #e0e0e0;
             font-size: 14px;
@@ -194,16 +244,16 @@ async def dev_panel():
 
         select:focus {
             outline: none;
-            border-color: #4a9eff;
+            border-color: rgba(99, 102, 241, 0.5);
         }
 
         .btn-primary {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
+            background: linear-gradient(135deg, rgba(74, 158, 255, 0.9) 0%, rgba(53, 122, 189, 0.9) 100%);
             color: white;
-            border: none;
-            border-radius: 6px;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+            border-radius: 8px;
             font-size: 15px;
             font-weight: 700;
             text-transform: uppercase;
@@ -213,8 +263,8 @@ async def dev_panel():
         }
 
         .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(74, 158, 255, 0.4);
         }
 
         .btn-primary:active {
@@ -228,11 +278,13 @@ async def dev_panel():
         }
 
         .verdict-card {
-            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-            border: 1px solid #3a3a3a;
+            background: linear-gradient(135deg, rgba(42, 42, 42, 0.7) 0%, rgba(26, 26, 26, 0.7) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
             padding: 24px;
             margin-bottom: 16px;
-            border-radius: 8px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
         }
 
         .verdict-title {
@@ -241,7 +293,7 @@ async def dev_panel():
             color: #fff;
             margin-bottom: 20px;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
+            letter-spacing: 2px;
         }
 
         .verdict-grid {
@@ -264,63 +316,63 @@ async def dev_panel():
         }
 
         .verdict-value {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
             color: #fff;
         }
 
         .verdict-footer {
             padding-top: 20px;
-            border-top: 1px solid #2a2a2a;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .verdict-bucket {
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
 
         .verdict-recommendation {
             font-size: 13px;
             color: #aaa;
-            line-height: 1.6;
+            line-height: 1.7;
         }
 
         .badge {
             display: inline-block;
             padding: 6px 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
 
         .badge-low {
-            background: rgba(52, 211, 153, 0.2);
+            background: rgba(52, 211, 153, 0.25);
             color: #34d399;
-            border: 1px solid rgba(52, 211, 153, 0.3);
+            border: 1px solid rgba(52, 211, 153, 0.4);
         }
 
         .badge-medium {
-            background: rgba(251, 191, 36, 0.2);
+            background: rgba(251, 191, 36, 0.25);
             color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
+            border: 1px solid rgba(251, 191, 36, 0.4);
         }
 
         .badge-high {
-            background: rgba(251, 146, 60, 0.2);
+            background: rgba(251, 146, 60, 0.25);
             color: #fb923c;
-            border: 1px solid rgba(251, 146, 60, 0.3);
+            border: 1px solid rgba(251, 146, 60, 0.4);
         }
 
         .badge-critical {
-            background: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.25);
             color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.4);
         }
 
-        .badge-stable { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
-        .badge-loaded { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
-        .badge-tense { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); }
+        .badge-stable { background: rgba(52, 211, 153, 0.25); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.4); }
+        .badge-loaded { background: rgba(251, 191, 36, 0.25); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
+        .badge-tense { background: rgba(251, 146, 60, 0.25); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.4); }
 
         .card-content {
             color: #aaa;
@@ -348,9 +400,9 @@ async def dev_panel():
         }
 
         details {
-            background: #0f0f0f;
-            border: 1px solid #2a2a2a;
-            border-radius: 6px;
+            background: rgba(10, 10, 10, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
             padding: 12px;
             margin-top: 12px;
         }
@@ -361,7 +413,7 @@ async def dev_panel():
             font-weight: 600;
             color: #888;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
             user-select: none;
             padding: 4px 0;
         }
@@ -373,14 +425,14 @@ async def dev_panel():
         details[open] summary {
             margin-bottom: 12px;
             padding-bottom: 12px;
-            border-bottom: 1px solid #1a1a1a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         pre {
-            background: #000;
+            background: rgba(0, 0, 0, 0.6);
             color: #34d399;
             padding: 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             overflow-x: auto;
             font-size: 11px;
             line-height: 1.5;
@@ -396,9 +448,10 @@ async def dev_panel():
         }
 
         .metric-item {
-            padding: 8px;
-            background: #1a1a1a;
-            border-radius: 4px;
+            padding: 10px;
+            background: rgba(20, 20, 20, 0.5);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .metric-label {
@@ -409,17 +462,17 @@ async def dev_panel():
         }
 
         .metric-value {
-            font-size: 14px;
+            font-size: 15px;
             color: #e0e0e0;
             font-weight: 600;
         }
 
         .error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
             color: #ef4444;
             padding: 16px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-top: 12px;
             font-size: 13px;
         }
@@ -447,22 +500,25 @@ async def dev_panel():
             bottom: 0;
             left: 0;
             right: 0;
-            background: #1a1a1a;
-            border-top: 1px solid #2a2a2a;
+            background: rgba(20, 20, 24, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
             padding: 12px 16px;
             display: flex;
             gap: 8px;
             justify-content: center;
+            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
         }
 
         .bottom-bar button {
             flex: 1;
             max-width: 120px;
             padding: 12px;
-            background: #2a2a2a;
+            background: rgba(42, 42, 42, 0.8);
             color: #e0e0e0;
-            border: 1px solid #3a3a3a;
-            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
@@ -470,18 +526,19 @@ async def dev_panel():
         }
 
         .bottom-bar button:hover {
-            background: #3a3a3a;
-            border-color: #4a4a4a;
+            background: rgba(60, 60, 60, 0.9);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         .bottom-bar button.primary {
-            background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
-            border: none;
+            background: linear-gradient(135deg, rgba(74, 158, 255, 0.9) 0%, rgba(53, 122, 189, 0.9) 100%);
+            border: 1px solid rgba(74, 158, 255, 0.3);
             color: white;
         }
 
         .bottom-bar button.primary:hover {
             transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(74, 158, 255, 0.4);
         }
 
         audio {
@@ -492,13 +549,13 @@ async def dev_panel():
         .learn-more-section {
             margin-top: 24px;
             padding-top: 24px;
-            border-top: 2px solid #2a2a2a;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
         }
 
         .subsection {
-            background: #0f0f0f;
-            border: 1px solid #2a2a2a;
-            border-radius: 6px;
+            background: rgba(10, 10, 10, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
             padding: 16px;
             margin-bottom: 12px;
         }
@@ -515,9 +572,9 @@ async def dev_panel():
         .btn-secondary {
             width: 100%;
             padding: 10px;
-            background: #2a2a2a;
+            background: rgba(42, 42, 42, 0.8);
             color: #e0e0e0;
-            border: 1px solid #3a3a3a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 6px;
             font-size: 12px;
             font-weight: 600;
@@ -526,7 +583,7 @@ async def dev_panel():
         }
 
         .btn-secondary:hover {
-            background: #3a3a3a;
+            background: rgba(60, 60, 60, 0.9);
         }
 
         .demo-content {
@@ -543,7 +600,7 @@ async def dev_panel():
         .context-item {
             margin-bottom: 12px;
             padding-bottom: 12px;
-            border-bottom: 1px solid #1a1a1a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .context-item:last-child {
@@ -564,8 +621,20 @@ async def dev_panel():
             color: #aaa;
         }
 
-        .hidden {
+        #file-input {
             display: none;
+        }
+
+        .extracted-text {
+            background: rgba(10, 10, 10, 0.4);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            color: #34d399;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
         }
     </style>
 </head>
@@ -581,9 +650,30 @@ async def dev_panel():
             </div>
         </div>
 
-        <!-- Bet Slip Card -->
+        <!-- Step 1: Import Slip -->
+        <div class="card" id="import-card">
+            <div class="card-title">Step 1: Import Slip</div>
+            <div class="import-section">
+                <div class="import-title">Snap or upload your bet slip</div>
+                <div class="import-buttons">
+                    <button class="btn-import" onclick="document.getElementById('file-input').click()">
+                        📷 Take Photo
+                    </button>
+                    <button class="btn-import" onclick="document.getElementById('file-input').click()">
+                        📁 Choose Photo
+                    </button>
+                </div>
+                <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleImageUpload(event)">
+                <div style="margin-top: 16px; font-size: 11px; color: #666;">
+                    Or skip and enter manually below
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Bet Slip Editor -->
         <div class="card">
-            <div class="card-title">Bet Slip</div>
+            <div class="card-title">Step 2: Bet Slip</div>
+            <div id="extracted-display"></div>
             <div class="slip-editor">
                 <div class="slip-line">
                     <span class="slip-line-number">1.</span>
@@ -615,8 +705,10 @@ async def dev_panel():
                     <option value="best">Best</option>
                 </select>
             </div>
-            <button class="btn-primary" onclick="evaluateSlip()">Evaluate Slip</button>
         </div>
+
+        <!-- Step 3: Evaluate Button -->
+        <button class="btn-primary" onclick="evaluateSlip()">Evaluate Slip</button>
 
         <!-- Results Area -->
         <div id="results-area"></div>
@@ -732,6 +824,55 @@ async def dev_panel():
             return legs;
         }
 
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const resultsArea = document.getElementById('results-area');
+            const extractedDisplay = document.getElementById('extracted-display');
+
+            resultsArea.innerHTML = '<div class="loading">Reading slip from image</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('plan', document.getElementById('plan').value);
+
+                const response = await fetch('/leading-light/evaluate/image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail?.detail || 'Image parsing failed');
+                }
+
+                // Show extracted text
+                extractedDisplay.innerHTML = `
+                    <div class="extracted-text">
+                        ✓ Extracted: ${data.input.extracted_bet_text}
+                    </div>
+                `;
+
+                // Populate slip editor with extracted legs
+                const legs = data.input.extracted_bet_text.split('\\n').filter(l => l.trim());
+                for (let i = 0; i < 4; i++) {
+                    const input = document.getElementById(`leg${i + 1}`);
+                    input.value = legs[i] || '';
+                }
+                updateLegCount();
+
+                // Render results immediately (image endpoint does full evaluation)
+                renderResults(data);
+
+            } catch (error) {
+                resultsArea.innerHTML = `<div class="error">${error.message}</div>`;
+                extractedDisplay.innerHTML = '';
+            }
+        }
+
         async function evaluateSlip() {
             const legs = collectSlipLegs();
             if (legs.length === 0) {
@@ -770,7 +911,6 @@ async def dev_panel():
             const explain = data.explain;
 
             const bucketClass = `badge-${interpretation.bucket}`;
-            const levelClass = `badge-${evaluation.inductor.level}`;
 
             let html = `
                 <!-- Verdict Card -->
@@ -864,11 +1004,7 @@ async def dev_panel():
 
         function clearResults() {
             document.getElementById('results-area').innerHTML = '';
-            // Optionally clear slip
-            // for (let i = 1; i <= 4; i++) {
-            //     document.getElementById(`leg${i}`).value = '';
-            // }
-            // updateLegCount();
+            document.getElementById('extracted-display').innerHTML = '';
         }
 
         function toggleLearnMore() {
@@ -888,7 +1024,6 @@ async def dev_panel():
             playerDiv.innerHTML = '<div class="loading">Loading narration</div>';
 
             try {
-                // Fetch narration text
                 const textResponse = await fetch(`/leading-light/demo/${caseName}/narration-text`);
                 const textData = await textResponse.json();
 

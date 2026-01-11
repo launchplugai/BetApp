@@ -7,11 +7,13 @@ Feature-flagged via LEADING_LIGHT_ENABLED environment variable.
 """
 from __future__ import annotations
 
+import base64
 import os
 from typing import List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status
+import httpx
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.leading_light import (
@@ -793,6 +795,208 @@ async def evaluate_from_text(request: TextEvaluateRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "error": "Invalid bet text",
+                "detail": str(e),
+                "code": "PARSE_ERROR",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Internal error",
+                "detail": str(e),
+                "code": "INTERNAL_ERROR",
+            },
+        )
+
+
+# =============================================================================
+# Image Vision Parsing Helper
+# =============================================================================
+
+
+async def _parse_bet_slip_image(image_bytes: bytes) -> str:
+    """Parse bet slip image to extract bet text using OpenAI Vision API."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Image parsing not configured",
+                "detail": "OPENAI_API_KEY environment variable is not set",
+                "code": "IMAGE_PARSE_NOT_CONFIGURED",
+            },
+        )
+
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract the bet information from this betting slip image. "
+                            "Return ONLY the bet legs in plain text format, one per line. "
+                            "Format each leg as: Team/Player + Bet Type + Line. "
+                            "If this is not a betting slip, respond with: NOT_A_BET_SLIP"
+                        ),
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_base64}",
+                        },
+                    },
+                ],
+            }
+        ],
+        "max_tokens": 300,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+        )
+
+    if response.status_code != 200:
+        error_detail = response.text
+        try:
+            error_json = response.json()
+            error_detail = error_json.get("error", {}).get("message", response.text)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Vision API error",
+                "detail": error_detail,
+                "code": "VISION_API_ERROR",
+            },
+        )
+
+    try:
+        result = response.json()
+        extracted_text = result["choices"][0]["message"]["content"].strip()
+
+        if "NOT_A_BET_SLIP" in extracted_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "Not a bet slip",
+                    "detail": "The uploaded image does not appear to be a betting slip",
+                    "code": "NOT_A_BET_SLIP",
+                },
+            )
+
+        return extracted_text
+
+    except (KeyError, IndexError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Failed to parse vision response",
+                "detail": str(e),
+                "code": "VISION_PARSE_ERROR",
+            },
+        )
+
+
+@router.post("/evaluate/image")
+async def evaluate_from_image(
+    image: UploadFile = File(...),
+    plan: str = Form("free"),
+    session_id: Optional[str] = Form(None),
+):
+    """Evaluate bet slip from uploaded image."""
+    if not is_leading_light_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "enabled": False,
+                "message": "Leading Light feature is currently disabled",
+                "code": "FEATURE_DISABLED",
+            },
+        )
+
+    try:
+        image_bytes = await image.read()
+        bet_text = await _parse_bet_slip_image(image_bytes)
+        blocks = _parse_bet_text(bet_text)
+
+        response = evaluate_parlay(
+            blocks=blocks,
+            dna_profile=None,
+            bankroll=None,
+            candidates=None,
+            max_suggestions=0,
+        )
+
+        summary = _generate_summary(response, len(blocks))
+        alerts = _generate_alerts(response)
+        recommended_step = response.recommendation.reason
+        fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
+
+        return {
+            "input": {
+                "image_filename": image.filename,
+                "extracted_bet_text": bet_text,
+                "plan": plan,
+                "session_id": session_id,
+            },
+            "evaluation": {
+                "parlay_id": str(response.parlay_id),
+                "inductor": {
+                    "level": response.inductor.level.value,
+                    "explanation": response.inductor.explanation,
+                },
+                "metrics": {
+                    "raw_fragility": response.metrics.raw_fragility,
+                    "final_fragility": response.metrics.final_fragility,
+                    "leg_penalty": response.metrics.leg_penalty,
+                    "correlation_penalty": response.metrics.correlation_penalty,
+                    "multiplier": response.metrics.multiplier,
+                },
+                "correlations": [
+                    {
+                        "tag": c.tag,
+                        "description": c.description,
+                        "weight": c.weight,
+                    }
+                    for c in response.correlations
+                ],
+                "recommendation": {
+                    "action": response.recommendation.action.value,
+                    "reason": response.recommendation.reason,
+                },
+            },
+            "interpretation": {
+                "fragility": fragility_interpretation,
+            },
+            "explain": {
+                "summary": summary,
+                "alerts": alerts,
+                "recommended_next_step": recommended_step,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Invalid bet text extracted from image",
                 "detail": str(e),
                 "code": "PARSE_ERROR",
             },
