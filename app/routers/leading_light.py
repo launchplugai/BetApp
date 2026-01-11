@@ -319,3 +319,137 @@ async def status_check():
         "enabled": is_leading_light_enabled(),
         "service": "leading-light",
     }
+
+
+# =============================================================================
+# Demo Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/demo",
+    summary="List available demo cases",
+    description="List all available demo scenarios for testing.",
+)
+async def list_demos():
+    """List all available demo cases."""
+    from app.demo.leading_light_demo_cases import list_demo_cases
+    return {
+        "cases": list_demo_cases(),
+    }
+
+
+@router.get(
+    "/demo/{case_name}",
+    summary="Get demo case request JSON",
+    description="Get the request JSON payload for a specific demo case.",
+)
+async def get_demo_request(case_name: str):
+    """Get the request JSON for a demo case."""
+    from app.demo.leading_light_demo_cases import get_demo_case
+
+    case = get_demo_case(case_name)
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "Demo case not found",
+                "detail": f"No demo case named '{case_name}'. Use GET /leading-light/demo to list available cases.",
+                "code": "NOT_FOUND",
+            },
+        )
+
+    return {
+        "name": case.name,
+        "description": case.description,
+        "expected_inductor": case.expected_inductor,
+        "request": case.to_request_json(),
+    }
+
+
+@router.post(
+    "/demo/{case_name}",
+    response_model=EvaluationResponseSchema,
+    responses={
+        200: {"description": "Successful evaluation"},
+        404: {"description": "Demo case not found"},
+        503: {"description": "Service disabled"},
+    },
+    summary="Run demo case",
+    description="Execute a demo case and return the evaluation response.",
+)
+async def run_demo(case_name: str) -> EvaluationResponseSchema:
+    """
+    Run a demo case and return the evaluation response.
+
+    Executes the specified demo case through the full evaluation pipeline.
+    """
+    # Check feature flag
+    if not is_leading_light_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Leading Light disabled",
+                "detail": "The Leading Light feature is currently disabled. Set LEADING_LIGHT_ENABLED=true to enable.",
+                "code": "SERVICE_DISABLED",
+            },
+        )
+
+    from app.demo.leading_light_demo_cases import get_demo_case
+
+    case = get_demo_case(case_name)
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "Demo case not found",
+                "detail": f"No demo case named '{case_name}'. Use GET /leading-light/demo to list available cases.",
+                "code": "NOT_FOUND",
+            },
+        )
+
+    try:
+        # Convert blocks
+        blocks = []
+        for b in case.blocks:
+            block_schema = BetBlockSchema(**b)
+            blocks.append(_convert_block(block_schema))
+
+        # Convert DNA profile if present
+        dna_profile = None
+        if case.dna_profile:
+            profile_schema = DNAProfileSchema(**case.dna_profile)
+            dna_profile = _convert_dna_profile(profile_schema)
+
+        # Convert candidates if present
+        candidates = None
+        if case.candidates:
+            candidates = []
+            for c in case.candidates:
+                cand_schema = BetBlockSchema(**c)
+                candidates.append(_convert_block(cand_schema))
+
+        # Apply context signals if present
+        if case.context_signals:
+            blocks = list(adapt_and_apply_signals(blocks, case.context_signals))
+
+        # Evaluate
+        response = evaluate_parlay(
+            blocks=blocks,
+            dna_profile=dna_profile,
+            bankroll=case.bankroll,
+            candidates=candidates,
+            max_suggestions=5,
+        )
+
+        return _convert_response(response)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Demo execution failed",
+                "detail": str(e),
+                "code": "INTERNAL_ERROR",
+            },
+        )
