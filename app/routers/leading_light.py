@@ -658,6 +658,43 @@ def _generate_alerts(response: EvaluationResponse) -> list[str]:
     return alerts
 
 
+def _interpret_fragility(final_fragility: float) -> dict:
+    """
+    Generate user-friendly interpretation of fragility score.
+
+    Maps 0-100 scale to buckets with plain-English meaning and actionable advice.
+    Does NOT modify engine metrics - interpretation layer only.
+    """
+    # Clamp for display (engine can produce values outside 0-100)
+    display_value = max(0.0, min(100.0, final_fragility))
+
+    # Determine bucket
+    if final_fragility <= 15:
+        bucket = "low"
+        meaning = "Few dependencies; most paths lead to success."
+        what_to_do = "Structure is solid; proceed with confidence."
+    elif final_fragility <= 35:
+        bucket = "medium"
+        meaning = "Moderate complexity; several things must align."
+        what_to_do = "Review each leg independently before committing."
+    elif final_fragility <= 60:
+        bucket = "high"
+        meaning = "Many things must go right; one miss breaks the ticket."
+        what_to_do = "Reduce legs or remove correlated/prop legs to lower failure points."
+    else:  # > 60
+        bucket = "critical"
+        meaning = "Extreme fragility; compounding failure paths."
+        what_to_do = "Simplify significantly or avoid this structure entirely."
+
+    return {
+        "scale": "0-100",
+        "value": final_fragility,
+        "display_value": display_value,
+        "bucket": bucket,
+        "meaning": meaning,
+        "what_to_do": what_to_do,
+    }
+
 @router.post(
     "/evaluate/text",
     responses={
@@ -704,6 +741,9 @@ async def evaluate_from_text(request: TextEvaluateRequest):
         alerts = _generate_alerts(response)
         recommended_step = response.recommendation.reason
 
+        # Build fragility interpretation
+        fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
+
         # Build response
         return {
             "input": {
@@ -737,6 +777,9 @@ async def evaluate_from_text(request: TextEvaluateRequest):
                     "action": response.recommendation.action.value,
                     "reason": response.recommendation.reason,
                 },
+            },
+            "interpretation": {
+                "fragility": fragility_interpretation,
             },
             "explain": {
                 "summary": summary,
