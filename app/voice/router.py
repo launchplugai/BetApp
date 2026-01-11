@@ -288,3 +288,49 @@ async def voice_status():
         "voice": get_tts_voice() if enabled else None,
         "service": "voice-tts",
     }
+
+# =============================================================================
+# Narration Text Endpoint
+# =============================================================================
+
+
+@router.get(
+    "/leading-light/demo/{case_name}/narration-text",
+    responses={
+        200: {
+            "description": "Narration text with plain-English explanation and glossary",
+            "content": {"application/json": {}},
+        },
+        404: {"description": "Demo case not found"},
+    },
+    summary="Get demo case narration text",
+    description="Get the narration script, plain-English explanation, and glossary for a demo case.",
+)
+async def get_demo_narration_text(case_name: str):
+    """
+    Get narration text and educational content for a demo case.
+
+    Returns the exact text used for audio narration plus beginner-friendly
+    explanations and glossary terms.
+    """
+    from app.voice.narration import get_demo_case_data
+
+    data = get_demo_case_data(case_name)
+    if data is None:
+        available = list_available_narrations()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "Demo case not found",
+                "detail": f"No narration available for case '{case_name}'. Available: {', '.join(available)}",
+                "code": "NOT_FOUND",
+            },
+        )
+
+    return {
+        "case_name": case_name.lower(),
+        "title": f"{case_name.capitalize()} Demo",
+        "narration": data["narration"],
+        "plain_english": data["plain_english"],
+        "glossary": data["glossary"],
+    }
