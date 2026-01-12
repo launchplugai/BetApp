@@ -793,6 +793,17 @@ async def dev_panel():
             for (let i = 1; i <= 4; i++) {
                 document.getElementById('leg' + i).addEventListener('input', updateLegCount);
             }
+
+            // Restore plan from localStorage
+            const savedPlan = localStorage.getItem('leadingLightTier');
+            if (savedPlan && ['good', 'better', 'best'].includes(savedPlan)) {
+                document.getElementById('plan').value = savedPlan;
+            }
+
+            // Save plan to localStorage on change
+            document.getElementById('plan').addEventListener('change', function() {
+                localStorage.setItem('leadingLightTier', this.value);
+            });
         });
 
         async function loadStatus() {
@@ -1029,15 +1040,21 @@ async def dev_panel():
             html += '<div class="card-title">Alerts</div>';
             html += '<div class="card-content">';
 
-            // Check if alerts is locked
-            if (!explain.alerts || explain.alerts.length === 0) {
+            // Check if alerts is locked or empty
+            const plan = document.getElementById('plan').value;
+            if (plan !== 'best') {
+                // Non-BEST plans: show locked
                 html += '<div class="locked">';
                 html += '<div class="locked-icon">🔒</div>';
                 html += '<div class="locked-title">Alerts Locked</div>';
                 html += '<div>Locked on this plan. Upgrade to Best to see alerts.</div>';
                 html += '<div class="locked-upgrade">Upgrade to Best for full analysis with alerts and next-step guidance.</div>';
                 html += '</div>';
+            } else if (!explain.alerts || explain.alerts.length === 0) {
+                // BEST plan but no alerts: show empty state (not locked)
+                html += '<p style="color: #666;">✅ No alerts detected for this slip.</p>';
             } else {
+                // BEST plan with alerts: render list
                 html += '<ul>';
                 for (let i = 0; i < explain.alerts.length; i++) {
                     html += '<li>' + explain.alerts[i] + '</li>';
@@ -1054,15 +1071,20 @@ async def dev_panel():
             html += '<div class="card-content">';
             html += '<p><strong>' + interpretation.what_to_do + '</strong></p>';
 
-            // Check if recommended_next_step is locked
-            if (!explain.recommended_next_step) {
+            // Check if recommended_next_step is locked or missing
+            if (plan !== 'best') {
+                // Non-BEST plans: show locked
                 html += '<div class="locked">';
                 html += '<div class="locked-icon">🔒</div>';
                 html += '<div class="locked-title">Next Step Guidance Locked</div>';
                 html += '<div>Locked on this plan. Upgrade to Best for next-step guidance.</div>';
                 html += '<div class="locked-upgrade">Upgrade to Best for personalized next-step recommendations.</div>';
                 html += '</div>';
+            } else if (!explain.recommended_next_step) {
+                // BEST plan but no next step: show empty state (not locked)
+                html += '<p style="color: #666;">No next-step guidance returned for this case.</p>';
             } else {
+                // BEST plan with next step: render normally
                 html += nextStepHtml;
             }
 
