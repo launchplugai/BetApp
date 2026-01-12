@@ -671,6 +671,7 @@ async def dev_panel():
             <div class="status-pills">
                 <span id="voice-status" class="status-pill">Voice: Loading...</span>
                 <span id="leading-light-status" class="status-pill">Leading Light: Loading...</span>
+                <span class="status-pill" style="background: rgba(100, 100, 100, 0.2); border-color: rgba(150, 150, 150, 0.3); cursor: default;">Build: 37040b9</span>
             </div>
         </div>
 
