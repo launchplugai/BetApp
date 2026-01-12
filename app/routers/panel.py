@@ -477,6 +477,34 @@ async def dev_panel():
             font-size: 13px;
         }
 
+        .locked {
+            background: rgba(120, 120, 120, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 3px solid rgba(251, 191, 36, 0.6);
+            padding: 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .locked-icon {
+            display: inline-block;
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .locked-title {
+            font-weight: 600;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+
+        .locked-upgrade {
+            font-size: 12px;
+            color: #fbbf24;
+            margin-top: 8px;
+        }
+
         .loading {
             text-align: center;
             padding: 40px 20px;
@@ -914,13 +942,18 @@ async def dev_panel():
         function renderResults(data) {
             const interpretation = data.interpretation.fragility;
             const evaluation = data.evaluation;
-            const explain = data.explain;
+            const explain = data.explain || {};
 
             const bucketClass = 'badge-' + interpretation.bucket;
 
+            // Check if explain is empty (GOOD plan)
+            const isExplainEmpty = Object.keys(explain).length === 0;
+
             let summaryItems = '';
-            for (let i = 0; i < explain.summary.length; i++) {
-                summaryItems += '<li>' + explain.summary[i] + '</li>';
+            if (explain.summary && explain.summary.length > 0) {
+                for (let i = 0; i < explain.summary.length; i++) {
+                    summaryItems += '<li>' + explain.summary[i] + '</li>';
+                }
             }
 
             let correlationsList = '';
@@ -973,9 +1006,45 @@ async def dev_panel():
             html += '<div class="card-title">Explanation</div>';
             html += '<div class="card-content">';
             html += '<p><strong>' + interpretation.meaning + '</strong></p>';
-            html += '<ul>';
-            html += summaryItems;
-            html += '</ul>';
+
+            // Check if summary is locked
+            if (isExplainEmpty || !explain.summary || explain.summary.length === 0) {
+                html += '<div class="locked">';
+                html += '<div class="locked-icon">🔒</div>';
+                html += '<div class="locked-title">Summary Locked</div>';
+                html += '<div>Locked on this plan. Upgrade to Better to see the explanation.</div>';
+                html += '<div class="locked-upgrade">Upgrade to Better for Summary. Upgrade to Best for Alerts + Next Step.</div>';
+                html += '</div>';
+            } else {
+                html += '<ul>';
+                html += summaryItems;
+                html += '</ul>';
+            }
+
+            html += '</div>';
+            html += '</div>';
+
+            html += '<!-- Alerts Card -->';
+            html += '<div class="card">';
+            html += '<div class="card-title">Alerts</div>';
+            html += '<div class="card-content">';
+
+            // Check if alerts is locked
+            if (!explain.alerts || explain.alerts.length === 0) {
+                html += '<div class="locked">';
+                html += '<div class="locked-icon">🔒</div>';
+                html += '<div class="locked-title">Alerts Locked</div>';
+                html += '<div>Locked on this plan. Upgrade to Best to see alerts.</div>';
+                html += '<div class="locked-upgrade">Upgrade to Best for full analysis with alerts and next-step guidance.</div>';
+                html += '</div>';
+            } else {
+                html += '<ul>';
+                for (let i = 0; i < explain.alerts.length; i++) {
+                    html += '<li>' + explain.alerts[i] + '</li>';
+                }
+                html += '</ul>';
+            }
+
             html += '</div>';
             html += '</div>';
 
@@ -984,7 +1053,19 @@ async def dev_panel():
             html += '<div class="card-title">Next Steps</div>';
             html += '<div class="card-content">';
             html += '<p><strong>' + interpretation.what_to_do + '</strong></p>';
-            html += nextStepHtml;
+
+            // Check if recommended_next_step is locked
+            if (!explain.recommended_next_step) {
+                html += '<div class="locked">';
+                html += '<div class="locked-icon">🔒</div>';
+                html += '<div class="locked-title">Next Step Guidance Locked</div>';
+                html += '<div>Locked on this plan. Upgrade to Best for next-step guidance.</div>';
+                html += '<div class="locked-upgrade">Upgrade to Best for personalized next-step recommendations.</div>';
+                html += '</div>';
+            } else {
+                html += nextStepHtml;
+            }
+
             html += '</div>';
             html += '</div>';
 
@@ -1040,8 +1121,20 @@ async def dev_panel():
         }
 
         async function playNarration() {
+            const plan = document.getElementById('plan').value;
             const caseName = document.getElementById('voice-case').value;
             const playerDiv = document.getElementById('narration-player');
+
+            // Check if voice is locked (non-BEST plans)
+            if (plan !== 'best') {
+                playerDiv.innerHTML = '<div class="locked">' +
+                    '<div class="locked-icon">🔒</div>' +
+                    '<div class="locked-title">Voice Narration Locked</div>' +
+                    '<div>Voice narration is only available on the Best plan.</div>' +
+                    '<div class="locked-upgrade">Upgrade to Best to unlock voice-powered demos and narration.</div>' +
+                    '</div>';
+                return;
+            }
 
             playerDiv.innerHTML = '<div class="loading">Loading narration</div>';
 
