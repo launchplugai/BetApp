@@ -660,6 +660,105 @@ async def dev_panel():
             font-size: 12px;
             line-height: 1.6;
         }
+
+        .file-info {
+            background: rgba(30, 30, 30, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #999;
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-info.selected {
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #60a5fa;
+        }
+
+        .file-info.error {
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        .request-status {
+            background: rgba(20, 20, 20, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .request-status.idle {
+            border-color: rgba(100, 100, 100, 0.3);
+            color: #888;
+        }
+
+        .request-status.loading {
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #60a5fa;
+        }
+
+        .request-status.success {
+            border-color: rgba(52, 211, 153, 0.4);
+            color: #34d399;
+        }
+
+        .request-status.error {
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        .status-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-details {
+            font-size: 11px;
+            color: #666;
+            margin-top: 6px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .error-detail {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid #ef4444;
+            padding: 8px 12px;
+            margin-top: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .inline-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -688,8 +787,10 @@ async def dev_panel():
                         📁 Choose Photo
                     </button>
                 </div>
-                <input type="file" id="camera-input" accept="image/*" capture="environment" onchange="handleImageUpload(event)" style="display: none;">
-                <input type="file" id="library-input" accept="image/*" onchange="handleImageUpload(event)" style="display: none;">
+                <input type="file" id="camera-input" accept="image/*" capture="environment" onchange="handleFileSelect(event)" style="display: none;">
+                <input type="file" id="library-input" accept="image/*" onchange="handleFileSelect(event)" style="display: none;">
+                <div id="file-info" class="file-info">No file selected</div>
+                <div id="file-error"></div>
                 <div style="margin-top: 16px; font-size: 11px; color: #666;">
                     Or skip and enter manually below
                 </div>
@@ -734,9 +835,10 @@ async def dev_panel():
         </div>
 
         <!-- Step 3: Evaluate Button -->
-        <button class="btn-primary" onclick="evaluateSlip()">Evaluate Slip</button>
+        <button class="btn-primary" id="evaluate-btn" onclick="evaluateSlip()">Evaluate Slip</button>
 
         <!-- Results Area -->
+        <div id="request-status-container"></div>
         <div id="results-area"></div>
 
         <!-- Learn More Section (collapsed by default) -->
@@ -789,6 +891,9 @@ async def dev_panel():
         window.addEventListener('DOMContentLoaded', async function() {
             await loadStatus();
             updateLegCount();
+
+            // Set initial idle status
+            setRequestStatus('idle', 'Waiting for input');
 
             // Add input listeners for leg count
             for (let i = 1; i <= 4; i++) {
@@ -861,14 +966,152 @@ async def dev_panel():
             return legs;
         }
 
-        async function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        // Request tracking state
+        let currentRequest = null;
 
+        function generateRequestId() {
+            return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        }
+
+        function setRequestStatus(state, message, details = null) {
+            const container = document.getElementById('request-status-container');
+            if (!container) return;
+
+            if (state === 'hidden') {
+                container.innerHTML = '';
+                return;
+            }
+
+            let statusClass = '';
+            let icon = '';
+            let spinnerHtml = '';
+
+            switch (state) {
+                case 'idle':
+                    statusClass = 'idle';
+                    icon = '⏸';
+                    break;
+                case 'loading':
+                    statusClass = 'loading';
+                    icon = '⏳';
+                    spinnerHtml = '<span class="spinner"></span>';
+                    break;
+                case 'success':
+                    statusClass = 'success';
+                    icon = '✓';
+                    break;
+                case 'error':
+                    statusClass = 'error';
+                    icon = '✗';
+                    break;
+            }
+
+            let html = '<div class="request-status ' + statusClass + '">';
+            html += '<div class="status-header">';
+            html += icon + ' ' + message;
+            if (spinnerHtml) html += spinnerHtml;
+            html += '</div>';
+
+            if (details) {
+                html += '<div class="status-details">' + details + '</div>';
+            }
+
+            if (currentRequest && state === 'error') {
+                html += '<div class="error-detail">';
+                if (currentRequest.httpStatus) {
+                    html += '<strong>HTTP ' + currentRequest.httpStatus + '</strong><br>';
+                }
+                if (currentRequest.errorDetail) {
+                    html += currentRequest.errorDetail;
+                }
+                html += '</div>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function validateFile(file) {
+            const MAX_SIZE_MB = 5;
+            const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
+            // Check file type
+            if (!file.type.startsWith('image/')) {
+                return {
+                    valid: false,
+                    error: "That file isn't an image. Upload a screenshot/photo of the bet slip."
+                };
+            }
+
+            // Check file size
+            if (file.size > MAX_SIZE_BYTES) {
+                return {
+                    valid: false,
+                    error: 'File too large. Max ' + MAX_SIZE_MB + ' MB.'
+                };
+            }
+
+            return { valid: true };
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            const fileInfo = document.getElementById('file-info');
+            const fileError = document.getElementById('file-error');
+
+            if (!file) {
+                fileInfo.textContent = 'No file selected';
+                fileInfo.className = 'file-info';
+                fileError.innerHTML = '';
+                return;
+            }
+
+            // Update file info display
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileInfo.textContent = 'Selected: ' + file.name + ' | ' + file.type + ' | ' + sizeMB + ' MB';
+            fileInfo.className = 'file-info selected';
+
+            // Validate file
+            const validation = validateFile(file);
+            if (!validation.valid) {
+                fileInfo.className = 'file-info error';
+                fileError.innerHTML = '<div class="inline-error">' + validation.error + '</div>';
+                return;
+            }
+
+            fileError.innerHTML = '';
+
+            // Proceed to upload
+            handleImageUpload(file);
+        }
+
+        async function handleImageUpload(file) {
             const resultsArea = document.getElementById('results-area');
             const extractedDisplay = document.getElementById('extracted-display');
+            const evaluateBtn = document.getElementById('evaluate-btn');
 
-            resultsArea.innerHTML = '<div class="loading">Reading slip from image</div>';
+            // Initialize request tracking
+            const requestId = generateRequestId();
+            const startedAt = new Date().toISOString();
+
+            currentRequest = {
+                id: requestId,
+                endpoint: '/leading-light/evaluate/image',
+                startedAt: startedAt,
+                finishedAt: null,
+                httpStatus: null,
+                errorDetail: null
+            };
+
+            // Clear previous results
+            resultsArea.innerHTML = '';
+            extractedDisplay.innerHTML = '';
+
+            // Set loading state
+            setRequestStatus('loading', 'Uploading image...', 'Request ID: ' + requestId + ' | Started: ' + new Date(startedAt).toLocaleTimeString());
+
+            // Disable evaluate button during upload
+            if (evaluateBtn) evaluateBtn.disabled = true;
 
             try {
                 const formData = new FormData();
@@ -880,24 +1123,42 @@ async def dev_panel():
                     body: formData
                 });
 
-                const data = await response.json();
+                const finishedAt = new Date().toISOString();
+                currentRequest.finishedAt = finishedAt;
+                currentRequest.httpStatus = response.status;
 
+                // Handle non-OK responses
                 if (!response.ok) {
-                    // User-friendly error messages based on error code
-                    let errorMessage = data.detail?.detail || 'Image parsing failed';
-                    if (data.detail?.code === 'FILE_TOO_LARGE') {
-                        errorMessage = 'Image is too large. Please use an image under 5MB.';
-                    } else if (data.detail?.code === 'INVALID_FILE_TYPE') {
-                        errorMessage = 'Please upload an image file (JPG, PNG, etc.)';
-                    } else if (data.detail?.code === 'RATE_LIMITED') {
-                        errorMessage = 'Too many uploads. Please wait a few minutes and try again.';
-                    } else if (data.detail?.code === 'NOT_A_BET_SLIP') {
-                        errorMessage = 'This doesn\'t look like a bet slip. Try a different image.';
-                    } else if (data.detail?.code === 'IMAGE_PARSE_NOT_CONFIGURED') {
-                        errorMessage = 'Image parsing is not available right now. Try entering your bet manually.';
+                    let errorText = '';
+                    try {
+                        const data = await response.json();
+                        // User-friendly error messages based on error code
+                        if (data.detail?.code === 'FILE_TOO_LARGE') {
+                            errorText = 'Image is too large. Please use an image under 5MB.';
+                        } else if (data.detail?.code === 'INVALID_FILE_TYPE') {
+                            errorText = 'Please upload an image file (JPG, PNG, etc.)';
+                        } else if (data.detail?.code === 'RATE_LIMITED') {
+                            errorText = 'Too many uploads. Please wait a few minutes and try again.';
+                        } else if (data.detail?.code === 'NOT_A_BET_SLIP') {
+                            errorText = 'This doesn\'t look like a bet slip. Try a different image.';
+                        } else if (data.detail?.code === 'IMAGE_PARSE_NOT_CONFIGURED') {
+                            errorText = 'Image parsing is not available right now. Try entering your bet manually.';
+                        } else {
+                            errorText = data.detail?.detail || JSON.stringify(data);
+                        }
+                        currentRequest.errorDetail = errorText;
+                    } catch (e) {
+                        // Failed to parse JSON error response
+                        errorText = await response.text();
+                        currentRequest.errorDetail = errorText;
                     }
-                    throw new Error(errorMessage);
+
+                    setRequestStatus('error', 'Request failed', 'Request ID: ' + requestId + ' | Finished: ' + new Date(finishedAt).toLocaleTimeString());
+                    return;
                 }
+
+                // Parse successful response
+                const data = await response.json();
 
                 // Show extracted text
                 extractedDisplay.innerHTML = '<div class="extracted-text">✓ Extracted: ' + data.input.extracted_bet_text + '</div>';
@@ -913,9 +1174,20 @@ async def dev_panel():
                 // Render results immediately (image endpoint does full evaluation)
                 renderResults(data);
 
+                // Set success state
+                setRequestStatus('success', 'Analysis complete', 'Request ID: ' + requestId + ' | Finished: ' + new Date(finishedAt).toLocaleTimeString());
+
             } catch (error) {
-                resultsArea.innerHTML = '<div class="error">' + error.message + '</div>';
-                extractedDisplay.innerHTML = '';
+                // Network error or other exception
+                const finishedAt = new Date().toISOString();
+                currentRequest.finishedAt = finishedAt;
+                currentRequest.errorDetail = 'Network error: ' + error.message;
+
+                setRequestStatus('error', 'Request failed', 'Request ID: ' + requestId + ' | Finished: ' + new Date(finishedAt).toLocaleTimeString());
+
+            } finally {
+                // Re-enable evaluate button
+                if (evaluateBtn) evaluateBtn.disabled = false;
             }
         }
 
@@ -929,8 +1201,31 @@ async def dev_panel():
             const betText = legs.join(' + ');
             const plan = document.getElementById('plan').value;
             const resultsArea = document.getElementById('results-area');
+            const extractedDisplay = document.getElementById('extracted-display');
+            const evaluateBtn = document.getElementById('evaluate-btn');
 
-            resultsArea.innerHTML = '<div class="loading">Evaluating slip</div>';
+            // Initialize request tracking
+            const requestId = generateRequestId();
+            const startedAt = new Date().toISOString();
+
+            currentRequest = {
+                id: requestId,
+                endpoint: '/leading-light/evaluate/text',
+                startedAt: startedAt,
+                finishedAt: null,
+                httpStatus: null,
+                errorDetail: null
+            };
+
+            // Clear previous results
+            resultsArea.innerHTML = '';
+            extractedDisplay.innerHTML = '';
+
+            // Set loading state
+            setRequestStatus('loading', 'Evaluating slip...', 'Request ID: ' + requestId + ' | Started: ' + new Date(startedAt).toLocaleTimeString());
+
+            // Disable evaluate button during request
+            if (evaluateBtn) evaluateBtn.disabled = true;
 
             try {
                 const response = await fetch('/leading-light/evaluate/text', {
@@ -939,15 +1234,47 @@ async def dev_panel():
                     body: JSON.stringify({ bet_text: betText, plan: plan })
                 });
 
-                const data = await response.json();
+                const finishedAt = new Date().toISOString();
+                currentRequest.finishedAt = finishedAt;
+                currentRequest.httpStatus = response.status;
 
+                // Handle non-OK responses
                 if (!response.ok) {
-                    throw new Error(data.detail?.detail || 'Evaluation failed');
+                    let errorText = '';
+                    try {
+                        const data = await response.json();
+                        errorText = data.detail?.detail || JSON.stringify(data);
+                        currentRequest.errorDetail = errorText;
+                    } catch (e) {
+                        // Failed to parse JSON error response
+                        errorText = await response.text();
+                        currentRequest.errorDetail = errorText;
+                    }
+
+                    setRequestStatus('error', 'Request failed', 'Request ID: ' + requestId + ' | Finished: ' + new Date(finishedAt).toLocaleTimeString());
+                    return;
                 }
 
+                // Parse successful response
+                const data = await response.json();
+
+                // Render results
                 renderResults(data);
+
+                // Set success state
+                setRequestStatus('success', 'Analysis complete', 'Request ID: ' + requestId + ' | Finished: ' + new Date(finishedAt).toLocaleTimeString());
+
             } catch (error) {
-                resultsArea.innerHTML = '<div class="error">' + error.message + '</div>';
+                // Network error or other exception
+                const finishedAt = new Date().toISOString();
+                currentRequest.finishedAt = finishedAt;
+                currentRequest.errorDetail = 'Network error: ' + error.message;
+
+                setRequestStatus('error', 'Request failed', 'Request ID: ' + requestId + ' | Finished: ' + new Date(finishedAt).toLocaleTimeString());
+
+            } finally {
+                // Re-enable evaluate button
+                if (evaluateBtn) evaluateBtn.disabled = false;
             }
         }
 
