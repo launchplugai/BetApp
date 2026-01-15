@@ -1,9 +1,12 @@
 # app/tests/test_health.py
 """Tests for health and observability endpoints."""
+import os
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, _config
 
 
 @pytest.fixture
@@ -37,6 +40,35 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["status"] == "healthy"
         assert data["service"] == "dna-matrix"
+
+
+class TestHealthGitSha:
+    """Tests for git_sha in /health endpoint."""
+
+    def test_git_sha_included_when_configured(self, client):
+        """git_sha appears in /health when config has it set."""
+        # Temporarily set git_sha on the config
+        original_sha = _config.git_sha
+        try:
+            _config.git_sha = "test123abc"
+            response = client.get("/health")
+            data = response.json()
+            assert "git_sha" in data
+            assert data["git_sha"] == "test123abc"
+        finally:
+            _config.git_sha = original_sha
+
+    def test_git_sha_excluded_when_not_configured(self, client):
+        """git_sha is not in /health when config has None."""
+        # Temporarily unset git_sha on the config
+        original_sha = _config.git_sha
+        try:
+            _config.git_sha = None
+            response = client.get("/health")
+            data = response.json()
+            assert "git_sha" not in data
+        finally:
+            _config.git_sha = original_sha
 
 
 class TestRootEndpoint:

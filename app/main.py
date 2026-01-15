@@ -89,10 +89,14 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check for Railway with service observability."""
-    return {
+    response = {
         "status": "healthy",
         "service": _config.service_name,
         "version": _config.service_version,
         "environment": _config.environment,
         "started_at": _SERVICE_START_TIME.isoformat(),
     }
+    # Include git_sha only if available (for deploy verification)
+    if _config.git_sha:
+        response["git_sha"] = _config.git_sha
+    return response

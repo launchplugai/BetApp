@@ -171,6 +171,65 @@ class TestConfigSnapshotSafety:
         assert validate_config_snapshot_safety(good_snapshot) is True
 
 
+class TestGitShaConfig:
+    """Tests for git_sha deploy identification."""
+
+    def test_git_sha_none_by_default(self):
+        """git_sha is None when no env var set."""
+        with patch.dict(os.environ, {}, clear=True):
+            config = load_config()
+
+        assert config.git_sha is None
+
+    def test_git_sha_from_railway_env(self):
+        """git_sha is loaded from RAILWAY_GIT_COMMIT_SHA."""
+        with patch.dict(
+            os.environ, {"RAILWAY_GIT_COMMIT_SHA": "abc1234"}, clear=True
+        ):
+            config = load_config()
+
+        assert config.git_sha == "abc1234"
+
+    def test_git_sha_from_manual_env(self):
+        """git_sha falls back to GIT_SHA env var."""
+        with patch.dict(os.environ, {"GIT_SHA": "def5678"}, clear=True):
+            config = load_config()
+
+        assert config.git_sha == "def5678"
+
+    def test_railway_sha_takes_precedence(self):
+        """RAILWAY_GIT_COMMIT_SHA takes precedence over GIT_SHA."""
+        with patch.dict(
+            os.environ,
+            {
+                "RAILWAY_GIT_COMMIT_SHA": "railway123",
+                "GIT_SHA": "manual456",
+            },
+            clear=True,
+        ):
+            config = load_config()
+
+        assert config.git_sha == "railway123"
+
+    def test_git_sha_in_snapshot(self):
+        """git_sha appears in config snapshot."""
+        with patch.dict(
+            os.environ, {"RAILWAY_GIT_COMMIT_SHA": "abc1234"}, clear=True
+        ):
+            config = load_config()
+            snapshot = log_config_snapshot(config)
+
+        assert "git_sha=abc1234" in snapshot
+
+    def test_git_sha_unknown_in_snapshot_when_missing(self):
+        """git_sha shows 'unknown' in snapshot when not set."""
+        with patch.dict(os.environ, {}, clear=True):
+            config = load_config()
+            snapshot = log_config_snapshot(config)
+
+        assert "git_sha=unknown" in snapshot
+
+
 class TestFeatureWarnings:
     """Tests for feature configuration warnings."""
 
