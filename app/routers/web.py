@@ -6,20 +6,30 @@ This is a strict system boundary:
 - Browser never calls internal APIs directly
 - All evaluation proxied through /app/evaluate
 - Server remains source of truth for tier enforcement
+- Rate limiting applied to prevent abuse
 """
 from __future__ import annotations
 
-import json
+import math
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import load_config
+from app.rate_limiter import get_client_ip, get_rate_limiter
 
 
 router = APIRouter(tags=["Web UI"])
+
+
+# =============================================================================
+# Constants
+# =============================================================================
+
+# Maximum input length (characters) - prevents oversized payloads
+MAX_INPUT_LENGTH = 10000
 
 
 # =============================================================================
@@ -29,7 +39,7 @@ router = APIRouter(tags=["Web UI"])
 
 class WebEvaluateRequest(BaseModel):
     """Request schema for web evaluation proxy."""
-    input: str = Field(..., min_length=1, description="Bet text input")
+    input: str = Field(..., min_length=1, max_length=MAX_INPUT_LENGTH, description="Bet text input")
     tier: str = Field(..., description="Plan tier: GOOD, BETTER, or BEST")
 
     @field_validator("input")
@@ -38,7 +48,10 @@ class WebEvaluateRequest(BaseModel):
         """Validate input is not empty or whitespace."""
         if not v or not v.strip():
             raise ValueError("input cannot be empty or whitespace")
-        return v.strip()
+        stripped = v.strip()
+        if len(stripped) > MAX_INPUT_LENGTH:
+            raise ValueError(f"input exceeds maximum length of {MAX_INPUT_LENGTH} characters")
+        return stripped
 
     @field_validator("tier")
     @classmethod
@@ -513,15 +526,16 @@ async def app_page():
 
 
 @router.post("/app/evaluate")
-async def evaluate_proxy(request: WebEvaluateRequest):
+async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     """
     Server-side proxy for evaluation requests.
 
     This endpoint exists to:
     1. Validate input before hitting internal APIs
     2. Ensure browser cannot bypass tier enforcement
-    3. Provide a single boundary for future auth/rate limiting
+    3. Provide a single boundary for auth/rate limiting
 
+    Rate limited: 10 requests/minute per IP, burst of 3.
     Calls /leading-light/evaluate/text internally and returns the response.
     """
     from app.routers.leading_light import (
@@ -533,6 +547,22 @@ async def evaluate_proxy(request: WebEvaluateRequest):
         _apply_tier_to_explain_wrapper,
     )
     from core.evaluation import evaluate_parlay
+
+    # Rate limiting check
+    client_ip = get_client_ip(raw_request)
+    limiter = get_rate_limiter()
+    allowed, retry_after = limiter.check(client_ip)
+
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "rate_limited",
+                "detail": "Too many requests. Please slow down.",
+                "retry_after_seconds": math.ceil(retry_after),
+            },
+            headers={"Retry-After": str(math.ceil(retry_after))},
+        )
 
     # Check feature flag
     if not is_leading_light_enabled():

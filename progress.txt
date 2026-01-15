@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 11 - Web UI boundary (/ and /app with tier-safe evaluation proxy)
+Last Completed Task: TASK 13 - Rate limiting and abuse guards for /app/evaluate
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -416,6 +416,74 @@ TESTS ADDED:
 - test_tier_good_returns_empty_explain
 - test_tier_better_returns_summary_only
 - test_tier_best_returns_full_explain
+
+--------------------------------------------------------------------------------
+TASK 13: RATE LIMITING + ABUSE GUARDS (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: COMPLETE
+
+SUMMARY:
+Added in-memory rate limiting and input validation to protect /app/evaluate
+from spam and abuse without breaking UX.
+
+RATE LIMITS CONFIGURED:
+- 10 requests per minute per IP (sustained rate)
+- Burst allowance: 3 quick requests (token bucket)
+- Key: Client IP (respects X-Forwarded-For safely)
+- Scope: POST /app/evaluate only (does NOT affect /health)
+
+ON LIMIT EXCEEDED:
+- HTTP 429 Too Many Requests
+- JSON body: {"error": "rate_limited", "retry_after_seconds": <n>}
+- Retry-After header included
+
+IMPLEMENTATION APPROACH:
+- Token bucket algorithm (in-memory, suitable for single Railway instance)
+- Tokens refill at 10/60 = 0.1667 tokens/second
+- Bucket capacity = burst_size = 3
+- Clock injectable for deterministic testing
+- Automatic cleanup of stale buckets (>5 min unused)
+
+ABUSE GUARDS:
+- Tier validation: must be GOOD/BETTER/BEST (case-insensitive)
+- Input length: min 1, max 10,000 characters
+- Whitespace-only input rejected (422)
+- Empty input rejected (422)
+
+FILES CHANGED:
+- app/rate_limiter.py: New - token bucket rate limiter
+- app/routers/web.py: Updated - rate limiting on /app/evaluate, max input length
+- app/tests/test_rate_limiter.py: New - comprehensive rate limiter tests
+
+TESTS ADDED:
+Unit tests (app/tests/test_rate_limiter.py):
+- test_initial_tokens_available
+- test_tokens_deplete
+- test_tokens_refill_over_time
+- test_first_request_allowed
+- test_burst_requests_allowed
+- test_rate_limit_exceeded_returns_retry_after
+- test_different_ips_have_separate_buckets
+- test_tokens_refill_after_time
+
+Integration tests:
+- test_first_request_succeeds
+- test_exceeding_limit_returns_429
+- test_429_includes_retry_after_header
+- test_429_includes_json_body
+- test_health_not_rate_limited
+
+Abuse guard tests:
+- test_rejects_oversized_input
+- test_rejects_invalid_tier
+- test_accepts_valid_tiers
+
+VERIFY IN PRODUCTION:
+1. Hit /app/evaluate 4+ times rapidly
+2. 4th request should return 429
+3. Check Retry-After header present
+4. Confirm /health still returns 200
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT
