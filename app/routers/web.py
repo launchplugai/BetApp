@@ -8,6 +8,7 @@ This is a strict system boundary:
 - Server remains source of truth for tier enforcement
 - Rate limiting applied to prevent abuse
 - Structured logging for traceability (no sensitive data)
+- ALL input passes through Airlock before evaluation
 """
 from __future__ import annotations
 
@@ -19,8 +20,16 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
+from app.airlock import (
+    airlock_ingest,
+    AirlockError,
+    EmptyInputError,
+    InputTooLongError,
+    InvalidTierError,
+    get_max_input_length,
+)
 from app.config import load_config
 from app.correlation import get_request_id
 from app.rate_limiter import get_client_ip, get_rate_limiter
@@ -31,14 +40,6 @@ _logger = logging.getLogger(__name__)
 
 
 router = APIRouter(tags=["Web UI"])
-
-
-# =============================================================================
-# Constants
-# =============================================================================
-
-# Maximum input length (characters) - prevents oversized payloads
-MAX_INPUT_LENGTH = 10000
 
 
 # =============================================================================
@@ -95,29 +96,14 @@ def _log_request(
 
 
 class WebEvaluateRequest(BaseModel):
-    """Request schema for web evaluation proxy."""
-    input: str = Field(..., min_length=1, max_length=MAX_INPUT_LENGTH, description="Bet text input")
-    tier: str = Field(..., description="Plan tier: GOOD, BETTER, or BEST")
+    """
+    Request schema for web evaluation proxy.
 
-    @field_validator("input")
-    @classmethod
-    def validate_input(cls, v: str) -> str:
-        """Validate input is not empty or whitespace."""
-        if not v or not v.strip():
-            raise ValueError("input cannot be empty or whitespace")
-        stripped = v.strip()
-        if len(stripped) > MAX_INPUT_LENGTH:
-            raise ValueError(f"input exceeds maximum length of {MAX_INPUT_LENGTH} characters")
-        return stripped
-
-    @field_validator("tier")
-    @classmethod
-    def validate_tier(cls, v: str) -> str:
-        """Validate tier is one of GOOD/BETTER/BEST."""
-        valid_tiers = {"good", "better", "best"}
-        if v.lower() not in valid_tiers:
-            raise ValueError(f"tier must be one of: GOOD, BETTER, BEST")
-        return v.lower()
+    IMPORTANT: This schema does minimal validation.
+    Full validation/normalization happens in Airlock.
+    """
+    input: str = Field(..., description="Bet text input")
+    tier: Optional[str] = Field(default=None, description="Plan tier: GOOD, BETTER, or BEST")
 
 
 # =============================================================================
@@ -588,7 +574,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     Server-side proxy for evaluation requests.
 
     This endpoint exists to:
-    1. Validate input before hitting internal APIs
+    1. ALL input passes through Airlock for validation/normalization
     2. Ensure browser cannot bypass tier enforcement
     3. Provide a single boundary for auth/rate limiting
     4. Structured logging for traceability
@@ -609,11 +595,46 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     # Start timing for latency measurement
     start_time = time.perf_counter()
 
-    # Get correlation ID and client IP
+    # Get correlation ID and client IP (before Airlock - needed for logging)
     request_id = get_request_id(raw_request) or "unknown"
     client_ip = get_client_ip(raw_request)
-    input_length = len(request.input)
-    tier = request.tier
+
+    # =========================================================================
+    # AIRLOCK: Single source of truth for validation/normalization
+    # All evaluation requests MUST pass through Airlock first
+    # =========================================================================
+    try:
+        normalized = airlock_ingest(
+            input_text=request.input,
+            tier=request.tier,
+        )
+    except AirlockError as e:
+        # Log validation failure (use raw input length for logging)
+        raw_input_length = len(request.input) if request.input else 0
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=request.tier or "unknown",
+            input_length=raw_input_length,
+            status_code=400,
+            latency_ms=latency_ms,
+            error_type=e.code,
+        )
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": e.code,
+                "detail": e.message,
+                "code": e.code,
+            },
+        )
+
+    # Use normalized values from Airlock
+    input_text = normalized.input_text
+    tier = normalized.tier.value  # Convert enum to string for logging/response
+    input_length = normalized.input_length
 
     # Rate limiting check
     limiter = get_rate_limiter()
@@ -664,8 +685,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         )
 
     try:
-        # Parse bet text into blocks
-        blocks = _parse_bet_text(request.input)
+        # Parse bet text into blocks (using normalized input)
+        blocks = _parse_bet_text(input_text)
 
         # Call the canonical evaluation engine
         response = evaluate_parlay(
@@ -691,8 +712,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "recommended_next_step": recommended_step,
         }
 
-        # Apply tier filtering to explain wrapper
-        explain_filtered = _apply_tier_to_explain_wrapper(request.tier, explain_full)
+        # Apply tier filtering to explain wrapper (using normalized tier)
+        explain_filtered = _apply_tier_to_explain_wrapper(tier, explain_full)
 
         # Log successful request
         latency_ms = (time.perf_counter() - start_time) * 1000
@@ -709,8 +730,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         return {
             "request_id": request_id,
             "input": {
-                "bet_text": request.input,
-                "tier": request.tier,
+                "bet_text": input_text,
+                "tier": tier,
             },
             "evaluation": {
                 "parlay_id": str(response.parlay_id),
