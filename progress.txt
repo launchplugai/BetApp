@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: Export Leading Light types from core.models (commit a1b937e)
+Last Completed Task: TASK 1 - Add basic service observability
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -38,7 +38,7 @@ ENTRY POINTS:
 
 ACTIVE ROUTES/ENDPOINTS:
 - GET / : Health check, returns {"status": "ok", "service": "dna-matrix"}
-- GET /health : Railway health check, returns {"status": "healthy"}
+- GET /health : Railway health check with observability (status, service, version, environment, started_at)
 
 IMPLEMENTED CORE MODELS (dna-matrix/core/models/):
 - claim.py
@@ -64,6 +64,30 @@ RECENT COMMITS:
 - 668f2b8 Add Leading Light core types with validation
 - ac43aa0 Merge pull request #2
 - 702bf7b Fix pytest configuration for module imports
+
+--------------------------------------------------------------------------------
+TASK 1: ADD BASIC SERVICE OBSERVABILITY (2026-01-15)
+--------------------------------------------------------------------------------
+
+WHAT WAS CHANGED:
+- app/main.py: Enhanced /health endpoint to include observability data
+  - Added: service name, version, environment, started_at timestamp
+  - Added: _SERVICE_START_TIME and _SERVICE_VERSION module-level constants
+  - Added: os and datetime imports
+- app/tests/test_health.py: New test file for health/root endpoints
+  - Tests HTTP 200 response
+  - Tests presence of required keys
+  - Tests expected values
+
+WHAT WAS NOT CHANGED:
+- GET / endpoint (root) - unchanged
+- Business logic in any router
+- No authentication/authorization added
+- No UI added
+- No database calls added
+
+NEW UNKNOWNS:
+- Test execution still UNKNOWN (pytest not installed in environment)
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT

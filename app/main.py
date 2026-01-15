@@ -1,10 +1,17 @@
 """DNA Matrix API - FastAPI application entrypoint."""
+import os
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import leading_light
 from app.routers import panel
 from app.voice.router import router as voice_router
+
+# Capture service start time for uptime reporting
+_SERVICE_START_TIME = datetime.now(timezone.utc)
+_SERVICE_VERSION = "0.1.0"
 
 app = FastAPI(
     title="DNA Matrix",
@@ -34,5 +41,11 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Health check for Railway."""
-    return {"status": "healthy"}
+    """Health check for Railway with service observability."""
+    return {
+        "status": "healthy",
+        "service": "dna-matrix",
+        "version": _SERVICE_VERSION,
+        "environment": os.environ.get("RAILWAY_ENVIRONMENT", "development"),
+        "started_at": _SERVICE_START_TIME.isoformat(),
+    }
