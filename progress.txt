@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 14 - Correlation IDs and structured logging for /app/evaluate
+Last Completed Task: TASK 16 - Unified pipeline facade for all evaluation entrypoints
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -562,6 +562,60 @@ VERIFY IN PRODUCTION:
 2. Verify same ID returned in response header
 3. Verify request_id in JSON body
 4. Check Railway logs for structured format (no raw input)
+
+--------------------------------------------------------------------------------
+TASK 15: AIRLOCK VALIDATION GATEWAY (2026-01-15)
+--------------------------------------------------------------------------------
+STATUS: COMPLETE
+
+Created app/airlock.py as single source of truth for input validation.
+
+CHANGES:
+- app/airlock.py: Airlock module with airlock_ingest() function
+- app/routers/web.py: Refactored to use Airlock first
+- app/tests/test_airlock.py: 22 unit tests
+
+KEY COMPONENTS:
+- airlock_ingest(): Main entry point for validation
+- NormalizedInput: Immutable dataclass with validated values
+- Tier enum: Canonical tier values (GOOD, BETTER, BEST)
+- Error types: EmptyInputError, InputTooLongError, InvalidTierError
+
+VALIDATION RULES:
+- Input trimmed, cannot be empty/whitespace
+- Max input length: 10,000 characters
+- Tier case-insensitive, "free" alias maps to GOOD
+- Default tier: GOOD
+
+FLOW:
+  Route → Airlock → NormalizedInput → Pipeline → Response
+
+--------------------------------------------------------------------------------
+TASK 16: UNIFIED PIPELINE FACADE (2026-01-15)
+--------------------------------------------------------------------------------
+STATUS: COMPLETE
+
+Created app/pipeline.py as single entry point for all evaluation.
+
+CHANGES:
+- app/pipeline.py: Pipeline facade with run_evaluation()
+- app/routers/web.py: Refactored to use pipeline facade
+- app/tests/test_pipeline.py: 26 tests (23 unit + 3 integration)
+
+KEY COMPONENTS:
+- run_evaluation(): Single entry point for evaluation
+- PipelineResponse: Unified response with evaluation, interpretation, explain
+- Text parsing, summary generation, tier filtering moved to pipeline
+
+ARCHITECTURAL GUARANTEE:
+- Routes do NOT import core.evaluation directly
+- Routes do NOT call evaluate_parlay() directly
+- All evaluation goes: Airlock → Pipeline → Core
+
+FLOW:
+  Route → Airlock → Pipeline → core.evaluation.evaluate_parlay() → Response
+
+All evaluation entrypoints unified behind pipeline facade.
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT

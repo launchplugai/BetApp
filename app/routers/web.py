@@ -582,15 +582,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     Rate limited: 10 requests/minute per IP, burst of 3.
     Includes request_id in all responses for debugging.
     """
-    from app.routers.leading_light import (
-        is_leading_light_enabled,
-        _parse_bet_text,
-        _generate_summary,
-        _generate_alerts,
-        _interpret_fragility,
-        _apply_tier_to_explain_wrapper,
-    )
-    from core.evaluation import evaluate_parlay
+    from app.routers.leading_light import is_leading_light_enabled
+    from app.pipeline import run_evaluation
 
     # Start timing for latency measurement
     start_time = time.perf_counter()
@@ -631,9 +624,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             },
         )
 
-    # Use normalized values from Airlock
-    input_text = normalized.input_text
-    tier = normalized.tier.value  # Convert enum to string for logging/response
+    # Use normalized values from Airlock for pre-pipeline checks
+    tier = normalized.tier.value  # For logging before pipeline runs
     input_length = normalized.input_length
 
     # Rate limiting check
@@ -685,66 +677,43 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         )
 
     try:
-        # Parse bet text into blocks (using normalized input)
-        blocks = _parse_bet_text(input_text)
-
-        # Call the canonical evaluation engine
-        response = evaluate_parlay(
-            blocks=blocks,
-            dna_profile=None,
-            bankroll=None,
-            candidates=None,
-            max_suggestions=0,
-        )
-
-        # Build plain-English explain wrapper
-        summary = _generate_summary(response, len(blocks))
-        alerts = _generate_alerts(response)
-        recommended_step = response.recommendation.reason
-
-        # Build fragility interpretation
-        fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
-
-        # Build explain wrapper (before tier filtering)
-        explain_full = {
-            "summary": summary,
-            "alerts": alerts,
-            "recommended_next_step": recommended_step,
-        }
-
-        # Apply tier filtering to explain wrapper (using normalized tier)
-        explain_filtered = _apply_tier_to_explain_wrapper(tier, explain_full)
+        # =====================================================================
+        # PIPELINE: Single entry point for all evaluation
+        # Route does NOT call core.evaluation directly
+        # =====================================================================
+        result = run_evaluation(normalized)
 
         # Log successful request
         latency_ms = (time.perf_counter() - start_time) * 1000
         _log_request(
             request_id=request_id,
             client_ip=client_ip,
-            tier=tier,
+            tier=result.tier,
             input_length=input_length,
             status_code=200,
             latency_ms=latency_ms,
         )
 
         # Build response with request_id for traceability
+        eval_response = result.evaluation
         return {
             "request_id": request_id,
             "input": {
-                "bet_text": input_text,
-                "tier": tier,
+                "bet_text": normalized.input_text,
+                "tier": result.tier,
             },
             "evaluation": {
-                "parlay_id": str(response.parlay_id),
+                "parlay_id": str(eval_response.parlay_id),
                 "inductor": {
-                    "level": response.inductor.level.value,
-                    "explanation": response.inductor.explanation,
+                    "level": eval_response.inductor.level.value,
+                    "explanation": eval_response.inductor.explanation,
                 },
                 "metrics": {
-                    "raw_fragility": response.metrics.raw_fragility,
-                    "final_fragility": response.metrics.final_fragility,
-                    "leg_penalty": response.metrics.leg_penalty,
-                    "correlation_penalty": response.metrics.correlation_penalty,
-                    "correlation_multiplier": response.metrics.correlation_multiplier,
+                    "raw_fragility": eval_response.metrics.raw_fragility,
+                    "final_fragility": eval_response.metrics.final_fragility,
+                    "leg_penalty": eval_response.metrics.leg_penalty,
+                    "correlation_penalty": eval_response.metrics.correlation_penalty,
+                    "correlation_multiplier": eval_response.metrics.correlation_multiplier,
                 },
                 "correlations": [
                     {
@@ -753,17 +722,15 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
                         "type": c.type,
                         "penalty": c.penalty,
                     }
-                    for c in response.correlations
+                    for c in eval_response.correlations
                 ],
                 "recommendation": {
-                    "action": response.recommendation.action.value,
-                    "reason": response.recommendation.reason,
+                    "action": eval_response.recommendation.action.value,
+                    "reason": eval_response.recommendation.reason,
                 },
             },
-            "interpretation": {
-                "fragility": fragility_interpretation,
-            },
-            "explain": explain_filtered,
+            "interpretation": result.interpretation,
+            "explain": result.explain,
         }
 
     except ValueError as e:
