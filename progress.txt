@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 4 - Baseline security hardening
+Last Completed Task: TASK 5 - Dependency & runtime hardening audit
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -167,6 +167,48 @@ WHAT WAS NOT CHANGED:
 - No authentication added
 - No business logic changed
 - No new external dependencies
+
+--------------------------------------------------------------------------------
+TASK 5: DEPENDENCY & RUNTIME HARDENING AUDIT (2026-01-15)
+--------------------------------------------------------------------------------
+
+DEPENDENCY AUDIT:
+
+KEEP:
+- fastapi – main framework, actively used
+- uvicorn – ASGI server, used in railway.json
+- python-multipart – required for UploadFile in leading_light.py
+- pytest – testing framework
+- black – code formatter (dev)
+- mypy – type checker (dev)
+- ruff – linter (dev)
+- httpx – HTTP client for OpenAI API calls
+
+FLAG:
+- openai – NOT directly imported anywhere; API called via httpx
+  Risk: Unused dependency, adds attack surface
+  Action: Consider removing in future task
+
+RUNTIME SANITY CHECK:
+- Syntax: PASSED
+- Env vars: All use .get() with defaults
+- OPENAI_API_KEY: Returns 503 if missing (graceful degradation)
+- Feature flags default to disabled (LEADING_LIGHT_ENABLED, VOICE_ENABLED)
+- Result: App boots cleanly with no env vars
+
+DEPENDENCY PINNING STATUS:
+- All deps use >= (floor only, no ceiling)
+- Risk: Major version bumps could break builds silently
+- Affected: fastapi, uvicorn, httpx, black, mypy, ruff, openai
+- pytest has partial pin: >=8.0.0,<10.0.0
+- Recommendation: Pin to ~= or exact versions in future task
+
+DEFERRED RISKS:
+1. openai package unused but installed (remove candidate)
+2. No version ceilings on critical deps (pin candidate)
+3. Dev deps mixed with runtime deps in same file
+
+NO CODE CHANGES IN THIS TASK (audit only)
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT
