@@ -7,10 +7,14 @@ This is a strict system boundary:
 - All evaluation proxied through /app/evaluate
 - Server remains source of truth for tier enforcement
 - Rate limiting applied to prevent abuse
+- Structured logging for traceability (no sensitive data)
 """
 from __future__ import annotations
 
+import logging
 import math
+import time
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -18,7 +22,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import load_config
+from app.correlation import get_request_id
 from app.rate_limiter import get_client_ip, get_rate_limiter
+
+
+# Logger for structured request logging
+_logger = logging.getLogger(__name__)
 
 
 router = APIRouter(tags=["Web UI"])
@@ -30,6 +39,54 @@ router = APIRouter(tags=["Web UI"])
 
 # Maximum input length (characters) - prevents oversized payloads
 MAX_INPUT_LENGTH = 10000
+
+
+# =============================================================================
+# Structured Logging
+# =============================================================================
+
+
+def _log_request(
+    request_id: str,
+    client_ip: str,
+    tier: str,
+    input_length: int,
+    status_code: int,
+    latency_ms: float,
+    rate_limited: bool = False,
+    error_type: Optional[str] = None,
+) -> None:
+    """
+    Log a structured request entry for /app/evaluate.
+
+    NEVER logs raw user input or full payloads.
+    Only logs metadata for debugging and abuse monitoring.
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    log_data = {
+        "request_id": request_id,
+        "timestamp": timestamp,
+        "route": "/app/evaluate",
+        "method": "POST",
+        "client_ip": client_ip,
+        "tier": tier,
+        "input_length": input_length,
+        "status_code": status_code,
+        "latency_ms": round(latency_ms, 2),
+        "rate_limited": rate_limited,
+    }
+    if error_type:
+        log_data["error_type"] = error_type
+
+    # Single-line structured log entry
+    _logger.info(
+        "request_id=%(request_id)s timestamp=%(timestamp)s route=%(route)s "
+        "method=%(method)s client_ip=%(client_ip)s tier=%(tier)s "
+        "input_length=%(input_length)d status_code=%(status_code)d "
+        "latency_ms=%(latency_ms).2f rate_limited=%(rate_limited)s"
+        + (" error_type=%(error_type)s" if error_type else ""),
+        log_data,
+    )
 
 
 # =============================================================================
@@ -534,9 +591,10 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     1. Validate input before hitting internal APIs
     2. Ensure browser cannot bypass tier enforcement
     3. Provide a single boundary for auth/rate limiting
+    4. Structured logging for traceability
 
     Rate limited: 10 requests/minute per IP, burst of 3.
-    Calls /leading-light/evaluate/text internally and returns the response.
+    Includes request_id in all responses for debugging.
     """
     from app.routers.leading_light import (
         is_leading_light_enabled,
@@ -548,15 +606,34 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     )
     from core.evaluation import evaluate_parlay
 
-    # Rate limiting check
+    # Start timing for latency measurement
+    start_time = time.perf_counter()
+
+    # Get correlation ID and client IP
+    request_id = get_request_id(raw_request) or "unknown"
     client_ip = get_client_ip(raw_request)
+    input_length = len(request.input)
+    tier = request.tier
+
+    # Rate limiting check
     limiter = get_rate_limiter()
     allowed, retry_after = limiter.check(client_ip)
 
     if not allowed:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=429,
+            latency_ms=latency_ms,
+            rate_limited=True,
+        )
         return JSONResponse(
             status_code=429,
             content={
+                "request_id": request_id,
                 "error": "rate_limited",
                 "detail": "Too many requests. Please slow down.",
                 "retry_after_seconds": math.ceil(retry_after),
@@ -566,9 +643,20 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
 
     # Check feature flag
     if not is_leading_light_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=503,
+            latency_ms=latency_ms,
+            error_type="SERVICE_DISABLED",
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "request_id": request_id,
                 "error": "Leading Light disabled",
                 "detail": "The Leading Light feature is currently disabled.",
                 "code": "SERVICE_DISABLED",
@@ -606,8 +694,20 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         # Apply tier filtering to explain wrapper
         explain_filtered = _apply_tier_to_explain_wrapper(request.tier, explain_full)
 
-        # Build response
+        # Log successful request
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=200,
+            latency_ms=latency_ms,
+        )
+
+        # Build response with request_id for traceability
         return {
+            "request_id": request_id,
             "input": {
                 "bet_text": request.input,
                 "tier": request.tier,
@@ -646,18 +746,40 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         }
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=400,
+            latency_ms=latency_ms,
+            error_type="VALIDATION_ERROR",
+        )
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
                 "error": "Invalid input",
                 "detail": str(e),
                 "code": "VALIDATION_ERROR",
             },
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=500,
+            latency_ms=latency_ms,
+            error_type="INTERNAL_ERROR",
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
                 "error": "Internal error",
                 "detail": str(e),
                 "code": "INTERNAL_ERROR",

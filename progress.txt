@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 13 - Rate limiting and abuse guards for /app/evaluate
+Last Completed Task: TASK 14 - Correlation IDs and structured logging for /app/evaluate
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -484,6 +484,84 @@ VERIFY IN PRODUCTION:
 2. 4th request should return 429
 3. Check Retry-After header present
 4. Confirm /health still returns 200
+
+--------------------------------------------------------------------------------
+TASK 14: CORRELATION IDS + STRUCTURED LOGGING (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: COMPLETE
+
+SUMMARY:
+Added request correlation IDs and structured logging for traceability
+without exposing sensitive user input.
+
+CORRELATION ID MIDDLEWARE:
+- Reads X-Request-Id header if present
+- Validates: max 64 chars, alphanumeric + hyphens/underscores only
+- Generates UUID4 if missing or invalid
+- Stores in request.state.request_id
+- Adds X-Request-Id to ALL responses (including errors)
+- Applies to all routes (including /health)
+
+STRUCTURED LOGGING (POST /app/evaluate only):
+Fields logged per request:
+- request_id
+- timestamp (UTC ISO)
+- route (/app/evaluate)
+- method (POST)
+- client_ip (X-Forwarded-For aware)
+- tier
+- input_length (number only, NEVER raw text)
+- status_code
+- latency_ms
+- rate_limited (true/false)
+- error_type (if any)
+
+NEVER LOGGED:
+- User input text
+- Headers (except request_id)
+- Full payload
+- Any PII
+
+RESPONSE FORMAT:
+All /app/evaluate responses now include:
+{
+  "request_id": "<correlation-id>",
+  ... (rest of response)
+}
+
+Users can reference request_id when reporting issues.
+
+FILES CHANGED:
+- app/correlation.py: New - correlation ID middleware
+- app/main.py: Updated - adds CorrelationIdMiddleware
+- app/routers/web.py: Updated - structured logging, request_id in responses
+- app/tests/test_correlation.py: New - comprehensive tests
+
+TESTS ADDED:
+Correlation ID tests:
+- test_valid_uuid
+- test_valid_alphanumeric
+- test_too_long_rejected
+- test_special_chars_rejected
+- test_client_request_id_echoed
+- test_missing_request_id_generated
+- test_json_includes_request_id
+- test_error_response_includes_request_id
+- test_invalid_request_id_replaced
+
+Logging safety tests:
+- test_logging_does_not_include_raw_input
+- test_logging_includes_input_length
+- test_logging_includes_request_id
+- test_logging_includes_tier
+- test_rate_limited_request_logged
+
+VERIFY IN PRODUCTION:
+1. Send request with X-Request-Id header
+2. Verify same ID returned in response header
+3. Verify request_id in JSON body
+4. Check Railway logs for structured format (no raw input)
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT
