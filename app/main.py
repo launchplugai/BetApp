@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import load_config, log_config_snapshot
+from app.correlation import CorrelationIdMiddleware
 from app.routers import leading_light
 from app.routers import panel
 from app.routers import web
@@ -71,7 +72,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security middleware (order matters: size limit first, then headers on response)
+# Middleware stack (order matters - added in reverse execution order)
+# 1. CorrelationId: First to run, wraps everything, adds X-Request-Id to responses
+# 2. SecurityHeaders: Adds security headers to responses
+# 3. RequestSizeLimit: Rejects oversized requests early
+app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 

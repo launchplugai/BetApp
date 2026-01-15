@@ -6,20 +6,88 @@ This is a strict system boundary:
 - Browser never calls internal APIs directly
 - All evaluation proxied through /app/evaluate
 - Server remains source of truth for tier enforcement
+- Rate limiting applied to prevent abuse
+- Structured logging for traceability (no sensitive data)
+- ALL input passes through Airlock before evaluation
 """
 from __future__ import annotations
 
-import json
+import logging
+import math
+import time
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, Field
 
+from app.airlock import (
+    airlock_ingest,
+    AirlockError,
+    EmptyInputError,
+    InputTooLongError,
+    InvalidTierError,
+    get_max_input_length,
+)
 from app.config import load_config
+from app.correlation import get_request_id
+from app.rate_limiter import get_client_ip, get_rate_limiter
+
+
+# Logger for structured request logging
+_logger = logging.getLogger(__name__)
 
 
 router = APIRouter(tags=["Web UI"])
+
+
+# =============================================================================
+# Structured Logging
+# =============================================================================
+
+
+def _log_request(
+    request_id: str,
+    client_ip: str,
+    tier: str,
+    input_length: int,
+    status_code: int,
+    latency_ms: float,
+    rate_limited: bool = False,
+    error_type: Optional[str] = None,
+) -> None:
+    """
+    Log a structured request entry for /app/evaluate.
+
+    NEVER logs raw user input or full payloads.
+    Only logs metadata for debugging and abuse monitoring.
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    log_data = {
+        "request_id": request_id,
+        "timestamp": timestamp,
+        "route": "/app/evaluate",
+        "method": "POST",
+        "client_ip": client_ip,
+        "tier": tier,
+        "input_length": input_length,
+        "status_code": status_code,
+        "latency_ms": round(latency_ms, 2),
+        "rate_limited": rate_limited,
+    }
+    if error_type:
+        log_data["error_type"] = error_type
+
+    # Single-line structured log entry
+    _logger.info(
+        "request_id=%(request_id)s timestamp=%(timestamp)s route=%(route)s "
+        "method=%(method)s client_ip=%(client_ip)s tier=%(tier)s "
+        "input_length=%(input_length)d status_code=%(status_code)d "
+        "latency_ms=%(latency_ms).2f rate_limited=%(rate_limited)s"
+        + (" error_type=%(error_type)s" if error_type else ""),
+        log_data,
+    )
 
 
 # =============================================================================
@@ -28,26 +96,14 @@ router = APIRouter(tags=["Web UI"])
 
 
 class WebEvaluateRequest(BaseModel):
-    """Request schema for web evaluation proxy."""
-    input: str = Field(..., min_length=1, description="Bet text input")
-    tier: str = Field(..., description="Plan tier: GOOD, BETTER, or BEST")
+    """
+    Request schema for web evaluation proxy.
 
-    @field_validator("input")
-    @classmethod
-    def validate_input(cls, v: str) -> str:
-        """Validate input is not empty or whitespace."""
-        if not v or not v.strip():
-            raise ValueError("input cannot be empty or whitespace")
-        return v.strip()
-
-    @field_validator("tier")
-    @classmethod
-    def validate_tier(cls, v: str) -> str:
-        """Validate tier is one of GOOD/BETTER/BEST."""
-        valid_tiers = {"good", "better", "best"}
-        if v.lower() not in valid_tiers:
-            raise ValueError(f"tier must be one of: GOOD, BETTER, BEST")
-        return v.lower()
+    IMPORTANT: This schema does minimal validation.
+    Full validation/normalization happens in Airlock.
+    """
+    input: str = Field(..., description="Bet text input")
+    tier: Optional[str] = Field(default=None, description="Plan tier: GOOD, BETTER, or BEST")
 
 
 # =============================================================================
@@ -513,32 +569,107 @@ async def app_page():
 
 
 @router.post("/app/evaluate")
-async def evaluate_proxy(request: WebEvaluateRequest):
+async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     """
     Server-side proxy for evaluation requests.
 
     This endpoint exists to:
-    1. Validate input before hitting internal APIs
+    1. ALL input passes through Airlock for validation/normalization
     2. Ensure browser cannot bypass tier enforcement
-    3. Provide a single boundary for future auth/rate limiting
+    3. Provide a single boundary for auth/rate limiting
+    4. Structured logging for traceability
 
-    Calls /leading-light/evaluate/text internally and returns the response.
+    Rate limited: 10 requests/minute per IP, burst of 3.
+    Includes request_id in all responses for debugging.
     """
-    from app.routers.leading_light import (
-        is_leading_light_enabled,
-        _parse_bet_text,
-        _generate_summary,
-        _generate_alerts,
-        _interpret_fragility,
-        _apply_tier_to_explain_wrapper,
-    )
-    from core.evaluation import evaluate_parlay
+    from app.routers.leading_light import is_leading_light_enabled
+    from app.pipeline import run_evaluation
+
+    # Start timing for latency measurement
+    start_time = time.perf_counter()
+
+    # Get correlation ID and client IP (before Airlock - needed for logging)
+    request_id = get_request_id(raw_request) or "unknown"
+    client_ip = get_client_ip(raw_request)
+
+    # =========================================================================
+    # AIRLOCK: Single source of truth for validation/normalization
+    # All evaluation requests MUST pass through Airlock first
+    # =========================================================================
+    try:
+        normalized = airlock_ingest(
+            input_text=request.input,
+            tier=request.tier,
+        )
+    except AirlockError as e:
+        # Log validation failure (use raw input length for logging)
+        raw_input_length = len(request.input) if request.input else 0
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=request.tier or "unknown",
+            input_length=raw_input_length,
+            status_code=400,
+            latency_ms=latency_ms,
+            error_type=e.code,
+        )
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": e.code,
+                "detail": e.message,
+                "code": e.code,
+            },
+        )
+
+    # Use normalized values from Airlock for pre-pipeline checks
+    tier = normalized.tier.value  # For logging before pipeline runs
+    input_length = normalized.input_length
+
+    # Rate limiting check
+    limiter = get_rate_limiter()
+    allowed, retry_after = limiter.check(client_ip)
+
+    if not allowed:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=429,
+            latency_ms=latency_ms,
+            rate_limited=True,
+        )
+        return JSONResponse(
+            status_code=429,
+            content={
+                "request_id": request_id,
+                "error": "rate_limited",
+                "detail": "Too many requests. Please slow down.",
+                "retry_after_seconds": math.ceil(retry_after),
+            },
+            headers={"Retry-After": str(math.ceil(retry_after))},
+        )
 
     # Check feature flag
     if not is_leading_light_enabled():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=503,
+            latency_ms=latency_ms,
+            error_type="SERVICE_DISABLED",
+        )
+        return JSONResponse(
+            status_code=503,
+            content={
+                "request_id": request_id,
                 "error": "Leading Light disabled",
                 "detail": "The Leading Light feature is currently disabled.",
                 "code": "SERVICE_DISABLED",
@@ -546,54 +677,43 @@ async def evaluate_proxy(request: WebEvaluateRequest):
         )
 
     try:
-        # Parse bet text into blocks
-        blocks = _parse_bet_text(request.input)
+        # =====================================================================
+        # PIPELINE: Single entry point for all evaluation
+        # Route does NOT call core.evaluation directly
+        # =====================================================================
+        result = run_evaluation(normalized)
 
-        # Call the canonical evaluation engine
-        response = evaluate_parlay(
-            blocks=blocks,
-            dna_profile=None,
-            bankroll=None,
-            candidates=None,
-            max_suggestions=0,
+        # Log successful request
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=result.tier,
+            input_length=input_length,
+            status_code=200,
+            latency_ms=latency_ms,
         )
 
-        # Build plain-English explain wrapper
-        summary = _generate_summary(response, len(blocks))
-        alerts = _generate_alerts(response)
-        recommended_step = response.recommendation.reason
-
-        # Build fragility interpretation
-        fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
-
-        # Build explain wrapper (before tier filtering)
-        explain_full = {
-            "summary": summary,
-            "alerts": alerts,
-            "recommended_next_step": recommended_step,
-        }
-
-        # Apply tier filtering to explain wrapper
-        explain_filtered = _apply_tier_to_explain_wrapper(request.tier, explain_full)
-
-        # Build response
+        # Build response with request_id for traceability
+        eval_response = result.evaluation
         return {
+            "request_id": request_id,
             "input": {
-                "bet_text": request.input,
-                "tier": request.tier,
+                "bet_text": normalized.input_text,
+                "tier": result.tier,
             },
             "evaluation": {
-                "parlay_id": str(response.parlay_id),
+                "parlay_id": str(eval_response.parlay_id),
                 "inductor": {
-                    "level": response.inductor.level.value,
-                    "explanation": response.inductor.explanation,
+                    "level": eval_response.inductor.level.value,
+                    "explanation": eval_response.inductor.explanation,
                 },
                 "metrics": {
-                    "raw_fragility": response.metrics.raw_fragility,
-                    "final_fragility": response.metrics.final_fragility,
-                    "leg_penalty": response.metrics.leg_penalty,
-                    "correlation_penalty": response.metrics.correlation_penalty,
-                    "correlation_multiplier": response.metrics.correlation_multiplier,
+                    "raw_fragility": eval_response.metrics.raw_fragility,
+                    "final_fragility": eval_response.metrics.final_fragility,
+                    "leg_penalty": eval_response.metrics.leg_penalty,
+                    "correlation_penalty": eval_response.metrics.correlation_penalty,
+                    "correlation_multiplier": eval_response.metrics.correlation_multiplier,
                 },
                 "correlations": [
                     {
@@ -602,32 +722,52 @@ async def evaluate_proxy(request: WebEvaluateRequest):
                         "type": c.type,
                         "penalty": c.penalty,
                     }
-                    for c in response.correlations
+                    for c in eval_response.correlations
                 ],
                 "recommendation": {
-                    "action": response.recommendation.action.value,
-                    "reason": response.recommendation.reason,
+                    "action": eval_response.recommendation.action.value,
+                    "reason": eval_response.recommendation.reason,
                 },
             },
-            "interpretation": {
-                "fragility": fragility_interpretation,
-            },
-            "explain": explain_filtered,
+            "interpretation": result.interpretation,
+            "explain": result.explain,
         }
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=400,
+            latency_ms=latency_ms,
+            error_type="VALIDATION_ERROR",
+        )
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
                 "error": "Invalid input",
                 "detail": str(e),
                 "code": "VALIDATION_ERROR",
             },
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=input_length,
+            status_code=500,
+            latency_ms=latency_ms,
+            error_type="INTERNAL_ERROR",
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
                 "error": "Internal error",
                 "detail": str(e),
                 "code": "INTERNAL_ERROR",
