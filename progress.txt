@@ -1,0 +1,81 @@
+================================================================================
+PROGRESS FILE - DNA MATRIX
+================================================================================
+Generated: 2026-01-15 00:10:05 UTC
+Branch: claude/audit-dependencies-YCzJp
+
+--------------------------------------------------------------------------------
+PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+Project Name: DNA Matrix
+Description: Semantic identity management system / decision engine
+Current Phase: Phase 1 - Foundation (In Progress)
+Last Completed Task: Export Leading Light types from core.models (commit a1b937e)
+
+--------------------------------------------------------------------------------
+KNOWN ISSUES / OPEN QUESTIONS
+--------------------------------------------------------------------------------
+- SQLite storage layer: Not yet implemented
+- Mutation engine: Not yet implemented
+- Lineage tracking: Not yet implemented
+- UI status: No frontend exists; API-only at this time
+
+--------------------------------------------------------------------------------
+ENVIRONMENT
+--------------------------------------------------------------------------------
+Deployment Target: Railway (configured via railway.json)
+Runtime: Python (see runtime.txt)
+Build: Nixpacks
+Current Context: Cloud code / Claude Code session
+
+--------------------------------------------------------------------------------
+SYSTEM SNAPSHOT (READ-ONLY)
+--------------------------------------------------------------------------------
+
+ENTRY POINTS:
+- Application: app/main.py
+- Start command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+
+ACTIVE ROUTES/ENDPOINTS:
+- GET / : Health check, returns {"status": "ok", "service": "dna-matrix"}
+- GET /health : Railway health check, returns {"status": "healthy"}
+
+IMPLEMENTED CORE MODELS (dna-matrix/core/models/):
+- claim.py
+- common.py
+- leading_light.py
+- organism.py
+
+TEST STATUS:
+- Test files exist: 4 files in dna-matrix/tests/core/
+  - test_claim.py
+  - test_common.py
+  - test_leading_light.py
+  - test_organism.py
+- Test execution: UNKNOWN (pytest not available in current environment)
+
+UI STATUS:
+- No frontend implemented
+- API-only service
+
+RECENT COMMITS:
+- d1157da Merge pull request #3 (Leading Light types)
+- a1b937e Export Leading Light types from core.models
+- 668f2b8 Add Leading Light core types with validation
+- ac43aa0 Merge pull request #2
+- 702bf7b Fix pytest configuration for module imports
+
+--------------------------------------------------------------------------------
+RALPH LOOP CONTRACT
+--------------------------------------------------------------------------------
+1. One task at a time - no parallel work streams
+2. Execute, then self-review before declaring completion
+3. Explicit decision required: DONE or ITERATE
+4. Fresh context is allowed between iterations
+5. progress.txt must be updated every cycle
+6. Every task requires verification before completion
+7. External state in files, not chat memory
+
+--------------------------------------------------------------------------------
+END OF PROGRESS FILE
+--------------------------------------------------------------------------------
