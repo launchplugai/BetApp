@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 5 - Dependency & runtime hardening audit
+Last Completed Task: TASK 6 - Startup invariants & failure modes
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -209,6 +209,61 @@ DEFERRED RISKS:
 3. Dev deps mixed with runtime deps in same file
 
 NO CODE CHANGES IN THIS TASK (audit only)
+
+--------------------------------------------------------------------------------
+TASK 6: STARTUP INVARIANTS & FAILURE MODES (2026-01-15)
+--------------------------------------------------------------------------------
+
+IMPLEMENTED:
+
+1. CENTRALIZED CONFIG MODULE (app/config.py):
+   - Single source of truth for all configuration
+   - Defines SERVICE_NAME, SERVICE_VERSION constants
+   - AppConfig dataclass holds validated configuration
+
+2. REQUIRED vs OPTIONAL ENV VARS:
+   - Currently NO required env vars (all features optional)
+   - OPTIONAL with defaults:
+     - RAILWAY_ENVIRONMENT: default "development"
+     - MAX_REQUEST_SIZE_BYTES: default 1MB, min 1KB
+     - LEADING_LIGHT_ENABLED: default false
+     - VOICE_ENABLED: default false
+     - OPENAI_API_KEY: optional, checked for presence only
+
+3. MISCONFIGURATION GUARDS:
+   - Invalid int env vars: Fall back to default WITH warning
+   - Decision: Default + warning (not fail-fast) for resilience
+   - Rejects values below minimum (e.g., MAX_REQUEST_SIZE_BYTES < 1KB)
+   - Warns when feature enabled but API key missing
+
+4. STARTUP CONFIG SNAPSHOT:
+   - Logs single line at startup with all config values
+   - Format: [STARTUP] service=X version=X environment=X ...
+   - NEVER logs actual secrets - only boolean presence flags
+   - validate_config_snapshot_safety() verifies no leaks
+
+5. TESTS (app/tests/test_config.py):
+   - Default values loading
+   - Invalid int handling (string, zero, negative)
+   - API key presence detection (not value storage)
+   - Snapshot safety validation
+   - Feature warning generation
+
+DESIGN DECISIONS:
+- Invalid config: Default + warning (NOT fail-fast)
+  Rationale: Service availability preferred over strict validation
+- Secrets: Never stored in config, only presence boolean
+- Logging: Structured format for easy parsing
+
+FILES CHANGED:
+- app/config.py: New - centralized configuration
+- app/main.py: Updated to use config module
+- app/tests/test_config.py: New - config tests
+
+WHAT WAS NOT CHANGED:
+- No business logic changes
+- No new dependencies
+- Existing endpoints unchanged
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT
