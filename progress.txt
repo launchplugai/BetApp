@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 8 - Deploy verification (production SHA match confirmed)
+Last Completed Task: TASK 11 - Web UI boundary (/ and /app with tier-safe evaluation proxy)
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -346,6 +346,76 @@ PRODUCTION URL (NOW KNOWN):
 - https://dna-production-b681.up.railway.app
 
 NO CODE CHANGES IN THIS TASK (verification only)
+
+--------------------------------------------------------------------------------
+TASK 11: WEB UI BOUNDARY (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: COMPLETE
+
+SUMMARY:
+Added production-safe browser interface as a strict system boundary.
+UI cannot bypass backend tier enforcement.
+
+ROUTES ADDED:
+1. GET / - Landing page (HTML)
+   - Service name, version, git_sha
+   - Links to /app and /health
+
+2. GET /app - Evaluation form (HTML)
+   - Textarea for bet text input
+   - Tier selector: GOOD, BETTER, BEST (required)
+   - Submit button
+   - Output panels: evaluation, explain, errors
+   - Uses textContent only (no innerHTML)
+
+3. POST /app/evaluate - Server proxy endpoint
+   - Validates tier is GOOD/BETTER/BEST
+   - Validates input is non-empty
+   - Calls internal evaluation engine directly (not HTTP)
+   - Returns JSON to browser
+
+TIER ENFORCEMENT:
+- GOOD: explain = {} (empty)
+- BETTER: explain = {summary only}
+- BEST: explain = {summary, alerts, recommended_next_step}
+- UI displays notice when explain withheld by plan
+- Server remains source of truth (browser tampering cannot bypass)
+
+SECURITY:
+- Browser rendering uses textContent only
+- Never executes returned strings
+- Displays JSON via pretty-print
+- Max payload size enforced by existing middleware
+
+INTERNAL ENDPOINT USED:
+- evaluate_parlay() from core.evaluation (direct call, not HTTP)
+- Tier filtering via _apply_tier_to_explain_wrapper()
+
+FILES CHANGED:
+- app/routers/web.py: New - web UI router
+- app/main.py: Updated - includes web router, removes old / endpoint
+- app/tests/test_web.py: New - web UI tests
+
+PRODUCTION USAGE:
+- Landing: https://dna-production-b681.up.railway.app/
+- App: https://dna-production-b681.up.railway.app/app
+
+VERIFY TIER BEHAVIOR:
+1. Go to /app
+2. Enter any bet text
+3. Select GOOD tier -> explain should be empty
+4. Select BETTER tier -> explain should have summary only
+5. Select BEST tier -> explain should have all fields
+
+TESTS ADDED:
+- test_returns_200 (landing page)
+- test_contains_service_name (marker string check)
+- test_app_returns_200
+- test_empty_input_returns_422
+- test_tier_good_returns_empty_explain
+- test_tier_better_returns_summary_only
+- test_tier_best_returns_full_explain
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT

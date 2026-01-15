@@ -11,6 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import load_config, log_config_snapshot
 from app.routers import leading_light
 from app.routers import panel
+from app.routers import web
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -75,15 +76,11 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 
 # Include routers
+# Web router first (handles / and /app)
+app.include_router(web.router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)
-
-
-@app.get("/")
-async def root():
-    """Health check endpoint."""
-    return {"status": "ok", "service": "dna-matrix"}
 
 
 @app.get("/health")
