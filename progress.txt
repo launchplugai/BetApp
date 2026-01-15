@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 6 - Startup invariants & failure modes
+Last Completed Task: TASK 7 - Deploy verification + hook fix
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -264,6 +264,47 @@ WHAT WAS NOT CHANGED:
 - No business logic changes
 - No new dependencies
 - Existing endpoints unchanged
+
+--------------------------------------------------------------------------------
+TASK 7: DEPLOY VERIFICATION + HOOK FIX (2026-01-15)
+--------------------------------------------------------------------------------
+
+PART A - DEPLOY VERIFICATION (COMPLETED):
+
+1. Added git_sha to /health endpoint:
+   - Reads from RAILWAY_GIT_COMMIT_SHA (Railway-provided)
+   - Falls back to GIT_SHA (manual override)
+   - Only included in response when set (not null)
+
+2. Config updates:
+   - AppConfig.git_sha field added
+   - Included in startup config snapshot log
+
+3. Tests added:
+   - test_git_sha_from_railway_env
+   - test_git_sha_from_manual_env
+   - test_railway_sha_takes_precedence
+   - test_git_sha_in_snapshot
+   - test_git_sha_included_when_configured (health endpoint)
+   - test_git_sha_excluded_when_not_configured (health endpoint)
+
+PART B - HOOK FIX (DEFERRED):
+
+Hook location: ~/.claude/stop-hook-git-check.sh
+Status: System-level Claude Code hook, not editable from repository
+Issue: Compares against origin/<local-branch-name> literally
+Workaround: Use explicit push syntax:
+  git push origin local-branch:remote-branch
+
+FILES CHANGED:
+- app/config.py: Added git_sha field and loading
+- app/main.py: Added git_sha to /health response
+- app/tests/test_config.py: Added git_sha tests
+- app/tests/test_health.py: Added git_sha endpoint tests
+
+VERIFICATION:
+- /health now returns git_sha when RAILWAY_GIT_COMMIT_SHA or GIT_SHA is set
+- Deploy identification is unambiguous in production
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT
