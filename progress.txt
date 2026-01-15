@@ -10,7 +10,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 7 - Deploy verification + hook fix
+Last Completed Task: TASK 8 - Deploy verification (production SHA match confirmed)
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
@@ -305,6 +305,29 @@ FILES CHANGED:
 VERIFICATION:
 - /health now returns git_sha when RAILWAY_GIT_COMMIT_SHA or GIT_SHA is set
 - Deploy identification is unambiguous in production
+
+--------------------------------------------------------------------------------
+TASK 8: DEPLOY VERIFICATION (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: VERIFIED
+
+VERIFICATION DETAILS:
+- Expected git SHA: c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f (short: c1423c8)
+- Production /health git_sha: c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f
+- Result: MATCH
+
+COMMAND USED:
+  curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+
+EVIDENCE:
+- Production /health response includes: "git_sha":"c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f"
+- Railway is deploying the correct branch/commit
+
+PRODUCTION URL (NOW KNOWN):
+- https://dna-production-b681.up.railway.app
+
+NO CODE CHANGES IN THIS TASK (verification only)
 
 --------------------------------------------------------------------------------
 RALPH LOOP CONTRACT
