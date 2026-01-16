@@ -15,10 +15,11 @@ from __future__ import annotations
 import logging
 import math
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, status, Response
+from fastapi import APIRouter, HTTPException, Request, status, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, EmailStr
 
@@ -1150,24 +1151,86 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         }}
         .file-upload-area:hover {{
             border-color: #4a9eff;
+            background: #1a1a2a;
         }}
         .file-upload-area.has-file {{
             border-color: #2ecc71;
             background: #1a2a1a;
         }}
+        .file-upload-area.dragover {{
+            border-color: #4a9eff;
+            background: #1a1a2a;
+        }}
+        .file-upload-area.uploading {{
+            pointer-events: none;
+            opacity: 0.7;
+        }}
         .file-upload-area input {{
             display: none;
         }}
         .file-upload-icon {{
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
         }}
         .file-upload-text {{
             color: #888;
+            line-height: 1.5;
+        }}
+        .file-types {{
+            font-size: 0.75rem;
+            color: #666;
         }}
         .file-selected {{
             color: #2ecc71;
+        }}
+        .file-selected-icon {{
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }}
+        .file-selected-name {{
             font-weight: 600;
+            margin-bottom: 0.75rem;
+            word-break: break-all;
+        }}
+        .clear-file-btn {{
+            padding: 0.375rem 1rem;
+            background: transparent;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }}
+        .clear-file-btn:hover {{
+            background: #e74c3c;
+            color: #fff;
+        }}
+        .image-error {{
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: #2a1a1a;
+            border: 1px solid #e74c3c;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-size: 0.85rem;
+        }}
+        .image-parse-info {{
+            background: #1a2a1a;
+            border: 1px solid #2ecc71;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+        }}
+        .image-parse-confidence {{
+            color: #2ecc71;
+            font-weight: 600;
+        }}
+        .image-parse-notes {{
+            color: #888;
+            margin-top: 0.25rem;
+            font-size: 0.8rem;
         }}
         .clear-file {{
             margin-top: 0.5rem;
@@ -1454,12 +1517,20 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                     <!-- Image Input Panel -->
                     <div class="input-panel" id="image-input-panel">
-                        <div class="image-not-available">
-                            <div class="image-not-available-icon">&#128247;</div>
-                            <div class="image-not-available-title">Image parsing not available yet</div>
-                            <div class="image-not-available-text">We accept images, but we don't parse them yet. Use text input for now.</div>
-                            <a href="#" class="switch-to-text-btn" id="switch-to-text">Switch to Text Input</a>
+                        <div class="file-upload-area" id="file-upload-area">
+                            <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp">
+                            <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
+                            <div class="file-upload-text" id="file-upload-text">
+                                Click or drag to upload bet slip image<br>
+                                <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                            </div>
+                            <div class="file-selected hidden" id="file-selected">
+                                <div class="file-selected-icon">&#9989;</div>
+                                <div class="file-selected-name" id="file-name"></div>
+                                <button type="button" class="clear-file-btn" id="clear-file">Remove</button>
+                            </div>
                         </div>
+                        <div class="image-error hidden" id="image-error"></div>
                     </div>
 
                     <!-- Tier Selector -->
@@ -2216,9 +2287,21 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             const evalResultsPlaceholder = document.getElementById('eval-results-placeholder');
             const evalResultsContent = document.getElementById('eval-results-content');
             const evalErrorPanel = document.getElementById('eval-error-panel');
-            const switchToTextBtn = document.getElementById('switch-to-text');
+
+            // Image upload elements
+            const fileInput = document.getElementById('file-input');
+            const fileUploadArea = document.getElementById('file-upload-area');
+            const fileUploadIcon = document.getElementById('file-upload-icon');
+            const fileUploadText = document.getElementById('file-upload-text');
+            const fileSelected = document.getElementById('file-selected');
+            const fileNameSpan = document.getElementById('file-name');
+            const clearFileBtn = document.getElementById('clear-file');
+            const imageError = document.getElementById('image-error');
 
             let currentInputMode = 'text';
+            let selectedFile = null;
+            const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+            const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
             // Input type tabs (text/image)
             inputTabs.forEach(tab => {{
@@ -2236,25 +2319,106 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 }});
             }});
 
-            // Switch to text button (from image not available panel)
-            if (switchToTextBtn) {{
-                switchToTextBtn.addEventListener('click', function(e) {{
-                    e.preventDefault();
-                    // Switch to text tab
-                    inputTabs.forEach(t => {{
-                        t.classList.remove('active');
-                        if (t.dataset.input === 'text') t.classList.add('active');
-                    }});
-                    inputPanels.forEach(p => p.classList.remove('active'));
-                    document.getElementById('text-input-panel').classList.add('active');
-                    currentInputMode = 'text';
-                    textInput.focus();
-                    updateEvalSubmitState();
-                }});
-            }}
-
             // Text input change
             textInput.addEventListener('input', updateEvalSubmitState);
+
+            // ========== FILE UPLOAD HANDLING ==========
+
+            // Click to upload
+            fileUploadArea.addEventListener('click', function(e) {{
+                if (e.target === clearFileBtn || clearFileBtn.contains(e.target)) return;
+                fileInput.click();
+            }});
+
+            // Drag and drop
+            fileUploadArea.addEventListener('dragover', function(e) {{
+                e.preventDefault();
+                e.stopPropagation();
+                this.classList.add('dragover');
+            }});
+
+            fileUploadArea.addEventListener('dragleave', function(e) {{
+                e.preventDefault();
+                e.stopPropagation();
+                this.classList.remove('dragover');
+            }});
+
+            fileUploadArea.addEventListener('drop', function(e) {{
+                e.preventDefault();
+                e.stopPropagation();
+                this.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {{
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }}
+            }});
+
+            // File input change
+            fileInput.addEventListener('change', function() {{
+                if (this.files.length > 0) {{
+                    handleFileSelect(this.files[0]);
+                }}
+            }});
+
+            // Clear file
+            clearFileBtn.addEventListener('click', function(e) {{
+                e.preventDefault();
+                e.stopPropagation();
+                clearFile();
+            }});
+
+            function handleFileSelect(file) {{
+                hideImageError();
+
+                // Validate type
+                if (!ALLOWED_TYPES.includes(file.type)) {{
+                    showImageError('Invalid file type. Please use PNG, JPG, or WebP.');
+                    return;
+                }}
+
+                // Validate size
+                if (file.size > MAX_FILE_SIZE) {{
+                    showImageError('File too large. Maximum size is 5MB.');
+                    return;
+                }}
+
+                selectedFile = file;
+                fileUploadArea.classList.add('has-file');
+                fileUploadIcon.classList.add('hidden');
+                fileUploadText.classList.add('hidden');
+                fileSelected.classList.remove('hidden');
+                fileNameSpan.textContent = file.name;
+                updateEvalSubmitState();
+            }}
+
+            function clearFile() {{
+                selectedFile = null;
+                fileInput.value = '';
+                fileUploadArea.classList.remove('has-file');
+                fileUploadIcon.classList.remove('hidden');
+                fileUploadText.classList.remove('hidden');
+                fileSelected.classList.add('hidden');
+                hideImageError();
+                updateEvalSubmitState();
+            }}
+
+            function showImageError(message) {{
+                imageError.textContent = message;
+                imageError.classList.remove('hidden');
+            }}
+
+            function hideImageError() {{
+                imageError.classList.add('hidden');
+            }}
+
+            // ========== EVALUATION FUNCTIONS ==========
+
+            function updateEvalSubmitState() {{
+                if (currentInputMode === 'text') {{
+                    evalSubmitBtn.disabled = textInput.value.trim().length < 5;
+                }} else {{
+                    evalSubmitBtn.disabled = !selectedFile;
+                }}
+            }}
 
             function getEvalTier() {{
                 const selected = document.querySelector('input[name="eval-tier"]:checked');
@@ -2268,7 +2432,7 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 document.getElementById('eval-error-text').textContent = message;
             }}
 
-            function showEvalResults(data) {{
+            function showEvalResults(data, imageParse) {{
                 evalResultsPlaceholder.classList.add('hidden');
                 evalErrorPanel.classList.add('hidden');
                 evalResultsContent.classList.remove('hidden');
@@ -2277,6 +2441,18 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 const interpretation = data.interpretation;
                 const fragility = interpretation.fragility;
 
+                // Show image parse info if present
+                let parseInfoHtml = '';
+                if (imageParse) {{
+                    const confidencePct = Math.round((imageParse.confidence || 0) * 100);
+                    parseInfoHtml = '<div class="image-parse-info">';
+                    parseInfoHtml += '<span class="image-parse-confidence">Parsed from image (' + confidencePct + '% confidence)</span>';
+                    if (imageParse.notes && imageParse.notes.length > 0) {{
+                        parseInfoHtml += '<div class="image-parse-notes">' + imageParse.notes.join(' | ') + '</div>';
+                    }}
+                    parseInfoHtml += '</div>';
+                }}
+
                 // Grade display
                 const gradeValue = document.getElementById('eval-grade-value');
                 const gradeBucket = document.getElementById('eval-grade-bucket');
@@ -2284,43 +2460,87 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 gradeBucket.textContent = fragility.bucket;
                 gradeValue.className = 'grade-value ' + fragility.bucket;
 
-                // Decision summary
+                // Decision summary with optional parse info
+                const decisionSummary = document.getElementById('eval-decision-summary');
                 const decisionVerdict = document.getElementById('eval-decision-verdict');
                 const action = evaluation.recommendation.action;
+
+                // Insert parse info before decision summary if present
+                const existingParseInfo = decisionSummary.parentElement.querySelector('.image-parse-info');
+                if (existingParseInfo) existingParseInfo.remove();
+                if (parseInfoHtml) {{
+                    decisionSummary.insertAdjacentHTML('beforebegin', parseInfoHtml);
+                }}
+
                 decisionVerdict.innerHTML = '<span class="action-' + action + '">' +
                     action.toUpperCase() + '</span>: ' + evaluation.recommendation.reason;
             }}
 
-            // Submit evaluation (text only - image not implemented)
+            // Submit evaluation
             evalSubmitBtn.addEventListener('click', async function() {{
                 const tier = getEvalTier();
-                const input = textInput.value.trim();
-
-                if (input.length < 5) {{
-                    showEvalError('Please enter more text to evaluate');
-                    return;
-                }}
 
                 evalSubmitBtn.disabled = true;
                 evalSubmitBtn.textContent = 'Evaluating...';
 
                 try {{
-                    const response = await fetch('/app/evaluate', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ input, tier }})
-                    }});
+                    let response, data;
 
-                    const data = await response.json();
+                    if (currentInputMode === 'text') {{
+                        // Text evaluation
+                        const input = textInput.value.trim();
+                        if (input.length < 5) {{
+                            showEvalError('Please enter more text to evaluate');
+                            return;
+                        }}
 
-                    if (!response.ok) {{
-                        showEvalError(data.detail || 'Evaluation failed');
-                        return;
+                        response = await fetch('/app/evaluate', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ input, tier }})
+                        }});
+
+                        data = await response.json();
+
+                        if (!response.ok) {{
+                            showEvalError(data.detail || 'Evaluation failed');
+                            return;
+                        }}
+
+                        showEvalResults(data, null);
+
+                    }} else {{
+                        // Image evaluation
+                        if (!selectedFile) {{
+                            showEvalError('Please select an image');
+                            return;
+                        }}
+
+                        fileUploadArea.classList.add('uploading');
+
+                        const formData = new FormData();
+                        formData.append('file', selectedFile);
+                        formData.append('tier', tier);
+
+                        response = await fetch('/app/evaluate/image', {{
+                            method: 'POST',
+                            body: formData
+                        }});
+
+                        data = await response.json();
+
+                        fileUploadArea.classList.remove('uploading');
+
+                        if (!response.ok) {{
+                            showEvalError(data.detail || 'Image evaluation failed');
+                            return;
+                        }}
+
+                        showEvalResults(data, data.image_parse);
                     }}
-
-                    showEvalResults(data);
                 }} catch (err) {{
                     showEvalError('Network error: ' + err.message);
+                    if (fileUploadArea) fileUploadArea.classList.remove('uploading');
                 }} finally {{
                     evalSubmitBtn.disabled = false;
                     evalSubmitBtn.textContent = 'Evaluate';
@@ -2693,6 +2913,238 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             content={
                 "request_id": request_id,
                 "error": "Internal error",
+                "detail": str(e),
+                "code": "INTERNAL_ERROR",
+            },
+        )
+
+
+# =============================================================================
+# Image Evaluation API (Sprint 7.2)
+# =============================================================================
+
+
+@router.post("/app/evaluate/image")
+async def evaluate_image(
+    request: Request,
+    file: UploadFile = File(...),
+):
+    """
+    Evaluate a bet slip image using OpenAI Vision API.
+
+    Accepts image upload, extracts bet text, and runs through evaluation pipeline.
+    Returns same response shape as text evaluation plus image_parse metadata.
+
+    Rate limited: shares limit with /app/evaluate.
+    """
+    from app.image_eval import (
+        is_image_eval_enabled,
+        extract_bet_text_from_image,
+        ImageParseResult,
+    )
+    from app.image_eval.config import (
+        is_openai_configured,
+        MAX_IMAGE_SIZE,
+        ALLOWED_IMAGE_TYPES,
+        ALLOWED_EXTENSIONS,
+    )
+
+    request_id = get_request_id(request) or str(uuid.uuid4())[:8]
+    client_ip = get_client_ip(request)
+    start_time = time.perf_counter()
+
+    # Check if image evaluation is enabled
+    if not is_image_eval_enabled():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "request_id": request_id,
+                "error": "Image evaluation is disabled",
+                "code": "FEATURE_DISABLED",
+            },
+        )
+
+    # Check if OpenAI is configured
+    if not is_openai_configured():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "request_id": request_id,
+                "error": "Image evaluation is not configured",
+                "code": "NOT_CONFIGURED",
+            },
+        )
+
+    # Rate limiting
+    limiter = get_rate_limiter()
+    allowed, retry_after = limiter.check(client_ip)
+
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "request_id": request_id,
+                "error": "rate_limited",
+                "detail": f"Too many requests. Try again in {retry_after} seconds.",
+                "retry_after": retry_after,
+            },
+        )
+
+    # Validate file type
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": "Invalid file type",
+                "detail": f"Allowed types: {', '.join(ALLOWED_IMAGE_TYPES)}",
+                "code": "INVALID_FILE_TYPE",
+            },
+        )
+
+    # Validate file extension
+    filename = file.filename or ""
+    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": "Invalid file extension",
+                "detail": f"Allowed extensions: {', '.join(ALLOWED_EXTENSIONS)}",
+                "code": "INVALID_EXTENSION",
+            },
+        )
+
+    try:
+        # Read file content
+        image_bytes = await file.read()
+
+        # Validate file size
+        if len(image_bytes) > MAX_IMAGE_SIZE:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "request_id": request_id,
+                    "error": "File too large",
+                    "detail": f"Maximum size: {MAX_IMAGE_SIZE // (1024 * 1024)}MB",
+                    "code": "FILE_TOO_LARGE",
+                },
+            )
+
+        # Extract bet text from image using OpenAI Vision
+        _logger.info(f"[{request_id}] Extracting bet text from image: {filename}")
+        parse_result = await extract_bet_text_from_image(image_bytes)
+
+        # Check extraction confidence
+        if parse_result.confidence < 0.3:
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "request_id": request_id,
+                    "error": "Could not extract bet information",
+                    "detail": "The image does not appear to contain clear bet information",
+                    "code": "LOW_CONFIDENCE",
+                    "image_parse": parse_result.to_dict(),
+                },
+            )
+
+        if not parse_result.bet_text.strip():
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "request_id": request_id,
+                    "error": "No bet text extracted",
+                    "detail": "Could not identify any bet information in the image",
+                    "code": "NO_BET_TEXT",
+                    "image_parse": parse_result.to_dict(),
+                },
+            )
+
+        _logger.info(
+            f"[{request_id}] Extracted bet text (confidence={parse_result.confidence:.2f}): "
+            f"{parse_result.bet_text[:100]}..."
+        )
+
+        # Get tier from session (default to "good")
+        tier = "good"
+        session_id = request.cookies.get("session_id")
+        if session_id:
+            from app.services.user_service import get_user_service
+            user_svc = get_user_service()
+            user = user_svc.get_user_by_session(session_id)
+            if user and user.tier:
+                tier = user.tier
+
+        # Normalize via Airlock
+        from app.core.airlock import Airlock
+        airlock = Airlock()
+        normalized = airlock.process(parse_result.bet_text, tier=tier)
+
+        # Run through evaluation pipeline
+        from app.services.pipeline import run_pipeline
+        eval_start = time.perf_counter()
+        result = run_pipeline(normalized, tier=tier)
+        eval_latency = (time.perf_counter() - eval_start) * 1000
+
+        total_latency = (time.perf_counter() - start_time) * 1000
+
+        # Log successful evaluation
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier=tier,
+            input_length=len(parse_result.bet_text),
+            status_code=200,
+            latency_ms=total_latency,
+        )
+
+        # Build response with image_parse metadata
+        response = {
+            "request_id": request_id,
+            "success": True,
+            "tier": tier,
+            "input": {
+                "original": parse_result.bet_text,
+                "normalized": normalized.get("normalized", parse_result.bet_text),
+                "source": "image",
+                "filename": filename,
+            },
+            "evaluation": result,
+            "image_parse": {
+                "confidence": parse_result.confidence,
+                "notes": parse_result.notes,
+                "missing": parse_result.missing,
+            },
+            "latency_ms": {
+                "total": round(total_latency, 2),
+                "evaluation": round(eval_latency, 2),
+            },
+        }
+
+        return response
+
+    except Exception as e:
+        _logger.error(
+            f"[{request_id}] Image evaluation error: {e}",
+            exc_info=True,
+        )
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        _log_request(
+            request_id=request_id,
+            client_ip=client_ip,
+            tier="unknown",
+            input_length=0,
+            status_code=500,
+            latency_ms=latency_ms,
+            error_type="INTERNAL_ERROR",
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "Image evaluation failed",
                 "detail": str(e),
                 "code": "INTERNAL_ERROR",
             },

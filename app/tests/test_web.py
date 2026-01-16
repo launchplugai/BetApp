@@ -112,11 +112,13 @@ class TestAppPage:
         assert "tier-selector-label" in response.text
         assert "Preview tier" in response.text
 
-    def test_image_upload_shows_not_available(self, client):
-        """Image upload panel shows 'not available' message."""
+    def test_image_upload_panel_exists(self, client):
+        """Image upload panel exists with upload UI."""
         response = client.get("/app")
-        assert "Image parsing not available yet" in response.text
-        assert "switch-to-text" in response.text
+        # Check for image upload area
+        assert "file-upload-area" in response.text
+        assert "file-input" in response.text
+        assert "image-input-panel" in response.text
 
 
 class TestEvaluateProxy:
@@ -250,3 +252,134 @@ class TestTierEnforcement:
             assert "inductor" in data["evaluation"]
             assert "metrics" in data["evaluation"]
             assert "recommendation" in data["evaluation"]
+
+
+class TestImageEvaluateEndpoint:
+    """Tests for POST /app/evaluate/image endpoint."""
+
+    @pytest.fixture
+    def image_client(self):
+        """Create test client with image evaluation enabled."""
+        os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        os.environ["IMAGE_EVAL_ENABLED"] = "true"
+        # Note: OPENAI_API_KEY is not set intentionally for most tests
+        from app.main import app
+        return TestClient(app)
+
+    @pytest.fixture
+    def image_client_disabled(self):
+        """Create test client with image evaluation disabled."""
+        os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        os.environ["IMAGE_EVAL_ENABLED"] = "false"
+        from app.main import app
+        return TestClient(app)
+
+    def test_image_endpoint_exists(self, image_client):
+        """Image evaluation endpoint exists and accepts POST."""
+        # Without OpenAI key, should return 503 (not configured)
+        # This verifies the endpoint exists and routing works
+        response = image_client.post(
+            "/app/evaluate/image",
+            files={"file": ("test.png", b"fake image data", "image/png")}
+        )
+        # Should return 503 because OPENAI_API_KEY is not configured
+        assert response.status_code == 503
+        data = response.json()
+        assert data["code"] == "NOT_CONFIGURED"
+
+    def test_rejects_invalid_file_type(self, image_client):
+        """Rejects non-image file types."""
+        os.environ["OPENAI_API_KEY"] = "test-key"  # Set temporarily
+        from app.main import app
+        client = TestClient(app)
+        try:
+            response = client.post(
+                "/app/evaluate/image",
+                files={"file": ("test.pdf", b"fake pdf data", "application/pdf")}
+            )
+            assert response.status_code == 400
+            data = response.json()
+            assert data["code"] == "INVALID_FILE_TYPE"
+        finally:
+            del os.environ["OPENAI_API_KEY"]
+
+    def test_rejects_invalid_extension(self, image_client):
+        """Rejects files with invalid extension."""
+        os.environ["OPENAI_API_KEY"] = "test-key"  # Set temporarily
+        from app.main import app
+        client = TestClient(app)
+        try:
+            response = client.post(
+                "/app/evaluate/image",
+                files={"file": ("test.gif", b"fake gif data", "image/gif")}
+            )
+            # Should fail either on content type or extension
+            assert response.status_code in [400, 503]
+        finally:
+            del os.environ["OPENAI_API_KEY"]
+
+    def test_disabled_returns_503(self, image_client_disabled):
+        """Returns 503 when image evaluation is disabled."""
+        response = image_client_disabled.post(
+            "/app/evaluate/image",
+            files={"file": ("test.png", b"fake image data", "image/png")}
+        )
+        assert response.status_code == 503
+        data = response.json()
+        assert data["code"] == "FEATURE_DISABLED"
+
+    def test_missing_file_returns_422(self, image_client):
+        """Returns 422 when file is missing from request."""
+        response = image_client.post("/app/evaluate/image")
+        assert response.status_code == 422
+
+    def test_response_includes_request_id(self, image_client):
+        """All responses include request_id for tracing."""
+        response = image_client.post(
+            "/app/evaluate/image",
+            files={"file": ("test.png", b"fake image data", "image/png")}
+        )
+        data = response.json()
+        assert "request_id" in data
+
+
+class TestImageEvalConfig:
+    """Tests for image evaluation configuration."""
+
+    def test_image_eval_enabled_default(self):
+        """IMAGE_EVAL_ENABLED defaults to true."""
+        # Clear the env var to test default
+        old_val = os.environ.pop("IMAGE_EVAL_ENABLED", None)
+        try:
+            from app.image_eval.config import is_image_eval_enabled
+            # Module may be cached, reimport to get fresh value
+            import importlib
+            import app.image_eval.config as config_mod
+            importlib.reload(config_mod)
+            assert config_mod.is_image_eval_enabled() is True
+        finally:
+            if old_val is not None:
+                os.environ["IMAGE_EVAL_ENABLED"] = old_val
+
+    def test_image_eval_enabled_false(self):
+        """IMAGE_EVAL_ENABLED=false disables feature."""
+        os.environ["IMAGE_EVAL_ENABLED"] = "false"
+        try:
+            import importlib
+            import app.image_eval.config as config_mod
+            importlib.reload(config_mod)
+            assert config_mod.is_image_eval_enabled() is False
+        finally:
+            os.environ["IMAGE_EVAL_ENABLED"] = "true"
+
+    def test_allowed_image_types(self):
+        """ALLOWED_IMAGE_TYPES contains expected values."""
+        from app.image_eval.config import ALLOWED_IMAGE_TYPES
+        assert "image/png" in ALLOWED_IMAGE_TYPES
+        assert "image/jpeg" in ALLOWED_IMAGE_TYPES
+        assert "image/webp" in ALLOWED_IMAGE_TYPES
+
+    def test_max_image_size(self):
+        """MAX_IMAGE_SIZE is 5MB."""
+        from app.image_eval.config import MAX_IMAGE_SIZE
+        assert MAX_IMAGE_SIZE == 5 * 1024 * 1024
