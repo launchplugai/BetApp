@@ -693,6 +693,73 @@ def _get_app_page_html() -> str:
 
         /* Hidden utility */
         .hidden { display: none !important; }
+
+        /* Context Panel Styles (Sprint 3) */
+        .context-panel {
+            border: 1px solid #2a5a2a;
+            background: #0a1a0a;
+        }
+        .context-panel h3 {
+            color: #4a9e4a;
+        }
+        .context-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+        .context-source {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        .context-summary {
+            background: #1a2a1a;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        .context-modifiers {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .context-modifier {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            border-left: 3px solid #666;
+        }
+        .context-modifier.negative {
+            border-left-color: #e74c3c;
+        }
+        .context-modifier.positive {
+            border-left-color: #2ecc71;
+        }
+        .context-modifier-reason {
+            font-size: 0.85rem;
+        }
+        .context-modifier-adjustment {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+        .context-missing {
+            font-size: 0.8rem;
+            color: #f39c12;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: #2a2a1a;
+            border-radius: 4px;
+        }
+        .context-entities {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -830,6 +897,12 @@ def _get_app_page_html() -> str:
                     <div class="insights-panel hidden" id="recommendation-panel">
                         <h3>Recommended Action</h3>
                         <div id="recommendation-content"></div>
+                    </div>
+
+                    <!-- Context Panel (Sprint 3) -->
+                    <div class="why-panel context-panel hidden" id="context-panel">
+                        <h3><span class="icon">&#128200;</span> Player Availability</h3>
+                        <div id="context-content"></div>
                     </div>
                 </div>
 
@@ -1191,6 +1264,75 @@ def _get_app_page_html() -> str:
                     recommendationContent.textContent = explain.recommended_next_step;
                 } else {
                     recommendationPanel.classList.add('hidden');
+                }
+
+                // ============================================================
+                // CONTEXT PANEL (Sprint 3)
+                // ============================================================
+                const contextPanel = document.getElementById('context-panel');
+                const contextContent = document.getElementById('context-content');
+                const context = data.context;
+
+                if (context && context.impact) {
+                    contextPanel.classList.remove('hidden');
+                    let html = '';
+
+                    // Header with source and timestamp
+                    html += '<div class="context-header">';
+                    html += '<span>NBA Player Availability</span>';
+                    html += '<span class="context-source">Source: ' + escapeHtml(context.source) + '</span>';
+                    html += '</div>';
+
+                    // Summary
+                    if (context.impact.summary) {
+                        html += '<div class="context-summary">' + escapeHtml(context.impact.summary) + '</div>';
+                    }
+
+                    // Modifiers
+                    if (context.impact.modifiers && context.impact.modifiers.length > 0) {
+                        html += '<ul class="context-modifiers">';
+                        context.impact.modifiers.forEach(function(mod) {
+                            const modClass = mod.adjustment > 0 ? 'negative' : (mod.adjustment < 0 ? 'positive' : '');
+                            html += '<li class="context-modifier ' + modClass + '">';
+                            html += '<div class="context-modifier-reason">' + escapeHtml(mod.reason) + '</div>';
+                            if (mod.adjustment !== 0) {
+                                const sign = mod.adjustment > 0 ? '+' : '';
+                                html += '<div class="context-modifier-adjustment">Fragility adjustment: ' + sign + mod.adjustment.toFixed(1) + '</div>';
+                            }
+                            if (mod.affected_players && mod.affected_players.length > 0) {
+                                html += '<div class="context-modifier-adjustment">Players: ' + mod.affected_players.join(', ') + '</div>';
+                            }
+                            html += '</li>';
+                        });
+                        html += '</ul>';
+                    }
+
+                    // Missing data warnings
+                    if (context.missing_data && context.missing_data.length > 0) {
+                        html += '<div class="context-missing">';
+                        html += '<strong>Missing data:</strong> ' + context.missing_data.join(', ');
+                        html += '</div>';
+                    }
+
+                    // Entities found
+                    if (context.entities_found) {
+                        const players = context.entities_found.players || [];
+                        const teams = context.entities_found.teams || [];
+                        if (players.length > 0 || teams.length > 0) {
+                            html += '<div class="context-entities">';
+                            if (players.length > 0) {
+                                html += 'Players detected: ' + players.join(', ');
+                            }
+                            if (teams.length > 0) {
+                                html += (players.length > 0 ? ' | ' : '') + 'Teams: ' + teams.join(', ');
+                            }
+                            html += '</div>';
+                        }
+                    }
+
+                    contextContent.innerHTML = html;
+                } else {
+                    contextPanel.classList.add('hidden');
                 }
             }
 

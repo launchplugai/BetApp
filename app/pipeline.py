@@ -10,8 +10,9 @@ All routes MUST go through this facade:
 The pipeline:
 1. Parses text input into BetBlocks
 2. Calls the canonical evaluate_parlay()
-3. Wraps response with plain-English explanations
-4. Applies tier-based filtering
+3. Fetches external context (Sprint 3: NBA availability)
+4. Wraps response with plain-English explanations
+5. Applies tier-based filtering
 
 Routes should NOT:
 - Import core.evaluation directly
@@ -20,7 +21,8 @@ Routes should NOT:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from typing import Optional
 from uuid import uuid4
 
@@ -34,6 +36,12 @@ from core.models.leading_light import (
     ContextModifier,
     ContextModifiers,
 )
+
+# Context ingestion (Sprint 3)
+from context.service import get_context
+from context.apply import apply_context, ContextImpact
+
+_logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -50,6 +58,7 @@ class PipelineResponse:
     - Raw evaluation response from core engine
     - Plain-English interpretation
     - Tier-filtered explain content
+    - Context data (Sprint 3)
     - Metadata for logging
     """
     # Core evaluation result
@@ -61,9 +70,12 @@ class PipelineResponse:
     # Explain content (tier-filtered)
     explain: dict
 
+    # Context impact (Sprint 3 - additive only, does not modify engine)
+    context: Optional[dict] = None
+
     # Metadata
-    leg_count: int
-    tier: str
+    leg_count: int = 0
+    tier: str = "good"
 
 
 # =============================================================================
@@ -244,6 +256,152 @@ def _apply_tier_filtering(tier: Tier, explain: dict) -> dict:
 # =============================================================================
 
 
+def _extract_entities_from_text(text: str) -> tuple[list[str], list[str]]:
+    """
+    Extract player names and team names from bet text.
+
+    Sprint 3 scope: Simple extraction for NBA.
+    Returns (player_names, team_names).
+    """
+    text_lower = text.lower()
+
+    # NBA team abbreviations/names to look for
+    nba_teams = {
+        "lakers": "LAL", "lal": "LAL", "los angeles lakers": "LAL",
+        "celtics": "BOS", "bos": "BOS", "boston": "BOS",
+        "nuggets": "DEN", "den": "DEN", "denver": "DEN",
+        "bucks": "MIL", "mil": "MIL", "milwaukee": "MIL",
+        "warriors": "GSW", "gsw": "GSW", "golden state": "GSW",
+        "suns": "PHX", "phx": "PHX", "phoenix": "PHX",
+        "76ers": "PHI", "phi": "PHI", "sixers": "PHI", "philadelphia": "PHI",
+        "mavericks": "DAL", "dal": "DAL", "dallas": "DAL", "mavs": "DAL",
+        "heat": "MIA", "mia": "MIA", "miami": "MIA",
+        "nets": "BKN", "bkn": "BKN", "brooklyn": "BKN",
+        "knicks": "NYK", "nyk": "NYK", "new york": "NYK",
+        "bulls": "CHI", "chi": "CHI", "chicago": "CHI",
+        "clippers": "LAC", "lac": "LAC",
+        "thunder": "OKC", "okc": "OKC", "oklahoma": "OKC",
+        "timberwolves": "MIN", "min": "MIN", "minnesota": "MIN", "wolves": "MIN",
+        "kings": "SAC", "sac": "SAC", "sacramento": "SAC",
+        "pelicans": "NOP", "nop": "NOP", "new orleans": "NOP",
+        "grizzlies": "MEM", "mem": "MEM", "memphis": "MEM",
+        "cavaliers": "CLE", "cle": "CLE", "cleveland": "CLE", "cavs": "CLE",
+        "hawks": "ATL", "atl": "ATL", "atlanta": "ATL",
+        "raptors": "TOR", "tor": "TOR", "toronto": "TOR",
+        "pacers": "IND", "ind": "IND", "indiana": "IND",
+        "hornets": "CHA", "cha": "CHA", "charlotte": "CHA",
+        "wizards": "WAS", "was": "WAS", "washington": "WAS",
+        "magic": "ORL", "orl": "ORL", "orlando": "ORL",
+        "pistons": "DET", "det": "DET", "detroit": "DET",
+        "jazz": "UTA", "uta": "UTA", "utah": "UTA",
+        "rockets": "HOU", "hou": "HOU", "houston": "HOU",
+        "spurs": "SAS", "sas": "SAS", "san antonio": "SAS",
+        "trail blazers": "POR", "por": "POR", "portland": "POR", "blazers": "POR",
+    }
+
+    # Common NBA player names to look for (from sample data)
+    known_players = [
+        "lebron james", "lebron", "anthony davis", "ad",
+        "jaylen brown", "jayson tatum", "tatum",
+        "nikola jokic", "jokic", "jamal murray",
+        "giannis", "giannis antetokounmpo", "damian lillard", "lillard", "dame",
+        "stephen curry", "curry", "steph", "klay thompson",
+        "kevin durant", "durant", "kd", "devin booker", "booker",
+        "joel embiid", "embiid", "tyrese maxey", "maxey",
+        "luka doncic", "luka", "doncic", "kyrie irving", "kyrie",
+    ]
+
+    found_teams = []
+    for team_key, team_abbr in nba_teams.items():
+        if team_key in text_lower:
+            if team_abbr not in found_teams:
+                found_teams.append(team_abbr)
+
+    found_players = []
+    for player in known_players:
+        if player in text_lower:
+            # Map to full name for context lookup
+            player_map = {
+                "lebron": "LeBron James", "ad": "Anthony Davis",
+                "tatum": "Jayson Tatum", "jokic": "Nikola Jokic",
+                "giannis": "Giannis Antetokounmpo", "lillard": "Damian Lillard",
+                "dame": "Damian Lillard", "curry": "Stephen Curry",
+                "steph": "Stephen Curry", "durant": "Kevin Durant",
+                "kd": "Kevin Durant", "booker": "Devin Booker",
+                "embiid": "Joel Embiid", "maxey": "Tyrese Maxey",
+                "luka": "Luka Doncic", "doncic": "Luka Doncic",
+                "kyrie": "Kyrie Irving",
+            }
+            full_name = player_map.get(player, player.title())
+            if full_name not in found_players:
+                found_players.append(full_name)
+
+    return found_players, found_teams
+
+
+def _fetch_context_for_bet(text: str) -> Optional[dict]:
+    """
+    Fetch context data relevant to the bet.
+
+    Sprint 3 scope: NBA availability only.
+    Returns context dict or None if not applicable.
+    """
+    try:
+        # Extract entities from bet text
+        player_names, team_names = _extract_entities_from_text(text)
+
+        # Check if this looks like an NBA bet
+        text_lower = text.lower()
+        is_nba = (
+            "nba" in text_lower
+            or len(player_names) > 0
+            or len(team_names) > 0
+            or any(word in text_lower for word in ["basketball", "points", "rebounds", "assists"])
+        )
+
+        if not is_nba:
+            return None
+
+        # Fetch NBA context
+        snapshot = get_context("NBA")
+
+        # Apply context to get impact
+        impact = apply_context(
+            snapshot=snapshot,
+            player_names=player_names if player_names else None,
+            team_names=team_names if team_names else None,
+        )
+
+        # Convert to dict for response
+        return {
+            "sport": snapshot.sport,
+            "source": snapshot.source,
+            "as_of": snapshot.as_of.isoformat(),
+            "impact": {
+                "adjustment": impact.total_adjustment,
+                "summary": impact.summary,
+                "modifiers": [
+                    {
+                        "adjustment": m.adjustment,
+                        "reason": m.reason,
+                        "affected_players": list(m.affected_players),
+                    }
+                    for m in impact.modifiers
+                ],
+            },
+            "missing_data": list(impact.missing_data),
+            "player_count": snapshot.player_count,
+            "entities_found": {
+                "players": player_names,
+                "teams": team_names,
+            },
+        }
+
+    except Exception as e:
+        _logger.warning(f"Failed to fetch context: {e}")
+        return None
+
+
 def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     """
     Run the canonical evaluation pipeline.
@@ -254,14 +412,15 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         normalized: Validated input from Airlock
 
     Returns:
-        PipelineResponse with evaluation, interpretation, and explain
+        PipelineResponse with evaluation, interpretation, context, and explain
 
     Flow:
         1. Parse text → BetBlocks
         2. Call evaluate_parlay() (the canonical core function)
-        3. Generate plain-English interpretation
-        4. Apply tier filtering to explain
-        5. Return unified response
+        3. Fetch external context (Sprint 3)
+        4. Generate plain-English interpretation
+        5. Apply tier filtering to explain
+        6. Return unified response
     """
     # Step 1: Parse text into BetBlocks
     blocks = _parse_bet_text(normalized.input_text)
@@ -276,25 +435,29 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         max_suggestions=0,
     )
 
-    # Step 3: Generate plain-English interpretation
+    # Step 3: Fetch external context (Sprint 3 - additive only)
+    context_data = _fetch_context_for_bet(normalized.input_text)
+
+    # Step 4: Generate plain-English interpretation
     interpretation = {
         "fragility": _interpret_fragility(evaluation.metrics.final_fragility),
     }
 
-    # Step 4: Build full explain wrapper
+    # Step 5: Build full explain wrapper
     explain_full = {
         "summary": _generate_summary(evaluation, leg_count),
         "alerts": _generate_alerts(evaluation),
         "recommended_next_step": evaluation.recommendation.reason,
     }
 
-    # Step 5: Apply tier filtering
+    # Step 6: Apply tier filtering
     explain_filtered = _apply_tier_filtering(normalized.tier, explain_full)
 
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
         explain=explain_filtered,
+        context=context_data,
         leg_count=leg_count,
         tier=normalized.tier.value,
     )
