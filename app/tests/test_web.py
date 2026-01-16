@@ -289,34 +289,48 @@ class TestImageEvaluateEndpoint:
 
     def test_rejects_invalid_file_type(self, image_client):
         """Rejects non-image file types."""
+        from unittest.mock import patch, MagicMock
         os.environ["OPENAI_API_KEY"] = "test-key"  # Set temporarily
-        from app.main import app
-        client = TestClient(app)
-        try:
-            response = client.post(
-                "/app/evaluate/image",
-                files={"file": ("test.pdf", b"fake pdf data", "application/pdf")}
-            )
-            assert response.status_code == 400
-            data = response.json()
-            assert data["code"] == "INVALID_FILE_TYPE"
-        finally:
-            del os.environ["OPENAI_API_KEY"]
+
+        # Mock rate limiter to always allow
+        mock_limiter = MagicMock()
+        mock_limiter.check.return_value = (True, 0)
+
+        with patch("app.routers.web.get_rate_limiter", return_value=mock_limiter):
+            from app.main import app
+            client = TestClient(app)
+            try:
+                response = client.post(
+                    "/app/evaluate/image",
+                    files={"file": ("test.pdf", b"fake pdf data", "application/pdf")}
+                )
+                assert response.status_code == 400
+                data = response.json()
+                assert data["code"] == "INVALID_FILE_TYPE"
+            finally:
+                del os.environ["OPENAI_API_KEY"]
 
     def test_rejects_invalid_extension(self, image_client):
         """Rejects files with invalid extension."""
+        from unittest.mock import patch, MagicMock
         os.environ["OPENAI_API_KEY"] = "test-key"  # Set temporarily
-        from app.main import app
-        client = TestClient(app)
-        try:
-            response = client.post(
-                "/app/evaluate/image",
-                files={"file": ("test.gif", b"fake gif data", "image/gif")}
-            )
-            # Should fail either on content type or extension
-            assert response.status_code in [400, 503]
-        finally:
-            del os.environ["OPENAI_API_KEY"]
+
+        # Mock rate limiter to always allow
+        mock_limiter = MagicMock()
+        mock_limiter.check.return_value = (True, 0)
+
+        with patch("app.routers.web.get_rate_limiter", return_value=mock_limiter):
+            from app.main import app
+            client = TestClient(app)
+            try:
+                response = client.post(
+                    "/app/evaluate/image",
+                    files={"file": ("test.gif", b"fake gif data", "image/gif")}
+                )
+                # Should fail either on content type or extension
+                assert response.status_code in [400, 503]
+            finally:
+                del os.environ["OPENAI_API_KEY"]
 
     def test_disabled_returns_503(self, image_client_disabled):
         """Returns 503 when image evaluation is disabled."""
@@ -383,3 +397,193 @@ class TestImageEvalConfig:
         """MAX_IMAGE_SIZE is 5MB."""
         from app.image_eval.config import MAX_IMAGE_SIZE
         assert MAX_IMAGE_SIZE == 5 * 1024 * 1024
+
+
+class TestImageEvaluateMocked:
+    """Tests for image evaluation with mocked OpenAI response."""
+
+    def test_successful_image_evaluation_mocked(self):
+        """Test successful image evaluation with mocked OpenAI Vision API."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from app.image_eval.extractor import ImageParseResult
+
+        # Set up environment
+        os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        os.environ["IMAGE_EVAL_ENABLED"] = "true"
+        os.environ["OPENAI_API_KEY"] = "test-key-mocked"
+
+        # Create mock parse result
+        mock_parse_result = ImageParseResult(
+            bet_text="Lakers -5.5 (-110) + Celtics ML (-150)",
+            confidence=0.92,
+            notes=["2-leg parlay", "NBA basketball"],
+            missing=[],
+        )
+
+        # Mock rate limiter to always allow
+        mock_limiter = MagicMock()
+        mock_limiter.check.return_value = (True, 0)
+
+        # Mock the extraction function (imported inside the endpoint)
+        with patch(
+            "app.image_eval.extract_bet_text_from_image",
+            new_callable=AsyncMock,
+            return_value=mock_parse_result,
+        ), patch(
+            "app.routers.web.get_rate_limiter",
+            return_value=mock_limiter,
+        ):
+            from app.main import app
+            from fastapi.testclient import TestClient
+
+            client = TestClient(app)
+
+            # Create a minimal valid PNG (1x1 transparent pixel)
+            png_bytes = (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+                b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+                b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+                b"\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+            )
+
+            response = client.post(
+                "/app/evaluate/image",
+                files={"file": ("betslip.png", png_bytes, "image/png")},
+            )
+
+            # Should succeed with evaluation results
+            assert response.status_code == 200
+            data = response.json()
+
+            # Verify response structure
+            assert data["success"] is True
+            assert "request_id" in data
+            assert "evaluation" in data
+            assert "image_parse" in data
+            assert "interpretation" in data
+            assert "explain" in data
+
+            # Verify image_parse metadata
+            assert data["image_parse"]["confidence"] == 0.92
+            assert "2-leg parlay" in data["image_parse"]["notes"]
+
+            # Verify input shows source as image
+            assert data["input"]["source"] == "image"
+            assert data["input"]["filename"] == "betslip.png"
+
+            # Verify evaluation structure matches text endpoint
+            assert "parlay_id" in data["evaluation"]
+            assert "inductor" in data["evaluation"]
+            assert "metrics" in data["evaluation"]
+            assert "recommendation" in data["evaluation"]
+
+        # Cleanup
+        del os.environ["OPENAI_API_KEY"]
+
+    def test_low_confidence_extraction_proceeds(self):
+        """Test that low confidence (but above 0.3) extraction still proceeds."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from app.image_eval.extractor import ImageParseResult
+
+        os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        os.environ["IMAGE_EVAL_ENABLED"] = "true"
+        os.environ["OPENAI_API_KEY"] = "test-key-mocked"
+
+        # Create mock with low confidence but valid bet text
+        mock_parse_result = ImageParseResult(
+            bet_text="Warriors +3.5",
+            confidence=0.45,  # Low but above 0.3 threshold
+            notes=["Partial visibility"],
+            missing=["odds"],
+        )
+
+        # Mock rate limiter to always allow
+        mock_limiter = MagicMock()
+        mock_limiter.check.return_value = (True, 0)
+
+        with patch(
+            "app.image_eval.extract_bet_text_from_image",
+            new_callable=AsyncMock,
+            return_value=mock_parse_result,
+        ), patch(
+            "app.routers.web.get_rate_limiter",
+            return_value=mock_limiter,
+        ):
+            from app.main import app
+            from fastapi.testclient import TestClient
+
+            client = TestClient(app)
+
+            png_bytes = (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+                b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+                b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+                b"\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+            )
+
+            response = client.post(
+                "/app/evaluate/image",
+                files={"file": ("betslip.png", png_bytes, "image/png")},
+            )
+
+            # Should still succeed
+            assert response.status_code == 200
+            data = response.json()
+            assert data["image_parse"]["confidence"] == 0.45
+            assert "odds" in data["image_parse"]["missing"]
+
+        del os.environ["OPENAI_API_KEY"]
+
+    def test_very_low_confidence_returns_422(self):
+        """Test that very low confidence (<0.3) returns 422 error."""
+        from unittest.mock import patch, AsyncMock, MagicMock
+        from app.image_eval.extractor import ImageParseResult
+
+        os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        os.environ["IMAGE_EVAL_ENABLED"] = "true"
+        os.environ["OPENAI_API_KEY"] = "test-key-mocked"
+
+        # Create mock with very low confidence
+        mock_parse_result = ImageParseResult(
+            bet_text="unclear",
+            confidence=0.15,  # Below 0.3 threshold
+            notes=["Image too blurry"],
+            missing=["all bet details"],
+        )
+
+        # Mock rate limiter to always allow
+        mock_limiter = MagicMock()
+        mock_limiter.check.return_value = (True, 0)
+
+        with patch(
+            "app.image_eval.extract_bet_text_from_image",
+            new_callable=AsyncMock,
+            return_value=mock_parse_result,
+        ), patch(
+            "app.routers.web.get_rate_limiter",
+            return_value=mock_limiter,
+        ):
+            from app.main import app
+            from fastapi.testclient import TestClient
+
+            client = TestClient(app)
+
+            png_bytes = (
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+                b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+                b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+                b"\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+            )
+
+            response = client.post(
+                "/app/evaluate/image",
+                files={"file": ("blurry.png", png_bytes, "image/png")},
+            )
+
+            # Should return 422 for low confidence
+            assert response.status_code == 422
+            data = response.json()
+            assert data["code"] == "LOW_CONFIDENCE"
+            assert "image_parse" in data
+
+        del os.environ["OPENAI_API_KEY"]

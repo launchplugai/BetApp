@@ -3071,21 +3071,22 @@ async def evaluate_image(
         tier = "good"
         session_id = request.cookies.get("session_id")
         if session_id:
-            from app.services.user_service import get_user_service
-            user_svc = get_user_service()
-            user = user_svc.get_user_by_session(session_id)
-            if user and user.tier:
-                tier = user.tier
+            from auth.middleware import get_session_id
+            from auth.service import get_current_user as get_user_from_session
+            current_user = get_user_from_session(session_id)
+            if current_user and hasattr(current_user, 'tier') and current_user.tier:
+                tier = current_user.tier
 
-        # Normalize via Airlock
-        from app.core.airlock import Airlock
-        airlock = Airlock()
-        normalized = airlock.process(parse_result.bet_text, tier=tier)
+        # Normalize via Airlock (same as text endpoint)
+        normalized = airlock_ingest(
+            input_text=parse_result.bet_text,
+            tier=tier,
+        )
 
-        # Run through evaluation pipeline
-        from app.services.pipeline import run_pipeline
+        # Run through evaluation pipeline (same as text endpoint)
+        from app.pipeline import run_evaluation
         eval_start = time.perf_counter()
-        result = run_pipeline(normalized, tier=tier)
+        result = run_evaluation(normalized)
         eval_latency = (time.perf_counter() - eval_start) * 1000
 
         total_latency = (time.perf_counter() - start_time) * 1000
@@ -3094,24 +3095,53 @@ async def evaluate_image(
         _log_request(
             request_id=request_id,
             client_ip=client_ip,
-            tier=tier,
+            tier=result.tier,
             input_length=len(parse_result.bet_text),
             status_code=200,
             latency_ms=total_latency,
         )
 
-        # Build response with image_parse metadata
+        # Build response matching text endpoint shape + image_parse
+        eval_response = result.evaluation
         response = {
             "request_id": request_id,
             "success": True,
-            "tier": tier,
             "input": {
-                "original": parse_result.bet_text,
-                "normalized": normalized.get("normalized", parse_result.bet_text),
+                "bet_text": normalized.input_text,
+                "tier": result.tier,
                 "source": "image",
                 "filename": filename,
             },
-            "evaluation": result,
+            "evaluation": {
+                "parlay_id": str(eval_response.parlay_id),
+                "inductor": {
+                    "level": eval_response.inductor.level.value,
+                    "explanation": eval_response.inductor.explanation,
+                },
+                "metrics": {
+                    "raw_fragility": eval_response.metrics.raw_fragility,
+                    "final_fragility": eval_response.metrics.final_fragility,
+                    "leg_penalty": eval_response.metrics.leg_penalty,
+                    "correlation_penalty": eval_response.metrics.correlation_penalty,
+                    "correlation_multiplier": eval_response.metrics.correlation_multiplier,
+                },
+                "correlations": [
+                    {
+                        "block_a": str(c.block_a),
+                        "block_b": str(c.block_b),
+                        "type": c.type,
+                        "penalty": c.penalty,
+                    }
+                    for c in eval_response.correlations
+                ],
+                "recommendation": {
+                    "action": eval_response.recommendation.action.value,
+                    "reason": eval_response.recommendation.reason,
+                },
+            },
+            "interpretation": result.interpretation,
+            "explain": result.explain,
+            "context": result.context,
             "image_parse": {
                 "confidence": parse_result.confidence,
                 "notes": parse_result.notes,
