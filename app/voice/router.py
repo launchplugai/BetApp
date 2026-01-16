@@ -288,3 +288,108 @@ async def voice_status():
         "voice": get_tts_voice() if enabled else None,
         "service": "voice-tts",
     }
+
+# =============================================================================
+# Narration Text Endpoint
+# =============================================================================
+
+
+@router.get(
+    "/leading-light/demo/{case_name}/narration-text",
+    responses={
+        200: {
+            "description": "Narration text with plain-English explanation and glossary",
+            "content": {"application/json": {}},
+        },
+        404: {"description": "Demo case not found"},
+    },
+    summary="Get demo case narration text",
+    description="Get the narration script, plain-English explanation, and glossary for a demo case.",
+)
+async def get_demo_narration_text(case_name: str):
+    """
+    Get narration text and educational content for a demo case.
+
+    Returns the exact text used for audio narration plus beginner-friendly
+    explanations and glossary terms.
+    """
+    from app.voice.narration import get_demo_case_data
+
+    data = get_demo_case_data(case_name)
+    if data is None:
+        available = list_available_narrations()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "Demo case not found",
+                "detail": f"No narration available for case '{case_name}'. Available: {', '.join(available)}",
+                "code": "NOT_FOUND",
+            },
+        )
+
+    return {
+        "case_name": case_name.lower(),
+        "title": f"{case_name.capitalize()} Demo",
+        "narration": data["narration"],
+        "plain_english": data["plain_english"],
+        "glossary": data["glossary"],
+        "context": data["context"],
+        "progression": data["progression"],
+    }
+
+# =============================================================================
+# Demo Bundle Endpoint (Onboarding Convenience)
+# =============================================================================
+
+
+@router.get(
+    "/demo/onboarding-bundle",
+    responses={
+        200: {
+            "description": "Complete demo bundle with all cases and progression data",
+            "content": {"application/json": {}},
+        },
+        404: {"description": "Demo case not found"},
+    },
+    summary="Get demo bundle for onboarding",
+    description="Returns a complete demo bundle including progression ladder and selected case data. Defaults to 'stable' if no case specified.",
+)
+async def get_demo_bundle(case_name: Optional[str] = "stable"):
+    """
+    Get complete demo bundle for onboarding.
+
+    Returns progression ladder, available cases, and full data for the selected case.
+    Defaults to 'stable' if no case_name provided.
+    """
+    from app.voice.narration import get_demo_case_data, DEMO_PROGRESS_LADDER
+
+    # Normalize case name
+    selected_case = case_name.lower() if case_name else "stable"
+    available = list_available_narrations()
+
+    # Get case data
+    case_data = get_demo_case_data(selected_case)
+    if case_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "Demo case not found",
+                "detail": f"No demo data available for case '{selected_case}'. Available: {', '.join(available)}",
+                "code": "NOT_FOUND",
+                "available_cases": available,
+            },
+        )
+
+    return {
+        "default_case": "stable",
+        "available_cases": available,
+        "progression": DEMO_PROGRESS_LADDER,
+        "selected": {
+            "case_name": selected_case,
+            "title": f"{selected_case.capitalize()} Demo",
+            "narration": case_data["narration"],
+            "plain_english": case_data["plain_english"],
+            "glossary": case_data["glossary"],
+            "context": case_data["context"],
+        },
+    }

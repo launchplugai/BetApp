@@ -7,11 +7,16 @@ Feature-flagged via LEADING_LIGHT_ENABLED environment variable.
 """
 from __future__ import annotations
 
+import base64
 import os
+import time
+from collections import defaultdict
 from typing import List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status
+import httpx
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.leading_light import (
     BetBlockSchema,
@@ -67,6 +72,50 @@ router = APIRouter(
     prefix="/leading-light",
     tags=["Leading Light"],
 )
+
+
+# =============================================================================
+# Image Upload Guardrails
+# =============================================================================
+
+# Max file size: 5MB
+MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
+# Rate limiting: in-memory sliding window
+# Format: {ip_address: [(timestamp1, timestamp2, ...)]}
+_image_upload_requests: dict[str, list[float]] = defaultdict(list)
+IMAGE_RATE_LIMIT = 10  # requests
+IMAGE_RATE_WINDOW = 600  # seconds (10 minutes)
+
+
+def _check_rate_limit(client_ip: str) -> None:
+    """
+    Check if client IP has exceeded rate limit for image uploads.
+
+    Raises:
+        HTTPException: If rate limit exceeded
+    """
+    now = time.time()
+
+    # Get request timestamps for this IP
+    timestamps = _image_upload_requests[client_ip]
+
+    # Remove timestamps outside the window
+    timestamps[:] = [ts for ts in timestamps if now - ts < IMAGE_RATE_WINDOW]
+
+    # Check if limit exceeded
+    if len(timestamps) >= IMAGE_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": "Rate limited",
+                "detail": "Too many image uploads. Try again later.",
+                "code": "RATE_LIMITED",
+            },
+        )
+
+    # Add current request
+    timestamps.append(now)
 
 
 # =============================================================================
@@ -526,6 +575,561 @@ async def run_demo(case_name: str, plan: Optional[str] = None) -> EvaluationResp
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error": "Demo execution failed",
+                "detail": str(e),
+                "code": "INTERNAL_ERROR",
+            },
+        )
+
+
+
+
+# =============================================================================
+# Simple Text-Based Evaluate Endpoint (Entry Point)
+# =============================================================================
+
+
+class TextEvaluateRequest(BaseModel):
+    """Request schema for text-based bet evaluation."""
+    bet_text: str = Field(..., min_length=1, description="Bet description as plain text")
+    plan: Optional[str] = Field(default="free", description="Subscription plan tier")
+    session_id: Optional[str] = Field(default=None, description="Optional session identifier")
+
+    @field_validator("bet_text")
+    @classmethod
+    def validate_bet_text(cls, v: str) -> str:
+        """Validate bet_text is not empty or whitespace."""
+        if not v or not v.strip():
+            raise ValueError("bet_text cannot be empty or whitespace")
+        return v.strip()
+
+
+def _parse_bet_text(bet_text: str) -> list[BetBlock]:
+    """
+    Parse bet_text into BetBlock objects.
+
+    Minimal parser that creates simple bet blocks from text.
+    Does NOT implement scoring logic - just format conversion.
+    """
+    # Count legs based on delimiters
+    leg_count = 1
+    for delimiter in ['+', ',', 'and ', ' parlay']:
+        if delimiter in bet_text.lower():
+            leg_count = bet_text.lower().count(delimiter) + 1
+            break
+
+    # Cap at reasonable limit
+    leg_count = min(leg_count, 5)
+
+    # Detect bet types from text
+    text_lower = bet_text.lower()
+    is_prop = any(word in text_lower for word in ['yards', 'points', 'rebounds', 'assists', 'touchdowns', 'td'])
+    is_total = any(word in text_lower for word in ['over', 'under', 'o/', 'u/'])
+    is_spread = any(word in text_lower for word in ['-', '+']) and not is_total
+
+    # Determine bet type
+    if is_prop:
+        bet_type = BetType.PLAYER_PROP
+        base_fragility = 0.20  # Props are inherently more fragile
+    elif is_total:
+        bet_type = BetType.TOTAL
+        base_fragility = 0.12
+    elif is_spread:
+        bet_type = BetType.SPREAD
+        base_fragility = 0.10
+    else:
+        bet_type = BetType.ML
+        base_fragility = 0.08
+
+    # Create bet blocks (one per leg)
+    blocks = []
+    default_mod = ContextModifier(applied=False, delta=0.0, reason=None)
+    modifiers = ContextModifiers(
+        weather=default_mod,
+        injury=default_mod,
+        trade=default_mod,
+        role=default_mod,
+    )
+
+    for i in range(leg_count):
+        block = BetBlock(
+            block_id=uuid4(),
+            sport="generic",
+            game_id=f"game_{i+1}",
+            bet_type=bet_type,
+            selection=f"Leg {i+1}",
+            base_fragility=base_fragility,
+            context_modifiers=modifiers,
+            correlation_tags=(),
+            effective_fragility=base_fragility,
+            player_id=None,
+            team_id=None,
+        )
+        blocks.append(block)
+
+    return blocks
+
+
+def _generate_summary(response: EvaluationResponse, leg_count: int) -> list[str]:
+    """Generate plain-English summary bullets from evaluation response."""
+    summary = [
+        f"Detected {leg_count} leg(s) in this bet",
+        f"Risk level: {response.inductor.level.value.upper()}",
+        f"Final fragility: {response.metrics.final_fragility:.2f}",
+    ]
+
+    if response.metrics.correlation_penalty > 0:
+        summary.append(f"Correlation penalty applied: +{response.metrics.correlation_penalty:.2f}")
+
+    if len(response.correlations) > 0:
+        summary.append(f"Found {len(response.correlations)} correlation(s) between legs")
+
+    return summary
+
+
+def _generate_alerts(response: EvaluationResponse) -> list[str]:
+    """Generate alerts from evaluation response."""
+    alerts = []
+
+    # Check for DNA violations
+    if response.dna.violations:
+        for violation in response.dna.violations:
+            alerts.append(violation)
+
+    # Check for high correlation
+    if response.metrics.correlation_multiplier >= 1.5:
+        alerts.append("High correlation detected between selections")
+
+    # Check for critical risk
+    if response.inductor.level.value == "critical":
+        alerts.append("Critical risk level - structure exceeds safe thresholds")
+
+    return alerts
+
+
+def _interpret_fragility(final_fragility: float) -> dict:
+    """
+    Generate user-friendly interpretation of fragility score.
+
+    Maps 0-100 scale to buckets with plain-English meaning and actionable advice.
+    Does NOT modify engine metrics - interpretation layer only.
+    """
+    # Clamp for display (engine can produce values outside 0-100)
+    display_value = max(0.0, min(100.0, final_fragility))
+
+    # Determine bucket
+    if final_fragility <= 15:
+        bucket = "low"
+        meaning = "Few dependencies; most paths lead to success."
+        what_to_do = "Structure is solid; proceed with confidence."
+    elif final_fragility <= 35:
+        bucket = "medium"
+        meaning = "Moderate complexity; several things must align."
+        what_to_do = "Review each leg independently before committing."
+    elif final_fragility <= 60:
+        bucket = "high"
+        meaning = "Many things must go right; one miss breaks the ticket."
+        what_to_do = "Reduce legs or remove correlated/prop legs to lower failure points."
+    else:  # > 60
+        bucket = "critical"
+        meaning = "Extreme fragility; compounding failure paths."
+        what_to_do = "Simplify significantly or avoid this structure entirely."
+
+    return {
+        "scale": "0-100",
+        "value": final_fragility,
+        "display_value": display_value,
+        "bucket": bucket,
+        "meaning": meaning,
+        "what_to_do": what_to_do,
+    }
+
+
+def _apply_tier_to_explain_wrapper(plan: str, explain: dict) -> dict:
+    """
+    Apply tier filtering to explain wrapper based on plan.
+
+    Tier rules:
+    - FREE/GOOD: Empty explain (interpretation only in separate field)
+    - BETTER: summary only
+    - BEST: summary + alerts + recommended_next_step
+
+    Args:
+        plan: Plan tier string (free/good/better/best)
+        explain: Original explain dict with summary/alerts/recommended_next_step
+
+    Returns:
+        Filtered explain dict
+    """
+    from app.tiering import parse_plan, Plan
+
+    parsed_plan = parse_plan(plan)
+
+    # FREE and GOOD: return empty explain (interpretation is in separate field)
+    if parsed_plan == Plan.GOOD:
+        return {}
+
+    # BETTER: summary only
+    elif parsed_plan == Plan.BETTER:
+        filtered = {}
+        if "summary" in explain:
+            filtered["summary"] = explain["summary"]
+        return filtered
+
+    # BEST: all fields
+    else:  # Plan.BEST
+        return explain
+
+
+@router.post(
+    "/evaluate/text",
+    responses={
+        200: {"description": "Evaluation with plain-English explanation"},
+        400: {"description": "Invalid request"},
+        503: {"description": "Service disabled"},
+    },
+    summary="Evaluate bet from text (simple entry point)",
+    description="Accept a bet as plain text and return evaluation with plain-English explanation.",
+)
+async def evaluate_from_text(request: TextEvaluateRequest):
+    """
+    Evaluate a bet from plain text using the canonical evaluation engine.
+
+    Parses bet_text into BetBlock(s), calls evaluate_parlay, and wraps
+    the response with plain-English explanations.
+    """
+    # Check feature flag
+    if not is_leading_light_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Leading Light disabled",
+                "detail": "The Leading Light feature is currently disabled. Set LEADING_LIGHT_ENABLED=true to enable.",
+                "code": "SERVICE_DISABLED",
+            },
+        )
+
+    try:
+        # Parse bet_text into BetBlock(s)
+        blocks = _parse_bet_text(request.bet_text)
+
+        # Call the canonical evaluation engine
+        response = evaluate_parlay(
+            blocks=blocks,
+            dna_profile=None,
+            bankroll=None,
+            candidates=None,
+            max_suggestions=0,
+        )
+
+        # Build plain-English explain wrapper
+        summary = _generate_summary(response, len(blocks))
+        alerts = _generate_alerts(response)
+        recommended_step = response.recommendation.reason
+
+        # Build fragility interpretation
+        fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
+
+        # Build explain wrapper (before tier filtering)
+        explain_full = {
+            "summary": summary,
+            "alerts": alerts,
+            "recommended_next_step": recommended_step,
+        }
+
+        # Apply tier filtering to explain wrapper
+        explain_filtered = _apply_tier_to_explain_wrapper(request.plan, explain_full)
+
+        # Build response
+        return {
+            "input": {
+                "bet_text": request.bet_text,
+                "plan": request.plan,
+                "session_id": request.session_id,
+            },
+            "evaluation": {
+                "parlay_id": str(response.parlay_id),
+                "inductor": {
+                    "level": response.inductor.level.value,
+                    "explanation": response.inductor.explanation,
+                },
+                "metrics": {
+                    "raw_fragility": response.metrics.raw_fragility,
+                    "final_fragility": response.metrics.final_fragility,
+                    "leg_penalty": response.metrics.leg_penalty,
+                    "correlation_penalty": response.metrics.correlation_penalty,
+                    "correlation_multiplier": response.metrics.correlation_multiplier,
+                },
+                "correlations": [
+                    {
+                        "block_a": str(c.block_a),
+                        "block_b": str(c.block_b),
+                        "type": c.type,
+                        "penalty": c.penalty,
+                    }
+                    for c in response.correlations
+                ],
+                "recommendation": {
+                    "action": response.recommendation.action.value,
+                    "reason": response.recommendation.reason,
+                },
+            },
+            "interpretation": {
+                "fragility": fragility_interpretation,
+            },
+            "explain": explain_filtered,
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Invalid bet text",
+                "detail": str(e),
+                "code": "PARSE_ERROR",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Internal error",
+                "detail": str(e),
+                "code": "INTERNAL_ERROR",
+            },
+        )
+
+
+# =============================================================================
+# Image Vision Parsing Helper
+# =============================================================================
+
+
+async def _parse_bet_slip_image(image_bytes: bytes) -> str:
+    """Parse bet slip image to extract bet text using OpenAI Vision API."""
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Image parsing not configured",
+                "detail": "OPENAI_API_KEY environment variable is not set",
+                "code": "IMAGE_PARSE_NOT_CONFIGURED",
+            },
+        )
+
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract the bet information from this betting slip image. "
+                            "Return ONLY the bet legs in plain text format, one per line. "
+                            "Format each leg as: Team/Player + Bet Type + Line. "
+                            "If this is not a betting slip, respond with: NOT_A_BET_SLIP"
+                        ),
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_base64}",
+                        },
+                    },
+                ],
+            }
+        ],
+        "max_tokens": 300,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+        )
+
+    if response.status_code != 200:
+        error_detail = response.text
+        try:
+            error_json = response.json()
+            error_detail = error_json.get("error", {}).get("message", response.text)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Vision API error",
+                "detail": error_detail,
+                "code": "VISION_API_ERROR",
+            },
+        )
+
+    try:
+        result = response.json()
+        extracted_text = result["choices"][0]["message"]["content"].strip()
+
+        if "NOT_A_BET_SLIP" in extracted_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "Not a bet slip",
+                    "detail": "The uploaded image does not appear to be a betting slip",
+                    "code": "NOT_A_BET_SLIP",
+                },
+            )
+
+        return extracted_text
+
+    except (KeyError, IndexError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Failed to parse vision response",
+                "detail": str(e),
+                "code": "VISION_PARSE_ERROR",
+            },
+        )
+
+
+@router.post("/evaluate/image")
+async def evaluate_from_image(
+    request: Request,
+    image: UploadFile = File(...),
+    plan: str = Form("free"),
+    session_id: Optional[str] = Form(None),
+):
+    """Evaluate bet slip from uploaded image."""
+    if not is_leading_light_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "enabled": False,
+                "message": "Leading Light feature is currently disabled",
+                "code": "FEATURE_DISABLED",
+            },
+        )
+
+    # Guardrail 1: Check rate limit
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
+    # Guardrail 2: Validate content type
+    if image.content_type and not image.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Invalid file type",
+                "detail": "Only images are supported",
+                "code": "INVALID_FILE_TYPE",
+            },
+        )
+
+    try:
+        # Read image bytes
+        image_bytes = await image.read()
+
+        # Guardrail 3: Check file size
+        if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail={
+                    "error": "File too large",
+                    "detail": f"Maximum file size is {MAX_IMAGE_SIZE_BYTES // (1024 * 1024)}MB",
+                    "code": "FILE_TOO_LARGE",
+                },
+            )
+        bet_text = await _parse_bet_slip_image(image_bytes)
+        blocks = _parse_bet_text(bet_text)
+
+        response = evaluate_parlay(
+            blocks=blocks,
+            dna_profile=None,
+            bankroll=None,
+            candidates=None,
+            max_suggestions=0,
+        )
+
+        summary = _generate_summary(response, len(blocks))
+        alerts = _generate_alerts(response)
+        recommended_step = response.recommendation.reason
+        fragility_interpretation = _interpret_fragility(response.metrics.final_fragility)
+
+        # Build explain wrapper (before tier filtering)
+        explain_full = {
+            "summary": summary,
+            "alerts": alerts,
+            "recommended_next_step": recommended_step,
+        }
+
+        # Apply tier filtering to explain wrapper
+        explain_filtered = _apply_tier_to_explain_wrapper(plan, explain_full)
+
+        return {
+            "input": {
+                "image_filename": image.filename,
+                "extracted_bet_text": bet_text,
+                "plan": plan,
+                "session_id": session_id,
+            },
+            "evaluation": {
+                "parlay_id": str(response.parlay_id),
+                "inductor": {
+                    "level": response.inductor.level.value,
+                    "explanation": response.inductor.explanation,
+                },
+                "metrics": {
+                    "raw_fragility": response.metrics.raw_fragility,
+                    "final_fragility": response.metrics.final_fragility,
+                    "leg_penalty": response.metrics.leg_penalty,
+                    "correlation_penalty": response.metrics.correlation_penalty,
+                    "correlation_multiplier": response.metrics.correlation_multiplier,
+                },
+                "correlations": [
+                    {
+                        "block_a_id": str(c.block_a),
+                        "block_b_id": str(c.block_b),
+                        "correlation_type": c.type,
+                        "penalty": c.penalty,
+                    }
+                    for c in response.correlations
+                ],
+                "recommendation": {
+                    "action": response.recommendation.action.value,
+                    "reason": response.recommendation.reason,
+                },
+            },
+            "interpretation": {
+                "fragility": fragility_interpretation,
+            },
+            "explain": explain_filtered,
+        }
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Invalid bet text extracted from image",
+                "detail": str(e),
+                "code": "PARSE_ERROR",
+            },
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Internal error",
                 "detail": str(e),
                 "code": "INTERNAL_ERROR",
             },

@@ -1,0 +1,633 @@
+================================================================================
+PROGRESS FILE - DNA MATRIX
+================================================================================
+Generated: 2026-01-15 00:10:05 UTC
+Branch: claude/audit-dependencies-YCzJp
+
+--------------------------------------------------------------------------------
+PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+Project Name: DNA Matrix
+Description: Semantic identity management system / decision engine
+Current Phase: Phase 1 - Foundation (In Progress)
+Last Completed Task: TASK 16 - Unified pipeline facade for all evaluation entrypoints
+
+--------------------------------------------------------------------------------
+KNOWN ISSUES / OPEN QUESTIONS
+--------------------------------------------------------------------------------
+- SQLite storage layer: Not yet implemented
+- Mutation engine: Not yet implemented
+- Lineage tracking: Not yet implemented
+- UI status: No frontend exists; API-only at this time
+
+--------------------------------------------------------------------------------
+ENVIRONMENT
+--------------------------------------------------------------------------------
+Deployment Target: Railway (configured via railway.json)
+Production URL: https://dna-production-b681.up.railway.app
+Runtime: Python (see runtime.txt)
+Build: Nixpacks
+Current Context: Cloud code / Claude Code session
+
+--------------------------------------------------------------------------------
+DEPLOY VERIFICATION (Quick Reference)
+--------------------------------------------------------------------------------
+Command:
+  curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+
+Expected response fields:
+  - status: "healthy"
+  - service: "dna-matrix"
+  - version: "0.1.0"
+  - environment: (from RAILWAY_ENVIRONMENT)
+  - started_at: (ISO timestamp)
+  - git_sha: (from RAILWAY_GIT_COMMIT_SHA - verify matches expected commit)
+
+Last verified: 2026-01-15
+Last verified git_sha: c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f
+
+--------------------------------------------------------------------------------
+SYSTEM SNAPSHOT (READ-ONLY)
+--------------------------------------------------------------------------------
+
+ENTRY POINTS:
+- Application: app/main.py
+- Start command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+
+ACTIVE ROUTES/ENDPOINTS:
+- GET / : Health check, returns {"status": "ok", "service": "dna-matrix"}
+- GET /health : Railway health check with observability (status, service, version, environment, started_at)
+
+IMPLEMENTED CORE MODELS (dna-matrix/core/models/):
+- claim.py
+- common.py
+- leading_light.py
+- organism.py
+
+TEST STATUS:
+- Test files exist: 4 files in dna-matrix/tests/core/
+  - test_claim.py
+  - test_common.py
+  - test_leading_light.py
+  - test_organism.py
+- Test execution: UNKNOWN (pytest not available in current environment)
+
+UI STATUS:
+- No frontend implemented
+- API-only service
+
+RECENT COMMITS:
+- d1157da Merge pull request #3 (Leading Light types)
+- a1b937e Export Leading Light types from core.models
+- 668f2b8 Add Leading Light core types with validation
+- ac43aa0 Merge pull request #2
+- 702bf7b Fix pytest configuration for module imports
+
+--------------------------------------------------------------------------------
+TASK 1: ADD BASIC SERVICE OBSERVABILITY (2026-01-15)
+--------------------------------------------------------------------------------
+
+WHAT WAS CHANGED:
+- app/main.py: Enhanced /health endpoint to include observability data
+  - Added: service name, version, environment, started_at timestamp
+  - Added: _SERVICE_START_TIME and _SERVICE_VERSION module-level constants
+  - Added: os and datetime imports
+- app/tests/test_health.py: New test file for health/root endpoints
+  - Tests HTTP 200 response
+  - Tests presence of required keys
+  - Tests expected values
+
+WHAT WAS NOT CHANGED:
+- GET / endpoint (root) - unchanged
+- Business logic in any router
+- No authentication/authorization added
+- No UI added
+- No database calls added
+
+NEW UNKNOWNS:
+- Test execution still UNKNOWN (pytest not installed in environment)
+
+--------------------------------------------------------------------------------
+TASK 2: COMMIT + PUSH + DEPLOYMENT VERIFICATION (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: BLOCKED - Push failing with HTTP 403
+
+COMMIT DETAILS:
+- Hash: b73f2ba6c2dfe019d56cb101d792f84404f57e3f
+- Message: feat: Add basic service observability to /health endpoint
+- Branch: claude/audit-dependencies-YCzJp
+- Local: 2 commits ahead of origin
+
+PUSH ATTEMPTS:
+- 4 retries with exponential backoff (2s, 4s, 8s, 16s)
+- All failed with HTTP 403 Forbidden
+- Likely cause: Branch name may not match session ID permissions
+
+RAILWAY CONFIGURATION:
+- railway.json: Present
+- Start command: PYTHONPATH=/app/dna-matrix:$PYTHONPATH uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+- Health check path: /health
+- Production URL: https://dna-production-b681.up.railway.app
+
+DEPLOYMENT VERIFICATION (FOR HUMAN):
+1. Check Railway dashboard for repo: launchplugai/DNA
+2. Verify deploy branch matches: claude/audit-dependencies-YCzJp
+3. Confirm latest commit deployed: b73f2ba
+4. Test /health endpoint returns:
+   {
+     "status": "healthy",
+     "service": "dna-matrix",
+     "version": "0.1.0",
+     "environment": "<RAILWAY_ENVIRONMENT or 'development'>",
+     "started_at": "<ISO timestamp>"
+   }
+
+BLOCKED REASON:
+- Push requires matching session ID in branch name
+- May need to use branch: claude/architect-mode-setup-y2DQU instead
+
+--------------------------------------------------------------------------------
+TASK 4: BASELINE SECURITY HARDENING (2026-01-15)
+--------------------------------------------------------------------------------
+
+PROTECTIONS ADDED (2 of 4 options):
+
+1. REQUEST SIZE LIMIT (Protection A):
+   - Middleware: RequestSizeLimitMiddleware
+   - Rejects requests with Content-Length > 1MB (configurable)
+   - Returns HTTP 413 "Request entity too large"
+   - Why chosen: Simple, no dependencies, effective against payload bombs
+
+2. SECURITY HEADERS (Protection C):
+   - Middleware: SecurityHeadersMiddleware
+   - Headers added to all responses:
+     - X-Content-Type-Options: nosniff
+     - X-Frame-Options: DENY
+     - Referrer-Policy: strict-origin-when-cross-origin
+     - X-XSS-Protection: 1; mode=block
+     - Cache-Control: no-store
+   - Why chosen: Simple, no dependencies, standard hardening
+
+CONFIGURATION:
+- MAX_REQUEST_SIZE_BYTES: env var, default 1048576 (1MB)
+
+FILES CHANGED:
+- app/main.py: Added middleware classes and registration
+- app/tests/test_security.py: New test file
+
+LIMITATIONS:
+- Request size check uses Content-Length header only (can be spoofed, but actual large payloads still consume resources)
+- No rate limiting added (would require state management)
+- CORS remains wide open (deferred to future task)
+
+WHAT WAS NOT CHANGED:
+- No authentication added
+- No business logic changed
+- No new external dependencies
+
+--------------------------------------------------------------------------------
+TASK 5: DEPENDENCY & RUNTIME HARDENING AUDIT (2026-01-15)
+--------------------------------------------------------------------------------
+
+DEPENDENCY AUDIT:
+
+KEEP:
+- fastapi – main framework, actively used
+- uvicorn – ASGI server, used in railway.json
+- python-multipart – required for UploadFile in leading_light.py
+- pytest – testing framework
+- black – code formatter (dev)
+- mypy – type checker (dev)
+- ruff – linter (dev)
+- httpx – HTTP client for OpenAI API calls
+
+FLAG:
+- openai – NOT directly imported anywhere; API called via httpx
+  Risk: Unused dependency, adds attack surface
+  Action: Consider removing in future task
+
+RUNTIME SANITY CHECK:
+- Syntax: PASSED
+- Env vars: All use .get() with defaults
+- OPENAI_API_KEY: Returns 503 if missing (graceful degradation)
+- Feature flags default to disabled (LEADING_LIGHT_ENABLED, VOICE_ENABLED)
+- Result: App boots cleanly with no env vars
+
+DEPENDENCY PINNING STATUS:
+- All deps use >= (floor only, no ceiling)
+- Risk: Major version bumps could break builds silently
+- Affected: fastapi, uvicorn, httpx, black, mypy, ruff, openai
+- pytest has partial pin: >=8.0.0,<10.0.0
+- Recommendation: Pin to ~= or exact versions in future task
+
+DEFERRED RISKS:
+1. openai package unused but installed (remove candidate)
+2. No version ceilings on critical deps (pin candidate)
+3. Dev deps mixed with runtime deps in same file
+
+NO CODE CHANGES IN THIS TASK (audit only)
+
+--------------------------------------------------------------------------------
+TASK 6: STARTUP INVARIANTS & FAILURE MODES (2026-01-15)
+--------------------------------------------------------------------------------
+
+IMPLEMENTED:
+
+1. CENTRALIZED CONFIG MODULE (app/config.py):
+   - Single source of truth for all configuration
+   - Defines SERVICE_NAME, SERVICE_VERSION constants
+   - AppConfig dataclass holds validated configuration
+
+2. REQUIRED vs OPTIONAL ENV VARS:
+   - Currently NO required env vars (all features optional)
+   - OPTIONAL with defaults:
+     - RAILWAY_ENVIRONMENT: default "development"
+     - MAX_REQUEST_SIZE_BYTES: default 1MB, min 1KB
+     - LEADING_LIGHT_ENABLED: default false
+     - VOICE_ENABLED: default false
+     - OPENAI_API_KEY: optional, checked for presence only
+
+3. MISCONFIGURATION GUARDS:
+   - Invalid int env vars: Fall back to default WITH warning
+   - Decision: Default + warning (not fail-fast) for resilience
+   - Rejects values below minimum (e.g., MAX_REQUEST_SIZE_BYTES < 1KB)
+   - Warns when feature enabled but API key missing
+
+4. STARTUP CONFIG SNAPSHOT:
+   - Logs single line at startup with all config values
+   - Format: [STARTUP] service=X version=X environment=X ...
+   - NEVER logs actual secrets - only boolean presence flags
+   - validate_config_snapshot_safety() verifies no leaks
+
+5. TESTS (app/tests/test_config.py):
+   - Default values loading
+   - Invalid int handling (string, zero, negative)
+   - API key presence detection (not value storage)
+   - Snapshot safety validation
+   - Feature warning generation
+
+DESIGN DECISIONS:
+- Invalid config: Default + warning (NOT fail-fast)
+  Rationale: Service availability preferred over strict validation
+- Secrets: Never stored in config, only presence boolean
+- Logging: Structured format for easy parsing
+
+FILES CHANGED:
+- app/config.py: New - centralized configuration
+- app/main.py: Updated to use config module
+- app/tests/test_config.py: New - config tests
+
+WHAT WAS NOT CHANGED:
+- No business logic changes
+- No new dependencies
+- Existing endpoints unchanged
+
+--------------------------------------------------------------------------------
+TASK 7: DEPLOY VERIFICATION + HOOK FIX (2026-01-15)
+--------------------------------------------------------------------------------
+
+PART A - DEPLOY VERIFICATION (COMPLETED):
+
+1. Added git_sha to /health endpoint:
+   - Reads from RAILWAY_GIT_COMMIT_SHA (Railway-provided)
+   - Falls back to GIT_SHA (manual override)
+   - Only included in response when set (not null)
+
+2. Config updates:
+   - AppConfig.git_sha field added
+   - Included in startup config snapshot log
+
+3. Tests added:
+   - test_git_sha_from_railway_env
+   - test_git_sha_from_manual_env
+   - test_railway_sha_takes_precedence
+   - test_git_sha_in_snapshot
+   - test_git_sha_included_when_configured (health endpoint)
+   - test_git_sha_excluded_when_not_configured (health endpoint)
+
+PART B - HOOK FIX (DEFERRED):
+
+Hook location: ~/.claude/stop-hook-git-check.sh
+Status: System-level Claude Code hook, not editable from repository
+Issue: Compares against origin/<local-branch-name> literally
+Workaround: Use explicit push syntax:
+  git push origin local-branch:remote-branch
+
+FILES CHANGED:
+- app/config.py: Added git_sha field and loading
+- app/main.py: Added git_sha to /health response
+- app/tests/test_config.py: Added git_sha tests
+- app/tests/test_health.py: Added git_sha endpoint tests
+
+VERIFICATION:
+- /health now returns git_sha when RAILWAY_GIT_COMMIT_SHA or GIT_SHA is set
+- Deploy identification is unambiguous in production
+
+--------------------------------------------------------------------------------
+TASK 8: DEPLOY VERIFICATION (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: VERIFIED
+
+VERIFICATION DETAILS:
+- Expected git SHA: c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f (short: c1423c8)
+- Production /health git_sha: c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f
+- Result: MATCH
+
+COMMAND USED:
+  curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+
+EVIDENCE:
+- Production /health response includes: "git_sha":"c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f"
+- Railway is deploying the correct branch/commit
+
+PRODUCTION URL (NOW KNOWN):
+- https://dna-production-b681.up.railway.app
+
+NO CODE CHANGES IN THIS TASK (verification only)
+
+--------------------------------------------------------------------------------
+TASK 11: WEB UI BOUNDARY (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: COMPLETE
+
+SUMMARY:
+Added production-safe browser interface as a strict system boundary.
+UI cannot bypass backend tier enforcement.
+
+ROUTES ADDED:
+1. GET / - Landing page (HTML)
+   - Service name, version, git_sha
+   - Links to /app and /health
+
+2. GET /app - Evaluation form (HTML)
+   - Textarea for bet text input
+   - Tier selector: GOOD, BETTER, BEST (required)
+   - Submit button
+   - Output panels: evaluation, explain, errors
+   - Uses textContent only (no innerHTML)
+
+3. POST /app/evaluate - Server proxy endpoint
+   - Validates tier is GOOD/BETTER/BEST
+   - Validates input is non-empty
+   - Calls internal evaluation engine directly (not HTTP)
+   - Returns JSON to browser
+
+TIER ENFORCEMENT:
+- GOOD: explain = {} (empty)
+- BETTER: explain = {summary only}
+- BEST: explain = {summary, alerts, recommended_next_step}
+- UI displays notice when explain withheld by plan
+- Server remains source of truth (browser tampering cannot bypass)
+
+SECURITY:
+- Browser rendering uses textContent only
+- Never executes returned strings
+- Displays JSON via pretty-print
+- Max payload size enforced by existing middleware
+
+INTERNAL ENDPOINT USED:
+- evaluate_parlay() from core.evaluation (direct call, not HTTP)
+- Tier filtering via _apply_tier_to_explain_wrapper()
+
+FILES CHANGED:
+- app/routers/web.py: New - web UI router
+- app/main.py: Updated - includes web router, removes old / endpoint
+- app/tests/test_web.py: New - web UI tests
+
+PRODUCTION USAGE:
+- Landing: https://dna-production-b681.up.railway.app/
+- App: https://dna-production-b681.up.railway.app/app
+
+VERIFY TIER BEHAVIOR:
+1. Go to /app
+2. Enter any bet text
+3. Select GOOD tier -> explain should be empty
+4. Select BETTER tier -> explain should have summary only
+5. Select BEST tier -> explain should have all fields
+
+TESTS ADDED:
+- test_returns_200 (landing page)
+- test_contains_service_name (marker string check)
+- test_app_returns_200
+- test_empty_input_returns_422
+- test_tier_good_returns_empty_explain
+- test_tier_better_returns_summary_only
+- test_tier_best_returns_full_explain
+
+--------------------------------------------------------------------------------
+TASK 13: RATE LIMITING + ABUSE GUARDS (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: COMPLETE
+
+SUMMARY:
+Added in-memory rate limiting and input validation to protect /app/evaluate
+from spam and abuse without breaking UX.
+
+RATE LIMITS CONFIGURED:
+- 10 requests per minute per IP (sustained rate)
+- Burst allowance: 3 quick requests (token bucket)
+- Key: Client IP (respects X-Forwarded-For safely)
+- Scope: POST /app/evaluate only (does NOT affect /health)
+
+ON LIMIT EXCEEDED:
+- HTTP 429 Too Many Requests
+- JSON body: {"error": "rate_limited", "retry_after_seconds": <n>}
+- Retry-After header included
+
+IMPLEMENTATION APPROACH:
+- Token bucket algorithm (in-memory, suitable for single Railway instance)
+- Tokens refill at 10/60 = 0.1667 tokens/second
+- Bucket capacity = burst_size = 3
+- Clock injectable for deterministic testing
+- Automatic cleanup of stale buckets (>5 min unused)
+
+ABUSE GUARDS:
+- Tier validation: must be GOOD/BETTER/BEST (case-insensitive)
+- Input length: min 1, max 10,000 characters
+- Whitespace-only input rejected (422)
+- Empty input rejected (422)
+
+FILES CHANGED:
+- app/rate_limiter.py: New - token bucket rate limiter
+- app/routers/web.py: Updated - rate limiting on /app/evaluate, max input length
+- app/tests/test_rate_limiter.py: New - comprehensive rate limiter tests
+
+TESTS ADDED:
+Unit tests (app/tests/test_rate_limiter.py):
+- test_initial_tokens_available
+- test_tokens_deplete
+- test_tokens_refill_over_time
+- test_first_request_allowed
+- test_burst_requests_allowed
+- test_rate_limit_exceeded_returns_retry_after
+- test_different_ips_have_separate_buckets
+- test_tokens_refill_after_time
+
+Integration tests:
+- test_first_request_succeeds
+- test_exceeding_limit_returns_429
+- test_429_includes_retry_after_header
+- test_429_includes_json_body
+- test_health_not_rate_limited
+
+Abuse guard tests:
+- test_rejects_oversized_input
+- test_rejects_invalid_tier
+- test_accepts_valid_tiers
+
+VERIFY IN PRODUCTION:
+1. Hit /app/evaluate 4+ times rapidly
+2. 4th request should return 429
+3. Check Retry-After header present
+4. Confirm /health still returns 200
+
+--------------------------------------------------------------------------------
+TASK 14: CORRELATION IDS + STRUCTURED LOGGING (2026-01-15)
+--------------------------------------------------------------------------------
+
+STATUS: COMPLETE
+
+SUMMARY:
+Added request correlation IDs and structured logging for traceability
+without exposing sensitive user input.
+
+CORRELATION ID MIDDLEWARE:
+- Reads X-Request-Id header if present
+- Validates: max 64 chars, alphanumeric + hyphens/underscores only
+- Generates UUID4 if missing or invalid
+- Stores in request.state.request_id
+- Adds X-Request-Id to ALL responses (including errors)
+- Applies to all routes (including /health)
+
+STRUCTURED LOGGING (POST /app/evaluate only):
+Fields logged per request:
+- request_id
+- timestamp (UTC ISO)
+- route (/app/evaluate)
+- method (POST)
+- client_ip (X-Forwarded-For aware)
+- tier
+- input_length (number only, NEVER raw text)
+- status_code
+- latency_ms
+- rate_limited (true/false)
+- error_type (if any)
+
+NEVER LOGGED:
+- User input text
+- Headers (except request_id)
+- Full payload
+- Any PII
+
+RESPONSE FORMAT:
+All /app/evaluate responses now include:
+{
+  "request_id": "<correlation-id>",
+  ... (rest of response)
+}
+
+Users can reference request_id when reporting issues.
+
+FILES CHANGED:
+- app/correlation.py: New - correlation ID middleware
+- app/main.py: Updated - adds CorrelationIdMiddleware
+- app/routers/web.py: Updated - structured logging, request_id in responses
+- app/tests/test_correlation.py: New - comprehensive tests
+
+TESTS ADDED:
+Correlation ID tests:
+- test_valid_uuid
+- test_valid_alphanumeric
+- test_too_long_rejected
+- test_special_chars_rejected
+- test_client_request_id_echoed
+- test_missing_request_id_generated
+- test_json_includes_request_id
+- test_error_response_includes_request_id
+- test_invalid_request_id_replaced
+
+Logging safety tests:
+- test_logging_does_not_include_raw_input
+- test_logging_includes_input_length
+- test_logging_includes_request_id
+- test_logging_includes_tier
+- test_rate_limited_request_logged
+
+VERIFY IN PRODUCTION:
+1. Send request with X-Request-Id header
+2. Verify same ID returned in response header
+3. Verify request_id in JSON body
+4. Check Railway logs for structured format (no raw input)
+
+--------------------------------------------------------------------------------
+TASK 15: AIRLOCK VALIDATION GATEWAY (2026-01-15)
+--------------------------------------------------------------------------------
+STATUS: COMPLETE
+
+Created app/airlock.py as single source of truth for input validation.
+
+CHANGES:
+- app/airlock.py: Airlock module with airlock_ingest() function
+- app/routers/web.py: Refactored to use Airlock first
+- app/tests/test_airlock.py: 22 unit tests
+
+KEY COMPONENTS:
+- airlock_ingest(): Main entry point for validation
+- NormalizedInput: Immutable dataclass with validated values
+- Tier enum: Canonical tier values (GOOD, BETTER, BEST)
+- Error types: EmptyInputError, InputTooLongError, InvalidTierError
+
+VALIDATION RULES:
+- Input trimmed, cannot be empty/whitespace
+- Max input length: 10,000 characters
+- Tier case-insensitive, "free" alias maps to GOOD
+- Default tier: GOOD
+
+FLOW:
+  Route → Airlock → NormalizedInput → Pipeline → Response
+
+--------------------------------------------------------------------------------
+TASK 16: UNIFIED PIPELINE FACADE (2026-01-15)
+--------------------------------------------------------------------------------
+STATUS: COMPLETE
+
+Created app/pipeline.py as single entry point for all evaluation.
+
+CHANGES:
+- app/pipeline.py: Pipeline facade with run_evaluation()
+- app/routers/web.py: Refactored to use pipeline facade
+- app/tests/test_pipeline.py: 26 tests (23 unit + 3 integration)
+
+KEY COMPONENTS:
+- run_evaluation(): Single entry point for evaluation
+- PipelineResponse: Unified response with evaluation, interpretation, explain
+- Text parsing, summary generation, tier filtering moved to pipeline
+
+ARCHITECTURAL GUARANTEE:
+- Routes do NOT import core.evaluation directly
+- Routes do NOT call evaluate_parlay() directly
+- All evaluation goes: Airlock → Pipeline → Core
+
+FLOW:
+  Route → Airlock → Pipeline → core.evaluation.evaluate_parlay() → Response
+
+All evaluation entrypoints unified behind pipeline facade.
+
+--------------------------------------------------------------------------------
+RALPH LOOP CONTRACT
+--------------------------------------------------------------------------------
+1. One task at a time - no parallel work streams
+2. Execute, then self-review before declaring completion
+3. Explicit decision required: DONE or ITERATE
+4. Fresh context is allowed between iterations
+5. progress.txt must be updated every cycle
+6. Every task requires verification before completion
+7. External state in files, not chat memory
+
+--------------------------------------------------------------------------------
+END OF PROGRESS FILE
+--------------------------------------------------------------------------------
