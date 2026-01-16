@@ -23,6 +23,9 @@ class User:
         tier: User's subscription tier (GOOD, BETTER, BEST)
         created_at: Account creation timestamp
         updated_at: Last update timestamp
+        stripe_customer_id: Stripe customer ID (for billing)
+        stripe_subscription_id: Active Stripe subscription ID
+        tier_updated_at: When tier was last changed
     """
     id: str
     email: str
@@ -30,6 +33,9 @@ class User:
     tier: str = "GOOD"
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    tier_updated_at: Optional[datetime] = None
 
     @classmethod
     def new(cls, email: str, password_hash: str, tier: str = "GOOD") -> User:
@@ -42,7 +48,15 @@ class User:
             tier=tier.upper(),
             created_at=now,
             updated_at=now,
+            stripe_customer_id=None,
+            stripe_subscription_id=None,
+            tier_updated_at=None,
         )
+
+    @property
+    def has_active_subscription(self) -> bool:
+        """Check if user has an active Stripe subscription."""
+        return bool(self.stripe_subscription_id)
 
     def to_dict(self) -> dict:
         """Convert to dictionary (excludes password_hash for safety)."""
@@ -52,6 +66,7 @@ class User:
             "tier": self.tier,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
+            "has_subscription": self.has_active_subscription,
         }
 
 

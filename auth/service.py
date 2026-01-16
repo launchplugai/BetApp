@@ -124,14 +124,7 @@ def get_user_by_email(email: str) -> Optional[User]:
     if not row:
         return None
 
-    return User(
-        id=row["id"],
-        email=row["email"],
-        password_hash=row["password_hash"],
-        tier=row["tier"],
-        created_at=datetime.fromisoformat(row["created_at"]),
-        updated_at=datetime.fromisoformat(row["updated_at"]),
-    )
+    return _row_to_user(row)
 
 
 def get_user_by_id(user_id: str) -> Optional[User]:
@@ -156,6 +149,15 @@ def get_user_by_id(user_id: str) -> Optional[User]:
     if not row:
         return None
 
+    return _row_to_user(row)
+
+
+def _row_to_user(row) -> User:
+    """Convert a database row to a User object."""
+    tier_updated_at = None
+    if row["tier_updated_at"]:
+        tier_updated_at = datetime.fromisoformat(row["tier_updated_at"])
+
     return User(
         id=row["id"],
         email=row["email"],
@@ -163,6 +165,9 @@ def get_user_by_id(user_id: str) -> Optional[User]:
         tier=row["tier"],
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
+        stripe_customer_id=row["stripe_customer_id"],
+        stripe_subscription_id=row["stripe_subscription_id"],
+        tier_updated_at=tier_updated_at,
     )
 
 

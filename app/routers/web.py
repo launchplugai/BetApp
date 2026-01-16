@@ -2688,6 +2688,227 @@ async def get_user_history(raw_request: Request):
         )
 
 
+# =============================================================================
+# Billing API (Sprint 6B)
+# =============================================================================
+
+
+class CheckoutRequest(BaseModel):
+    """Request to create a checkout session."""
+    tier: str = Field(default="BEST", description="Tier to subscribe to")
+
+
+@router.post("/app/billing/checkout")
+async def create_checkout(request: CheckoutRequest, raw_request: Request):
+    """
+    Create a Stripe Checkout session for subscription.
+
+    Requires authenticated user.
+    """
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+    from billing.service import create_checkout_session, BillingDisabledError, CheckoutError
+    from billing.stripe_client import is_billing_enabled
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    # Require authentication
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    if not user:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "request_id": request_id,
+                "error": "authentication_required",
+                "detail": "Please log in to upgrade",
+            },
+        )
+
+    # Check if billing is enabled
+    if not is_billing_enabled():
+        return JSONResponse(
+            status_code=503,
+            content={
+                "request_id": request_id,
+                "error": "billing_disabled",
+                "detail": "Billing is not configured",
+            },
+        )
+
+    # Check if user already has BEST tier
+    if user.tier == "BEST":
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": "already_subscribed",
+                "detail": "You already have BEST tier",
+            },
+        )
+
+    try:
+        # Build URLs
+        base_url = str(raw_request.base_url).rstrip("/")
+        success_url = f"{base_url}/app/account?upgraded=true"
+        cancel_url = f"{base_url}/app/account?cancelled=true"
+
+        result = create_checkout_session(
+            user_id=user.id,
+            user_email=user.email,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            tier=request.tier,
+        )
+
+        return {
+            "request_id": request_id,
+            "session_id": result["session_id"],
+            "checkout_url": result["checkout_url"],
+        }
+
+    except BillingDisabledError as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "request_id": request_id,
+                "error": "billing_disabled",
+                "detail": str(e),
+            },
+        )
+
+    except CheckoutError as e:
+        _logger.error(f"Checkout error: {e}", extra={"request_id": request_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "checkout_failed",
+                "detail": str(e),
+            },
+        )
+
+
+@router.post("/app/billing/webhook")
+async def handle_stripe_webhook(raw_request: Request):
+    """
+    Handle Stripe webhook events.
+
+    Verifies signature and processes subscription events.
+    """
+    from billing.webhooks import verify_webhook_signature, process_webhook_event, SignatureVerificationError, WebhookError
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    # Get raw body and signature
+    try:
+        payload = await raw_request.body()
+        signature = raw_request.headers.get("stripe-signature", "")
+
+        if not signature:
+            _logger.warning("Webhook received without signature")
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Missing signature"},
+            )
+
+        # Verify and parse event
+        event = verify_webhook_signature(payload, signature)
+
+        # Process the event
+        success, message = process_webhook_event(event)
+
+        if success:
+            return {"received": True, "message": message}
+        else:
+            _logger.warning(f"Webhook processing failed: {message}")
+            return JSONResponse(
+                status_code=500,
+                content={"error": message},
+            )
+
+    except SignatureVerificationError as e:
+        _logger.warning(f"Webhook signature verification failed: {e}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid signature"},
+        )
+
+    except WebhookError as e:
+        _logger.error(f"Webhook error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+        )
+
+    except Exception as e:
+        _logger.error(f"Unexpected webhook error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal error"},
+        )
+
+
+@router.get("/app/billing/portal")
+async def get_billing_portal(raw_request: Request):
+    """
+    Get Stripe Customer Portal URL for subscription management.
+
+    Requires authenticated user with active subscription.
+    """
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+    from billing.service import get_customer_portal_url
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    # Require authentication
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    if not user:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "request_id": request_id,
+                "error": "authentication_required",
+                "detail": "Please log in",
+            },
+        )
+
+    if not user.stripe_customer_id:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": "no_subscription",
+                "detail": "No subscription found",
+            },
+        )
+
+    # Build return URL
+    base_url = str(raw_request.base_url).rstrip("/")
+    return_url = f"{base_url}/app/account"
+
+    portal_url = get_customer_portal_url(user.id, return_url)
+
+    if not portal_url:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "portal_failed",
+                "detail": "Could not create portal session",
+            },
+        )
+
+    return {
+        "request_id": request_id,
+        "portal_url": portal_url,
+    }
+
+
 def _get_login_page_html() -> str:
     """HTML for login/signup page."""
     return """<!DOCTYPE html>
@@ -2942,6 +3163,39 @@ def _get_login_page_html() -> str:
 
 def _get_account_page_html(user) -> str:
     """Generate HTML for account page."""
+    # Determine what to show based on tier and subscription status
+    show_upgrade = user.tier != "BEST"
+    has_subscription = user.has_active_subscription
+
+    upgrade_section = ""
+    if show_upgrade:
+        upgrade_section = """
+        <div class="upgrade-section">
+            <h3>Upgrade to BEST</h3>
+            <div class="upgrade-benefits">
+                <ul>
+                    <li>Live player availability alerts</li>
+                    <li>Full analysis with all insights</li>
+                    <li>Recommended actions</li>
+                    <li>Context-aware evaluation</li>
+                </ul>
+            </div>
+            <div class="upgrade-price">$19.99/month</div>
+            <button class="upgrade-btn" id="upgrade-btn">Upgrade Now</button>
+            <div class="upgrade-note">Cancel anytime. Secure payment via Stripe.</div>
+        </div>
+        """
+
+    manage_section = ""
+    if has_subscription:
+        manage_section = """
+        <div class="manage-section">
+            <h3>Subscription</h3>
+            <p>You have an active BEST subscription.</p>
+            <button class="manage-btn" id="manage-btn">Manage Subscription</button>
+        </div>
+        """
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -3066,6 +3320,92 @@ def _get_account_page_html(user) -> str:
             padding: 2rem;
             color: #888;
         }}
+        /* Upgrade Section Styles */
+        .upgrade-section {{
+            background: linear-gradient(135deg, #1a2a1a 0%, #1a1a2a 100%);
+            border: 1px solid #2ecc71;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }}
+        .upgrade-section h3 {{
+            color: #2ecc71;
+            margin-bottom: 1rem;
+        }}
+        .upgrade-benefits ul {{
+            list-style: none;
+            text-align: left;
+            max-width: 300px;
+            margin: 0 auto 1rem;
+        }}
+        .upgrade-benefits li {{
+            padding: 0.4rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }}
+        .upgrade-benefits li::before {{
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #2ecc71;
+        }}
+        .upgrade-price {{
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2ecc71;
+            margin-bottom: 1rem;
+        }}
+        .upgrade-btn {{
+            background: #2ecc71;
+            color: #111;
+            border: none;
+            padding: 0.875rem 2rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .upgrade-btn:hover {{
+            background: #27ae60;
+        }}
+        .upgrade-btn:disabled {{
+            background: #555;
+            cursor: wait;
+        }}
+        .upgrade-note {{
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 0.75rem;
+        }}
+        /* Manage Subscription Styles */
+        .manage-section {{
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }}
+        .manage-section h3 {{
+            color: #2ecc71;
+            margin-bottom: 0.5rem;
+        }}
+        .manage-section p {{
+            color: #888;
+            margin-bottom: 1rem;
+        }}
+        .manage-btn {{
+            background: transparent;
+            border: 1px solid #4a9eff;
+            color: #4a9eff;
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }}
+        .manage-btn:hover {{
+            background: #4a9eff;
+            color: #111;
+        }}
     </style>
 </head>
 <body>
@@ -3094,6 +3434,9 @@ def _get_account_page_html(user) -> str:
             </div>
         </div>
 
+        {upgrade_section}
+        {manage_section}
+
         <div class="section">
             <h3>Evaluation History</h3>
             <div class="history-list" id="evaluations-list">
@@ -3115,6 +3458,52 @@ def _get_account_page_html(user) -> str:
             await fetch('/app/auth/logout', {{ method: 'POST' }});
             window.location.href = '/app';
         }});
+
+        // Upgrade button
+        const upgradeBtn = document.getElementById('upgrade-btn');
+        if (upgradeBtn) {{
+            upgradeBtn.addEventListener('click', async () => {{
+                upgradeBtn.disabled = true;
+                upgradeBtn.textContent = 'Redirecting...';
+                try {{
+                    const response = await fetch('/app/billing/checkout', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ tier: 'BEST' }})
+                    }});
+                    const data = await response.json();
+                    if (data.checkout_url) {{
+                        window.location.href = data.checkout_url;
+                    }} else {{
+                        alert(data.detail || 'Could not start checkout');
+                        upgradeBtn.disabled = false;
+                        upgradeBtn.textContent = 'Upgrade Now';
+                    }}
+                }} catch (err) {{
+                    alert('Error starting checkout');
+                    upgradeBtn.disabled = false;
+                    upgradeBtn.textContent = 'Upgrade Now';
+                }}
+            }});
+        }}
+
+        // Manage subscription button
+        const manageBtn = document.getElementById('manage-btn');
+        if (manageBtn) {{
+            manageBtn.addEventListener('click', async () => {{
+                try {{
+                    const response = await fetch('/app/billing/portal');
+                    const data = await response.json();
+                    if (data.portal_url) {{
+                        window.location.href = data.portal_url;
+                    }} else {{
+                        alert(data.detail || 'Could not open subscription portal');
+                    }}
+                }} catch (err) {{
+                    alert('Error opening portal');
+                }}
+            }});
+        }}
 
         // Load history
         async function loadHistory() {{

@@ -88,12 +88,23 @@ def init_db() -> None:
                     password_hash TEXT NOT NULL,
                     tier TEXT NOT NULL DEFAULT 'GOOD',
                     created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
+                    updated_at TEXT NOT NULL,
+                    stripe_customer_id TEXT,
+                    stripe_subscription_id TEXT,
+                    tier_updated_at TEXT
                 )
             """)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_users_email
                 ON users(email)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_users_stripe_customer
+                ON users(stripe_customer_id)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_users_stripe_subscription
+                ON users(stripe_subscription_id)
             """)
 
             # Sessions table
