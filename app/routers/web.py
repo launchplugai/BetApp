@@ -552,6 +552,106 @@ def _get_app_page_html() -> str:
             color: #888;
         }
 
+        /* Decision Summary (Always shown) */
+        .decision-summary {
+            background: linear-gradient(135deg, #1a2a3a 0%, #1a1a2a 100%);
+            border: 1px solid #2a3a4a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .decision-summary h3 {
+            font-size: 0.7rem;
+            color: #4a9eff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.75rem;
+        }
+        .decision-verdict {
+            font-size: 1rem;
+            line-height: 1.4;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #2a3a4a;
+        }
+        .decision-bullets {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .decision-bullets li {
+            font-size: 0.8rem;
+            padding: 0.35rem 0;
+            padding-left: 1.25rem;
+            position: relative;
+            color: #bbb;
+        }
+        .decision-bullets li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.65rem;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        .bullet-risk::before { background: #ef4444; }
+        .bullet-improve::before { background: #4ade80; }
+        .bullet-unknown::before { background: #888; }
+
+        /* Why Section */
+        .why-section {
+            margin-bottom: 1rem;
+        }
+        .why-section-title {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        .why-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        @media (max-width: 500px) {
+            .why-grid { grid-template-columns: 1fr; }
+        }
+        .why-panel {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 0.75rem;
+            min-height: 80px;
+        }
+        .why-panel h4 {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .why-panel h4 .icon {
+            font-size: 0.9rem;
+        }
+        .why-panel-content {
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: #ccc;
+        }
+        .why-panel-content .metric {
+            font-weight: 600;
+            color: #fff;
+        }
+        .why-panel-content .detail {
+            color: #888;
+            font-size: 0.75rem;
+        }
+
         /* Alerts (BEST only) */
         .alerts-panel {
             background: #2a1a1a;
@@ -670,19 +770,53 @@ def _get_app_page_html() -> str:
                         <div class="grade-bucket" id="grade-bucket">--</div>
                     </div>
 
-                    <!-- Verdict (Always shown) -->
-                    <div class="verdict-panel" id="verdict-panel">
-                        <h3>Verdict</h3>
-                        <div class="verdict-text" id="verdict-text"></div>
+                    <!-- Decision Summary (Always shown) -->
+                    <div class="decision-summary" id="decision-summary">
+                        <h3>Decision Summary</h3>
+                        <div class="decision-verdict" id="decision-verdict"></div>
+                        <ul class="decision-bullets">
+                            <li class="bullet-risk" id="bullet-risk"></li>
+                            <li class="bullet-improve" id="bullet-improve"></li>
+                            <li class="bullet-unknown" id="bullet-unknown"></li>
+                        </ul>
                     </div>
 
-                    <!-- Insights (BETTER+) -->
-                    <div class="insights-panel" id="insights-panel">
-                        <h3>Key Insights</h3>
-                        <div id="insights-content"></div>
-                        <div class="locked-overlay hidden" id="insights-locked">
-                            <span class="locked-icon">&#128274;</span>
-                            <span class="locked-text">Upgrade to BETTER for insights</span>
+                    <!-- Why Section (Tier-gated) -->
+                    <div class="why-section" id="why-section">
+                        <div class="why-section-title">Why This Score?</div>
+                        <div class="why-grid">
+                            <!-- Structure Panel -->
+                            <div class="why-panel" id="why-structure">
+                                <h4><span class="icon">&#9881;</span> Structure</h4>
+                                <div class="why-panel-content" id="structure-content"></div>
+                                <div class="locked-overlay hidden" id="structure-locked">
+                                    <span class="locked-icon">&#128274;</span>
+                                </div>
+                            </div>
+                            <!-- Correlation Panel -->
+                            <div class="why-panel" id="why-correlation">
+                                <h4><span class="icon">&#128279;</span> Correlation</h4>
+                                <div class="why-panel-content" id="correlation-content"></div>
+                                <div class="locked-overlay hidden" id="correlation-locked">
+                                    <span class="locked-icon">&#128274;</span>
+                                </div>
+                            </div>
+                            <!-- Fragility Panel -->
+                            <div class="why-panel" id="why-fragility">
+                                <h4><span class="icon">&#9888;</span> Fragility</h4>
+                                <div class="why-panel-content" id="fragility-content"></div>
+                                <div class="locked-overlay hidden" id="fragility-locked">
+                                    <span class="locked-icon">&#128274;</span>
+                                </div>
+                            </div>
+                            <!-- Confidence Panel -->
+                            <div class="why-panel" id="why-confidence">
+                                <h4><span class="icon">&#128269;</span> Confidence</h4>
+                                <div class="why-panel-content" id="confidence-content"></div>
+                                <div class="locked-overlay hidden" id="confidence-locked">
+                                    <span class="locked-icon">&#128274;</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -889,6 +1023,7 @@ def _get_app_page_html() -> str:
                 const evaluation = data.evaluation;
                 const interpretation = data.interpretation;
                 const explain = data.explain || {};
+                const metrics = evaluation.metrics;
 
                 // Grade display
                 const fragility = interpretation.fragility;
@@ -896,66 +1031,159 @@ def _get_app_page_html() -> str:
                 const gradeBucket = document.getElementById('grade-bucket');
                 gradeValue.textContent = Math.round(fragility.display_value);
                 gradeBucket.textContent = fragility.bucket;
-
-                // Color based on bucket
                 gradeValue.className = 'grade-value ' + fragility.bucket;
 
-                // Verdict (always shown)
-                const verdictText = document.getElementById('verdict-text');
+                // ============================================================
+                // DECISION SUMMARY (Always shown)
+                // ============================================================
+                const decisionVerdict = document.getElementById('decision-verdict');
                 const action = evaluation.recommendation.action;
                 const actionClass = 'action-' + action;
-                verdictText.innerHTML = '<span class="' + actionClass + '">' +
+                decisionVerdict.innerHTML = '<span class="' + actionClass + '">' +
                     action.toUpperCase() + '</span>: ' +
-                    evaluation.recommendation.reason;
+                    escapeHtml(evaluation.recommendation.reason);
 
-                // Insights panel
-                const insightsPanel = document.getElementById('insights-panel');
-                const insightsContent = document.getElementById('insights-content');
-                const insightsLocked = document.getElementById('insights-locked');
+                // 3 Bullets: Risk, Improvement, Unknown
+                const bulletRisk = document.getElementById('bullet-risk');
+                const bulletImprove = document.getElementById('bullet-improve');
+                const bulletUnknown = document.getElementById('bullet-unknown');
 
-                if (tier === 'good') {
-                    // Show locked overlay
-                    insightsPanel.classList.add('locked-panel');
-                    insightsLocked.classList.remove('hidden');
-                    insightsContent.innerHTML = '<div class="insight-item" style="color:#555">Risk breakdown hidden</div>' +
-                        '<div class="insight-item" style="color:#555">Correlation analysis hidden</div>' +
-                        '<div class="insight-item" style="color:#555">Strategy tips hidden</div>';
+                // Biggest risk - derived from inductor level
+                const riskMap = {
+                    'stable': 'Low structural risk',
+                    'loaded': 'Moderate complexity - multiple dependencies',
+                    'tense': 'High correlation or fragility detected',
+                    'critical': 'Extreme fragility - many failure points'
+                };
+                bulletRisk.textContent = 'Risk: ' + (riskMap[evaluation.inductor.level] || 'Structural analysis');
+
+                // Best improvement
+                bulletImprove.textContent = 'Improve: ' + escapeHtml(fragility.what_to_do);
+
+                // Biggest unknown
+                bulletUnknown.textContent = 'Unknown: No live injury/lineup data in this evaluation';
+
+                // ============================================================
+                // WHY PANELS (Tier-gated)
+                // ============================================================
+                const isLocked = (tier === 'good');
+                const showDetail = (tier === 'best');
+
+                // Structure Panel
+                const structureContent = document.getElementById('structure-content');
+                const structureLocked = document.getElementById('structure-locked');
+                const whyStructure = document.getElementById('why-structure');
+
+                if (isLocked) {
+                    whyStructure.classList.add('locked-panel');
+                    structureLocked.classList.remove('hidden');
+                    structureContent.innerHTML = '<span style="color:#555">Locked</span>';
                 } else {
-                    // Show actual insights
-                    insightsPanel.classList.remove('locked-panel');
-                    insightsLocked.classList.add('hidden');
-
-                    const summary = explain.summary || [];
-                    if (summary.length > 0) {
-                        insightsContent.innerHTML = summary.map(s =>
-                            '<div class="insight-item">' + escapeHtml(s) + '</div>'
-                        ).join('');
+                    whyStructure.classList.remove('locked-panel');
+                    structureLocked.classList.add('hidden');
+                    const legCount = legs.length;
+                    const legPenalty = metrics.leg_penalty || 0;
+                    let structureHtml = '<span class="metric">' + legCount + ' legs</span>';
+                    if (showDetail) {
+                        structureHtml += '<br><span class="detail">Leg penalty: +' + legPenalty.toFixed(1) + '</span>';
+                        if (legCount >= 4) {
+                            structureHtml += '<br><span class="detail">High concentration risk</span>';
+                        }
                     } else {
-                        // Build from interpretation
-                        const insights = [
-                            fragility.meaning,
-                            fragility.what_to_do,
-                            'Risk level: ' + evaluation.inductor.level.toUpperCase()
-                        ];
-                        insightsContent.innerHTML = insights.map(s =>
-                            '<div class="insight-item">' + escapeHtml(s) + '</div>'
-                        ).join('');
+                        structureHtml += '<br><span class="detail">Each leg adds risk</span>';
                     }
+                    structureContent.innerHTML = structureHtml;
                 }
 
-                // Alerts (BEST only)
+                // Correlation Panel
+                const correlationContent = document.getElementById('correlation-content');
+                const correlationLocked = document.getElementById('correlation-locked');
+                const whyCorrelation = document.getElementById('why-correlation');
+
+                if (isLocked) {
+                    whyCorrelation.classList.add('locked-panel');
+                    correlationLocked.classList.remove('hidden');
+                    correlationContent.innerHTML = '<span style="color:#555">Locked</span>';
+                } else {
+                    whyCorrelation.classList.remove('locked-panel');
+                    correlationLocked.classList.add('hidden');
+                    const corrCount = evaluation.correlations ? evaluation.correlations.length : 0;
+                    const corrPenalty = metrics.correlation_penalty || 0;
+                    const corrMult = metrics.correlation_multiplier || 1.0;
+                    let corrHtml = '<span class="metric">' + corrCount + ' correlation' + (corrCount !== 1 ? 's' : '') + '</span>';
+                    if (showDetail) {
+                        corrHtml += '<br><span class="detail">Penalty: +' + corrPenalty.toFixed(1) + '</span>';
+                        corrHtml += '<br><span class="detail">Multiplier: ' + corrMult.toFixed(2) + 'x</span>';
+                    } else {
+                        corrHtml += '<br><span class="detail">' + (corrCount > 0 ? 'Linked outcomes' : 'Independent legs') + '</span>';
+                    }
+                    correlationContent.innerHTML = corrHtml;
+                }
+
+                // Fragility Panel
+                const fragilityContent = document.getElementById('fragility-content');
+                const fragilityLocked = document.getElementById('fragility-locked');
+                const whyFragility = document.getElementById('why-fragility');
+
+                if (isLocked) {
+                    whyFragility.classList.add('locked-panel');
+                    fragilityLocked.classList.remove('hidden');
+                    fragilityContent.innerHTML = '<span style="color:#555">Locked</span>';
+                } else {
+                    whyFragility.classList.remove('locked-panel');
+                    fragilityLocked.classList.add('hidden');
+                    const rawFrag = metrics.raw_fragility || 0;
+                    const finalFrag = metrics.final_fragility || 0;
+                    let fragHtml = '<span class="metric">' + fragility.bucket.toUpperCase() + '</span>';
+                    if (showDetail) {
+                        fragHtml += '<br><span class="detail">Base: ' + rawFrag.toFixed(1) + '</span>';
+                        fragHtml += '<br><span class="detail">Final: ' + finalFrag.toFixed(1) + '</span>';
+                    } else {
+                        fragHtml += '<br><span class="detail">' + escapeHtml(fragility.meaning) + '</span>';
+                    }
+                    fragilityContent.innerHTML = fragHtml;
+                }
+
+                // Confidence Panel
+                const confidenceContent = document.getElementById('confidence-content');
+                const confidenceLocked = document.getElementById('confidence-locked');
+                const whyConfidence = document.getElementById('why-confidence');
+
+                if (isLocked) {
+                    whyConfidence.classList.add('locked-panel');
+                    confidenceLocked.classList.remove('hidden');
+                    confidenceContent.innerHTML = '<span style="color:#555">Locked</span>';
+                } else {
+                    whyConfidence.classList.remove('locked-panel');
+                    confidenceLocked.classList.add('hidden');
+                    let confHtml = '<span class="metric">Structural Only</span>';
+                    if (showDetail) {
+                        confHtml += '<br><span class="detail">+ No live injury data</span>';
+                        confHtml += '<br><span class="detail">+ No weather data</span>';
+                        confHtml += '<br><span class="detail">+ No odds movement</span>';
+                    } else {
+                        confHtml += '<br><span class="detail">Context data not included</span>';
+                    }
+                    confidenceContent.innerHTML = confHtml;
+                }
+
+                // ============================================================
+                // ALERTS (BEST only)
+                // ============================================================
                 const alertsPanel = document.getElementById('alerts-panel');
-                const alertsContent = document.getElementById('alerts-content');
+                const alertsContentEl = document.getElementById('alerts-content');
                 if (tier === 'best' && explain.alerts && explain.alerts.length > 0) {
                     alertsPanel.classList.remove('hidden');
-                    alertsContent.innerHTML = explain.alerts.map(a =>
+                    alertsContentEl.innerHTML = explain.alerts.map(a =>
                         '<div class="alert-item">' + escapeHtml(a) + '</div>'
                     ).join('');
                 } else {
                     alertsPanel.classList.add('hidden');
                 }
 
-                // Recommendation (BEST only)
+                // ============================================================
+                // RECOMMENDATION (BEST only)
+                // ============================================================
                 const recommendationPanel = document.getElementById('recommendation-panel');
                 const recommendationContent = document.getElementById('recommendation-content');
                 if (tier === 'best' && explain.recommended_next_step) {
