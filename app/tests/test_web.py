@@ -74,14 +74,18 @@ class TestAppPage:
     def test_contains_form_elements(self, client):
         """App page contains expected form elements."""
         response = client.get("/app")
-        # Check for textarea
-        assert "bet-input" in response.text
+        # Check for builder elements (leg-based inputs)
+        assert "legs-container" in response.text
+        assert "add-leg-btn" in response.text
         # Check for tier selector
         assert "tier-good" in response.text
         assert "tier-better" in response.text
         assert "tier-best" in response.text
         # Check for submit button
         assert "Evaluate" in response.text
+        # Check for navigation tabs
+        assert "nav-tab" in response.text
+        assert "tab-builder" in response.text
 
     def test_returns_html_content_type(self, client):
         """App page returns HTML content type."""

@@ -194,77 +194,163 @@ def _get_landing_page_html() -> str:
 </html>"""
 
 
-def _get_app_page_html() -> str:
-    """Generate app page HTML with parlay builder and evaluation form."""
-    return """<!DOCTYPE html>
+def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
+    """Generate app page HTML with tabbed interface.
+
+    Args:
+        user: Authenticated user object or None
+        active_tab: Active tab (builder, evaluate, history)
+    """
+    # User info for header
+    user_email = user.email if user else None
+    user_tier = user.tier if user else "GOOD"
+    is_logged_in = user is not None
+
+    # Tab active states
+    builder_active = "active" if active_tab == "builder" else ""
+    evaluate_active = "active" if active_tab == "evaluate" else ""
+    history_active = "active" if active_tab == "history" else ""
+
+    # User section in header
+    user_section = ""
+    if is_logged_in:
+        tier_class = user_tier.lower()
+        user_section = f'''
+            <div class="user-info-header">
+                <span class="tier-badge {tier_class}">{user_tier}</span>
+                <a href="/app/account" class="account-link">{user_email}</a>
+            </div>
+        '''
+    else:
+        user_section = '<a href="/login" class="login-link">Login</a>'
+
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leading Light - Parlay Builder</title>
+    <title>DNA Bet Engine</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #0a0a0a;
             color: #e0e0e0;
             min-height: 100vh;
             padding: 1.5rem;
-        }
-        .container {
+        }}
+        .container {{
             max-width: 1000px;
             margin: 0 auto;
-        }
-        header {
+        }}
+        header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0;
             padding-bottom: 1rem;
             border-bottom: 1px solid #333;
-        }
-        h1 { font-size: 1.5rem; color: #fff; }
-        header a {
+        }}
+        .header-left {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }}
+        h1 {{ font-size: 1.5rem; color: #fff; }}
+        header a {{
             color: #4a9eff;
             text-decoration: none;
             font-size: 0.875rem;
-        }
-        .main-grid {
+        }}
+        .user-info-header {{
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }}
+        .tier-badge {{
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }}
+        .tier-badge.good {{ background: #1a2a3a; color: #4a9eff; }}
+        .tier-badge.better {{ background: #2a2a1a; color: #f39c12; }}
+        .tier-badge.best {{ background: #1a2a1a; color: #2ecc71; }}
+        .account-link {{ color: #888 !important; }}
+        .login-link {{
+            padding: 0.5rem 1rem;
+            border: 1px solid #4a9eff;
+            border-radius: 4px;
+        }}
+
+        /* Navigation Tabs */
+        .nav-tabs {{
+            display: flex;
+            gap: 0;
+            margin: 1rem 0;
+            border-bottom: 1px solid #333;
+        }}
+        .nav-tab {{
+            padding: 0.75rem 1.5rem;
+            color: #888;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }}
+        .nav-tab:hover {{
+            color: #e0e0e0;
+        }}
+        .nav-tab.active {{
+            color: #f39c12;
+            border-bottom-color: #f39c12;
+        }}
+
+        /* Tab Content */
+        .tab-content {{
+            display: none;
+        }}
+        .tab-content.active {{
+            display: block;
+        }}
+
+        .main-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
-        }
-        @media (max-width: 768px) {
-            .main-grid { grid-template-columns: 1fr; }
-        }
+        }}
+        @media (max-width: 768px) {{
+            .main-grid {{ grid-template-columns: 1fr; }}
+        }}
 
         /* Builder Section */
-        .builder-section {
+        .builder-section {{
             background: #111;
             padding: 1.25rem;
             border-radius: 8px;
-        }
-        .section-header {
+        }}
+        .section-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
-        }
-        .section-title {
+        }}
+        .section-title {{
             font-size: 1.1rem;
             font-weight: 600;
             color: #fff;
-        }
-        .leg-count {
+        }}
+        .leg-count {{
             font-size: 0.875rem;
             color: #888;
-        }
+        }}
 
         /* Sport Selector */
-        .sport-selector {
+        .sport-selector {{
             margin-bottom: 1rem;
-        }
-        .sport-selector select {
+        }}
+        .sport-selector select {{
             width: 100%;
             padding: 0.75rem;
             background: #1a1a1a;
@@ -272,39 +358,39 @@ def _get_app_page_html() -> str:
             border-radius: 4px;
             color: #e0e0e0;
             font-size: 0.9rem;
-        }
-        .sport-selector select:focus {
+        }}
+        .sport-selector select:focus {{
             outline: none;
             border-color: #4a9eff;
-        }
+        }}
 
         /* Legs Container */
-        .legs-container {
+        .legs-container {{
             max-height: 400px;
             overflow-y: auto;
             margin-bottom: 1rem;
-        }
-        .leg-card {
+        }}
+        .leg-card {{
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 6px;
             padding: 1rem;
             margin-bottom: 0.75rem;
             position: relative;
-        }
-        .leg-card:last-child { margin-bottom: 0; }
-        .leg-header {
+        }}
+        .leg-card:last-child {{ margin-bottom: 0; }}
+        .leg-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.75rem;
-        }
-        .leg-number {
+        }}
+        .leg-number {{
             font-weight: 600;
             font-size: 0.875rem;
             color: #4a9eff;
-        }
-        .remove-leg {
+        }}
+        .remove-leg {{
             background: transparent;
             border: none;
             color: #ff4a4a;
@@ -313,47 +399,47 @@ def _get_app_page_html() -> str:
             padding: 0;
             width: auto;
             line-height: 1;
-        }
-        .remove-leg:hover { color: #ff6b6b; }
-        .remove-leg:disabled { color: #444; cursor: not-allowed; }
+        }}
+        .remove-leg:hover {{ color: #ff6b6b; }}
+        .remove-leg:disabled {{ color: #444; cursor: not-allowed; }}
 
-        .leg-fields {
+        .leg-fields {{
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 0.5rem;
-        }
-        .leg-field {
+        }}
+        .leg-field {{
             display: flex;
             flex-direction: column;
-        }
-        .leg-field.full-width {
+        }}
+        .leg-field.full-width {{
             grid-column: 1 / -1;
-        }
-        .leg-field label {
+        }}
+        .leg-field label {{
             font-size: 0.7rem;
             color: #888;
             margin-bottom: 0.25rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }
-        .leg-field input, .leg-field select {
+        }}
+        .leg-field input, .leg-field select {{
             padding: 0.5rem;
             background: #0a0a0a;
             border: 1px solid #333;
             border-radius: 4px;
             color: #e0e0e0;
             font-size: 0.875rem;
-        }
-        .leg-field input:focus, .leg-field select:focus {
+        }}
+        .leg-field input:focus, .leg-field select:focus {{
             outline: none;
             border-color: #4a9eff;
-        }
-        .leg-field input::placeholder {
+        }}
+        .leg-field input::placeholder {{
             color: #555;
-        }
+        }}
 
         /* Add Leg Button */
-        .add-leg-btn {
+        .add-leg-btn {{
             width: 100%;
             padding: 0.75rem;
             background: transparent;
@@ -364,32 +450,32 @@ def _get_app_page_html() -> str:
             cursor: pointer;
             transition: all 0.2s;
             margin-bottom: 1rem;
-        }
-        .add-leg-btn:hover {
+        }}
+        .add-leg-btn:hover {{
             border-color: #4a9eff;
             color: #4a9eff;
-        }
-        .add-leg-btn:disabled {
+        }}
+        .add-leg-btn:disabled {{
             border-color: #222;
             color: #444;
             cursor: not-allowed;
-        }
+        }}
 
         /* Tier Selector */
-        .tier-selector {
+        .tier-selector {{
             display: flex;
             gap: 0.5rem;
             margin-bottom: 1rem;
-        }
-        .tier-option {
+        }}
+        .tier-option {{
             flex: 1;
             position: relative;
-        }
-        .tier-option input {
+        }}
+        .tier-option input {{
             position: absolute;
             opacity: 0;
-        }
-        .tier-option label {
+        }}
+        .tier-option label {{
             display: block;
             padding: 0.625rem 0.5rem;
             background: #1a1a1a;
@@ -398,25 +484,25 @@ def _get_app_page_html() -> str:
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
-        }
-        .tier-option input:checked + label {
+        }}
+        .tier-option input:checked + label {{
             border-color: #4a9eff;
             background: #1a2a3a;
-        }
-        .tier-option label:hover {
+        }}
+        .tier-option label:hover {{
             border-color: #555;
-        }
-        .tier-name {
+        }}
+        .tier-name {{
             font-weight: 600;
             font-size: 0.8rem;
-        }
-        .tier-desc {
+        }}
+        .tier-desc {{
             font-size: 0.65rem;
             color: #888;
-        }
+        }}
 
         /* Submit Button */
-        .submit-btn {
+        .submit-btn {{
             width: 100%;
             padding: 1rem;
             background: #4a9eff;
@@ -427,109 +513,109 @@ def _get_app_page_html() -> str:
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
-        }
-        .submit-btn:hover { background: #3a8eef; }
-        .submit-btn:disabled {
+        }}
+        .submit-btn:hover {{ background: #3a8eef; }}
+        .submit-btn:disabled {{
             background: #333;
             color: #666;
             cursor: not-allowed;
-        }
+        }}
 
         /* Results Section */
-        .results-section {
+        .results-section {{
             background: #111;
             padding: 1.25rem;
             border-radius: 8px;
-        }
-        .results-placeholder {
+        }}
+        .results-placeholder {{
             text-align: center;
             color: #555;
             padding: 3rem 1rem;
-        }
-        .results-placeholder p {
+        }}
+        .results-placeholder p {{
             margin-bottom: 0.5rem;
-        }
+        }}
 
         /* Grade Display */
-        .grade-display {
+        .grade-display {{
             text-align: center;
             padding: 1.5rem;
             background: #1a1a1a;
             border-radius: 8px;
             margin-bottom: 1rem;
-        }
-        .grade-label {
+        }}
+        .grade-label {{
             font-size: 0.75rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 0.5rem;
-        }
-        .grade-value {
+        }}
+        .grade-value {{
             font-size: 3rem;
             font-weight: 700;
             line-height: 1;
             margin-bottom: 0.5rem;
-        }
-        .grade-value.low { color: #4ade80; }
-        .grade-value.medium { color: #fbbf24; }
-        .grade-value.high { color: #f97316; }
-        .grade-value.critical { color: #ef4444; }
-        .grade-bucket {
+        }}
+        .grade-value.low {{ color: #4ade80; }}
+        .grade-value.medium {{ color: #fbbf24; }}
+        .grade-value.high {{ color: #f97316; }}
+        .grade-value.critical {{ color: #ef4444; }}
+        .grade-bucket {{
             font-size: 0.875rem;
             font-weight: 600;
             text-transform: uppercase;
-        }
+        }}
 
         /* Verdict */
-        .verdict-panel {
+        .verdict-panel {{
             background: #1a1a1a;
             border-radius: 6px;
             padding: 1rem;
             margin-bottom: 1rem;
-        }
-        .verdict-panel h3 {
+        }}
+        .verdict-panel h3 {{
             font-size: 0.75rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 0.5rem;
-        }
-        .verdict-text {
+        }}
+        .verdict-text {{
             font-size: 1rem;
             line-height: 1.5;
-        }
-        .action-accept { color: #4ade80; }
-        .action-reduce { color: #fbbf24; }
-        .action-avoid { color: #ef4444; }
+        }}
+        .action-accept {{ color: #4ade80; }}
+        .action-reduce {{ color: #fbbf24; }}
+        .action-avoid {{ color: #ef4444; }}
 
         /* Insights Panel */
-        .insights-panel {
+        .insights-panel {{
             background: #1a1a1a;
             border-radius: 6px;
             padding: 1rem;
             margin-bottom: 1rem;
-        }
-        .insights-panel h3 {
+        }}
+        .insights-panel h3 {{
             font-size: 0.75rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 0.75rem;
-        }
-        .insight-item {
+        }}
+        .insight-item {{
             padding: 0.5rem 0;
             border-bottom: 1px solid #333;
             font-size: 0.875rem;
-        }
-        .insight-item:last-child { border-bottom: none; }
+        }}
+        .insight-item:last-child {{ border-bottom: none; }}
 
         /* Locked Content */
-        .locked-panel {
+        .locked-panel {{
             position: relative;
             overflow: hidden;
-        }
-        .locked-panel .locked-overlay {
+        }}
+        .locked-panel .locked-overlay {{
             position: absolute;
             top: 0;
             left: 0;
@@ -542,51 +628,51 @@ def _get_app_page_html() -> str:
             align-items: center;
             justify-content: center;
             z-index: 10;
-        }
-        .locked-icon {
+        }}
+        .locked-icon {{
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
-        }
-        .locked-text {
+        }}
+        .locked-text {{
             font-size: 0.75rem;
             color: #888;
-        }
+        }}
 
         /* Decision Summary (Always shown) */
-        .decision-summary {
+        .decision-summary {{
             background: linear-gradient(135deg, #1a2a3a 0%, #1a1a2a 100%);
             border: 1px solid #2a3a4a;
             border-radius: 8px;
             padding: 1rem;
             margin-bottom: 1rem;
-        }
-        .decision-summary h3 {
+        }}
+        .decision-summary h3 {{
             font-size: 0.7rem;
             color: #4a9eff;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 0.75rem;
-        }
-        .decision-verdict {
+        }}
+        .decision-verdict {{
             font-size: 1rem;
             line-height: 1.4;
             margin-bottom: 0.75rem;
             padding-bottom: 0.75rem;
             border-bottom: 1px solid #2a3a4a;
-        }
-        .decision-bullets {
+        }}
+        .decision-bullets {{
             list-style: none;
             padding: 0;
             margin: 0;
-        }
-        .decision-bullets li {
+        }}
+        .decision-bullets li {{
             font-size: 0.8rem;
             padding: 0.35rem 0;
             padding-left: 1.25rem;
             position: relative;
             color: #bbb;
-        }
-        .decision-bullets li::before {
+        }}
+        .decision-bullets li::before {{
             content: '';
             position: absolute;
             left: 0;
@@ -594,38 +680,38 @@ def _get_app_page_html() -> str:
             width: 6px;
             height: 6px;
             border-radius: 50%;
-        }
-        .bullet-risk::before { background: #ef4444; }
-        .bullet-improve::before { background: #4ade80; }
-        .bullet-unknown::before { background: #888; }
+        }}
+        .bullet-risk::before {{ background: #ef4444; }}
+        .bullet-improve::before {{ background: #4ade80; }}
+        .bullet-unknown::before {{ background: #888; }}
 
         /* Why Section */
-        .why-section {
+        .why-section {{
             margin-bottom: 1rem;
-        }
-        .why-section-title {
+        }}
+        .why-section-title {{
             font-size: 0.7rem;
             color: #888;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 0.5rem;
-        }
-        .why-grid {
+        }}
+        .why-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 0.5rem;
-        }
-        @media (max-width: 500px) {
-            .why-grid { grid-template-columns: 1fr; }
-        }
-        .why-panel {
+        }}
+        @media (max-width: 500px) {{
+            .why-grid {{ grid-template-columns: 1fr; }}
+        }}
+        .why-panel {{
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 6px;
             padding: 0.75rem;
             min-height: 80px;
-        }
-        .why-panel h4 {
+        }}
+        .why-panel h4 {{
             font-size: 0.7rem;
             color: #888;
             text-transform: uppercase;
@@ -634,194 +720,194 @@ def _get_app_page_html() -> str:
             display: flex;
             align-items: center;
             gap: 0.4rem;
-        }
-        .why-panel h4 .icon {
+        }}
+        .why-panel h4 .icon {{
             font-size: 0.9rem;
-        }
-        .why-panel-content {
+        }}
+        .why-panel-content {{
             font-size: 0.8rem;
             line-height: 1.4;
             color: #ccc;
-        }
-        .why-panel-content .metric {
+        }}
+        .why-panel-content .metric {{
             font-weight: 600;
             color: #fff;
-        }
-        .why-panel-content .detail {
+        }}
+        .why-panel-content .detail {{
             color: #888;
             font-size: 0.75rem;
-        }
+        }}
 
         /* Alerts (BEST only) */
-        .alerts-panel {
+        .alerts-panel {{
             background: #2a1a1a;
             border: 1px solid #4a2a2a;
             border-radius: 6px;
             padding: 1rem;
             margin-bottom: 1rem;
-        }
-        .alerts-panel h3 {
+        }}
+        .alerts-panel h3 {{
             font-size: 0.75rem;
             color: #ef4444;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 0.75rem;
-        }
-        .alert-item {
+        }}
+        .alert-item {{
             font-size: 0.875rem;
             padding: 0.5rem 0;
             border-bottom: 1px solid #4a2a2a;
-        }
-        .alert-item:last-child { border-bottom: none; }
+        }}
+        .alert-item:last-child {{ border-bottom: none; }}
 
         /* Error Panel */
-        .error-panel {
+        .error-panel {{
             background: #2a1a1a;
             border: 1px solid #ff4a4a;
             border-radius: 6px;
             padding: 1rem;
-        }
-        .error-panel h3 {
+        }}
+        .error-panel h3 {{
             color: #ff4a4a;
             font-size: 0.875rem;
             margin-bottom: 0.5rem;
-        }
-        .error-text {
+        }}
+        .error-text {{
             font-size: 0.875rem;
             color: #e0e0e0;
-        }
+        }}
 
         /* Hidden utility */
-        .hidden { display: none !important; }
+        .hidden {{ display: none !important; }}
 
         /* Context Panel Styles (Sprint 3) */
-        .context-panel {
+        .context-panel {{
             border: 1px solid #2a5a2a;
             background: #0a1a0a;
-        }
-        .context-panel h3 {
+        }}
+        .context-panel h3 {{
             color: #4a9e4a;
-        }
-        .context-header {
+        }}
+        .context-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.75rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid #333;
-        }
-        .context-source {
+        }}
+        .context-source {{
             font-size: 0.75rem;
             color: #888;
-        }
-        .context-summary {
+        }}
+        .context-summary {{
             background: #1a2a1a;
             padding: 0.75rem;
             border-radius: 4px;
             margin-bottom: 0.75rem;
             font-size: 0.9rem;
-        }
-        .context-modifiers {
+        }}
+        .context-modifiers {{
             list-style: none;
             padding: 0;
             margin: 0;
-        }
-        .context-modifier {
+        }}
+        .context-modifier {{
             padding: 0.5rem;
             margin-bottom: 0.5rem;
             background: #1a1a1a;
             border-radius: 4px;
             border-left: 3px solid #666;
-        }
-        .context-modifier.negative {
+        }}
+        .context-modifier.negative {{
             border-left-color: #e74c3c;
-        }
-        .context-modifier.positive {
+        }}
+        .context-modifier.positive {{
             border-left-color: #2ecc71;
-        }
-        .context-modifier-reason {
+        }}
+        .context-modifier-reason {{
             font-size: 0.85rem;
-        }
-        .context-modifier-adjustment {
+        }}
+        .context-modifier-adjustment {{
             font-size: 0.75rem;
             color: #888;
             margin-top: 0.25rem;
-        }
-        .context-missing {
+        }}
+        .context-missing {{
             font-size: 0.8rem;
             color: #f39c12;
             margin-top: 0.5rem;
             padding: 0.5rem;
             background: #2a2a1a;
             border-radius: 4px;
-        }
-        .context-entities {
+        }}
+        .context-entities {{
             font-size: 0.75rem;
             color: #888;
             margin-top: 0.5rem;
-        }
+        }}
 
         /* Alerts Feed Styles (Sprint 4) */
-        .alerts-feed {
+        .alerts-feed {{
             border: 1px solid #e74c3c;
             background: #1a0a0a;
             margin-bottom: 1rem;
-        }
-        .alerts-feed h3 {
+        }}
+        .alerts-feed h3 {{
             color: #e74c3c;
-        }
-        .alerts-feed.locked {
+        }}
+        .alerts-feed.locked {{
             border-color: #444;
             background: #1a1a1a;
-        }
-        .alerts-feed.locked h3 {
+        }}
+        .alerts-feed.locked h3 {{
             color: #666;
-        }
-        .alert-item {
+        }}
+        .alert-item {{
             padding: 0.75rem;
             margin-bottom: 0.5rem;
             background: #1a1a1a;
             border-radius: 4px;
             border-left: 3px solid #e74c3c;
-        }
-        .alert-item.warning {
+        }}
+        .alert-item.warning {{
             border-left-color: #f39c12;
-        }
-        .alert-item.info {
+        }}
+        .alert-item.info {{
             border-left-color: #3498db;
-        }
-        .alert-title {
+        }}
+        .alert-title {{
             font-weight: 600;
             margin-bottom: 0.25rem;
-        }
-        .alert-message {
+        }}
+        .alert-message {{
             font-size: 0.85rem;
             color: #aaa;
-        }
-        .alert-meta {
+        }}
+        .alert-meta {{
             font-size: 0.75rem;
             color: #666;
             margin-top: 0.5rem;
-        }
-        .alerts-empty {
+        }}
+        .alerts-empty {{
             color: #666;
             font-style: italic;
             padding: 0.5rem;
-        }
-        .alerts-locked-message {
+        }}
+        .alerts-locked-message {{
             color: #888;
             font-size: 0.9rem;
             padding: 0.5rem;
-        }
+        }}
 
         /* Share Button Styles (Sprint 5) */
-        .share-section {
+        .share-section {{
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid #333;
             text-align: center;
-        }
-        .share-btn {
+        }}
+        .share-btn {{
             background: #3498db;
             color: white;
             border: none;
@@ -829,25 +915,25 @@ def _get_app_page_html() -> str:
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.9rem;
-        }
-        .share-btn:hover {
+        }}
+        .share-btn:hover {{
             background: #2980b9;
-        }
-        .share-btn:disabled {
+        }}
+        .share-btn:disabled {{
             background: #555;
             cursor: not-allowed;
-        }
-        .share-link {
+        }}
+        .share-link {{
             margin-top: 0.75rem;
             padding: 0.5rem;
             background: #1a1a1a;
             border-radius: 4px;
             display: none;
-        }
-        .share-link.visible {
+        }}
+        .share-link.visible {{
             display: block;
-        }
-        .share-link input {
+        }}
+        .share-link input {{
             width: 100%;
             padding: 0.5rem;
             background: #0a0a0a;
@@ -855,33 +941,33 @@ def _get_app_page_html() -> str:
             color: #eee;
             border-radius: 4px;
             font-family: monospace;
-        }
-        .share-link .copy-btn {
+        }}
+        .share-link .copy-btn {{
             margin-top: 0.5rem;
             padding: 0.25rem 1rem;
             font-size: 0.8rem;
-        }
+        }}
 
         /* Upgrade Nudge Styles (Sprint 5) */
-        .upgrade-nudge {
+        .upgrade-nudge {{
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             border: 1px solid #f39c12;
             border-radius: 6px;
             padding: 1rem;
             margin-top: 1rem;
             text-align: center;
-        }
-        .upgrade-nudge h4 {
+        }}
+        .upgrade-nudge h4 {{
             color: #f39c12;
             margin: 0 0 0.5rem;
             font-size: 0.95rem;
-        }
-        .upgrade-nudge p {
+        }}
+        .upgrade-nudge p {{
             color: #aaa;
             font-size: 0.85rem;
             margin: 0 0 0.75rem;
-        }
-        .upgrade-nudge .upgrade-btn {
+        }}
+        .upgrade-nudge .upgrade-btn {{
             background: #f39c12;
             color: #111;
             border: none;
@@ -889,22 +975,177 @@ def _get_app_page_html() -> str:
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
-        }
-        .upgrade-nudge .upgrade-btn:hover {
+        }}
+        .upgrade-nudge .upgrade-btn:hover {{
             background: #e67e22;
-        }
+        }}
+        /* Evaluate Tab Styles */
+        .evaluate-section {{
+            background: #111;
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }}
+        .input-tabs {{
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }}
+        .input-tab {{
+            padding: 0.5rem 1rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .input-tab.active {{
+            background: #2a2a2a;
+            border-color: #4a9eff;
+            color: #4a9eff;
+        }}
+        .input-panel {{
+            display: none;
+        }}
+        .input-panel.active {{
+            display: block;
+        }}
+        .text-input {{
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+            resize: vertical;
+        }}
+        .text-input:focus {{
+            outline: none;
+            border-color: #4a9eff;
+        }}
+        .file-upload-area {{
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .file-upload-area:hover {{
+            border-color: #4a9eff;
+        }}
+        .file-upload-area.has-file {{
+            border-color: #2ecc71;
+            background: #1a2a1a;
+        }}
+        .file-upload-area input {{
+            display: none;
+        }}
+        .file-upload-icon {{
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }}
+        .file-upload-text {{
+            color: #888;
+        }}
+        .file-selected {{
+            color: #2ecc71;
+            font-weight: 600;
+        }}
+        .clear-file {{
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: transparent;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }}
+        .eval-submit {{
+            width: 100%;
+            margin-top: 1rem;
+        }}
+
+        /* History Tab Styles */
+        .history-section {{
+            background: #111;
+            padding: 1.25rem;
+            border-radius: 8px;
+        }}
+        .history-empty {{
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }}
+        .history-item {{
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }}
+        .history-date {{
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }}
+        .history-text {{
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }}
+        .history-grade {{
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }}
+        .history-grade.low {{ background: #1a3a2a; color: #4ade80; }}
+        .history-grade.medium {{ background: #3a3a1a; color: #fbbf24; }}
+        .history-grade.high {{ background: #3a2a1a; color: #f97316; }}
+        .history-grade.critical {{ background: #3a1a1a; color: #ef4444; }}
+        .login-prompt {{
+            text-align: center;
+            padding: 2rem;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }}
+        .login-prompt a {{
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.75rem 1.5rem;
+            background: #f39c12;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+        }}
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Leading Light</h1>
-            <nav style="display: flex; gap: 1rem;">
-                <a href="/" id="home-link">Home</a>
-                <a href="/app/account" id="account-link">Account</a>
-            </nav>
+            <div class="header-left">
+                <h1>DNA Bet Engine</h1>
+            </div>
+            {user_section}
         </header>
 
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
+            <a class="nav-tab {evaluate_active}" data-tab="evaluate">Evaluate</a>
+            <a class="nav-tab {history_active}" data-tab="history">History</a>
+        </nav>
+
+        <!-- Builder Tab Content -->
+        <div class="tab-content {builder_active}" id="tab-builder">
         <div class="main-grid">
             <!-- Builder Section -->
             <div class="builder-section">
@@ -1070,10 +1311,122 @@ def _get_app_page_html() -> str:
                 </div>
             </div>
         </div>
+        </div> <!-- End tab-builder -->
+
+        <!-- Evaluate Tab Content -->
+        <div class="tab-content" id="tab-evaluate">
+            <div class="main-grid">
+                <div class="evaluate-section">
+                    <div class="section-header">
+                        <span class="section-title">Evaluate Bet</span>
+                    </div>
+
+                    <!-- Input Type Tabs -->
+                    <div class="input-tabs">
+                        <div class="input-tab active" data-input="text">Text</div>
+                        <div class="input-tab" data-input="image">Image</div>
+                    </div>
+
+                    <!-- Text Input Panel -->
+                    <div class="input-panel active" id="text-input-panel">
+                        <textarea class="text-input" id="eval-text-input" placeholder="Paste your bet slip text here...&#10;&#10;Example:&#10;Lakers -5.5 + Celtics ML + LeBron O27.5 pts parlay"></textarea>
+                    </div>
+
+                    <!-- Image Input Panel -->
+                    <div class="input-panel" id="image-input-panel">
+                        <div class="file-upload-area" id="file-upload-area">
+                            <input type="file" id="file-input" accept="image/*">
+                            <div class="file-upload-icon">&#128247;</div>
+                            <div class="file-upload-text" id="file-upload-text">
+                                Click or drag to upload bet slip image
+                            </div>
+                            <div class="file-selected hidden" id="file-selected">
+                                <span id="file-name"></span>
+                                <button type="button" class="clear-file" id="clear-file">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tier Selector -->
+                    <div class="tier-selector" style="margin-top: 1rem;">
+                        <div class="tier-option">
+                            <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
+                            <label for="eval-tier-good">
+                                <div class="tier-name">GOOD</div>
+                                <div class="tier-desc">Grade + Verdict</div>
+                            </label>
+                        </div>
+                        <div class="tier-option">
+                            <input type="radio" name="eval-tier" id="eval-tier-better" value="better">
+                            <label for="eval-tier-better">
+                                <div class="tier-name">BETTER</div>
+                                <div class="tier-desc">+ Insights</div>
+                            </label>
+                        </div>
+                        <div class="tier-option">
+                            <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
+                            <label for="eval-tier-best">
+                                <div class="tier-name">BEST</div>
+                                <div class="tier-desc">+ Full Analysis</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
+                        Evaluate
+                    </button>
+                </div>
+
+                <!-- Results Section (same structure as builder) -->
+                <div class="results-section">
+                    <div class="section-header">
+                        <span class="section-title">Results</span>
+                    </div>
+
+                    <div id="eval-results-placeholder" class="results-placeholder">
+                        <p>Enter or upload your bet and click Evaluate</p>
+                    </div>
+
+                    <div id="eval-results-content" class="hidden">
+                        <!-- Grade Display -->
+                        <div class="grade-display" id="eval-grade-display">
+                            <div class="grade-label">Fragility Score</div>
+                            <div class="grade-value" id="eval-grade-value">--</div>
+                            <div class="grade-bucket" id="eval-grade-bucket">--</div>
+                        </div>
+
+                        <!-- Decision Summary -->
+                        <div class="decision-summary" id="eval-decision-summary">
+                            <h3>Decision Summary</h3>
+                            <div class="decision-verdict" id="eval-decision-verdict"></div>
+                        </div>
+                    </div>
+
+                    <div id="eval-error-panel" class="error-panel hidden">
+                        <h3>Error</h3>
+                        <div class="error-text" id="eval-error-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End tab-evaluate -->
+
+        <!-- History Tab Content -->
+        <div class="tab-content" id="tab-history">
+            <div class="history-section">
+                <div class="section-header">
+                    <span class="section-title">Evaluation History</span>
+                </div>
+
+                <div id="history-content">
+                    {"<div class='login-prompt'><p>Sign in to view your evaluation history</p><a href='/login'>Login</a></div>" if not is_logged_in else "<div class='loading'>Loading history...</div>"}
+                </div>
+            </div>
+        </div> <!-- End tab-history -->
+
     </div>
 
     <script>
-        (function() {
+        (function() {{
             // State
             let legs = [];
             const MIN_LEGS = 2;
@@ -1090,20 +1443,20 @@ def _get_app_page_html() -> str:
 
             // Market types
             const MARKETS = [
-                { value: 'spread', label: 'Spread' },
-                { value: 'ml', label: 'Moneyline' },
-                { value: 'total', label: 'Total (O/U)' },
-                { value: 'player_prop', label: 'Player Prop' }
+                {{ value: 'spread', label: 'Spread' }},
+                {{ value: 'ml', label: 'Moneyline' }},
+                {{ value: 'total', label: 'Total (O/U)' }},
+                {{ value: 'player_prop', label: 'Player Prop' }}
             ];
 
             // Initialize with 2 legs
-            function init() {
+            function init() {{
                 addLeg();
                 addLeg();
                 updateUI();
-            }
+            }}
 
-            function createLegHTML(index) {
+            function createLegHTML(index) {{
                 const marketOptions = MARKETS.map(m =>
                     '<option value="' + m.value + '">' + m.label + '</option>'
                 ).join('');
@@ -1132,29 +1485,29 @@ def _get_app_page_html() -> str:
                         '</div>' +
                     '</div>' +
                 '</div>';
-            }
+            }}
 
-            function addLeg() {
+            function addLeg() {{
                 if (legs.length >= MAX_LEGS) return;
-                legs.push({ selection: '', market: 'spread', line: '', odds: '' });
+                legs.push({{ selection: '', market: 'spread', line: '', odds: '' }});
                 renderLegs();
                 updateUI();
-            }
+            }}
 
-            function removeLeg(index) {
+            function removeLeg(index) {{
                 if (legs.length <= MIN_LEGS) return;
                 legs.splice(index, 1);
                 renderLegs();
                 updateUI();
-            }
+            }}
 
-            function renderLegs() {
+            function renderLegs() {{
                 legsContainer.innerHTML = legs.map((_, i) => createLegHTML(i)).join('');
                 attachLegListeners();
                 // Restore values
-                legs.forEach((leg, i) => {
+                legs.forEach((leg, i) => {{
                     const card = legsContainer.querySelector('[data-index="' + i + '"]');
-                    if (card) {
+                    if (card) {{
                         const selInput = card.querySelector('.leg-selection');
                         const mktSelect = card.querySelector('.leg-market');
                         const lineInput = card.querySelector('.leg-line');
@@ -1163,42 +1516,42 @@ def _get_app_page_html() -> str:
                         if (mktSelect) mktSelect.value = leg.market;
                         if (lineInput) lineInput.value = leg.line;
                         if (oddsInput) oddsInput.value = leg.odds;
-                    }
-                });
-            }
+                    }}
+                }});
+            }}
 
-            function attachLegListeners() {
+            function attachLegListeners() {{
                 // Remove buttons
-                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {
-                    btn.addEventListener('click', function() {
+                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {{
+                    btn.addEventListener('click', function() {{
                         removeLeg(parseInt(this.dataset.index));
-                    });
-                });
+                    }});
+                }});
                 // Input changes
-                legsContainer.querySelectorAll('.leg-selection').forEach(input => {
-                    input.addEventListener('input', function() {
+                legsContainer.querySelectorAll('.leg-selection').forEach(input => {{
+                    input.addEventListener('input', function() {{
                         legs[parseInt(this.dataset.index)].selection = this.value;
                         updateUI();
-                    });
-                });
-                legsContainer.querySelectorAll('.leg-market').forEach(select => {
-                    select.addEventListener('change', function() {
+                    }});
+                }});
+                legsContainer.querySelectorAll('.leg-market').forEach(select => {{
+                    select.addEventListener('change', function() {{
                         legs[parseInt(this.dataset.index)].market = this.value;
-                    });
-                });
-                legsContainer.querySelectorAll('.leg-line').forEach(input => {
-                    input.addEventListener('input', function() {
+                    }});
+                }});
+                legsContainer.querySelectorAll('.leg-line').forEach(input => {{
+                    input.addEventListener('input', function() {{
                         legs[parseInt(this.dataset.index)].line = this.value;
-                    });
-                });
-                legsContainer.querySelectorAll('.leg-odds').forEach(input => {
-                    input.addEventListener('input', function() {
+                    }});
+                }});
+                legsContainer.querySelectorAll('.leg-odds').forEach(input => {{
+                    input.addEventListener('input', function() {{
                         legs[parseInt(this.dataset.index)].odds = this.value;
-                    });
-                });
-            }
+                    }});
+                }});
+            }}
 
-            function updateUI() {
+            function updateUI() {{
                 // Leg count
                 legCountDisplay.textContent = legs.length + ' leg' + (legs.length !== 1 ? 's' : '');
 
@@ -1206,46 +1559,46 @@ def _get_app_page_html() -> str:
                 addLegBtn.disabled = legs.length >= MAX_LEGS;
 
                 // Remove button state
-                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {
+                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {{
                     btn.disabled = legs.length <= MIN_LEGS;
-                });
+                }});
 
                 // Submit button - require at least selection for each leg
                 const validLegs = legs.filter(leg => leg.selection.trim().length > 0);
                 submitBtn.disabled = validLegs.length < MIN_LEGS;
-            }
+            }}
 
-            function getSelectedTier() {
+            function getSelectedTier() {{
                 const selected = document.querySelector('input[name="tier"]:checked');
                 return selected ? selected.value : 'good';
-            }
+            }}
 
-            function buildBetText() {
+            function buildBetText() {{
                 // Convert structured legs to text format for existing endpoint
-                const parts = legs.map(leg => {
+                const parts = legs.map(leg => {{
                     let text = leg.selection.trim();
-                    if (leg.line.trim()) {
+                    if (leg.line.trim()) {{
                         text += ' ' + leg.line.trim();
-                    }
-                    if (leg.market === 'ml') {
+                    }}
+                    if (leg.market === 'ml') {{
                         text += ' ML';
-                    } else if (leg.market === 'player_prop') {
+                    }} else if (leg.market === 'player_prop') {{
                         text += ' prop';
-                    }
+                    }}
                     return text;
-                }).filter(t => t.length > 0);
+                }}).filter(t => t.length > 0);
 
                 return parts.join(' + ') + ' parlay';
-            }
+            }}
 
-            function showError(message) {
+            function showError(message) {{
                 resultsPlaceholder.classList.add('hidden');
                 resultsContent.classList.add('hidden');
                 errorPanel.classList.remove('hidden');
                 document.getElementById('error-text').textContent = message;
-            }
+            }}
 
-            function showResults(data) {
+            function showResults(data) {{
                 resultsPlaceholder.classList.add('hidden');
                 errorPanel.classList.add('hidden');
                 resultsContent.classList.remove('hidden');
@@ -1253,7 +1606,7 @@ def _get_app_page_html() -> str:
                 const tier = getSelectedTier();
                 const evaluation = data.evaluation;
                 const interpretation = data.interpretation;
-                const explain = data.explain || {};
+                const explain = data.explain || {{}};
                 const metrics = evaluation.metrics;
 
                 // Grade display
@@ -1280,12 +1633,12 @@ def _get_app_page_html() -> str:
                 const bulletUnknown = document.getElementById('bullet-unknown');
 
                 // Biggest risk - derived from inductor level
-                const riskMap = {
+                const riskMap = {{
                     'stable': 'Low structural risk',
                     'loaded': 'Moderate complexity - multiple dependencies',
                     'tense': 'High correlation or fragility detected',
                     'critical': 'Extreme fragility - many failure points'
-                };
+                }};
                 bulletRisk.textContent = 'Risk: ' + (riskMap[evaluation.inductor.level] || 'Structural analysis');
 
                 // Best improvement
@@ -1305,124 +1658,124 @@ def _get_app_page_html() -> str:
                 const structureLocked = document.getElementById('structure-locked');
                 const whyStructure = document.getElementById('why-structure');
 
-                if (isLocked) {
+                if (isLocked) {{
                     whyStructure.classList.add('locked-panel');
                     structureLocked.classList.remove('hidden');
                     structureContent.innerHTML = '<span style="color:#555">Locked</span>';
-                } else {
+                }} else {{
                     whyStructure.classList.remove('locked-panel');
                     structureLocked.classList.add('hidden');
                     const legCount = legs.length;
                     const legPenalty = metrics.leg_penalty || 0;
                     let structureHtml = '<span class="metric">' + legCount + ' legs</span>';
-                    if (showDetail) {
+                    if (showDetail) {{
                         structureHtml += '<br><span class="detail">Leg penalty: +' + legPenalty.toFixed(1) + '</span>';
-                        if (legCount >= 4) {
+                        if (legCount >= 4) {{
                             structureHtml += '<br><span class="detail">High concentration risk</span>';
-                        }
-                    } else {
+                        }}
+                    }} else {{
                         structureHtml += '<br><span class="detail">Each leg adds risk</span>';
-                    }
+                    }}
                     structureContent.innerHTML = structureHtml;
-                }
+                }}
 
                 // Correlation Panel
                 const correlationContent = document.getElementById('correlation-content');
                 const correlationLocked = document.getElementById('correlation-locked');
                 const whyCorrelation = document.getElementById('why-correlation');
 
-                if (isLocked) {
+                if (isLocked) {{
                     whyCorrelation.classList.add('locked-panel');
                     correlationLocked.classList.remove('hidden');
                     correlationContent.innerHTML = '<span style="color:#555">Locked</span>';
-                } else {
+                }} else {{
                     whyCorrelation.classList.remove('locked-panel');
                     correlationLocked.classList.add('hidden');
                     const corrCount = evaluation.correlations ? evaluation.correlations.length : 0;
                     const corrPenalty = metrics.correlation_penalty || 0;
                     const corrMult = metrics.correlation_multiplier || 1.0;
                     let corrHtml = '<span class="metric">' + corrCount + ' correlation' + (corrCount !== 1 ? 's' : '') + '</span>';
-                    if (showDetail) {
+                    if (showDetail) {{
                         corrHtml += '<br><span class="detail">Penalty: +' + corrPenalty.toFixed(1) + '</span>';
                         corrHtml += '<br><span class="detail">Multiplier: ' + corrMult.toFixed(2) + 'x</span>';
-                    } else {
+                    }} else {{
                         corrHtml += '<br><span class="detail">' + (corrCount > 0 ? 'Linked outcomes' : 'Independent legs') + '</span>';
-                    }
+                    }}
                     correlationContent.innerHTML = corrHtml;
-                }
+                }}
 
                 // Fragility Panel
                 const fragilityContent = document.getElementById('fragility-content');
                 const fragilityLocked = document.getElementById('fragility-locked');
                 const whyFragility = document.getElementById('why-fragility');
 
-                if (isLocked) {
+                if (isLocked) {{
                     whyFragility.classList.add('locked-panel');
                     fragilityLocked.classList.remove('hidden');
                     fragilityContent.innerHTML = '<span style="color:#555">Locked</span>';
-                } else {
+                }} else {{
                     whyFragility.classList.remove('locked-panel');
                     fragilityLocked.classList.add('hidden');
                     const rawFrag = metrics.raw_fragility || 0;
                     const finalFrag = metrics.final_fragility || 0;
                     let fragHtml = '<span class="metric">' + fragility.bucket.toUpperCase() + '</span>';
-                    if (showDetail) {
+                    if (showDetail) {{
                         fragHtml += '<br><span class="detail">Base: ' + rawFrag.toFixed(1) + '</span>';
                         fragHtml += '<br><span class="detail">Final: ' + finalFrag.toFixed(1) + '</span>';
-                    } else {
+                    }} else {{
                         fragHtml += '<br><span class="detail">' + escapeHtml(fragility.meaning) + '</span>';
-                    }
+                    }}
                     fragilityContent.innerHTML = fragHtml;
-                }
+                }}
 
                 // Confidence Panel
                 const confidenceContent = document.getElementById('confidence-content');
                 const confidenceLocked = document.getElementById('confidence-locked');
                 const whyConfidence = document.getElementById('why-confidence');
 
-                if (isLocked) {
+                if (isLocked) {{
                     whyConfidence.classList.add('locked-panel');
                     confidenceLocked.classList.remove('hidden');
                     confidenceContent.innerHTML = '<span style="color:#555">Locked</span>';
-                } else {
+                }} else {{
                     whyConfidence.classList.remove('locked-panel');
                     confidenceLocked.classList.add('hidden');
                     let confHtml = '<span class="metric">Structural Only</span>';
-                    if (showDetail) {
+                    if (showDetail) {{
                         confHtml += '<br><span class="detail">+ No live injury data</span>';
                         confHtml += '<br><span class="detail">+ No weather data</span>';
                         confHtml += '<br><span class="detail">+ No odds movement</span>';
-                    } else {
+                    }} else {{
                         confHtml += '<br><span class="detail">Context data not included</span>';
-                    }
+                    }}
                     confidenceContent.innerHTML = confHtml;
-                }
+                }}
 
                 // ============================================================
                 // ALERTS (BEST only)
                 // ============================================================
                 const alertsPanel = document.getElementById('alerts-panel');
                 const alertsContentEl = document.getElementById('alerts-content');
-                if (tier === 'best' && explain.alerts && explain.alerts.length > 0) {
+                if (tier === 'best' && explain.alerts && explain.alerts.length > 0) {{
                     alertsPanel.classList.remove('hidden');
                     alertsContentEl.innerHTML = explain.alerts.map(a =>
                         '<div class="alert-item">' + escapeHtml(a) + '</div>'
                     ).join('');
-                } else {
+                }} else {{
                     alertsPanel.classList.add('hidden');
-                }
+                }}
 
                 // ============================================================
                 // RECOMMENDATION (BEST only)
                 // ============================================================
                 const recommendationPanel = document.getElementById('recommendation-panel');
                 const recommendationContent = document.getElementById('recommendation-content');
-                if (tier === 'best' && explain.recommended_next_step) {
+                if (tier === 'best' && explain.recommended_next_step) {{
                     recommendationPanel.classList.remove('hidden');
                     recommendationContent.textContent = explain.recommended_next_step;
-                } else {
+                }} else {{
                     recommendationPanel.classList.add('hidden');
-                }
+                }}
 
                 // ============================================================
                 // CONTEXT PANEL (Sprint 3)
@@ -1431,7 +1784,7 @@ def _get_app_page_html() -> str:
                 const contextContent = document.getElementById('context-content');
                 const context = data.context;
 
-                if (context && context.impact) {
+                if (context && context.impact) {{
                     contextPanel.classList.remove('hidden');
                     let html = '';
 
@@ -1442,56 +1795,56 @@ def _get_app_page_html() -> str:
                     html += '</div>';
 
                     // Summary
-                    if (context.impact.summary) {
+                    if (context.impact.summary) {{
                         html += '<div class="context-summary">' + escapeHtml(context.impact.summary) + '</div>';
-                    }
+                    }}
 
                     // Modifiers
-                    if (context.impact.modifiers && context.impact.modifiers.length > 0) {
+                    if (context.impact.modifiers && context.impact.modifiers.length > 0) {{
                         html += '<ul class="context-modifiers">';
-                        context.impact.modifiers.forEach(function(mod) {
+                        context.impact.modifiers.forEach(function(mod) {{
                             const modClass = mod.adjustment > 0 ? 'negative' : (mod.adjustment < 0 ? 'positive' : '');
                             html += '<li class="context-modifier ' + modClass + '">';
                             html += '<div class="context-modifier-reason">' + escapeHtml(mod.reason) + '</div>';
-                            if (mod.adjustment !== 0) {
+                            if (mod.adjustment !== 0) {{
                                 const sign = mod.adjustment > 0 ? '+' : '';
                                 html += '<div class="context-modifier-adjustment">Fragility adjustment: ' + sign + mod.adjustment.toFixed(1) + '</div>';
-                            }
-                            if (mod.affected_players && mod.affected_players.length > 0) {
+                            }}
+                            if (mod.affected_players && mod.affected_players.length > 0) {{
                                 html += '<div class="context-modifier-adjustment">Players: ' + mod.affected_players.join(', ') + '</div>';
-                            }
+                            }}
                             html += '</li>';
-                        });
+                        }});
                         html += '</ul>';
-                    }
+                    }}
 
                     // Missing data warnings
-                    if (context.missing_data && context.missing_data.length > 0) {
+                    if (context.missing_data && context.missing_data.length > 0) {{
                         html += '<div class="context-missing">';
                         html += '<strong>Missing data:</strong> ' + context.missing_data.join(', ');
                         html += '</div>';
-                    }
+                    }}
 
                     // Entities found
-                    if (context.entities_found) {
+                    if (context.entities_found) {{
                         const players = context.entities_found.players || [];
                         const teams = context.entities_found.teams || [];
-                        if (players.length > 0 || teams.length > 0) {
+                        if (players.length > 0 || teams.length > 0) {{
                             html += '<div class="context-entities">';
-                            if (players.length > 0) {
+                            if (players.length > 0) {{
                                 html += 'Players detected: ' + players.join(', ');
-                            }
-                            if (teams.length > 0) {
+                            }}
+                            if (teams.length > 0) {{
                                 html += (players.length > 0 ? ' | ' : '') + 'Teams: ' + teams.join(', ');
-                            }
+                            }}
                             html += '</div>';
-                        }
-                    }
+                        }}
+                    }}
 
                     contextContent.innerHTML = html;
-                } else {
+                }} else {{
                     contextPanel.classList.add('hidden');
-                }
+                }}
 
                 // ============================================================
                 // ALERTS FEED (Sprint 4 - BEST only)
@@ -1499,44 +1852,44 @@ def _get_app_page_html() -> str:
                 const alertsFeed = document.getElementById('alerts-feed');
                 const alertsContent = document.getElementById('alerts-content');
 
-                if (tier === 'best') {
+                if (tier === 'best') {{
                     // Fetch alerts for BEST tier
                     fetchAlerts(alertsFeed, alertsContent);
-                } else {
+                }} else {{
                     alertsFeed.classList.add('hidden');
-                }
+                }}
 
                 // ============================================================
                 // SHARE & UPGRADE (Sprint 5)
                 // ============================================================
                 showShareSection(data.evaluation_id);
                 showUpgradeNudge(tier);
-            }
+            }}
 
-            async function fetchAlerts(alertsFeed, alertsContent) {
+            async function fetchAlerts(alertsFeed, alertsContent) {{
                 const tier = getSelectedTier();
 
-                try {
-                    const response = await fetch('/app/alerts', {
+                try {{
+                    const response = await fetch('/app/alerts', {{
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tier: tier, limit: 10 })
-                    });
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ tier: tier, limit: 10 }})
+                    }});
 
                     const data = await response.json();
 
-                    if (data.tier_locked) {
+                    if (data.tier_locked) {{
                         alertsFeed.classList.add('locked');
                         alertsContent.innerHTML = '<div class="alerts-locked-message">Upgrade to BEST tier for live alerts</div>';
                         alertsFeed.classList.remove('hidden');
                         return;
-                    }
+                    }}
 
                     alertsFeed.classList.remove('locked');
 
-                    if (data.alerts && data.alerts.length > 0) {
+                    if (data.alerts && data.alerts.length > 0) {{
                         let html = '';
-                        data.alerts.forEach(function(alert) {
+                        data.alerts.forEach(function(alert) {{
                             const severityClass = alert.severity === 'critical' ? '' :
                                                   alert.severity === 'warning' ? 'warning' : 'info';
                             html += '<div class="alert-item ' + severityClass + '">';
@@ -1551,56 +1904,56 @@ def _get_app_page_html() -> str:
 
                             html += '<div class="alert-meta">' + meta.join(' | ') + '</div>';
                             html += '</div>';
-                        });
+                        }});
                         alertsContent.innerHTML = html;
                         alertsFeed.classList.remove('hidden');
-                    } else {
+                    }} else {{
                         alertsContent.innerHTML = '<div class="alerts-empty">No active alerts</div>';
                         alertsFeed.classList.remove('hidden');
-                    }
+                    }}
 
-                } catch (err) {
+                }} catch (err) {{
                     console.error('Failed to fetch alerts:', err);
                     alertsFeed.classList.add('hidden');
-                }
-            }
+                }}
+            }}
 
-            function escapeHtml(text) {
+            function escapeHtml(text) {{
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
-            }
+            }}
 
-            async function submitEvaluation() {
+            async function submitEvaluation() {{
                 const input = buildBetText();
                 const tier = getSelectedTier();
 
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Evaluating...';
 
-                try {
-                    const response = await fetch('/app/evaluate', {
+                try {{
+                    const response = await fetch('/app/evaluate', {{
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ input, tier })
-                    });
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ input, tier }})
+                    }});
 
                     const data = await response.json();
 
-                    if (!response.ok) {
+                    if (!response.ok) {{
                         showError(data.detail || 'Evaluation failed');
                         return;
-                    }
+                    }}
 
                     showResults(data);
-                } catch (err) {
+                }} catch (err) {{
                     showError('Network error: ' + err.message);
-                } finally {
+                }} finally {{
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Evaluate Parlay';
                     updateUI();
-                }
-            }
+                }}
+            }}
 
             submitBtn.addEventListener('click', submitEvaluation);
             addLegBtn.addEventListener('click', addLeg);
@@ -1618,90 +1971,371 @@ def _get_app_page_html() -> str:
             const upgradeNudge = document.getElementById('upgrade-nudge');
             const upgradeMessage = document.getElementById('upgrade-message');
 
-            shareBtn.addEventListener('click', async function() {
+            shareBtn.addEventListener('click', async function() {{
                 if (!currentEvaluationId) return;
 
                 shareBtn.disabled = true;
                 shareBtn.textContent = 'Creating link...';
 
-                try {
-                    const response = await fetch('/app/share', {
+                try {{
+                    const response = await fetch('/app/share', {{
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ evaluation_id: currentEvaluationId })
-                    });
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ evaluation_id: currentEvaluationId }})
+                    }});
 
                     const data = await response.json();
 
-                    if (data.token) {
+                    if (data.token) {{
                         const fullUrl = window.location.origin + data.share_url;
                         shareUrl.value = fullUrl;
                         shareLink.classList.add('visible');
-                    } else {
+                    }} else {{
                         alert('Failed to create share link');
-                    }
-                } catch (err) {
+                    }}
+                }} catch (err) {{
                     console.error('Share error:', err);
                     alert('Failed to create share link');
-                } finally {
+                }} finally {{
                     shareBtn.disabled = false;
                     shareBtn.textContent = 'Share Result';
-                }
-            });
+                }}
+            }});
 
-            copyBtn.addEventListener('click', function() {
+            copyBtn.addEventListener('click', function() {{
                 shareUrl.select();
                 document.execCommand('copy');
                 copyBtn.textContent = 'Copied!';
-                setTimeout(function() {
+                setTimeout(function() {{
                     copyBtn.textContent = 'Copy Link';
-                }, 2000);
-            });
+                }}, 2000);
+            }});
 
             // Show share section when results are displayed
-            function showShareSection(evaluationId) {
+            function showShareSection(evaluationId) {{
                 currentEvaluationId = evaluationId;
-                if (evaluationId) {
+                if (evaluationId) {{
                     shareSection.classList.remove('hidden');
                     shareLink.classList.remove('visible');
-                } else {
+                }} else {{
                     shareSection.classList.add('hidden');
-                }
-            }
+                }}
+            }}
 
             // Show upgrade nudge for non-BEST tiers
-            function showUpgradeNudge(tier) {
-                if (tier === 'best') {
+            function showUpgradeNudge(tier) {{
+                if (tier === 'best') {{
                     upgradeNudge.classList.add('hidden');
                     return;
-                }
+                }}
 
                 upgradeNudge.classList.remove('hidden');
 
-                if (tier === 'good') {
+                if (tier === 'good') {{
                     upgradeMessage.textContent = 'Upgrade to BETTER for structural analysis, or BEST for live alerts and full insights';
-                } else {
+                }} else {{
                     upgradeMessage.textContent = 'Upgrade to BEST for live alerts, player availability, and recommended actions';
-                }
-            }
+                }}
+            }}
 
             // Upgrade tier function (called from button)
-            window.upgradeTier = function() {
+            window.upgradeTier = function() {{
                 const currentTier = getSelectedTier();
-                if (currentTier === 'good') {
+                if (currentTier === 'good') {{
                     document.getElementById('tier-better').checked = true;
-                } else if (currentTier === 'better') {
+                }} else if (currentTier === 'better') {{
                     document.getElementById('tier-best').checked = true;
-                }
+                }}
                 // Optionally re-evaluate
-                if (currentEvaluationId) {
+                if (currentEvaluationId) {{
                     submitEvaluation();
-                }
-            };
+                }}
+            }};
 
             // Initialize
             init();
-        })();
+        }})();
+
+        // ============================================================
+        // TAB SWITCHING
+        // ============================================================
+        (function() {{
+            const navTabs = document.querySelectorAll('.nav-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            navTabs.forEach(tab => {{
+                tab.addEventListener('click', function() {{
+                    const tabName = this.dataset.tab;
+
+                    // Update URL
+                    const url = new URL(window.location);
+                    url.searchParams.set('tab', tabName);
+                    window.history.pushState({{}}, '', url);
+
+                    // Switch tabs
+                    navTabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+
+                    this.classList.add('active');
+                    document.getElementById('tab-' + tabName).classList.add('active');
+
+                    // Load history if switching to history tab
+                    if (tabName === 'history') {{
+                        loadHistory();
+                    }}
+                }});
+            }});
+        }})();
+
+        // ============================================================
+        // EVALUATE TAB FUNCTIONALITY
+        // ============================================================
+        (function() {{
+            const inputTabs = document.querySelectorAll('.input-tab');
+            const inputPanels = document.querySelectorAll('.input-panel');
+            const textInput = document.getElementById('eval-text-input');
+            const fileInput = document.getElementById('file-input');
+            const fileUploadArea = document.getElementById('file-upload-area');
+            const fileUploadText = document.getElementById('file-upload-text');
+            const fileSelected = document.getElementById('file-selected');
+            const fileNameSpan = document.getElementById('file-name');
+            const clearFileBtn = document.getElementById('clear-file');
+            const evalSubmitBtn = document.getElementById('eval-submit-btn');
+            const evalResultsPlaceholder = document.getElementById('eval-results-placeholder');
+            const evalResultsContent = document.getElementById('eval-results-content');
+            const evalErrorPanel = document.getElementById('eval-error-panel');
+
+            let selectedFile = null;
+            let currentInputMode = 'text';
+
+            // Input type tabs
+            inputTabs.forEach(tab => {{
+                tab.addEventListener('click', function() {{
+                    const inputType = this.dataset.input;
+                    currentInputMode = inputType;
+
+                    inputTabs.forEach(t => t.classList.remove('active'));
+                    inputPanels.forEach(p => p.classList.remove('active'));
+
+                    this.classList.add('active');
+                    document.getElementById(inputType + '-input-panel').classList.add('active');
+
+                    updateEvalSubmitState();
+                }});
+            }});
+
+            // Text input change
+            textInput.addEventListener('input', updateEvalSubmitState);
+
+            // File upload area click
+            fileUploadArea.addEventListener('click', function() {{
+                fileInput.click();
+            }});
+
+            // File drag and drop
+            fileUploadArea.addEventListener('dragover', function(e) {{
+                e.preventDefault();
+                this.style.borderColor = '#4a9eff';
+            }});
+
+            fileUploadArea.addEventListener('dragleave', function() {{
+                this.style.borderColor = '#333';
+            }});
+
+            fileUploadArea.addEventListener('drop', function(e) {{
+                e.preventDefault();
+                this.style.borderColor = '#333';
+                if (e.dataTransfer.files.length > 0) {{
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }}
+            }});
+
+            // File input change
+            fileInput.addEventListener('change', function() {{
+                if (this.files.length > 0) {{
+                    handleFileSelect(this.files[0]);
+                }}
+            }});
+
+            // Clear file button
+            clearFileBtn.addEventListener('click', function(e) {{
+                e.stopPropagation();
+                clearFile();
+            }});
+
+            function handleFileSelect(file) {{
+                if (!file.type.startsWith('image/')) {{
+                    alert('Please select an image file');
+                    return;
+                }}
+
+                selectedFile = file;
+                fileUploadArea.classList.add('has-file');
+                fileUploadText.classList.add('hidden');
+                fileSelected.classList.remove('hidden');
+                fileNameSpan.textContent = file.name;
+                updateEvalSubmitState();
+            }}
+
+            function clearFile() {{
+                selectedFile = null;
+                fileInput.value = '';
+                fileUploadArea.classList.remove('has-file');
+                fileUploadText.classList.remove('hidden');
+                fileSelected.classList.add('hidden');
+                updateEvalSubmitState();
+            }}
+
+            function updateEvalSubmitState() {{
+                if (currentInputMode === 'text') {{
+                    evalSubmitBtn.disabled = textInput.value.trim().length < 5;
+                }} else {{
+                    evalSubmitBtn.disabled = !selectedFile;
+                }}
+            }}
+
+            function getEvalTier() {{
+                const selected = document.querySelector('input[name="eval-tier"]:checked');
+                return selected ? selected.value : 'good';
+            }}
+
+            function showEvalError(message) {{
+                evalResultsPlaceholder.classList.add('hidden');
+                evalResultsContent.classList.add('hidden');
+                evalErrorPanel.classList.remove('hidden');
+                document.getElementById('eval-error-text').textContent = message;
+            }}
+
+            function showEvalResults(data) {{
+                evalResultsPlaceholder.classList.add('hidden');
+                evalErrorPanel.classList.add('hidden');
+                evalResultsContent.classList.remove('hidden');
+
+                const evaluation = data.evaluation;
+                const interpretation = data.interpretation;
+                const fragility = interpretation.fragility;
+
+                // Grade display
+                const gradeValue = document.getElementById('eval-grade-value');
+                const gradeBucket = document.getElementById('eval-grade-bucket');
+                gradeValue.textContent = Math.round(fragility.display_value);
+                gradeBucket.textContent = fragility.bucket;
+                gradeValue.className = 'grade-value ' + fragility.bucket;
+
+                // Decision summary
+                const decisionVerdict = document.getElementById('eval-decision-verdict');
+                const action = evaluation.recommendation.action;
+                decisionVerdict.innerHTML = '<span class="action-' + action + '">' +
+                    action.toUpperCase() + '</span>: ' + evaluation.recommendation.reason;
+            }}
+
+            // Submit evaluation
+            evalSubmitBtn.addEventListener('click', async function() {{
+                const tier = getEvalTier();
+
+                evalSubmitBtn.disabled = true;
+                evalSubmitBtn.textContent = 'Evaluating...';
+
+                try {{
+                    let input = '';
+
+                    if (currentInputMode === 'text') {{
+                        input = textInput.value.trim();
+                    }} else if (selectedFile) {{
+                        // For image: Read and extract text (simplified - just use filename for now)
+                        // In production, this would use OCR
+                        input = 'Image uploaded: ' + selectedFile.name + ' (Image evaluation not yet implemented - please use text input)';
+                        showEvalError('Image evaluation is coming soon. Please paste your bet as text for now.');
+                        return;
+                    }}
+
+                    const response = await fetch('/app/evaluate', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ input, tier }})
+                    }});
+
+                    const data = await response.json();
+
+                    if (!response.ok) {{
+                        showEvalError(data.detail || 'Evaluation failed');
+                        return;
+                    }}
+
+                    showEvalResults(data);
+                }} catch (err) {{
+                    showEvalError('Network error: ' + err.message);
+                }} finally {{
+                    evalSubmitBtn.disabled = false;
+                    evalSubmitBtn.textContent = 'Evaluate';
+                    updateEvalSubmitState();
+                }}
+            }});
+        }})();
+
+        // ============================================================
+        // HISTORY TAB FUNCTIONALITY
+        // ============================================================
+        (function() {{
+            let historyLoaded = false;
+
+            window.loadHistory = async function() {{
+                if (historyLoaded) return;
+
+                const historyContent = document.getElementById('history-content');
+
+                // Check if logged in (if login prompt is shown, don't try to load)
+                if (historyContent.querySelector('.login-prompt')) {{
+                    return;
+                }}
+
+                try {{
+                    const response = await fetch('/app/account/history');
+                    const data = await response.json();
+
+                    if (!data.logged_in) {{
+                        historyContent.innerHTML = "<div class='login-prompt'><p>Sign in to view your evaluation history</p><a href='/login'>Login</a></div>";
+                        return;
+                    }}
+
+                    const evaluations = data.evaluations || [];
+
+                    if (evaluations.length === 0) {{
+                        historyContent.innerHTML = "<div class='history-empty'>No evaluations yet. Build a parlay and evaluate it!</div>";
+                        return;
+                    }}
+
+                    let html = '';
+                    evaluations.forEach(function(e) {{
+                        const result = e.result || {{}};
+                        const interpretation = result.interpretation || {{}};
+                        const fragility = interpretation.fragility || {{}};
+                        const bucket = fragility.bucket || 'medium';
+                        const score = Math.round(fragility.display_value || 0);
+                        const date = new Date(e.created_at).toLocaleString();
+
+                        html += '<div class="history-item">';
+                        html += '<div class="history-date">' + date + '</div>';
+                        html += '<div class="history-text">' + (e.input_text || 'N/A') + '</div>';
+                        html += '<span class="history-grade ' + bucket + '">' + score + ' - ' + bucket.toUpperCase() + '</span>';
+                        html += '</div>';
+                    }});
+
+                    historyContent.innerHTML = html;
+                    historyLoaded = true;
+
+                }} catch (err) {{
+                    console.error('Failed to load history:', err);
+                    historyContent.innerHTML = "<div class='history-empty'>Failed to load history</div>";
+                }}
+            }};
+
+            // Load history if starting on history tab
+            const activeTab = new URLSearchParams(window.location.search).get('tab');
+            if (activeTab === 'history') {{
+                loadHistory();
+            }}
+        }})();
     </script>
 </body>
 </html>"""
@@ -1726,18 +2360,47 @@ async def landing_page():
     return _get_landing_page_html()
 
 
-@router.get("/app", response_class=HTMLResponse)
-async def app_page():
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(raw_request: Request):
     """
-    Main application page with evaluation form.
+    Login/signup page.
 
-    Returns HTML with:
-    - Bet text textarea
-    - Tier selector (GOOD, BETTER, BEST)
-    - Submit button
-    - Output panels for evaluation, explain, and errors
+    Redirects to /app if already authenticated.
     """
-    return _get_app_page_html()
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    if user:
+        # Already logged in, redirect to app
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/app", status_code=302)
+
+    return HTMLResponse(content=_get_login_page_html(redirect_to="/app"))
+
+
+@router.get("/app", response_class=HTMLResponse)
+async def app_page(raw_request: Request, tab: str = "builder"):
+    """
+    Main application page with tabbed interface.
+
+    Tabs:
+    - builder: Parlay builder (default)
+    - evaluate: Text/image evaluation
+    - history: Saved history (requires login)
+    - account: Account settings
+
+    Returns HTML with unified app shell.
+    """
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    return _get_app_page_html(user=user, active_tab=tab)
 
 
 @router.post("/app/evaluate")
@@ -2625,15 +3288,14 @@ async def account_page(raw_request: Request):
     """
     from auth.middleware import get_session_id
     from auth.service import get_current_user
+    from fastapi.responses import RedirectResponse
 
     session_id = get_session_id(raw_request)
     user = get_current_user(session_id)
 
     if not user:
-        # Redirect to login page (or show login form)
-        return HTMLResponse(
-            content=_get_login_page_html(),
-        )
+        # Redirect to login page
+        return RedirectResponse(url="/login", status_code=302)
 
     return HTMLResponse(
         content=_get_account_page_html(user),
@@ -2909,16 +3571,16 @@ async def get_billing_portal(raw_request: Request):
     }
 
 
-def _get_login_page_html() -> str:
+def _get_login_page_html(redirect_to: str = "/app") -> str:
     """HTML for login/signup page."""
-    return """<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html>
 <head>
     <title>Login - DNA Bet Engine</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
             font-family: system-ui, -apple-system, sans-serif;
             background: #0a0a0a;
             color: #e0e0e0;
@@ -2927,29 +3589,29 @@ def _get_login_page_html() -> str:
             align-items: center;
             justify-content: center;
             padding: 1rem;
-        }
-        .container {
+        }}
+        .container {{
             width: 100%;
             max-width: 400px;
-        }
-        .header {
+        }}
+        .header {{
             text-align: center;
             margin-bottom: 2rem;
-        }
-        .header h1 {
+        }}
+        .header h1 {{
             color: #f39c12;
             font-size: 1.75rem;
             margin-bottom: 0.5rem;
-        }
-        .header p {
+        }}
+        .header p {{
             color: #888;
-        }
-        .tabs {
+        }}
+        .tabs {{
             display: flex;
             margin-bottom: 1.5rem;
             border-bottom: 1px solid #333;
-        }
-        .tab {
+        }}
+        .tab {{
             flex: 1;
             padding: 0.75rem;
             text-align: center;
@@ -2957,30 +3619,30 @@ def _get_login_page_html() -> str:
             color: #888;
             border-bottom: 2px solid transparent;
             transition: all 0.2s;
-        }
-        .tab.active {
+        }}
+        .tab.active {{
             color: #f39c12;
             border-bottom-color: #f39c12;
-        }
-        .tab:hover {
+        }}
+        .tab:hover {{
             color: #f39c12;
-        }
-        .form-panel {
+        }}
+        .form-panel {{
             display: none;
-        }
-        .form-panel.active {
+        }}
+        .form-panel.active {{
             display: block;
-        }
-        .form-group {
+        }}
+        .form-group {{
             margin-bottom: 1rem;
-        }
-        label {
+        }}
+        label {{
             display: block;
             margin-bottom: 0.5rem;
             color: #aaa;
             font-size: 0.9rem;
-        }
-        input {
+        }}
+        input {{
             width: 100%;
             padding: 0.75rem;
             background: #1a1a1a;
@@ -2988,12 +3650,12 @@ def _get_login_page_html() -> str:
             border-radius: 4px;
             color: #e0e0e0;
             font-size: 1rem;
-        }
-        input:focus {
+        }}
+        input:focus {{
             outline: none;
             border-color: #f39c12;
-        }
-        .submit-btn {
+        }}
+        .submit-btn {{
             width: 100%;
             padding: 0.875rem;
             background: #f39c12;
@@ -3004,38 +3666,38 @@ def _get_login_page_html() -> str:
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
-        }
-        .submit-btn:hover {
+        }}
+        .submit-btn:hover {{
             background: #e67e22;
-        }
-        .submit-btn:disabled {
+        }}
+        .submit-btn:disabled {{
             background: #555;
             cursor: not-allowed;
-        }
-        .error-msg {
+        }}
+        .error-msg {{
             color: #e74c3c;
             font-size: 0.9rem;
             margin-top: 0.5rem;
             display: none;
-        }
-        .error-msg.visible {
+        }}
+        .error-msg.visible {{
             display: block;
-        }
-        .footer {
+        }}
+        .footer {{
             text-align: center;
             margin-top: 2rem;
             color: #666;
             font-size: 0.85rem;
-        }
-        .footer a {
+        }}
+        .footer a {{
             color: #4a9eff;
             text-decoration: none;
-        }
-        .password-requirements {
+        }}
+        .password-requirements {{
             font-size: 0.75rem;
             color: #666;
             margin-top: 0.25rem;
-        }
+        }}
     </style>
 </head>
 <body>
@@ -3087,18 +3749,20 @@ def _get_login_page_html() -> str:
     </div>
 
     <script>
+        const REDIRECT_TO = '{redirect_to}';
+
         // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(tab => {{
+            tab.addEventListener('click', () => {{
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
-            });
-        });
+            }});
+        }});
 
         // Login form
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        document.getElementById('login-form').addEventListener('submit', async (e) => {{
             e.preventDefault();
             const errorEl = document.getElementById('login-error');
             errorEl.classList.remove('visible');
@@ -3106,29 +3770,29 @@ def _get_login_page_html() -> str:
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            try {
-                const response = await fetch('/app/auth/login', {
+            try {{
+                const response = await fetch('/app/auth/login', {{
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ email, password }})
+                }});
 
                 const data = await response.json();
 
-                if (data.success) {
-                    window.location.href = '/app/account';
-                } else {
+                if (data.success) {{
+                    window.location.href = REDIRECT_TO;
+                }} else {{
                     errorEl.textContent = data.detail || 'Login failed';
                     errorEl.classList.add('visible');
-                }
-            } catch (err) {
+                }}
+            }} catch (err) {{
                 errorEl.textContent = 'Network error';
                 errorEl.classList.add('visible');
-            }
-        });
+            }}
+        }});
 
         // Signup form
-        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {{
             e.preventDefault();
             const errorEl = document.getElementById('signup-error');
             errorEl.classList.remove('visible');
@@ -3136,26 +3800,26 @@ def _get_login_page_html() -> str:
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
 
-            try {
-                const response = await fetch('/app/auth/signup', {
+            try {{
+                const response = await fetch('/app/auth/signup', {{
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{ email, password }})
+                }});
 
                 const data = await response.json();
 
-                if (data.success) {
-                    window.location.href = '/app/account';
-                } else {
+                if (data.success) {{
+                    window.location.href = REDIRECT_TO;
+                }} else {{
                     errorEl.textContent = data.detail || 'Signup failed';
                     errorEl.classList.add('visible');
-                }
-            } catch (err) {
+                }}
+            }} catch (err) {{
                 errorEl.textContent = 'Network error';
                 errorEl.classList.add('visible');
-            }
-        });
+            }}
+        }});
     </script>
 </body>
 </html>"""
