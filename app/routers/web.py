@@ -813,6 +813,86 @@ def _get_app_page_html() -> str:
             font-size: 0.9rem;
             padding: 0.5rem;
         }
+
+        /* Share Button Styles (Sprint 5) */
+        .share-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #333;
+            text-align: center;
+        }
+        .share-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .share-btn:hover {
+            background: #2980b9;
+        }
+        .share-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .share-link {
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            display: none;
+        }
+        .share-link.visible {
+            display: block;
+        }
+        .share-link input {
+            width: 100%;
+            padding: 0.5rem;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #eee;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .share-link .copy-btn {
+            margin-top: 0.5rem;
+            padding: 0.25rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* Upgrade Nudge Styles (Sprint 5) */
+        .upgrade-nudge {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #f39c12;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .upgrade-nudge h4 {
+            color: #f39c12;
+            margin: 0 0 0.5rem;
+            font-size: 0.95rem;
+        }
+        .upgrade-nudge p {
+            color: #aaa;
+            font-size: 0.85rem;
+            margin: 0 0 0.75rem;
+        }
+        .upgrade-nudge .upgrade-btn {
+            background: #f39c12;
+            color: #111;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .upgrade-nudge .upgrade-btn:hover {
+            background: #e67e22;
+        }
     </style>
 </head>
 <body>
@@ -962,6 +1042,22 @@ def _get_app_page_html() -> str:
                     <div class="why-panel context-panel hidden" id="context-panel">
                         <h3><span class="icon">&#128200;</span> Player Availability</h3>
                         <div id="context-content"></div>
+                    </div>
+
+                    <!-- Share Section (Sprint 5) -->
+                    <div class="share-section hidden" id="share-section">
+                        <button type="button" class="share-btn" id="share-btn">Share Result</button>
+                        <div class="share-link" id="share-link">
+                            <input type="text" id="share-url" readonly>
+                            <button type="button" class="share-btn copy-btn" id="copy-btn">Copy Link</button>
+                        </div>
+                    </div>
+
+                    <!-- Upgrade Nudge (Sprint 5) -->
+                    <div class="upgrade-nudge hidden" id="upgrade-nudge">
+                        <h4>Unlock More Insights</h4>
+                        <p id="upgrade-message">Upgrade to see detailed analysis and live alerts</p>
+                        <button type="button" class="upgrade-btn" onclick="upgradeTier()">Upgrade Now</button>
                     </div>
                 </div>
 
@@ -1406,6 +1502,12 @@ def _get_app_page_html() -> str:
                 } else {
                     alertsFeed.classList.add('hidden');
                 }
+
+                // ============================================================
+                // SHARE & UPGRADE (Sprint 5)
+                // ============================================================
+                showShareSection(data.evaluation_id);
+                showUpgradeNudge(tier);
             }
 
             async function fetchAlerts(alertsFeed, alertsContent) {
@@ -1499,6 +1601,100 @@ def _get_app_page_html() -> str:
 
             submitBtn.addEventListener('click', submitEvaluation);
             addLegBtn.addEventListener('click', addLeg);
+
+            // ============================================================
+            // SHARE FUNCTIONALITY (Sprint 5)
+            // ============================================================
+            let currentEvaluationId = null;
+
+            const shareSection = document.getElementById('share-section');
+            const shareBtn = document.getElementById('share-btn');
+            const shareLink = document.getElementById('share-link');
+            const shareUrl = document.getElementById('share-url');
+            const copyBtn = document.getElementById('copy-btn');
+            const upgradeNudge = document.getElementById('upgrade-nudge');
+            const upgradeMessage = document.getElementById('upgrade-message');
+
+            shareBtn.addEventListener('click', async function() {
+                if (!currentEvaluationId) return;
+
+                shareBtn.disabled = true;
+                shareBtn.textContent = 'Creating link...';
+
+                try {
+                    const response = await fetch('/app/share', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ evaluation_id: currentEvaluationId })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.token) {
+                        const fullUrl = window.location.origin + data.share_url;
+                        shareUrl.value = fullUrl;
+                        shareLink.classList.add('visible');
+                    } else {
+                        alert('Failed to create share link');
+                    }
+                } catch (err) {
+                    console.error('Share error:', err);
+                    alert('Failed to create share link');
+                } finally {
+                    shareBtn.disabled = false;
+                    shareBtn.textContent = 'Share Result';
+                }
+            });
+
+            copyBtn.addEventListener('click', function() {
+                shareUrl.select();
+                document.execCommand('copy');
+                copyBtn.textContent = 'Copied!';
+                setTimeout(function() {
+                    copyBtn.textContent = 'Copy Link';
+                }, 2000);
+            });
+
+            // Show share section when results are displayed
+            function showShareSection(evaluationId) {
+                currentEvaluationId = evaluationId;
+                if (evaluationId) {
+                    shareSection.classList.remove('hidden');
+                    shareLink.classList.remove('visible');
+                } else {
+                    shareSection.classList.add('hidden');
+                }
+            }
+
+            // Show upgrade nudge for non-BEST tiers
+            function showUpgradeNudge(tier) {
+                if (tier === 'best') {
+                    upgradeNudge.classList.add('hidden');
+                    return;
+                }
+
+                upgradeNudge.classList.remove('hidden');
+
+                if (tier === 'good') {
+                    upgradeMessage.textContent = 'Upgrade to BETTER for structural analysis, or BEST for live alerts and full insights';
+                } else {
+                    upgradeMessage.textContent = 'Upgrade to BEST for live alerts, player availability, and recommended actions';
+                }
+            }
+
+            // Upgrade tier function (called from button)
+            window.upgradeTier = function() {
+                const currentTier = getSelectedTier();
+                if (currentTier === 'good') {
+                    document.getElementById('tier-better').checked = true;
+                } else if (currentTier === 'better') {
+                    document.getElementById('tier-best').checked = true;
+                }
+                // Optionally re-evaluate
+                if (currentEvaluationId) {
+                    submitEvaluation();
+                }
+            };
 
             // Initialize
             init();
@@ -1669,7 +1865,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
 
         # Build response with request_id for traceability
         eval_response = result.evaluation
-        return {
+        response_data = {
             "request_id": request_id,
             "input": {
                 "bet_text": normalized.input_text,
@@ -1706,6 +1902,29 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "explain": result.explain,
             "context": result.context,
         }
+
+        # Sprint 5: Persist evaluation for sharing
+        try:
+            from persistence.evaluations import save_evaluation
+            from persistence.metrics import record_evaluation_latency
+
+            eval_id = save_evaluation(
+                parlay_id=str(eval_response.parlay_id),
+                tier=result.tier,
+                input_text=normalized.input_text,
+                result=response_data,
+                correlation_id=request_id,
+            )
+            response_data["evaluation_id"] = eval_id
+
+            # Record latency metric
+            record_evaluation_latency(latency_ms, result.tier)
+
+        except Exception as persist_err:
+            _logger.warning(f"Failed to persist evaluation: {persist_err}")
+            # Don't fail the request if persistence fails
+
+        return response_data
 
     except ValueError as e:
         latency_ms = (time.perf_counter() - start_time) * 1000
@@ -1831,3 +2050,342 @@ async def get_alerts(request: AlertsRequest, raw_request: Request):
                 "detail": str(e),
             },
         )
+
+
+# =============================================================================
+# Share API (Sprint 5)
+# =============================================================================
+
+
+class ShareRequest(BaseModel):
+    """Request to create a shareable link."""
+
+    evaluation_id: str = Field(..., description="Evaluation ID to share")
+
+
+@router.post("/app/share")
+async def create_share_link(request: ShareRequest, raw_request: Request):
+    """
+    Create a shareable link for an evaluation result.
+
+    Returns a short token that can be used to view the result.
+    Share pages are read-only and safe (no PII).
+    """
+    from persistence.shares import create_share
+    from persistence.metrics import record_counter, METRIC_SHARE_CREATED
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    try:
+        token = create_share(request.evaluation_id)
+
+        if token is None:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "request_id": request_id,
+                    "error": "Evaluation not found",
+                    "detail": "Cannot create share link for unknown evaluation",
+                },
+            )
+
+        # Record metric
+        try:
+            record_counter(METRIC_SHARE_CREATED)
+        except Exception:
+            pass  # Don't fail on metrics
+
+        # Build share URL
+        share_url = f"/app/share/{token}"
+
+        return {
+            "request_id": request_id,
+            "token": token,
+            "share_url": share_url,
+            "expires_in_days": 30,
+        }
+
+    except Exception as e:
+        _logger.error(f"Share creation error: {e}", extra={"request_id": request_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "Internal error",
+                "detail": str(e),
+            },
+        )
+
+
+@router.get("/app/share/{token}", response_class=HTMLResponse)
+async def view_shared_result(token: str, raw_request: Request):
+    """
+    View a shared evaluation result.
+
+    Read-only page showing the evaluation without tier restrictions.
+    Increments view count on each access.
+    """
+    from persistence.evaluations import get_evaluation_by_token
+    from persistence.metrics import record_counter, METRIC_SHARE_VIEWED
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    try:
+        evaluation = get_evaluation_by_token(token)
+
+        if evaluation is None:
+            return HTMLResponse(
+                content=_get_share_not_found_html(),
+                status_code=404,
+            )
+
+        # Record view metric
+        try:
+            record_counter(METRIC_SHARE_VIEWED)
+        except Exception:
+            pass
+
+        return HTMLResponse(
+            content=_get_share_page_html(evaluation, token),
+        )
+
+    except Exception as e:
+        _logger.error(f"Share view error: {e}", extra={"request_id": request_id})
+        return HTMLResponse(
+            content=_get_share_error_html(),
+            status_code=500,
+        )
+
+
+def _get_share_not_found_html() -> str:
+    """HTML for share not found."""
+    return """<!DOCTYPE html>
+<html>
+<head>
+    <title>Link Expired - DNA Bet Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: system-ui; background: #111; color: #eee; padding: 2rem; text-align: center; }
+        .container { max-width: 500px; margin: 4rem auto; }
+        h1 { color: #e74c3c; }
+        a { color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Link Expired or Not Found</h1>
+        <p>This shared result is no longer available.</p>
+        <p>Share links expire after 30 days.</p>
+        <p><a href="/app">Create a new evaluation</a></p>
+    </div>
+</body>
+</html>"""
+
+
+def _get_share_error_html() -> str:
+    """HTML for share error."""
+    return """<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - DNA Bet Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: system-ui; background: #111; color: #eee; padding: 2rem; text-align: center; }
+        .container { max-width: 500px; margin: 4rem auto; }
+        h1 { color: #e74c3c; }
+        a { color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Something went wrong</h1>
+        <p>Unable to load this shared result.</p>
+        <p><a href="/app">Go to DNA Bet Engine</a></p>
+    </div>
+</body>
+</html>"""
+
+
+def _get_share_page_html(evaluation: dict, token: str) -> str:
+    """Generate HTML for shared result page."""
+    result = evaluation.get("result", {})
+    eval_data = result.get("evaluation", {})
+    explain = result.get("explain", {})
+    context = result.get("context", {})
+
+    # Extract key metrics
+    metrics = eval_data.get("metrics", {})
+    fragility = metrics.get("final_fragility", 0)
+    recommendation = eval_data.get("recommendation", {})
+    action = recommendation.get("action", "unknown")
+    reason = recommendation.get("reason", "")
+
+    # Fragility bucket
+    if fragility <= 30:
+        bucket = "Low Risk"
+        bucket_color = "#27ae60"
+    elif fragility <= 50:
+        bucket = "Moderate"
+        bucket_color = "#f39c12"
+    elif fragility <= 70:
+        bucket = "High Risk"
+        bucket_color = "#e67e22"
+    else:
+        bucket = "Extreme Risk"
+        bucket_color = "#e74c3c"
+
+    # Format correlations
+    correlations = eval_data.get("correlations", [])
+    corr_html = ""
+    if correlations:
+        corr_html = "<ul>"
+        for c in correlations[:5]:
+            corr_html += f"<li>{c.get('type', 'unknown')}: +{c.get('penalty', 0):.1f}</li>"
+        corr_html += "</ul>"
+
+    # Format context
+    context_html = ""
+    if context and context.get("impact"):
+        impact = context["impact"]
+        if impact.get("summary"):
+            context_html = f"<p>{impact['summary']}</p>"
+
+    # View count
+    view_count = evaluation.get("view_count", 1)
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Shared Result - DNA Bet Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {{
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #111;
+            color: #eee;
+            margin: 0;
+            padding: 1rem;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+        }}
+        header {{
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #333;
+        }}
+        header h1 {{
+            color: #f39c12;
+            margin: 0;
+            font-size: 1.5rem;
+        }}
+        header p {{
+            color: #666;
+            font-size: 0.85rem;
+            margin: 0.5rem 0 0;
+        }}
+        .grade-display {{
+            text-align: center;
+            padding: 2rem;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }}
+        .grade-value {{
+            font-size: 3rem;
+            font-weight: bold;
+            color: {bucket_color};
+        }}
+        .grade-bucket {{
+            font-size: 1.25rem;
+            color: {bucket_color};
+            margin-top: 0.5rem;
+        }}
+        .section {{
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }}
+        .section h3 {{
+            margin: 0 0 0.75rem;
+            color: #f39c12;
+            font-size: 1rem;
+        }}
+        .section p, .section ul {{
+            margin: 0;
+            color: #ccc;
+        }}
+        .section ul {{
+            padding-left: 1.25rem;
+        }}
+        .recommendation {{
+            border-left: 3px solid {bucket_color};
+            padding-left: 1rem;
+        }}
+        .bet-text {{
+            font-family: monospace;
+            background: #0a0a0a;
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            word-break: break-word;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #333;
+            color: #666;
+            font-size: 0.85rem;
+        }}
+        .footer a {{
+            color: #3498db;
+        }}
+        .meta {{
+            font-size: 0.75rem;
+            color: #666;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DNA Bet Engine</h1>
+            <p>Shared Parlay Analysis</p>
+        </header>
+
+        <div class="grade-display">
+            <div class="grade-value">{fragility:.0f}</div>
+            <div class="grade-bucket">{bucket}</div>
+        </div>
+
+        <div class="section">
+            <h3>Bet Analyzed</h3>
+            <div class="bet-text">{evaluation.get('input_text', 'N/A')}</div>
+        </div>
+
+        <div class="section recommendation">
+            <h3>Recommendation</h3>
+            <p><strong>{action.upper()}</strong></p>
+            <p>{reason}</p>
+        </div>
+
+        {f'<div class="section"><h3>Correlations Detected</h3>{corr_html}</div>' if corr_html else ''}
+
+        {f'<div class="section"><h3>Context</h3>{context_html}</div>' if context_html else ''}
+
+        <div class="meta">
+            Viewed {view_count} time{'s' if view_count != 1 else ''}
+        </div>
+
+        <div class="footer">
+            <p>Want to analyze your own parlays?</p>
+            <p><a href="/app">Try DNA Bet Engine</a></p>
+        </div>
+    </div>
+</body>
+</html>"""

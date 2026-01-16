@@ -6,12 +6,15 @@ Coordinates:
 - Snapshot tracking (previous state)
 - Delta detection
 - Alert generation
-- Alert storage
+- Alert storage (in-memory + persistent)
+
+Sprint 5: Added persistence layer integration.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from typing import Optional
 
@@ -24,6 +27,9 @@ from context.snapshot import ContextSnapshot
 
 _logger = logging.getLogger(__name__)
 
+# Enable/disable persistence (for testing)
+PERSISTENCE_ENABLED = os.environ.get("DNA_PERSISTENCE", "true").lower() == "true"
+
 
 class AlertService:
     """
@@ -31,18 +37,26 @@ class AlertService:
 
     Tracks previous snapshots per sport to detect changes.
     Generates and stores alerts when changes are detected.
+
+    Sprint 5: Uses both in-memory store (fast) and SQLite persistence (durable).
     """
 
-    def __init__(self, store: Optional[AlertStore] = None):
+    def __init__(
+        self,
+        store: Optional[AlertStore] = None,
+        enable_persistence: bool = PERSISTENCE_ENABLED,
+    ):
         """
         Initialize alert service.
 
         Args:
             store: Alert store (uses singleton if not provided)
+            enable_persistence: Whether to persist to SQLite
         """
         self._store = store or get_alert_store()
         self._previous_snapshots: dict[str, ContextSnapshot] = {}
         self._lock = threading.RLock()
+        self._persist = enable_persistence
 
     def check_snapshot(
         self,
@@ -80,9 +94,13 @@ class AlertService:
             # Generate alerts
             alerts = generate_alerts_from_delta(delta, correlation_id)
 
-            # Store alerts
+            # Store alerts (in-memory)
             for alert in alerts:
                 self._store.add(alert)
+
+            # Persist alerts (Sprint 5)
+            if self._persist and alerts:
+                self._persist_alerts(alerts)
 
             # Update previous snapshot
             self._previous_snapshots[sport] = snapshot
@@ -94,6 +112,35 @@ class AlertService:
                 )
 
             return alerts
+
+    def _persist_alerts(self, alerts: list[Alert]) -> None:
+        """Persist alerts to SQLite (Sprint 5)."""
+        try:
+            from persistence.alerts import save_alert
+            from persistence.metrics import record_alert_generated
+
+            for alert in alerts:
+                save_alert(
+                    alert_id=alert.alert_id,
+                    alert_type=alert.alert_type.value,
+                    severity=alert.severity.value,
+                    title=alert.title,
+                    message=alert.message,
+                    player_name=alert.player_name,
+                    team=alert.team,
+                    previous_value=alert.previous_value,
+                    current_value=alert.current_value,
+                    correlation_id=alert.correlation_id,
+                    source=alert.source,
+                    sport=alert.sport,
+                    created_at=alert.created_at,
+                )
+                # Record metric
+                record_alert_generated(alert.alert_type.value, alert.severity.value)
+
+        except Exception as e:
+            # Don't fail the alert generation if persistence fails
+            _logger.warning(f"Failed to persist alerts: {e}")
 
     def get_alerts(
         self,
