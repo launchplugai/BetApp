@@ -195,13 +195,13 @@ def _get_landing_page_html() -> str:
 
 
 def _get_app_page_html() -> str:
-    """Generate app page HTML with evaluation form."""
+    """Generate app page HTML with parlay builder and evaluation form."""
     return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leading Light - Evaluate</title>
+    <title>Leading Light - Parlay Builder</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -209,17 +209,17 @@ def _get_app_page_html() -> str:
             background: #0a0a0a;
             color: #e0e0e0;
             min-height: 100vh;
-            padding: 2rem;
+            padding: 1.5rem;
         }
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             padding-bottom: 1rem;
             border-bottom: 1px solid #333;
         }
@@ -229,37 +229,157 @@ def _get_app_page_html() -> str:
             text-decoration: none;
             font-size: 0.875rem;
         }
-        .form-section {
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Builder Section */
+        .builder-section {
             background: #111;
-            padding: 1.5rem;
+            padding: 1.25rem;
             border-radius: 8px;
-            margin-bottom: 1.5rem;
         }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
-        textarea {
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .leg-count {
+            font-size: 0.875rem;
+            color: #888;
+        }
+
+        /* Sport Selector */
+        .sport-selector {
+            margin-bottom: 1rem;
+        }
+        .sport-selector select {
             width: 100%;
-            min-height: 120px;
-            padding: 1rem;
+            padding: 0.75rem;
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 4px;
             color: #e0e0e0;
-            font-family: inherit;
-            font-size: 1rem;
-            resize: vertical;
+            font-size: 0.9rem;
         }
-        textarea:focus {
+        .sport-selector select:focus {
             outline: none;
             border-color: #4a9eff;
         }
+
+        /* Legs Container */
+        .legs-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+        .leg-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            position: relative;
+        }
+        .leg-card:last-child { margin-bottom: 0; }
+        .leg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .leg-number {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #4a9eff;
+        }
+        .remove-leg {
+            background: transparent;
+            border: none;
+            color: #ff4a4a;
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0;
+            width: auto;
+            line-height: 1;
+        }
+        .remove-leg:hover { color: #ff6b6b; }
+        .remove-leg:disabled { color: #444; cursor: not-allowed; }
+
+        .leg-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        .leg-field {
+            display: flex;
+            flex-direction: column;
+        }
+        .leg-field.full-width {
+            grid-column: 1 / -1;
+        }
+        .leg-field label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .leg-field input, .leg-field select {
+            padding: 0.5rem;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 0.875rem;
+        }
+        .leg-field input:focus, .leg-field select:focus {
+            outline: none;
+            border-color: #4a9eff;
+        }
+        .leg-field input::placeholder {
+            color: #555;
+        }
+
+        /* Add Leg Button */
+        .add-leg-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: transparent;
+            border: 2px dashed #333;
+            border-radius: 6px;
+            color: #888;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 1rem;
+        }
+        .add-leg-btn:hover {
+            border-color: #4a9eff;
+            color: #4a9eff;
+        }
+        .add-leg-btn:disabled {
+            border-color: #222;
+            color: #444;
+            cursor: not-allowed;
+        }
+
+        /* Tier Selector */
         .tier-selector {
             display: flex;
-            gap: 1rem;
-            margin: 1rem 0;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
         }
         .tier-option {
             flex: 1;
@@ -271,7 +391,7 @@ def _get_app_page_html() -> str:
         }
         .tier-option label {
             display: block;
-            padding: 1rem;
+            padding: 0.625rem 0.5rem;
             background: #1a1a1a;
             border: 2px solid #333;
             border-radius: 4px;
@@ -288,13 +408,15 @@ def _get_app_page_html() -> str:
         }
         .tier-name {
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
         }
         .tier-desc {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: #888;
         }
-        button {
+
+        /* Submit Button */
+        .submit-btn {
             width: 100%;
             padding: 1rem;
             background: #4a9eff;
@@ -306,58 +428,171 @@ def _get_app_page_html() -> str:
             cursor: pointer;
             transition: background 0.2s;
         }
-        button:hover { background: #3a8eef; }
-        button:disabled {
+        .submit-btn:hover { background: #3a8eef; }
+        .submit-btn:disabled {
             background: #333;
             color: #666;
             cursor: not-allowed;
         }
-        .output-section {
-            display: none;
-        }
-        .output-section.visible {
-            display: block;
-        }
-        .panel {
+
+        /* Results Section */
+        .results-section {
             background: #111;
+            padding: 1.25rem;
+            border-radius: 8px;
+        }
+        .results-placeholder {
+            text-align: center;
+            color: #555;
+            padding: 3rem 1rem;
+        }
+        .results-placeholder p {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Grade Display */
+        .grade-display {
+            text-align: center;
             padding: 1.5rem;
+            background: #1a1a1a;
             border-radius: 8px;
             margin-bottom: 1rem;
         }
-        .panel h2 {
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            color: #fff;
+        .grade-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
         }
-        .panel-content {
-            font-family: monospace;
+        .grade-value {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        .grade-value.low { color: #4ade80; }
+        .grade-value.medium { color: #fbbf24; }
+        .grade-value.high { color: #f97316; }
+        .grade-value.critical { color: #ef4444; }
+        .grade-bucket {
             font-size: 0.875rem;
-            white-space: pre-wrap;
-            word-break: break-word;
-            background: #0a0a0a;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Verdict */
+        .verdict-panel {
+            background: #1a1a1a;
+            border-radius: 6px;
             padding: 1rem;
-            border-radius: 4px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .error-panel {
-            border: 1px solid #ff4a4a;
-        }
-        .error-panel h2 {
-            color: #ff4a4a;
-        }
-        .tier-notice {
-            background: #2a2a1a;
-            border: 1px solid #665500;
-            padding: 0.75rem 1rem;
-            border-radius: 4px;
             margin-bottom: 1rem;
+        }
+        .verdict-panel h3 {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+        .verdict-text {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        .action-accept { color: #4ade80; }
+        .action-reduce { color: #fbbf24; }
+        .action-avoid { color: #ef4444; }
+
+        /* Insights Panel */
+        .insights-panel {
+            background: #1a1a1a;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .insights-panel h3 {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.75rem;
+        }
+        .insight-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
             font-size: 0.875rem;
-            color: #ccaa00;
         }
-        .tier-notice.hidden {
-            display: none;
+        .insight-item:last-child { border-bottom: none; }
+
+        /* Locked Content */
+        .locked-panel {
+            position: relative;
+            overflow: hidden;
         }
+        .locked-panel .locked-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .locked-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .locked-text {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        /* Alerts (BEST only) */
+        .alerts-panel {
+            background: #2a1a1a;
+            border: 1px solid #4a2a2a;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .alerts-panel h3 {
+            font-size: 0.75rem;
+            color: #ef4444;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.75rem;
+        }
+        .alert-item {
+            font-size: 0.875rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #4a2a2a;
+        }
+        .alert-item:last-child { border-bottom: none; }
+
+        /* Error Panel */
+        .error-panel {
+            background: #2a1a1a;
+            border: 1px solid #ff4a4a;
+            border-radius: 6px;
+            padding: 1rem;
+        }
+        .error-panel h3 {
+            color: #ff4a4a;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        .error-text {
+            font-size: 0.875rem;
+            color: #e0e0e0;
+        }
+
+        /* Hidden utility */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -367,131 +602,379 @@ def _get_app_page_html() -> str:
             <a href="/">Back to Home</a>
         </header>
 
-        <div class="form-section">
-            <label for="bet-input">Bet Description</label>
-            <textarea id="bet-input" placeholder="Enter your bet description...&#10;Example: Lakers -5.5 + Celtics ML parlay"></textarea>
-
-            <label style="margin-top: 1rem;">Select Tier</label>
-            <div class="tier-selector">
-                <div class="tier-option">
-                    <input type="radio" name="tier" id="tier-good" value="good" checked>
-                    <label for="tier-good">
-                        <div class="tier-name">GOOD</div>
-                        <div class="tier-desc">Basic evaluation</div>
-                    </label>
+        <div class="main-grid">
+            <!-- Builder Section -->
+            <div class="builder-section">
+                <div class="section-header">
+                    <span class="section-title">Parlay Builder</span>
+                    <span class="leg-count" id="leg-count">2 legs</span>
                 </div>
-                <div class="tier-option">
-                    <input type="radio" name="tier" id="tier-better" value="better">
-                    <label for="tier-better">
-                        <div class="tier-name">BETTER</div>
-                        <div class="tier-desc">+ Summary</div>
-                    </label>
+
+                <div class="sport-selector">
+                    <select id="sport-select">
+                        <option value="basketball" selected>Basketball (NBA)</option>
+                    </select>
                 </div>
-                <div class="tier-option">
-                    <input type="radio" name="tier" id="tier-best" value="best">
-                    <label for="tier-best">
-                        <div class="tier-name">BEST</div>
-                        <div class="tier-desc">+ Full explain</div>
-                    </label>
+
+                <div class="legs-container" id="legs-container">
+                    <!-- Legs will be dynamically added here -->
                 </div>
+
+                <button type="button" class="add-leg-btn" id="add-leg-btn">+ Add Leg</button>
+
+                <div class="tier-selector">
+                    <div class="tier-option">
+                        <input type="radio" name="tier" id="tier-good" value="good" checked>
+                        <label for="tier-good">
+                            <div class="tier-name">GOOD</div>
+                            <div class="tier-desc">Grade + Verdict</div>
+                        </label>
+                    </div>
+                    <div class="tier-option">
+                        <input type="radio" name="tier" id="tier-better" value="better">
+                        <label for="tier-better">
+                            <div class="tier-name">BETTER</div>
+                            <div class="tier-desc">+ Insights</div>
+                        </label>
+                    </div>
+                    <div class="tier-option">
+                        <input type="radio" name="tier" id="tier-best" value="best">
+                        <label for="tier-best">
+                            <div class="tier-name">BEST</div>
+                            <div class="tier-desc">+ Full Analysis</div>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="button" class="submit-btn" id="submit-btn" disabled>
+                    Evaluate Parlay
+                </button>
             </div>
 
-            <button id="submit-btn" type="button">Evaluate</button>
-        </div>
+            <!-- Results Section -->
+            <div class="results-section">
+                <div class="section-header">
+                    <span class="section-title">Results</span>
+                </div>
 
-        <div class="output-section" id="output-section">
-            <div class="tier-notice hidden" id="tier-notice">
-                Explain details withheld based on tier. Upgrade to BETTER or BEST for more insights.
-            </div>
+                <div id="results-placeholder" class="results-placeholder">
+                    <p>Build your parlay and click Evaluate</p>
+                    <p style="font-size: 0.75rem;">Minimum 2 legs required</p>
+                </div>
 
-            <div class="panel" id="eval-panel">
-                <h2>Evaluation</h2>
-                <div class="panel-content" id="eval-content"></div>
-            </div>
+                <div id="results-content" class="hidden">
+                    <!-- Grade Display -->
+                    <div class="grade-display" id="grade-display">
+                        <div class="grade-label">Fragility Score</div>
+                        <div class="grade-value" id="grade-value">--</div>
+                        <div class="grade-bucket" id="grade-bucket">--</div>
+                    </div>
 
-            <div class="panel" id="explain-panel">
-                <h2>Explain</h2>
-                <div class="panel-content" id="explain-content"></div>
-            </div>
+                    <!-- Verdict (Always shown) -->
+                    <div class="verdict-panel" id="verdict-panel">
+                        <h3>Verdict</h3>
+                        <div class="verdict-text" id="verdict-text"></div>
+                    </div>
 
-            <div class="panel error-panel hidden" id="error-panel">
-                <h2>Error</h2>
-                <div class="panel-content" id="error-content"></div>
+                    <!-- Insights (BETTER+) -->
+                    <div class="insights-panel" id="insights-panel">
+                        <h3>Key Insights</h3>
+                        <div id="insights-content"></div>
+                        <div class="locked-overlay hidden" id="insights-locked">
+                            <span class="locked-icon">&#128274;</span>
+                            <span class="locked-text">Upgrade to BETTER for insights</span>
+                        </div>
+                    </div>
+
+                    <!-- Alerts (BEST only) -->
+                    <div class="alerts-panel hidden" id="alerts-panel">
+                        <h3>Alerts</h3>
+                        <div id="alerts-content"></div>
+                    </div>
+
+                    <!-- Recommendation (BEST only) -->
+                    <div class="insights-panel hidden" id="recommendation-panel">
+                        <h3>Recommended Action</h3>
+                        <div id="recommendation-content"></div>
+                    </div>
+                </div>
+
+                <div id="error-panel" class="error-panel hidden">
+                    <h3>Error</h3>
+                    <div class="error-text" id="error-text"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         (function() {
-            const betInput = document.getElementById('bet-input');
+            // State
+            let legs = [];
+            const MIN_LEGS = 2;
+            const MAX_LEGS = 6;
+
+            // Elements
+            const legsContainer = document.getElementById('legs-container');
+            const addLegBtn = document.getElementById('add-leg-btn');
             const submitBtn = document.getElementById('submit-btn');
-            const outputSection = document.getElementById('output-section');
-            const tierNotice = document.getElementById('tier-notice');
-            const evalContent = document.getElementById('eval-content');
-            const explainContent = document.getElementById('explain-content');
+            const legCountDisplay = document.getElementById('leg-count');
+            const resultsPlaceholder = document.getElementById('results-placeholder');
+            const resultsContent = document.getElementById('results-content');
             const errorPanel = document.getElementById('error-panel');
-            const errorContent = document.getElementById('error-content');
-            const evalPanel = document.getElementById('eval-panel');
-            const explainPanel = document.getElementById('explain-panel');
+
+            // Market types
+            const MARKETS = [
+                { value: 'spread', label: 'Spread' },
+                { value: 'ml', label: 'Moneyline' },
+                { value: 'total', label: 'Total (O/U)' },
+                { value: 'player_prop', label: 'Player Prop' }
+            ];
+
+            // Initialize with 2 legs
+            function init() {
+                addLeg();
+                addLeg();
+                updateUI();
+            }
+
+            function createLegHTML(index) {
+                const marketOptions = MARKETS.map(m =>
+                    '<option value="' + m.value + '">' + m.label + '</option>'
+                ).join('');
+
+                return '<div class="leg-card" data-index="' + index + '">' +
+                    '<div class="leg-header">' +
+                        '<span class="leg-number">Leg ' + (index + 1) + '</span>' +
+                        '<button type="button" class="remove-leg" data-index="' + index + '">&times;</button>' +
+                    '</div>' +
+                    '<div class="leg-fields">' +
+                        '<div class="leg-field full-width">' +
+                            '<label>Team / Player</label>' +
+                            '<input type="text" class="leg-selection" data-index="' + index + '" placeholder="e.g., Lakers or LeBron James">' +
+                        '</div>' +
+                        '<div class="leg-field">' +
+                            '<label>Market</label>' +
+                            '<select class="leg-market" data-index="' + index + '">' + marketOptions + '</select>' +
+                        '</div>' +
+                        '<div class="leg-field">' +
+                            '<label>Line / Condition</label>' +
+                            '<input type="text" class="leg-line" data-index="' + index + '" placeholder="e.g., -5.5 or O 220.5">' +
+                        '</div>' +
+                        '<div class="leg-field">' +
+                            '<label>Odds</label>' +
+                            '<input type="text" class="leg-odds" data-index="' + index + '" placeholder="e.g., -110">' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            function addLeg() {
+                if (legs.length >= MAX_LEGS) return;
+                legs.push({ selection: '', market: 'spread', line: '', odds: '' });
+                renderLegs();
+                updateUI();
+            }
+
+            function removeLeg(index) {
+                if (legs.length <= MIN_LEGS) return;
+                legs.splice(index, 1);
+                renderLegs();
+                updateUI();
+            }
+
+            function renderLegs() {
+                legsContainer.innerHTML = legs.map((_, i) => createLegHTML(i)).join('');
+                attachLegListeners();
+                // Restore values
+                legs.forEach((leg, i) => {
+                    const card = legsContainer.querySelector('[data-index="' + i + '"]');
+                    if (card) {
+                        const selInput = card.querySelector('.leg-selection');
+                        const mktSelect = card.querySelector('.leg-market');
+                        const lineInput = card.querySelector('.leg-line');
+                        const oddsInput = card.querySelector('.leg-odds');
+                        if (selInput) selInput.value = leg.selection;
+                        if (mktSelect) mktSelect.value = leg.market;
+                        if (lineInput) lineInput.value = leg.line;
+                        if (oddsInput) oddsInput.value = leg.odds;
+                    }
+                });
+            }
+
+            function attachLegListeners() {
+                // Remove buttons
+                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        removeLeg(parseInt(this.dataset.index));
+                    });
+                });
+                // Input changes
+                legsContainer.querySelectorAll('.leg-selection').forEach(input => {
+                    input.addEventListener('input', function() {
+                        legs[parseInt(this.dataset.index)].selection = this.value;
+                        updateUI();
+                    });
+                });
+                legsContainer.querySelectorAll('.leg-market').forEach(select => {
+                    select.addEventListener('change', function() {
+                        legs[parseInt(this.dataset.index)].market = this.value;
+                    });
+                });
+                legsContainer.querySelectorAll('.leg-line').forEach(input => {
+                    input.addEventListener('input', function() {
+                        legs[parseInt(this.dataset.index)].line = this.value;
+                    });
+                });
+                legsContainer.querySelectorAll('.leg-odds').forEach(input => {
+                    input.addEventListener('input', function() {
+                        legs[parseInt(this.dataset.index)].odds = this.value;
+                    });
+                });
+            }
+
+            function updateUI() {
+                // Leg count
+                legCountDisplay.textContent = legs.length + ' leg' + (legs.length !== 1 ? 's' : '');
+
+                // Add button state
+                addLegBtn.disabled = legs.length >= MAX_LEGS;
+
+                // Remove button state
+                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {
+                    btn.disabled = legs.length <= MIN_LEGS;
+                });
+
+                // Submit button - require at least selection for each leg
+                const validLegs = legs.filter(leg => leg.selection.trim().length > 0);
+                submitBtn.disabled = validLegs.length < MIN_LEGS;
+            }
 
             function getSelectedTier() {
                 const selected = document.querySelector('input[name="tier"]:checked');
                 return selected ? selected.value : 'good';
             }
 
-            function showError(message) {
-                outputSection.classList.add('visible');
-                errorPanel.classList.remove('hidden');
-                evalPanel.style.display = 'none';
-                explainPanel.style.display = 'none';
-                tierNotice.classList.add('hidden');
-                // Use textContent for security
-                errorContent.textContent = typeof message === 'string'
-                    ? message
-                    : JSON.stringify(message, null, 2);
+            function buildBetText() {
+                // Convert structured legs to text format for existing endpoint
+                const parts = legs.map(leg => {
+                    let text = leg.selection.trim();
+                    if (leg.line.trim()) {
+                        text += ' ' + leg.line.trim();
+                    }
+                    if (leg.market === 'ml') {
+                        text += ' ML';
+                    } else if (leg.market === 'player_prop') {
+                        text += ' prop';
+                    }
+                    return text;
+                }).filter(t => t.length > 0);
+
+                return parts.join(' + ') + ' parlay';
             }
 
-            function showResult(data) {
-                outputSection.classList.add('visible');
+            function showError(message) {
+                resultsPlaceholder.classList.add('hidden');
+                resultsContent.classList.add('hidden');
+                errorPanel.classList.remove('hidden');
+                document.getElementById('error-text').textContent = message;
+            }
+
+            function showResults(data) {
+                resultsPlaceholder.classList.add('hidden');
                 errorPanel.classList.add('hidden');
-                evalPanel.style.display = 'block';
-                explainPanel.style.display = 'block';
+                resultsContent.classList.remove('hidden');
 
-                // Display evaluation (always present)
-                const evalData = {
-                    input: data.input,
-                    evaluation: data.evaluation,
-                    interpretation: data.interpretation
-                };
-                // Use textContent for security - display as pretty JSON
-                evalContent.textContent = JSON.stringify(evalData, null, 2);
-
-                // Display explain (may be empty based on tier)
-                const explain = data.explain || {};
-                const explainIsEmpty = Object.keys(explain).length === 0;
-
-                // Use textContent for security
-                explainContent.textContent = explainIsEmpty
-                    ? '(No explain data for this tier)'
-                    : JSON.stringify(explain, null, 2);
-
-                // Show tier notice if explain is empty and tier is GOOD
                 const tier = getSelectedTier();
-                if (explainIsEmpty && tier === 'good') {
-                    tierNotice.classList.remove('hidden');
+                const evaluation = data.evaluation;
+                const interpretation = data.interpretation;
+                const explain = data.explain || {};
+
+                // Grade display
+                const fragility = interpretation.fragility;
+                const gradeValue = document.getElementById('grade-value');
+                const gradeBucket = document.getElementById('grade-bucket');
+                gradeValue.textContent = Math.round(fragility.display_value);
+                gradeBucket.textContent = fragility.bucket;
+
+                // Color based on bucket
+                gradeValue.className = 'grade-value ' + fragility.bucket;
+
+                // Verdict (always shown)
+                const verdictText = document.getElementById('verdict-text');
+                const action = evaluation.recommendation.action;
+                const actionClass = 'action-' + action;
+                verdictText.innerHTML = '<span class="' + actionClass + '">' +
+                    action.toUpperCase() + '</span>: ' +
+                    evaluation.recommendation.reason;
+
+                // Insights panel
+                const insightsPanel = document.getElementById('insights-panel');
+                const insightsContent = document.getElementById('insights-content');
+                const insightsLocked = document.getElementById('insights-locked');
+
+                if (tier === 'good') {
+                    // Show locked overlay
+                    insightsPanel.classList.add('locked-panel');
+                    insightsLocked.classList.remove('hidden');
+                    insightsContent.innerHTML = '<div class="insight-item" style="color:#555">Risk breakdown hidden</div>' +
+                        '<div class="insight-item" style="color:#555">Correlation analysis hidden</div>' +
+                        '<div class="insight-item" style="color:#555">Strategy tips hidden</div>';
                 } else {
-                    tierNotice.classList.add('hidden');
+                    // Show actual insights
+                    insightsPanel.classList.remove('locked-panel');
+                    insightsLocked.classList.add('hidden');
+
+                    const summary = explain.summary || [];
+                    if (summary.length > 0) {
+                        insightsContent.innerHTML = summary.map(s =>
+                            '<div class="insight-item">' + escapeHtml(s) + '</div>'
+                        ).join('');
+                    } else {
+                        // Build from interpretation
+                        const insights = [
+                            fragility.meaning,
+                            fragility.what_to_do,
+                            'Risk level: ' + evaluation.inductor.level.toUpperCase()
+                        ];
+                        insightsContent.innerHTML = insights.map(s =>
+                            '<div class="insight-item">' + escapeHtml(s) + '</div>'
+                        ).join('');
+                    }
                 }
+
+                // Alerts (BEST only)
+                const alertsPanel = document.getElementById('alerts-panel');
+                const alertsContent = document.getElementById('alerts-content');
+                if (tier === 'best' && explain.alerts && explain.alerts.length > 0) {
+                    alertsPanel.classList.remove('hidden');
+                    alertsContent.innerHTML = explain.alerts.map(a =>
+                        '<div class="alert-item">' + escapeHtml(a) + '</div>'
+                    ).join('');
+                } else {
+                    alertsPanel.classList.add('hidden');
+                }
+
+                // Recommendation (BEST only)
+                const recommendationPanel = document.getElementById('recommendation-panel');
+                const recommendationContent = document.getElementById('recommendation-content');
+                if (tier === 'best' && explain.recommended_next_step) {
+                    recommendationPanel.classList.remove('hidden');
+                    recommendationContent.textContent = explain.recommended_next_step;
+                } else {
+                    recommendationPanel.classList.add('hidden');
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
 
             async function submitEvaluation() {
-                const input = betInput.value.trim();
+                const input = buildBetText();
                 const tier = getSelectedTier();
-
-                if (!input) {
-                    showError('Please enter a bet description');
-                    return;
-                }
 
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Evaluating...';
@@ -499,36 +982,32 @@ def _get_app_page_html() -> str:
                 try {
                     const response = await fetch('/app/evaluate', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ input, tier })
                     });
 
                     const data = await response.json();
 
                     if (!response.ok) {
-                        showError(data.detail || data);
+                        showError(data.detail || 'Evaluation failed');
                         return;
                     }
 
-                    showResult(data);
+                    showResults(data);
                 } catch (err) {
                     showError('Network error: ' + err.message);
                 } finally {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Evaluate';
+                    submitBtn.textContent = 'Evaluate Parlay';
+                    updateUI();
                 }
             }
 
             submitBtn.addEventListener('click', submitEvaluation);
+            addLegBtn.addEventListener('click', addLeg);
 
-            // Allow Ctrl+Enter to submit
-            betInput.addEventListener('keydown', function(e) {
-                if (e.ctrlKey && e.key === 'Enter') {
-                    submitEvaluation();
-                }
-            });
+            // Initialize
+            init();
         })();
     </script>
 </body>
