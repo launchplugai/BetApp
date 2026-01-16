@@ -92,6 +92,32 @@ class TestAppPage:
         response = client.get("/app")
         assert "text/html" in response.headers.get("content-type", "")
 
+    def test_contains_orientation_banner(self, client):
+        """App page contains orientation banner for first-time users."""
+        response = client.get("/app")
+        # Check for orientation banner content
+        assert "orientation-banner" in response.text
+        assert "Build a parlay or paste a bet" in response.text
+        assert "risk, correlation, and fragility" in response.text
+
+    def test_anonymous_user_sees_login_hint(self, client):
+        """Anonymous users see login hint in orientation banner."""
+        response = client.get("/app")
+        # Check for login hint (anonymous users)
+        assert "Log in to save history" in response.text
+
+    def test_tier_selector_has_preview_label(self, client):
+        """Tier selector shows 'preview' label to clarify it's not billing."""
+        response = client.get("/app")
+        assert "tier-selector-label" in response.text
+        assert "Preview tier" in response.text
+
+    def test_image_upload_shows_not_available(self, client):
+        """Image upload panel shows 'not available' message."""
+        response = client.get("/app")
+        assert "Image parsing not available yet" in response.text
+        assert "switch-to-text" in response.text
+
 
 class TestEvaluateProxy:
     """Tests for POST /app/evaluate endpoint."""

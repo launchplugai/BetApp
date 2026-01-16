@@ -211,18 +211,30 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
     evaluate_active = "active" if active_tab == "evaluate" else ""
     history_active = "active" if active_tab == "history" else ""
 
-    # User section in header
+    # User section in header (tier badge + email, both clickable to account)
     user_section = ""
     if is_logged_in:
         tier_class = user_tier.lower()
         user_section = f'''
-            <div class="user-info-header">
+            <a href="/app/account" class="user-info-header">
                 <span class="tier-badge {tier_class}">{user_tier}</span>
-                <a href="/app/account" class="account-link">{user_email}</a>
-            </div>
+                <span class="account-email">{user_email}</span>
+            </a>
         '''
     else:
         user_section = '<a href="/login" class="login-link">Login</a>'
+
+    # Orientation banner (first-run guidance)
+    login_hint = '' if is_logged_in else '<span class="orientation-login">Log in to save history and manage your plan.</span>'
+    orientation_banner = f'''
+        <div class="orientation-banner">
+            <span class="orientation-main">Build a parlay or paste a bet. We analyze risk, correlation, and fragility.</span>
+            {login_hint}
+        </div>
+    '''
+
+    # Upgrade CTA link (depends on login state)
+    upgrade_link = "/app/account" if is_logged_in else "/login"
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -266,6 +278,17 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            text-decoration: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }}
+        .user-info-header:hover {{
+            background: #1a1a1a;
+        }}
+        .account-email {{
+            color: #888;
+            font-size: 0.875rem;
         }}
         .tier-badge {{
             padding: 0.25rem 0.5rem;
@@ -277,11 +300,56 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         .tier-badge.good {{ background: #1a2a3a; color: #4a9eff; }}
         .tier-badge.better {{ background: #2a2a1a; color: #f39c12; }}
         .tier-badge.best {{ background: #1a2a1a; color: #2ecc71; }}
-        .account-link {{ color: #888 !important; }}
         .login-link {{
             padding: 0.5rem 1rem;
             border: 1px solid #4a9eff;
             border-radius: 4px;
+        }}
+
+        /* Orientation Banner */
+        .orientation-banner {{
+            background: linear-gradient(135deg, #1a1a2a 0%, #1a2a2a 100%);
+            border: 1px solid #2a3a4a;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin: 1rem 0 0.5rem;
+            font-size: 0.9rem;
+        }}
+        .orientation-main {{
+            color: #ccc;
+        }}
+        .orientation-login {{
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 0.8rem;
+            color: #888;
+        }}
+        .orientation-login a {{
+            color: #4a9eff;
+        }}
+
+        /* Upgrade CTA */
+        .upgrade-cta {{
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #2a1a3a 0%, #1a2a3a 100%);
+            border: 1px solid #f39c12;
+            border-radius: 4px;
+            color: #f39c12;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }}
+        .upgrade-cta:hover {{
+            background: #f39c12;
+            color: #111;
+        }}
+        .upgrade-cta-inline {{
+            margin-top: 0.75rem;
+            text-align: center;
         }}
 
         /* Navigation Tabs */
@@ -462,10 +530,19 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         }}
 
         /* Tier Selector */
+        .tier-selector-wrapper {{
+            margin-bottom: 1rem;
+        }}
+        .tier-selector-label {{
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }}
         .tier-selector {{
             display: flex;
             gap: 0.5rem;
-            margin-bottom: 1rem;
         }}
         .tier-option {{
             flex: 1;
@@ -1026,6 +1103,43 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             outline: none;
             border-color: #4a9eff;
         }}
+        /* Image Not Available (OCR not implemented) */
+        .image-not-available {{
+            border: 2px dashed #444;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: #1a1a1a;
+        }}
+        .image-not-available-icon {{
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }}
+        .image-not-available-title {{
+            font-weight: 600;
+            color: #f39c12;
+            margin-bottom: 0.5rem;
+        }}
+        .image-not-available-text {{
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 1rem;
+        }}
+        .switch-to-text-btn {{
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #4a9eff;
+            color: #111;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }}
+        .switch-to-text-btn:hover {{
+            background: #3a8eef;
+        }}
+
         .file-upload-area {{
             border: 2px dashed #333;
             border-radius: 8px;
@@ -1137,6 +1251,9 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             {user_section}
         </header>
 
+        <!-- Orientation Banner -->
+        {orientation_banner}
+
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
             <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
@@ -1166,27 +1283,30 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                 <button type="button" class="add-leg-btn" id="add-leg-btn">+ Add Leg</button>
 
-                <div class="tier-selector">
-                    <div class="tier-option">
-                        <input type="radio" name="tier" id="tier-good" value="good" checked>
-                        <label for="tier-good">
-                            <div class="tier-name">GOOD</div>
-                            <div class="tier-desc">Grade + Verdict</div>
-                        </label>
-                    </div>
-                    <div class="tier-option">
-                        <input type="radio" name="tier" id="tier-better" value="better">
-                        <label for="tier-better">
-                            <div class="tier-name">BETTER</div>
-                            <div class="tier-desc">+ Insights</div>
-                        </label>
-                    </div>
-                    <div class="tier-option">
-                        <input type="radio" name="tier" id="tier-best" value="best">
-                        <label for="tier-best">
-                            <div class="tier-name">BEST</div>
-                            <div class="tier-desc">+ Full Analysis</div>
-                        </label>
+                <div class="tier-selector-wrapper">
+                    <div class="tier-selector-label">Preview tier (what you'll see)</div>
+                    <div class="tier-selector">
+                        <div class="tier-option">
+                            <input type="radio" name="tier" id="tier-good" value="good" checked>
+                            <label for="tier-good">
+                                <div class="tier-name">GOOD</div>
+                                <div class="tier-desc">Grade + Verdict</div>
+                            </label>
+                        </div>
+                        <div class="tier-option">
+                            <input type="radio" name="tier" id="tier-better" value="better">
+                            <label for="tier-better">
+                                <div class="tier-name">BETTER</div>
+                                <div class="tier-desc">+ Insights</div>
+                            </label>
+                        </div>
+                        <div class="tier-option">
+                            <input type="radio" name="tier" id="tier-best" value="best">
+                            <label for="tier-best">
+                                <div class="tier-name">BEST</div>
+                                <div class="tier-desc">+ Full Analysis</div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -1299,9 +1419,9 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                     <!-- Upgrade Nudge (Sprint 5) -->
                     <div class="upgrade-nudge hidden" id="upgrade-nudge">
-                        <h4>Unlock More Insights</h4>
-                        <p id="upgrade-message">Upgrade to see detailed analysis and live alerts</p>
-                        <button type="button" class="upgrade-btn" onclick="upgradeTier()">Upgrade Now</button>
+                        <h4>Unlock Full Analysis</h4>
+                        <p id="upgrade-message">See detailed breakdowns, correlations, and live alerts</p>
+                        <a href="{upgrade_link}" class="upgrade-cta">Unlock BEST ($19.99/mo)</a>
                     </div>
                 </div>
 
@@ -1334,41 +1454,39 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                     <!-- Image Input Panel -->
                     <div class="input-panel" id="image-input-panel">
-                        <div class="file-upload-area" id="file-upload-area">
-                            <input type="file" id="file-input" accept="image/*">
-                            <div class="file-upload-icon">&#128247;</div>
-                            <div class="file-upload-text" id="file-upload-text">
-                                Click or drag to upload bet slip image
-                            </div>
-                            <div class="file-selected hidden" id="file-selected">
-                                <span id="file-name"></span>
-                                <button type="button" class="clear-file" id="clear-file">Remove</button>
-                            </div>
+                        <div class="image-not-available">
+                            <div class="image-not-available-icon">&#128247;</div>
+                            <div class="image-not-available-title">Image parsing not available yet</div>
+                            <div class="image-not-available-text">We accept images, but we don't parse them yet. Use text input for now.</div>
+                            <a href="#" class="switch-to-text-btn" id="switch-to-text">Switch to Text Input</a>
                         </div>
                     </div>
 
                     <!-- Tier Selector -->
-                    <div class="tier-selector" style="margin-top: 1rem;">
-                        <div class="tier-option">
-                            <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
-                            <label for="eval-tier-good">
-                                <div class="tier-name">GOOD</div>
-                                <div class="tier-desc">Grade + Verdict</div>
-                            </label>
-                        </div>
-                        <div class="tier-option">
-                            <input type="radio" name="eval-tier" id="eval-tier-better" value="better">
-                            <label for="eval-tier-better">
-                                <div class="tier-name">BETTER</div>
-                                <div class="tier-desc">+ Insights</div>
-                            </label>
-                        </div>
-                        <div class="tier-option">
-                            <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
-                            <label for="eval-tier-best">
-                                <div class="tier-name">BEST</div>
-                                <div class="tier-desc">+ Full Analysis</div>
-                            </label>
+                    <div class="tier-selector-wrapper" style="margin-top: 1rem;">
+                        <div class="tier-selector-label">Preview tier (what you'll see)</div>
+                        <div class="tier-selector">
+                            <div class="tier-option">
+                                <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
+                                <label for="eval-tier-good">
+                                    <div class="tier-name">GOOD</div>
+                                    <div class="tier-desc">Grade + Verdict</div>
+                                </label>
+                            </div>
+                            <div class="tier-option">
+                                <input type="radio" name="eval-tier" id="eval-tier-better" value="better">
+                                <label for="eval-tier-better">
+                                    <div class="tier-name">BETTER</div>
+                                    <div class="tier-desc">+ Insights</div>
+                                </label>
+                            </div>
+                            <div class="tier-option">
+                                <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
+                                <label for="eval-tier-best">
+                                    <div class="tier-name">BEST</div>
+                                    <div class="tier-desc">+ Full Analysis</div>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -2094,21 +2212,15 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             const inputTabs = document.querySelectorAll('.input-tab');
             const inputPanels = document.querySelectorAll('.input-panel');
             const textInput = document.getElementById('eval-text-input');
-            const fileInput = document.getElementById('file-input');
-            const fileUploadArea = document.getElementById('file-upload-area');
-            const fileUploadText = document.getElementById('file-upload-text');
-            const fileSelected = document.getElementById('file-selected');
-            const fileNameSpan = document.getElementById('file-name');
-            const clearFileBtn = document.getElementById('clear-file');
             const evalSubmitBtn = document.getElementById('eval-submit-btn');
             const evalResultsPlaceholder = document.getElementById('eval-results-placeholder');
             const evalResultsContent = document.getElementById('eval-results-content');
             const evalErrorPanel = document.getElementById('eval-error-panel');
+            const switchToTextBtn = document.getElementById('switch-to-text');
 
-            let selectedFile = null;
             let currentInputMode = 'text';
 
-            // Input type tabs
+            // Input type tabs (text/image)
             inputTabs.forEach(tab => {{
                 tab.addEventListener('click', function() {{
                     const inputType = this.dataset.input;
@@ -2124,75 +2236,25 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 }});
             }});
 
+            // Switch to text button (from image not available panel)
+            if (switchToTextBtn) {{
+                switchToTextBtn.addEventListener('click', function(e) {{
+                    e.preventDefault();
+                    // Switch to text tab
+                    inputTabs.forEach(t => {{
+                        t.classList.remove('active');
+                        if (t.dataset.input === 'text') t.classList.add('active');
+                    }});
+                    inputPanels.forEach(p => p.classList.remove('active'));
+                    document.getElementById('text-input-panel').classList.add('active');
+                    currentInputMode = 'text';
+                    textInput.focus();
+                    updateEvalSubmitState();
+                }});
+            }}
+
             // Text input change
             textInput.addEventListener('input', updateEvalSubmitState);
-
-            // File upload area click
-            fileUploadArea.addEventListener('click', function() {{
-                fileInput.click();
-            }});
-
-            // File drag and drop
-            fileUploadArea.addEventListener('dragover', function(e) {{
-                e.preventDefault();
-                this.style.borderColor = '#4a9eff';
-            }});
-
-            fileUploadArea.addEventListener('dragleave', function() {{
-                this.style.borderColor = '#333';
-            }});
-
-            fileUploadArea.addEventListener('drop', function(e) {{
-                e.preventDefault();
-                this.style.borderColor = '#333';
-                if (e.dataTransfer.files.length > 0) {{
-                    handleFileSelect(e.dataTransfer.files[0]);
-                }}
-            }});
-
-            // File input change
-            fileInput.addEventListener('change', function() {{
-                if (this.files.length > 0) {{
-                    handleFileSelect(this.files[0]);
-                }}
-            }});
-
-            // Clear file button
-            clearFileBtn.addEventListener('click', function(e) {{
-                e.stopPropagation();
-                clearFile();
-            }});
-
-            function handleFileSelect(file) {{
-                if (!file.type.startsWith('image/')) {{
-                    alert('Please select an image file');
-                    return;
-                }}
-
-                selectedFile = file;
-                fileUploadArea.classList.add('has-file');
-                fileUploadText.classList.add('hidden');
-                fileSelected.classList.remove('hidden');
-                fileNameSpan.textContent = file.name;
-                updateEvalSubmitState();
-            }}
-
-            function clearFile() {{
-                selectedFile = null;
-                fileInput.value = '';
-                fileUploadArea.classList.remove('has-file');
-                fileUploadText.classList.remove('hidden');
-                fileSelected.classList.add('hidden');
-                updateEvalSubmitState();
-            }}
-
-            function updateEvalSubmitState() {{
-                if (currentInputMode === 'text') {{
-                    evalSubmitBtn.disabled = textInput.value.trim().length < 5;
-                }} else {{
-                    evalSubmitBtn.disabled = !selectedFile;
-                }}
-            }}
 
             function getEvalTier() {{
                 const selected = document.querySelector('input[name="eval-tier"]:checked');
@@ -2229,26 +2291,20 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                     action.toUpperCase() + '</span>: ' + evaluation.recommendation.reason;
             }}
 
-            // Submit evaluation
+            // Submit evaluation (text only - image not implemented)
             evalSubmitBtn.addEventListener('click', async function() {{
                 const tier = getEvalTier();
+                const input = textInput.value.trim();
+
+                if (input.length < 5) {{
+                    showEvalError('Please enter more text to evaluate');
+                    return;
+                }}
 
                 evalSubmitBtn.disabled = true;
                 evalSubmitBtn.textContent = 'Evaluating...';
 
                 try {{
-                    let input = '';
-
-                    if (currentInputMode === 'text') {{
-                        input = textInput.value.trim();
-                    }} else if (selectedFile) {{
-                        // For image: Read and extract text (simplified - just use filename for now)
-                        // In production, this would use OCR
-                        input = 'Image uploaded: ' + selectedFile.name + ' (Image evaluation not yet implemented - please use text input)';
-                        showEvalError('Image evaluation is coming soon. Please paste your bet as text for now.');
-                        return;
-                    }}
-
                     const response = await fetch('/app/evaluate', {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/json' }},
