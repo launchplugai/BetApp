@@ -34,6 +34,7 @@ def _generate_token() -> str:
 def create_share(
     evaluation_id: str,
     expiry_days: int = DEFAULT_SHARE_DAYS,
+    user_id: Optional[str] = None,
 ) -> Optional[str]:
     """
     Create a shareable link for an evaluation.
@@ -41,6 +42,7 @@ def create_share(
     Args:
         evaluation_id: The evaluation to share
         expiry_days: How long the share link is valid
+        user_id: Optional user ID (for logged-in users)
 
     Returns:
         Share token, or None if evaluation not found
@@ -80,10 +82,10 @@ def create_share(
 
                 conn.execute(
                     """
-                    INSERT INTO shares (token, evaluation_id, created_at, expires_at)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO shares (token, evaluation_id, created_at, expires_at, user_id)
+                    VALUES (?, ?, ?, ?, ?)
                     """,
-                    (token, evaluation_id, created_at.isoformat(), expires_at.isoformat()),
+                    (token, evaluation_id, created_at.isoformat(), expires_at.isoformat(), user_id),
                 )
                 _logger.info(f"Created share {token} for evaluation {evaluation_id}")
                 return token
@@ -121,6 +123,7 @@ def get_share(token: str) -> Optional[dict]:
         "created_at": row["created_at"],
         "expires_at": row["expires_at"],
         "view_count": row["view_count"],
+        "user_id": row["user_id"] if "user_id" in row.keys() else None,
     }
 
 
@@ -157,6 +160,39 @@ def get_shares_for_evaluation(evaluation_id: str) -> list[dict]:
             "created_at": row["created_at"],
             "expires_at": row["expires_at"],
             "view_count": row["view_count"],
+            "user_id": row["user_id"] if "user_id" in row.keys() else None,
+        }
+        for row in rows
+    ]
+
+
+def get_shares_by_user(user_id: str, limit: int = 50) -> list[dict]:
+    """Get all shares created by a user."""
+    init_db()
+
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT s.*, e.input_text, e.tier
+            FROM shares s
+            JOIN evaluations e ON s.evaluation_id = e.id
+            WHERE s.user_id = ?
+            AND (s.expires_at IS NULL OR s.expires_at > ?)
+            ORDER BY s.created_at DESC
+            LIMIT ?
+            """,
+            (user_id, datetime.utcnow().isoformat(), limit),
+        ).fetchall()
+
+    return [
+        {
+            "token": row["token"],
+            "evaluation_id": row["evaluation_id"],
+            "created_at": row["created_at"],
+            "expires_at": row["expires_at"],
+            "view_count": row["view_count"],
+            "input_text": row["input_text"],
+            "tier": row["tier"],
         }
         for row in rows
     ]

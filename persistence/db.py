@@ -80,7 +80,44 @@ def init_db() -> None:
             return
 
         with get_db() as conn:
-            # Evaluations table
+            # Users table (must be created first for foreign keys)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    tier TEXT NOT NULL DEFAULT 'GOOD',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_users_email
+                ON users(email)
+            """)
+
+            # Sessions table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_user
+                ON sessions(user_id)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_sessions_expires
+                ON sessions(expires_at)
+            """)
+
+            # Evaluations table (with optional user_id)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS evaluations (
                     id TEXT PRIMARY KEY,
@@ -90,7 +127,9 @@ def init_db() -> None:
                     input_text TEXT NOT NULL,
                     result_json TEXT NOT NULL,
                     correlation_id TEXT,
-                    expires_at TEXT
+                    expires_at TEXT,
+                    user_id TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
                 )
             """)
             conn.execute("""
@@ -101,8 +140,12 @@ def init_db() -> None:
                 CREATE INDEX IF NOT EXISTS idx_evaluations_correlation
                 ON evaluations(correlation_id)
             """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_evaluations_user
+                ON evaluations(user_id)
+            """)
 
-            # Shares table (for shareable links)
+            # Shares table (for shareable links, with optional user_id)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS shares (
                     token TEXT PRIMARY KEY,
@@ -110,15 +153,21 @@ def init_db() -> None:
                     created_at TEXT NOT NULL,
                     expires_at TEXT,
                     view_count INTEGER DEFAULT 0,
-                    FOREIGN KEY (evaluation_id) REFERENCES evaluations(id)
+                    user_id TEXT,
+                    FOREIGN KEY (evaluation_id) REFERENCES evaluations(id),
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
                 )
             """)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_shares_evaluation
                 ON shares(evaluation_id)
             """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_shares_user
+                ON shares(user_id)
+            """)
 
-            # Alerts table (persistent alerts)
+            # Alerts table (persistent alerts, with optional user_id)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS alerts (
                     id TEXT PRIMARY KEY,
@@ -134,7 +183,9 @@ def init_db() -> None:
                     correlation_id TEXT,
                     source TEXT,
                     sport TEXT,
-                    expires_at TEXT
+                    expires_at TEXT,
+                    user_id TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
                 )
             """)
             conn.execute("""
@@ -148,6 +199,10 @@ def init_db() -> None:
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_alerts_player
                 ON alerts(player_name)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_alerts_user
+                ON alerts(user_id)
             """)
 
             # Metrics table (for observability)
@@ -182,10 +237,13 @@ def reset_db() -> None:
 
     with _init_lock:
         with get_db() as conn:
+            # Drop in order respecting foreign keys
             conn.execute("DROP TABLE IF EXISTS metrics")
             conn.execute("DROP TABLE IF EXISTS shares")
             conn.execute("DROP TABLE IF EXISTS alerts")
             conn.execute("DROP TABLE IF EXISTS evaluations")
+            conn.execute("DROP TABLE IF EXISTS sessions")
+            conn.execute("DROP TABLE IF EXISTS users")
         _initialized = False
 
 

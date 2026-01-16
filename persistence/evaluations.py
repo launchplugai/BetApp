@@ -31,6 +31,7 @@ def save_evaluation(
     result: dict,
     correlation_id: Optional[str] = None,
     retention_days: int = DEFAULT_RETENTION_DAYS,
+    user_id: Optional[str] = None,
 ) -> str:
     """
     Save an evaluation result.
@@ -42,6 +43,7 @@ def save_evaluation(
         result: Full evaluation result dict
         correlation_id: Optional session/request ID
         retention_days: How long to keep (default 7 days)
+        user_id: Optional user ID (for logged-in users)
 
     Returns:
         Evaluation ID for retrieval
@@ -56,8 +58,8 @@ def save_evaluation(
         conn.execute(
             """
             INSERT INTO evaluations
-            (id, parlay_id, created_at, tier, input_text, result_json, correlation_id, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, parlay_id, created_at, tier, input_text, result_json, correlation_id, expires_at, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 eval_id,
@@ -68,6 +70,7 @@ def save_evaluation(
                 json.dumps(result),
                 correlation_id,
                 expires_at.isoformat(),
+                user_id,
             ),
         )
 
@@ -178,6 +181,28 @@ def get_evaluations_by_correlation(
     return [_row_to_dict(row) for row in rows]
 
 
+def get_evaluations_by_user(
+    user_id: str,
+    limit: int = 50,
+) -> list[dict]:
+    """Get evaluations for a user (saved history)."""
+    init_db()
+
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM evaluations
+            WHERE user_id = ?
+            AND (expires_at IS NULL OR expires_at > ?)
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (user_id, datetime.utcnow().isoformat(), limit),
+        ).fetchall()
+
+    return [_row_to_dict(row) for row in rows]
+
+
 def cleanup_expired() -> int:
     """
     Remove expired evaluations.
@@ -222,4 +247,5 @@ def _row_to_dict(row) -> dict:
         "result": json.loads(row["result_json"]),
         "correlation_id": row["correlation_id"],
         "expires_at": row["expires_at"],
+        "user_id": row["user_id"] if "user_id" in row.keys() else None,
     }

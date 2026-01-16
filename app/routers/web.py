@@ -18,9 +18,9 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status, Response
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 
 from app.airlock import (
     airlock_ingest,
@@ -899,7 +899,10 @@ def _get_app_page_html() -> str:
     <div class="container">
         <header>
             <h1>Leading Light</h1>
-            <a href="/">Back to Home</a>
+            <nav style="display: flex; gap: 1rem;">
+                <a href="/" id="home-link">Home</a>
+                <a href="/app/account" id="account-link">Account</a>
+            </nav>
         </header>
 
         <div class="main-grid">
@@ -1904,9 +1907,17 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         }
 
         # Sprint 5: Persist evaluation for sharing
+        # Sprint 6A: Associate with user if logged in
         try:
             from persistence.evaluations import save_evaluation
             from persistence.metrics import record_evaluation_latency
+            from auth.middleware import get_session_id
+            from auth.service import get_current_user as get_user_from_session
+
+            # Get user_id if logged in
+            session_id = get_session_id(raw_request)
+            current_user = get_user_from_session(session_id)
+            user_id = current_user.id if current_user else None
 
             eval_id = save_evaluation(
                 parlay_id=str(eval_response.parlay_id),
@@ -1914,6 +1925,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
                 input_text=normalized.input_text,
                 result=response_data,
                 correlation_id=request_id,
+                user_id=user_id,
             )
             response_data["evaluation_id"] = eval_id
 
@@ -2073,11 +2085,18 @@ async def create_share_link(request: ShareRequest, raw_request: Request):
     """
     from persistence.shares import create_share
     from persistence.metrics import record_counter, METRIC_SHARE_CREATED
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user as get_user_from_session
 
     request_id = get_request_id(raw_request) or "unknown"
 
+    # Get user_id if logged in
+    session_id = get_session_id(raw_request)
+    current_user = get_user_from_session(session_id)
+    user_id = current_user.id if current_user else None
+
     try:
-        token = create_share(request.evaluation_id)
+        token = create_share(request.evaluation_id, user_id=user_id)
 
         if token is None:
             return JSONResponse(
@@ -2387,5 +2406,759 @@ def _get_share_page_html(evaluation: dict, token: str) -> str:
             <p><a href="/app">Try DNA Bet Engine</a></p>
         </div>
     </div>
+</body>
+</html>"""
+
+
+# =============================================================================
+# Auth API (Sprint 6A)
+# =============================================================================
+
+
+class SignupRequest(BaseModel):
+    """Request schema for user signup."""
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., min_length=8, description="Password (min 8 chars)")
+
+
+class LoginRequest(BaseModel):
+    """Request schema for user login."""
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., description="Password")
+
+
+@router.post("/app/auth/signup")
+async def signup(request: SignupRequest, raw_request: Request, response: Response):
+    """
+    Create a new user account.
+
+    Returns user info and sets session cookie on success.
+    """
+    from auth.service import create_user, create_session, UserExistsError, WeakPasswordError
+    from auth.middleware import set_session_cookie
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    try:
+        # Create user
+        user = create_user(
+            email=request.email,
+            password=request.password,
+            tier="GOOD",  # Default tier for new users
+        )
+
+        # Create session
+        client_ip = get_client_ip(raw_request)
+        user_agent = raw_request.headers.get("user-agent")
+        session = create_session(
+            user_id=user.id,
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+
+        # Set session cookie
+        set_session_cookie(response, session.id)
+
+        return {
+            "request_id": request_id,
+            "success": True,
+            "user": user.to_dict(),
+        }
+
+    except UserExistsError as e:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "request_id": request_id,
+                "error": "user_exists",
+                "detail": str(e),
+            },
+        )
+
+    except WeakPasswordError as e:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "error": "weak_password",
+                "detail": str(e),
+            },
+        )
+
+    except Exception as e:
+        _logger.error(f"Signup error: {e}", extra={"request_id": request_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "internal_error",
+                "detail": "Failed to create account",
+            },
+        )
+
+
+@router.post("/app/auth/login")
+async def login(request: LoginRequest, raw_request: Request, response: Response):
+    """
+    Authenticate user and create session.
+
+    Returns user info and sets session cookie on success.
+    """
+    from auth.service import authenticate_user, create_session, InvalidCredentialsError
+    from auth.middleware import set_session_cookie
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    try:
+        # Authenticate
+        user = authenticate_user(request.email, request.password)
+
+        # Create session
+        client_ip = get_client_ip(raw_request)
+        user_agent = raw_request.headers.get("user-agent")
+        session = create_session(
+            user_id=user.id,
+            ip_address=client_ip,
+            user_agent=user_agent,
+        )
+
+        # Set session cookie
+        set_session_cookie(response, session.id)
+
+        return {
+            "request_id": request_id,
+            "success": True,
+            "user": user.to_dict(),
+        }
+
+    except InvalidCredentialsError:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "request_id": request_id,
+                "error": "invalid_credentials",
+                "detail": "Invalid email or password",
+            },
+        )
+
+    except Exception as e:
+        _logger.error(f"Login error: {e}", extra={"request_id": request_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "internal_error",
+                "detail": "Login failed",
+            },
+        )
+
+
+@router.post("/app/auth/logout")
+async def logout(raw_request: Request, response: Response):
+    """
+    Log out the current user.
+
+    Invalidates the session and clears the session cookie.
+    """
+    from auth.middleware import get_session_id, clear_session_cookie
+    from auth.service import invalidate_session
+
+    request_id = get_request_id(raw_request) or "unknown"
+
+    try:
+        session_id = get_session_id(raw_request)
+        if session_id:
+            invalidate_session(session_id)
+
+        clear_session_cookie(response)
+
+        return {
+            "request_id": request_id,
+            "success": True,
+            "message": "Logged out successfully",
+        }
+
+    except Exception as e:
+        _logger.error(f"Logout error: {e}", extra={"request_id": request_id})
+        # Still clear the cookie even if invalidation fails
+        from auth.middleware import clear_session_cookie
+        clear_session_cookie(response)
+        return {
+            "request_id": request_id,
+            "success": True,
+            "message": "Logged out",
+        }
+
+
+@router.get("/app/auth/me")
+async def get_current_user_info(raw_request: Request):
+    """
+    Get current user info from session.
+
+    Returns null user if not logged in (anonymous).
+    """
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+
+    request_id = get_request_id(raw_request) or "unknown"
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    return {
+        "request_id": request_id,
+        "logged_in": user is not None,
+        "user": user.to_dict() if user else None,
+    }
+
+
+# =============================================================================
+# Account Page (Sprint 6A)
+# =============================================================================
+
+
+@router.get("/app/account", response_class=HTMLResponse)
+async def account_page(raw_request: Request):
+    """
+    Account page showing user info and saved history.
+
+    Redirects to login if not authenticated.
+    """
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    if not user:
+        # Redirect to login page (or show login form)
+        return HTMLResponse(
+            content=_get_login_page_html(),
+        )
+
+    return HTMLResponse(
+        content=_get_account_page_html(user),
+    )
+
+
+@router.get("/app/account/history")
+async def get_user_history(raw_request: Request):
+    """
+    Get evaluation history for the current user.
+
+    Returns empty list for anonymous users.
+    """
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+    from persistence.evaluations import get_evaluations_by_user
+    from persistence.shares import get_shares_by_user
+
+    request_id = get_request_id(raw_request) or "unknown"
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+
+    if not user:
+        return {
+            "request_id": request_id,
+            "logged_in": False,
+            "evaluations": [],
+            "shares": [],
+        }
+
+    try:
+        evaluations = get_evaluations_by_user(user.id, limit=50)
+        shares = get_shares_by_user(user.id, limit=50)
+
+        return {
+            "request_id": request_id,
+            "logged_in": True,
+            "user_id": user.id,
+            "evaluations": evaluations,
+            "shares": shares,
+        }
+
+    except Exception as e:
+        _logger.error(f"History fetch error: {e}", extra={"request_id": request_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "internal_error",
+                "detail": "Failed to fetch history",
+            },
+        )
+
+
+def _get_login_page_html() -> str:
+    """HTML for login/signup page."""
+    return """<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - DNA Bet Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            color: #f39c12;
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            color: #888;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #333;
+        }
+        .tab {
+            flex: 1;
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            color: #888;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            color: #f39c12;
+            border-bottom-color: #f39c12;
+        }
+        .tab:hover {
+            color: #f39c12;
+        }
+        .form-panel {
+            display: none;
+        }
+        .form-panel.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+        input:focus {
+            outline: none;
+            border-color: #f39c12;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 0.875rem;
+            background: #f39c12;
+            color: #111;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .submit-btn:hover {
+            background: #e67e22;
+        }
+        .submit-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .error-msg {
+            color: #e74c3c;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .error-msg.visible {
+            display: block;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+            font-size: 0.85rem;
+        }
+        .footer a {
+            color: #4a9eff;
+            text-decoration: none;
+        }
+        .password-requirements {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DNA Bet Engine</h1>
+            <p>Sign in to save your history</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="login">Login</div>
+            <div class="tab" data-tab="signup">Sign Up</div>
+        </div>
+
+        <div class="form-panel active" id="login-panel">
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required autocomplete="current-password">
+                </div>
+                <div class="error-msg" id="login-error"></div>
+                <button type="submit" class="submit-btn">Login</button>
+            </form>
+        </div>
+
+        <div class="form-panel" id="signup-panel">
+            <form id="signup-form">
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" required minlength="8" autocomplete="new-password">
+                    <div class="password-requirements">At least 8 characters with a letter and number</div>
+                </div>
+                <div class="error-msg" id="signup-error"></div>
+                <button type="submit" class="submit-btn">Create Account</button>
+            </form>
+        </div>
+
+        <div class="footer">
+            <a href="/app">Continue without account</a>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
+            });
+        });
+
+        // Login form
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorEl = document.getElementById('login-error');
+            errorEl.classList.remove('visible');
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch('/app/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/app/account';
+                } else {
+                    errorEl.textContent = data.detail || 'Login failed';
+                    errorEl.classList.add('visible');
+                }
+            } catch (err) {
+                errorEl.textContent = 'Network error';
+                errorEl.classList.add('visible');
+            }
+        });
+
+        // Signup form
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorEl = document.getElementById('signup-error');
+            errorEl.classList.remove('visible');
+
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            try {
+                const response = await fetch('/app/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = '/app/account';
+                } else {
+                    errorEl.textContent = data.detail || 'Signup failed';
+                    errorEl.classList.add('visible');
+                }
+            } catch (err) {
+                errorEl.textContent = 'Network error';
+                errorEl.classList.add('visible');
+            }
+        });
+    </script>
+</body>
+</html>"""
+
+
+def _get_account_page_html(user) -> str:
+    """Generate HTML for account page."""
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>Account - DNA Bet Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 1rem;
+        }}
+        .container {{
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+        header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #333;
+        }}
+        header h1 {{
+            color: #f39c12;
+            font-size: 1.5rem;
+        }}
+        header nav {{
+            display: flex;
+            gap: 1rem;
+        }}
+        header nav a {{
+            color: #4a9eff;
+            text-decoration: none;
+        }}
+        .logout-btn {{
+            background: transparent;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }}
+        .logout-btn:hover {{
+            background: #e74c3c;
+            color: #fff;
+        }}
+        .user-info {{
+            background: #1a1a1a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }}
+        .user-info h2 {{
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }}
+        .info-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
+        }}
+        .info-row:last-child {{
+            border-bottom: none;
+        }}
+        .info-label {{
+            color: #888;
+        }}
+        .tier-badge {{
+            padding: 0.25rem 0.75rem;
+            background: #2a3a4a;
+            border-radius: 4px;
+            font-weight: 600;
+        }}
+        .tier-badge.good {{ color: #4a9eff; }}
+        .tier-badge.better {{ color: #f39c12; }}
+        .tier-badge.best {{ color: #2ecc71; }}
+        .section {{
+            margin-bottom: 2rem;
+        }}
+        .section h3 {{
+            color: #f39c12;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }}
+        .history-list {{
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+        .history-item {{
+            padding: 1rem;
+            border-bottom: 1px solid #333;
+        }}
+        .history-item:last-child {{
+            border-bottom: none;
+        }}
+        .history-bet {{
+            font-family: monospace;
+            color: #ccc;
+            margin-bottom: 0.5rem;
+        }}
+        .history-meta {{
+            font-size: 0.8rem;
+            color: #666;
+        }}
+        .history-meta span {{
+            margin-right: 1rem;
+        }}
+        .empty-state {{
+            color: #666;
+            text-align: center;
+            padding: 2rem;
+            font-style: italic;
+        }}
+        .loading {{
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DNA Bet Engine</h1>
+            <nav>
+                <a href="/app">Parlay Builder</a>
+                <button class="logout-btn" id="logout-btn">Logout</button>
+            </nav>
+        </header>
+
+        <div class="user-info">
+            <h2>Account</h2>
+            <div class="info-row">
+                <span class="info-label">Email</span>
+                <span>{user.email}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Tier</span>
+                <span class="tier-badge {user.tier.lower()}">{user.tier}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Member Since</span>
+                <span>{user.created_at.strftime('%b %d, %Y')}</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Evaluation History</h3>
+            <div class="history-list" id="evaluations-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Shared Links</h3>
+            <div class="history-list" id="shares-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {{
+            await fetch('/app/auth/logout', {{ method: 'POST' }});
+            window.location.href = '/app';
+        }});
+
+        // Load history
+        async function loadHistory() {{
+            try {{
+                const response = await fetch('/app/account/history');
+                const data = await response.json();
+
+                // Render evaluations
+                const evalList = document.getElementById('evaluations-list');
+                if (data.evaluations && data.evaluations.length > 0) {{
+                    evalList.innerHTML = data.evaluations.map(e => `
+                        <div class="history-item">
+                            <div class="history-bet">${{e.input_text}}</div>
+                            <div class="history-meta">
+                                <span>Tier: ${{e.tier.toUpperCase()}}</span>
+                                <span>Date: ${{new Date(e.created_at).toLocaleDateString()}}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }} else {{
+                    evalList.innerHTML = '<div class="empty-state">No evaluations yet</div>';
+                }}
+
+                // Render shares
+                const shareList = document.getElementById('shares-list');
+                if (data.shares && data.shares.length > 0) {{
+                    shareList.innerHTML = data.shares.map(s => `
+                        <div class="history-item">
+                            <div class="history-bet">${{s.input_text}}</div>
+                            <div class="history-meta">
+                                <span>Views: ${{s.view_count}}</span>
+                                <span>Link: /app/share/${{s.token}}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }} else {{
+                    shareList.innerHTML = '<div class="empty-state">No shared links yet</div>';
+                }}
+            }} catch (err) {{
+                console.error('Failed to load history:', err);
+            }}
+        }}
+
+        loadHistory();
+    </script>
 </body>
 </html>"""

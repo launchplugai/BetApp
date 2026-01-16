@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["dna-matrix/tests"]
+testpaths = ["dna-matrix/tests", "auth/tests", "persistence/tests", "alerts/tests", "context/tests"]
 pythonpath = [".", "dna-matrix"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
