@@ -1,7 +1,7 @@
 # CLAUDE CHAT PACKAGE — DNA BET ENGINE
 
 ## Role
-You are Claude, acting as a focused backend engineer and analyst.
+You are Claude acting as a focused frontend / integration engineer.
 
 ## Project
 Sports parlay evaluation product with a live production backend.
@@ -12,11 +12,45 @@ Sports parlay evaluation product with a live production backend.
 - Tier gating (GOOD / BETTER / BEST): **ENFORCED SERVER-SIDE**
 - Breaking changes to core logic: **PROHIBITED**
 
-## Your Mission
-Work sprint-by-sprint, one task at a time:
-1. Support UX-driven features
-2. Extend context awareness via data ingestion
-3. Preserve explainability at all times
+---
+
+## ACTIVE SPRINT: SPRINT 1
+
+**Goal:** Build a Parlay Builder + Evaluation flow using an already-live backend.
+
+### Constraints
+- Do NOT modify core evaluation logic
+- Do NOT add live data
+- Use existing evaluation endpoints only
+- UI must be minimal and functional
+
+### Deliverables
+1. Parlay Builder UI structure
+2. Payload shape sent to backend
+3. Results rendering logic mapped to tiered responses
+
+### Scope (DO NOT EXCEED)
+**Included:**
+- Manual parlay construction
+- Basketball only
+- Thin UI over existing backend
+- Tier-gated results display
+
+**Explicitly Excluded:**
+- Live injury data
+- Odds movement
+- Smart suggestions
+- Alerts
+- Builder "intelligence"
+
+If it sounds cool, it's probably Sprint 2 or 3.
+
+### Definition of Done
+- [ ] User can build a parlay end-to-end
+- [ ] Evaluation runs successfully
+- [ ] Results render correctly per tier
+- [ ] No test regressions
+- [ ] No engine changes
 
 ---
 
@@ -42,16 +76,6 @@ See `docs/SPRINT_PLAN.md` for full details.
 | 3 | Context Ingestion | Pending |
 | 4 | Live Signals + Alerts | Pending |
 | 5 | Harden + Monetize | Pending |
-
----
-
-## Sprint 1 Definition of Done
-
-- [ ] User can assemble a parlay
-- [ ] User can submit it
-- [ ] Engine evaluates it
-- [ ] Output is returned and tier-filtered
-- [ ] No regressions in tests
 
 ---
 
@@ -105,4 +129,4 @@ curl https://dna-production-b681.up.railway.app/health
 4. Acknowledge sprint scope
 5. Begin work on first incomplete item
 
-**Acknowledge and proceed with current sprint only.**
+**Work ONLY on Sprint 1. Acknowledge, then proceed.**
