@@ -21,7 +21,7 @@ dependencies = [
 
 [tool.pytest.ini_options]
 testpaths = ["dna-matrix/tests"]
-pythonpath = ["dna-matrix"]
+pythonpath = [".", "dna-matrix"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
