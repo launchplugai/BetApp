@@ -760,6 +760,59 @@ def _get_app_page_html() -> str:
             color: #888;
             margin-top: 0.5rem;
         }
+
+        /* Alerts Feed Styles (Sprint 4) */
+        .alerts-feed {
+            border: 1px solid #e74c3c;
+            background: #1a0a0a;
+            margin-bottom: 1rem;
+        }
+        .alerts-feed h3 {
+            color: #e74c3c;
+        }
+        .alerts-feed.locked {
+            border-color: #444;
+            background: #1a1a1a;
+        }
+        .alerts-feed.locked h3 {
+            color: #666;
+        }
+        .alert-item {
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            border-left: 3px solid #e74c3c;
+        }
+        .alert-item.warning {
+            border-left-color: #f39c12;
+        }
+        .alert-item.info {
+            border-left-color: #3498db;
+        }
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        .alert-message {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        .alert-meta {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        .alerts-empty {
+            color: #666;
+            font-style: italic;
+            padding: 0.5rem;
+        }
+        .alerts-locked-message {
+            color: #888;
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -822,6 +875,12 @@ def _get_app_page_html() -> str:
             <div class="results-section">
                 <div class="section-header">
                     <span class="section-title">Results</span>
+                </div>
+
+                <!-- Alerts Feed (Sprint 4 - BEST only) -->
+                <div class="why-panel alerts-feed hidden" id="alerts-feed">
+                    <h3><span class="icon">&#128276;</span> Live Alerts</h3>
+                    <div id="alerts-content"></div>
                 </div>
 
                 <div id="results-placeholder" class="results-placeholder">
@@ -1334,6 +1393,71 @@ def _get_app_page_html() -> str:
                 } else {
                     contextPanel.classList.add('hidden');
                 }
+
+                // ============================================================
+                // ALERTS FEED (Sprint 4 - BEST only)
+                // ============================================================
+                const alertsFeed = document.getElementById('alerts-feed');
+                const alertsContent = document.getElementById('alerts-content');
+
+                if (tier === 'best') {
+                    // Fetch alerts for BEST tier
+                    fetchAlerts(alertsFeed, alertsContent);
+                } else {
+                    alertsFeed.classList.add('hidden');
+                }
+            }
+
+            async function fetchAlerts(alertsFeed, alertsContent) {
+                const tier = getSelectedTier();
+
+                try {
+                    const response = await fetch('/app/alerts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tier: tier, limit: 10 })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.tier_locked) {
+                        alertsFeed.classList.add('locked');
+                        alertsContent.innerHTML = '<div class="alerts-locked-message">Upgrade to BEST tier for live alerts</div>';
+                        alertsFeed.classList.remove('hidden');
+                        return;
+                    }
+
+                    alertsFeed.classList.remove('locked');
+
+                    if (data.alerts && data.alerts.length > 0) {
+                        let html = '';
+                        data.alerts.forEach(function(alert) {
+                            const severityClass = alert.severity === 'critical' ? '' :
+                                                  alert.severity === 'warning' ? 'warning' : 'info';
+                            html += '<div class="alert-item ' + severityClass + '">';
+                            html += '<div class="alert-title">' + escapeHtml(alert.title) + '</div>';
+                            html += '<div class="alert-message">' + escapeHtml(alert.message) + '</div>';
+
+                            let meta = [];
+                            if (alert.player_name) meta.push(alert.player_name);
+                            if (alert.team) meta.push(alert.team);
+                            const timestamp = new Date(alert.created_at).toLocaleTimeString();
+                            meta.push(timestamp);
+
+                            html += '<div class="alert-meta">' + meta.join(' | ') + '</div>';
+                            html += '</div>';
+                        });
+                        alertsContent.innerHTML = html;
+                        alertsFeed.classList.remove('hidden');
+                    } else {
+                        alertsContent.innerHTML = '<div class="alerts-empty">No active alerts</div>';
+                        alertsFeed.classList.remove('hidden');
+                    }
+
+                } catch (err) {
+                    console.error('Failed to fetch alerts:', err);
+                    alertsFeed.classList.add('hidden');
+                }
             }
 
             function escapeHtml(text) {
@@ -1580,6 +1704,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             },
             "interpretation": result.interpretation,
             "explain": result.explain,
+            "context": result.context,
         }
 
     except ValueError as e:
@@ -1620,5 +1745,89 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
                 "error": "Internal error",
                 "detail": str(e),
                 "code": "INTERNAL_ERROR",
+            },
+        )
+
+
+# =============================================================================
+# Alerts API (Sprint 4)
+# =============================================================================
+
+
+class AlertsRequest(BaseModel):
+    """Request for alerts endpoint."""
+
+    tier: str = Field(default="best", description="User tier (alerts are BEST only)")
+    limit: int = Field(default=20, ge=1, le=100, description="Max alerts to return")
+    correlation_id: Optional[str] = Field(default=None, description="Filter by session ID")
+
+
+@router.post("/app/alerts")
+async def get_alerts(request: AlertsRequest, raw_request: Request):
+    """
+    Get recent alerts for the user.
+
+    BEST tier only - returns empty list for other tiers.
+    Alerts are driven by NBA availability changes.
+
+    Rate limited: shares limit with /app/evaluate.
+    """
+    from alerts.service import get_alert_service
+
+    request_id = get_request_id(raw_request) or "unknown"
+    client_ip = get_client_ip(raw_request)
+
+    # Tier check - alerts are BEST only
+    if request.tier.lower() != "best":
+        return {
+            "request_id": request_id,
+            "alerts": [],
+            "count": 0,
+            "tier_locked": True,
+            "message": "Alerts are available for BEST tier only",
+        }
+
+    # Rate limiting
+    limiter = get_rate_limiter()
+    allowed, retry_after = limiter.check(client_ip)
+
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "request_id": request_id,
+                "error": "rate_limited",
+                "detail": f"Too many requests. Try again in {retry_after} seconds.",
+                "retry_after": retry_after,
+            },
+        )
+
+    try:
+        service = get_alert_service()
+
+        if request.correlation_id:
+            alerts = service.get_alerts(
+                correlation_id=request.correlation_id,
+                limit=request.limit,
+            )
+        else:
+            alerts = service.get_recent_alerts(limit=request.limit)
+
+        return {
+            "request_id": request_id,
+            "alerts": [a.to_dict() for a in alerts],
+            "count": len(alerts),
+            "total_active": service.get_alert_count(),
+            "tier_locked": False,
+        }
+
+    except Exception as e:
+        _logger.error(f"Alerts endpoint error: {e}", extra={"request_id": request_id})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "error": "Internal error",
+                "detail": str(e),
             },
         )

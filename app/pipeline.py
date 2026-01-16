@@ -41,6 +41,9 @@ from core.models.leading_light import (
 from context.service import get_context
 from context.apply import apply_context, ContextImpact
 
+# Alerts (Sprint 4)
+from alerts.service import check_for_alerts
+
 _logger = logging.getLogger(__name__)
 
 
@@ -339,11 +342,13 @@ def _extract_entities_from_text(text: str) -> tuple[list[str], list[str]]:
     return found_players, found_teams
 
 
-def _fetch_context_for_bet(text: str) -> Optional[dict]:
+def _fetch_context_for_bet(text: str, correlation_id: Optional[str] = None) -> Optional[dict]:
     """
     Fetch context data relevant to the bet.
 
     Sprint 3 scope: NBA availability only.
+    Sprint 4: Also triggers alert generation for availability changes.
+
     Returns context dict or None if not applicable.
     """
     try:
@@ -364,6 +369,16 @@ def _fetch_context_for_bet(text: str) -> Optional[dict]:
 
         # Fetch NBA context
         snapshot = get_context("NBA")
+
+        # Sprint 4: Check for alerts (stores any new alerts)
+        new_alerts = check_for_alerts(
+            snapshot=snapshot,
+            player_names=player_names if player_names else None,
+            team_names=team_names if team_names else None,
+            correlation_id=correlation_id,
+        )
+        if new_alerts:
+            _logger.info(f"Generated {len(new_alerts)} alert(s) for bet evaluation")
 
         # Apply context to get impact
         impact = apply_context(
@@ -395,6 +410,7 @@ def _fetch_context_for_bet(text: str) -> Optional[dict]:
                 "players": player_names,
                 "teams": team_names,
             },
+            "alerts_generated": len(new_alerts),
         }
 
     except Exception as e:
@@ -436,7 +452,11 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     )
 
     # Step 3: Fetch external context (Sprint 3 - additive only)
-    context_data = _fetch_context_for_bet(normalized.input_text)
+    # Sprint 4: Pass parlay_id as correlation_id for alert tracking
+    context_data = _fetch_context_for_bet(
+        normalized.input_text,
+        correlation_id=str(evaluation.parlay_id),
+    )
 
     # Step 4: Generate plain-English interpretation
     interpretation = {
