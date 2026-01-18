@@ -243,6 +243,8 @@ class TestRateLimiterIntegration:
     def client(self):
         """Create test client with Leading Light enabled and fresh rate limiter."""
         os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        # Disable bypass for these tests - we're testing rate limiting works
+        os.environ["DNA_RATE_LIMIT_MODE"] = "prod"
         # Reset rate limiter for clean state
         from app.rate_limiter import set_rate_limiter, RateLimiter
         # Use a limiter with controllable time for testing
@@ -252,12 +254,16 @@ class TestRateLimiterIntegration:
         ))
         from app.main import app
         from fastapi.testclient import TestClient
-        return TestClient(app)
+        yield TestClient(app)
+        # Restore CI mode after test
+        os.environ["DNA_RATE_LIMIT_MODE"] = "ci"
 
     @pytest.fixture
     def client_strict(self):
         """Create test client with strict rate limits for testing 429."""
         os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        # Disable bypass for these tests - we're testing rate limiting works
+        os.environ["DNA_RATE_LIMIT_MODE"] = "prod"
         from app.rate_limiter import set_rate_limiter, RateLimiter
         # Very strict: only 1 request allowed
         set_rate_limiter(RateLimiter(
@@ -266,7 +272,9 @@ class TestRateLimiterIntegration:
         ))
         from app.main import app
         from fastapi.testclient import TestClient
-        return TestClient(app)
+        yield TestClient(app)
+        # Restore CI mode after test
+        os.environ["DNA_RATE_LIMIT_MODE"] = "ci"
 
     def test_first_request_succeeds(self, client):
         """First request to /app/evaluate succeeds."""
@@ -353,6 +361,8 @@ class TestAbuseGuards:
     def client(self):
         """Create test client."""
         os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        # These tests don't need rate limiting, use CI bypass
+        os.environ["DNA_RATE_LIMIT_MODE"] = "ci"
         from app.rate_limiter import set_rate_limiter, RateLimiter
         set_rate_limiter(RateLimiter(
             requests_per_minute=100,
@@ -397,3 +407,128 @@ class TestAbuseGuards:
                 json={"input": "Lakers -5.5", "tier": tier},
             )
             assert response.status_code == 200, f"Failed for tier: {tier}"
+
+
+class TestRateLimitModeConfig:
+    """Tests for rate limit mode configuration (CI/test bypass)."""
+
+    def test_ci_mode_returns_bypass_limiter(self):
+        """CI mode returns a bypass limiter that always allows."""
+        from app.rate_limiter import (
+            _is_bypass_allowed,
+            BypassRateLimiter,
+            reset_bypass_warning,
+        )
+
+        # Save original env
+        orig_mode = os.environ.get("DNA_RATE_LIMIT_MODE")
+        orig_env = os.environ.get("ENV")
+
+        try:
+            os.environ["DNA_RATE_LIMIT_MODE"] = "ci"
+            os.environ["ENV"] = "test"
+            reset_bypass_warning()
+
+            assert _is_bypass_allowed() is True
+
+            limiter = BypassRateLimiter()
+            # Should always allow
+            for _ in range(100):
+                allowed, retry = limiter.check("192.168.1.1")
+                assert allowed is True
+                assert retry == 0.0
+        finally:
+            if orig_mode is not None:
+                os.environ["DNA_RATE_LIMIT_MODE"] = orig_mode
+            elif "DNA_RATE_LIMIT_MODE" in os.environ:
+                del os.environ["DNA_RATE_LIMIT_MODE"]
+            if orig_env is not None:
+                os.environ["ENV"] = orig_env
+
+    def test_prod_mode_does_not_bypass(self):
+        """Prod mode does not bypass rate limiting."""
+        from app.rate_limiter import _is_bypass_allowed, reset_bypass_warning
+
+        orig_mode = os.environ.get("DNA_RATE_LIMIT_MODE")
+        orig_env = os.environ.get("ENV")
+
+        try:
+            os.environ["DNA_RATE_LIMIT_MODE"] = "prod"
+            os.environ["ENV"] = "test"
+            reset_bypass_warning()
+
+            assert _is_bypass_allowed() is False
+        finally:
+            if orig_mode is not None:
+                os.environ["DNA_RATE_LIMIT_MODE"] = orig_mode
+            if orig_env is not None:
+                os.environ["ENV"] = orig_env
+
+    def test_production_env_never_bypasses(self):
+        """Production environment NEVER bypasses, even with ci mode set."""
+        from app.rate_limiter import _is_bypass_allowed, reset_bypass_warning
+
+        orig_mode = os.environ.get("DNA_RATE_LIMIT_MODE")
+        orig_env = os.environ.get("ENV")
+
+        try:
+            # Set CI mode but also production environment
+            os.environ["DNA_RATE_LIMIT_MODE"] = "ci"
+            os.environ["ENV"] = "production"
+            reset_bypass_warning()
+
+            # Should NOT bypass because ENV=production
+            assert _is_bypass_allowed() is False
+        finally:
+            if orig_mode is not None:
+                os.environ["DNA_RATE_LIMIT_MODE"] = orig_mode
+            if orig_env is not None:
+                os.environ["ENV"] = orig_env
+            else:
+                os.environ["ENV"] = "test"
+
+    def test_off_mode_bypasses_in_non_prod(self):
+        """Off mode bypasses entirely in non-production."""
+        from app.rate_limiter import _is_bypass_allowed, reset_bypass_warning
+
+        orig_mode = os.environ.get("DNA_RATE_LIMIT_MODE")
+        orig_env = os.environ.get("ENV")
+
+        try:
+            os.environ["DNA_RATE_LIMIT_MODE"] = "off"
+            os.environ["ENV"] = "test"
+            reset_bypass_warning()
+
+            assert _is_bypass_allowed() is True
+        finally:
+            if orig_mode is not None:
+                os.environ["DNA_RATE_LIMIT_MODE"] = orig_mode
+            if orig_env is not None:
+                os.environ["ENV"] = orig_env
+
+    def test_bypass_until_expired_reverts_to_normal(self):
+        """Expired bypass_until reverts to normal rate limiting."""
+        from app.rate_limiter import _is_bypass_allowed, reset_bypass_warning
+
+        orig_mode = os.environ.get("DNA_RATE_LIMIT_MODE")
+        orig_env = os.environ.get("ENV")
+        orig_until = os.environ.get("DNA_RATE_LIMIT_BYPASS_UNTIL")
+
+        try:
+            os.environ["DNA_RATE_LIMIT_MODE"] = "ci"
+            os.environ["ENV"] = "test"
+            # Set to a date in the past
+            os.environ["DNA_RATE_LIMIT_BYPASS_UNTIL"] = "2020-01-01T00:00:00Z"
+            reset_bypass_warning()
+
+            # Should NOT bypass because time-bomb expired
+            assert _is_bypass_allowed() is False
+        finally:
+            if orig_mode is not None:
+                os.environ["DNA_RATE_LIMIT_MODE"] = orig_mode
+            if orig_env is not None:
+                os.environ["ENV"] = orig_env
+            if orig_until is not None:
+                os.environ["DNA_RATE_LIMIT_BYPASS_UNTIL"] = orig_until
+            elif "DNA_RATE_LIMIT_BYPASS_UNTIL" in os.environ:
+                del os.environ["DNA_RATE_LIMIT_BYPASS_UNTIL"]
