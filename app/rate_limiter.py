@@ -9,13 +9,107 @@ Uses token bucket algorithm:
 - When bucket is empty, request is rejected with 429
 
 Designed for single Railway instance (no shared state).
+
+CI/Test Mode:
+- Set DNA_RATE_LIMIT_MODE=ci to bypass rate limiting in tests
+- Set DNA_RATE_LIMIT_MODE=off to disable entirely (non-production only)
+- Production safety: bypass NEVER activates when ENV=production
 """
 from __future__ import annotations
 
+import logging
+import os
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from threading import Lock
 from typing import Callable, Dict, Optional, Tuple
+
+_logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Rate Limit Mode Configuration
+# =============================================================================
+
+# Valid modes
+RATE_LIMIT_MODE_PROD = "prod"  # Default: normal rate limiting
+RATE_LIMIT_MODE_CI = "ci"      # CI/test: bypass rate limiting
+RATE_LIMIT_MODE_OFF = "off"    # Off: bypass entirely (non-prod only)
+
+_bypass_warning_logged = False
+
+
+def _get_rate_limit_mode() -> str:
+    """Get rate limit mode from environment."""
+    return os.environ.get("DNA_RATE_LIMIT_MODE", RATE_LIMIT_MODE_PROD).lower()
+
+
+def _get_bypass_until() -> Optional[datetime]:
+    """Get optional bypass time-bomb timestamp."""
+    until_str = os.environ.get("DNA_RATE_LIMIT_BYPASS_UNTIL")
+    if not until_str:
+        return None
+    try:
+        return datetime.fromisoformat(until_str.replace("Z", "+00:00"))
+    except ValueError:
+        _logger.warning(f"Invalid DNA_RATE_LIMIT_BYPASS_UNTIL format: {until_str}")
+        return None
+
+
+def _is_production() -> bool:
+    """Check if running in production environment."""
+    env = os.environ.get("ENV", "").lower()
+    railway_env = os.environ.get("RAILWAY_ENVIRONMENT", "").lower()
+    return env == "production" or railway_env == "production"
+
+
+def _is_bypass_allowed() -> bool:
+    """
+    Determine if rate limit bypass is allowed.
+
+    Safety invariants:
+    - NEVER bypass in production, regardless of env vars
+    - Check time-bomb if set
+    - Log warning once when bypass is active
+    """
+    global _bypass_warning_logged
+
+    mode = _get_rate_limit_mode()
+
+    # Default mode: no bypass
+    if mode == RATE_LIMIT_MODE_PROD:
+        return False
+
+    # Production safety: NEVER bypass
+    if _is_production():
+        if mode != RATE_LIMIT_MODE_PROD:
+            _logger.error(
+                f"SECURITY: Rate limit bypass attempted in production with mode={mode}. "
+                "Bypass DENIED. Set DNA_RATE_LIMIT_MODE=prod or remove the variable."
+            )
+        return False
+
+    # Check time-bomb
+    bypass_until = _get_bypass_until()
+    if bypass_until:
+        now = datetime.now(timezone.utc)
+        if now > bypass_until:
+            _logger.warning(
+                f"Rate limit bypass expired at {bypass_until.isoformat()}. "
+                "Reverting to normal rate limiting."
+            )
+            return False
+
+    # Bypass is allowed - log warning once
+    if not _bypass_warning_logged:
+        until_msg = f" until {bypass_until.isoformat()}" if bypass_until else ""
+        _logger.warning(
+            f"RATE_LIMIT_BYPASS_ACTIVE: mode={mode}{until_msg}. "
+            "This should only be used in CI/test environments."
+        )
+        _bypass_warning_logged = True
+
+    return True
 
 
 @dataclass
@@ -144,9 +238,35 @@ def get_client_ip(request) -> str:
 _rate_limiter: Optional[RateLimiter] = None
 
 
+class BypassRateLimiter:
+    """
+    A rate limiter that always allows requests.
+
+    Used in CI/test mode to prevent flaky tests due to rate limiting.
+    """
+
+    def check(self, client_ip: str) -> Tuple[bool, float]:
+        """Always allow the request."""
+        return True, 0.0
+
+    def reset(self) -> None:
+        """No-op for bypass limiter."""
+        pass
+
+
 def get_rate_limiter() -> RateLimiter:
-    """Get or create the global rate limiter."""
+    """
+    Get or create the global rate limiter.
+
+    Returns a bypass limiter in CI/test mode (when safe).
+    """
     global _rate_limiter
+
+    # Check if bypass is allowed (handles all safety checks)
+    if _is_bypass_allowed():
+        return BypassRateLimiter()
+
+    # Normal rate limiter
     if _rate_limiter is None:
         _rate_limiter = RateLimiter(
             requests_per_minute=10,
@@ -159,3 +279,9 @@ def set_rate_limiter(limiter: Optional[RateLimiter]) -> None:
     """Set the global rate limiter (for testing)."""
     global _rate_limiter
     _rate_limiter = limiter
+
+
+def reset_bypass_warning() -> None:
+    """Reset the bypass warning flag (for testing)."""
+    global _bypass_warning_logged
+    _bypass_warning_logged = False
