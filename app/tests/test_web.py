@@ -106,11 +106,11 @@ class TestAppPage:
         # Check for login hint (anonymous users)
         assert "Log in to save history" in response.text
 
-    def test_tier_selector_has_preview_label(self, client):
-        """Tier selector shows 'preview' label to clarify it's not billing."""
+    def test_tier_selector_has_detail_label(self, client):
+        """Tier selector shows 'detail level' label without billing language."""
         response = client.get("/app")
         assert "tier-selector-label" in response.text
-        assert "Preview tier" in response.text
+        assert "Analysis detail level" in response.text
 
     def test_image_upload_panel_exists(self, client):
         """Image upload panel exists with upload UI."""

@@ -195,12 +195,12 @@ def _get_landing_page_html() -> str:
 </html>"""
 
 
-def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
+def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
     """Generate app page HTML with tabbed interface.
 
     Args:
         user: Authenticated user object or None
-        active_tab: Active tab (builder, evaluate, history)
+        active_tab: Active tab (discover, evaluate, builder, history)
     """
     # User info for header
     user_email = user.email if user else None
@@ -208,8 +208,9 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
     is_logged_in = user is not None
 
     # Tab active states
-    builder_active = "active" if active_tab == "builder" else ""
+    discover_active = "active" if active_tab == "discover" else ""
     evaluate_active = "active" if active_tab == "evaluate" else ""
+    builder_active = "active" if active_tab == "builder" else ""
     history_active = "active" if active_tab == "history" else ""
 
     # User section in header (tier badge + email, both clickable to account)
@@ -1064,6 +1065,49 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             border-radius: 8px;
             margin-bottom: 1.5rem;
         }}
+        .eval-explainer {{
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 1rem;
+        }}
+        .bundle-prompt {{
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: #1a1a1a;
+        }}
+        .bundle-prompt p {{
+            color: #888;
+            margin-bottom: 1rem;
+        }}
+        .secondary-btn {{
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 1px solid #4a9eff;
+            border-radius: 4px;
+            color: #4a9eff;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .secondary-btn:hover {{
+            background: #4a9eff;
+            color: #000;
+        }}
+        .secondary-btn.disabled {{
+            border-color: #444;
+            color: #444;
+            cursor: not-allowed;
+        }}
+        .secondary-btn.disabled:hover {{
+            background: transparent;
+            color: #444;
+        }}
+        .builder-cta {{
+            width: 100%;
+            margin-top: 0.75rem;
+        }}
         .input-tabs {{
             display: flex;
             gap: 0.5rem;
@@ -1247,6 +1291,65 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             margin-top: 1rem;
         }}
 
+        /* Discover Tab Styles */
+        .discover-section {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }}
+        .discover-hero {{
+            text-align: center;
+            margin-bottom: 2rem;
+        }}
+        .discover-hero h2 {{
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 0.75rem;
+        }}
+        .discover-tagline {{
+            color: #888;
+            font-size: 1rem;
+        }}
+        .discover-steps {{
+            margin-bottom: 2rem;
+        }}
+        .discover-step {{
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }}
+        .step-number {{
+            width: 32px;
+            height: 32px;
+            background: #4a9eff;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        .step-content h3 {{
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 0.25rem;
+        }}
+        .step-content p {{
+            font-size: 0.875rem;
+            color: #888;
+            margin: 0;
+        }}
+        .discover-cta {{
+            text-align: center;
+        }}
+        .discover-start-btn {{
+            max-width: 300px;
+        }}
+
         /* History Tab Styles */
         .history-section {{
             background: #111;
@@ -1319,10 +1422,51 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
+            <a class="nav-tab {discover_active}" data-tab="discover">Discover</a>
             <a class="nav-tab {evaluate_active}" data-tab="evaluate">Evaluate</a>
+            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
             <a class="nav-tab {history_active}" data-tab="history">History</a>
         </nav>
+
+        <!-- Discover Tab Content -->
+        <div class="tab-content {discover_active}" id="tab-discover">
+            <div class="discover-section">
+                <div class="discover-hero">
+                    <h2>Know Your Bet Before You Place It</h2>
+                    <p class="discover-tagline">We analyze risk, correlation, and fragility so you can make informed decisions.</p>
+                </div>
+
+                <div class="discover-steps">
+                    <div class="discover-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Submit Your Bet</h3>
+                            <p>Paste text, upload an image, or build a parlay from scratch.</p>
+                        </div>
+                    </div>
+                    <div class="discover-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Get Your Analysis</h3>
+                            <p>See fragility score, correlation risks, and actionable recommendations.</p>
+                        </div>
+                    </div>
+                    <div class="discover-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Decide With Confidence</h3>
+                            <p>Understand exactly why a bet is strong or weak before you commit.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="discover-cta">
+                    <button type="button" class="submit-btn discover-start-btn" onclick="switchToTab('evaluate')">
+                        Start Evaluating
+                    </button>
+                </div>
+            </div>
+        </div> <!-- End tab-discover -->
 
         <!-- Builder Tab Content -->
         <div class="tab-content {builder_active}" id="tab-builder">
@@ -1347,7 +1491,7 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 <button type="button" class="add-leg-btn" id="add-leg-btn">+ Add Leg</button>
 
                 <div class="tier-selector-wrapper">
-                    <div class="tier-selector-label">Preview tier (what you'll see)</div>
+                    <div class="tier-selector-label">Analysis detail level</div>
                     <div class="tier-selector">
                         <div class="tier-option">
                             <input type="radio" name="tier" id="tier-good" value="good" checked>
@@ -1482,9 +1626,9 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                     <!-- Upgrade Nudge (Sprint 5) -->
                     <div class="upgrade-nudge hidden" id="upgrade-nudge">
-                        <h4>Unlock Full Analysis</h4>
+                        <h4>Get Full Analysis</h4>
                         <p id="upgrade-message">See detailed breakdowns, correlations, and live alerts</p>
-                        <a href="{upgrade_link}" class="upgrade-cta">Unlock BEST ($19.99/mo)</a>
+                        <a href="{upgrade_link}" class="upgrade-cta">Upgrade to BEST</a>
                     </div>
                 </div>
 
@@ -1504,10 +1648,14 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                         <span class="section-title">Evaluate Bet</span>
                     </div>
 
+                    <!-- Short Explainer -->
+                    <p class="eval-explainer">Submit your bet for analysis. We check risk, correlation, and fragility.</p>
+
                     <!-- Input Type Tabs -->
                     <div class="input-tabs">
                         <div class="input-tab active" data-input="text">Text</div>
                         <div class="input-tab" data-input="image">Image</div>
+                        <div class="input-tab" data-input="bundle">Bundle</div>
                     </div>
 
                     <!-- Text Input Panel -->
@@ -1533,9 +1681,17 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                         <div class="image-error hidden" id="image-error"></div>
                     </div>
 
+                    <!-- Bundle Input Panel -->
+                    <div class="input-panel" id="bundle-input-panel">
+                        <div class="bundle-prompt">
+                            <p>Build a custom parlay using the Builder.</p>
+                            <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Go to Builder</button>
+                        </div>
+                    </div>
+
                     <!-- Tier Selector -->
                     <div class="tier-selector-wrapper" style="margin-top: 1rem;">
-                        <div class="tier-selector-label">Preview tier (what you'll see)</div>
+                        <div class="tier-selector-label">Analysis detail level</div>
                         <div class="tier-selector">
                             <div class="tier-option">
                                 <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
@@ -1563,6 +1719,11 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                     <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
                         Evaluate
+                    </button>
+
+                    <!-- Disabled Builder CTA (shown until evaluation exists) -->
+                    <button type="button" class="secondary-btn builder-cta disabled" id="builder-cta-btn" disabled title="Evaluate a bet first">
+                        Build Custom Parlay
                     </button>
                 </div>
 
@@ -2248,30 +2409,37 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         // ============================================================
         // TAB SWITCHING
         // ============================================================
-        (function() {{
+        // Global function for programmatic tab switching
+        function switchToTab(tabName) {{
             const navTabs = document.querySelectorAll('.nav-tab');
             const tabContents = document.querySelectorAll('.tab-content');
 
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.pushState({{}}, '', url);
+
+            // Switch tabs
+            navTabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            const activeTab = document.querySelector('.nav-tab[data-tab="' + tabName + '"]');
+            if (activeTab) activeTab.classList.add('active');
+            const activeContent = document.getElementById('tab-' + tabName);
+            if (activeContent) activeContent.classList.add('active');
+
+            // Load history if switching to history tab
+            if (tabName === 'history') {{
+                loadHistory();
+            }}
+        }}
+
+        (function() {{
+            const navTabs = document.querySelectorAll('.nav-tab');
+
             navTabs.forEach(tab => {{
                 tab.addEventListener('click', function() {{
-                    const tabName = this.dataset.tab;
-
-                    // Update URL
-                    const url = new URL(window.location);
-                    url.searchParams.set('tab', tabName);
-                    window.history.pushState({{}}, '', url);
-
-                    // Switch tabs
-                    navTabs.forEach(t => t.classList.remove('active'));
-                    tabContents.forEach(c => c.classList.remove('active'));
-
-                    this.classList.add('active');
-                    document.getElementById('tab-' + tabName).classList.add('active');
-
-                    // Load history if switching to history tab
-                    if (tabName === 'history') {{
-                        loadHistory();
-                    }}
+                    switchToTab(this.dataset.tab);
                 }});
             }});
         }})();
@@ -2415,8 +2583,11 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             function updateEvalSubmitState() {{
                 if (currentInputMode === 'text') {{
                     evalSubmitBtn.disabled = textInput.value.trim().length < 5;
-                }} else {{
+                }} else if (currentInputMode === 'image') {{
                     evalSubmitBtn.disabled = !selectedFile;
+                }} else {{
+                    // Bundle mode - submit button not used (redirects to builder)
+                    evalSubmitBtn.disabled = true;
                 }}
             }}
 
@@ -2474,6 +2645,15 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                 decisionVerdict.innerHTML = '<span class="action-' + action + '">' +
                     action.toUpperCase() + '</span>: ' + evaluation.recommendation.reason;
+
+                // Enable Builder CTA after successful evaluation
+                const builderCtaBtn = document.getElementById('builder-cta-btn');
+                if (builderCtaBtn) {{
+                    builderCtaBtn.disabled = false;
+                    builderCtaBtn.classList.remove('disabled');
+                    builderCtaBtn.title = 'Build a custom parlay';
+                    builderCtaBtn.onclick = function() {{ switchToTab('builder'); }};
+                }}
             }}
 
             // Submit evaluation
@@ -2658,15 +2838,15 @@ async def login_page(raw_request: Request):
 
 
 @router.get("/app", response_class=HTMLResponse)
-async def app_page(raw_request: Request, tab: str = "builder"):
+async def app_page(raw_request: Request, tab: str = "evaluate"):
     """
     Main application page with tabbed interface.
 
     Tabs:
-    - builder: Parlay builder (default)
-    - evaluate: Text/image evaluation
+    - discover: Product intro (default landing)
+    - evaluate: Text/image evaluation (default)
+    - builder: Parlay builder
     - history: Saved history (requires login)
-    - account: Account settings
 
     Returns HTML with unified app shell.
     """
