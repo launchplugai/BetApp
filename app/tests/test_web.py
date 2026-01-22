@@ -121,6 +121,164 @@ class TestAppPage:
         assert "image-input-panel" in response.text
 
 
+class TestUIFlowLock:
+    """Ticket 1: UI Flow Lock verification tests."""
+
+    # --- Cold Load (new user, no state) ---
+
+    def test_cold_load_lands_on_evaluate(self, client):
+        """Default tab is Evaluate, not Builder."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        # Evaluate tab should have 'active' class
+        assert 'id="tab-evaluate"' in response.text
+        # The evaluate tab content div should be active
+        text = response.text
+        # Find tab-evaluate and check it has active class
+        import re
+        eval_tab = re.search(r'<div class="tab-content[^"]*"[^>]*id="tab-evaluate"', text)
+        assert eval_tab is not None
+
+    def test_cold_load_evaluate_is_active_tab(self, client):
+        """Evaluate nav tab has active class by default."""
+        response = client.get("/app")
+        assert 'class="nav-tab active" data-tab="evaluate"' in response.text
+
+    def test_cold_load_builder_not_active(self, client):
+        """Builder tab is NOT active on cold load."""
+        response = client.get("/app")
+        assert 'class="nav-tab active" data-tab="builder"' not in response.text
+
+    def test_discover_tab_has_cta_to_evaluate(self, client):
+        """Discover tab exists with CTA that routes to Evaluate."""
+        response = client.get("/app?tab=discover")
+        assert response.status_code == 200
+        assert "tab-discover" in response.text
+        assert "Start Evaluating" in response.text
+        assert "switchToTab(&#x27;evaluate&#x27;)" in response.text or "switchToTab('evaluate')" in response.text
+
+    # --- Evaluate Flow ---
+
+    def test_evaluate_has_text_input(self, client):
+        """Evaluate tab has Text input option."""
+        response = client.get("/app")
+        assert 'data-input="text"' in response.text
+        assert "text-input-panel" in response.text
+
+    def test_evaluate_has_image_input(self, client):
+        """Evaluate tab has Image input option."""
+        response = client.get("/app")
+        assert 'data-input="image"' in response.text
+        assert "image-input-panel" in response.text
+
+    def test_evaluate_has_bundle_input(self, client):
+        """Evaluate tab has Bundle input option."""
+        response = client.get("/app")
+        assert 'data-input="bundle"' in response.text
+        assert "bundle-input-panel" in response.text
+
+    def test_bundle_routes_to_builder(self, client):
+        """Bundle panel contains action to switch to Builder."""
+        response = client.get("/app")
+        assert "Go to Builder" in response.text
+        assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
+
+    def test_evaluate_has_explainer(self, client):
+        """Evaluate tab has short explainer text."""
+        response = client.get("/app")
+        assert "eval-explainer" in response.text
+        assert "Submit your bet for analysis" in response.text
+
+    # --- Post-Evaluation State ---
+
+    def test_builder_cta_disabled_by_default(self, client):
+        """Builder CTA button is disabled until evaluation completes."""
+        response = client.get("/app")
+        # Check that the builder CTA is present and disabled
+        assert "builder-cta-btn" in response.text
+        assert 'id="builder-cta-btn" disabled' in response.text
+        assert "Evaluate a bet first" in response.text
+
+    def test_builder_cta_has_enable_logic(self, client):
+        """JavaScript enables Builder CTA after showEvalResults."""
+        response = client.get("/app")
+        # Verify the JS logic to enable the button is present
+        assert "builderCtaBtn.disabled = false" in response.text
+        assert "builderCtaBtn.classList.remove" in response.text
+
+    # --- Tier Selector ---
+
+    def test_tier_label_no_pricing(self, client):
+        """Tier selector uses 'Analysis detail level', not pricing language."""
+        response = client.get("/app")
+        assert "Analysis detail level" in response.text
+        # Must NOT contain pricing language in main app flow
+        # (Account page is separate and allowed to have pricing)
+        # Check that the upgrade CTA in the builder results doesn't have pricing
+        assert "$19.99" not in response.text
+
+    def test_no_unlock_with_price(self, client):
+        """No 'Unlock' CTA with price anchoring in main app."""
+        response = client.get("/app")
+        assert "Unlock BEST" not in response.text
+        assert "Unlock Full Analysis" not in response.text
+
+    def test_upgrade_cta_no_billing_implication(self, client):
+        """Upgrade CTA exists but without pricing."""
+        response = client.get("/app")
+        # The upgrade nudge should say "Upgrade to BEST" without price
+        assert "Upgrade to BEST" in response.text
+        assert "/mo)" not in response.text
+
+    # --- Regression: All tabs load ---
+
+    def test_all_four_tabs_present(self, client):
+        """All four tabs render in correct order."""
+        response = client.get("/app")
+        text = response.text
+        assert 'data-tab="discover"' in text
+        assert 'data-tab="evaluate"' in text
+        assert 'data-tab="builder"' in text
+        assert 'data-tab="history"' in text
+
+    def test_navigation_order_locked(self, client):
+        """Tabs appear in order: Discover, Evaluate, Builder, History."""
+        response = client.get("/app")
+        text = response.text
+        discover_pos = text.find('data-tab="discover"')
+        evaluate_pos = text.find('data-tab="evaluate"')
+        builder_pos = text.find('data-tab="builder"')
+        history_pos = text.find('data-tab="history"')
+        assert discover_pos < evaluate_pos < builder_pos < history_pos
+
+    def test_tab_content_containers_exist(self, client):
+        """All tab content containers are in the DOM."""
+        response = client.get("/app")
+        assert 'id="tab-discover"' in response.text
+        assert 'id="tab-evaluate"' in response.text
+        assert 'id="tab-builder"' in response.text
+        assert 'id="tab-history"' in response.text
+
+    def test_builder_tab_still_functional(self, client):
+        """Builder tab content still has form elements."""
+        response = client.get("/app?tab=builder")
+        assert response.status_code == 200
+        assert "Parlay Builder" in response.text
+        assert "add-leg-btn" in response.text
+        assert "submit-btn" in response.text
+
+    def test_history_tab_still_functional(self, client):
+        """History tab content still loads."""
+        response = client.get("/app?tab=history")
+        assert response.status_code == 200
+        assert "tab-history" in response.text
+
+    def test_no_coming_soon_text(self, client):
+        """No placeholder 'coming soon' text anywhere."""
+        response = client.get("/app")
+        assert "coming soon" not in response.text.lower()
+
+
 class TestEvaluateProxy:
     """Tests for POST /app/evaluate endpoint."""
 
