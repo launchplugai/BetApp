@@ -1405,6 +1405,124 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             color: var(--fg-secondary);
         }}
 
+        /* GOOD Tier Structured Output */
+        .good-output {{
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-4);
+        }}
+        .good-signal-grade {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-4);
+            padding: var(--sp-4);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .good-signal {{
+            padding: var(--sp-1) var(--sp-3);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .good-signal.blue {{ background: rgba(74, 158, 255, 0.12); color: var(--signal-blue); border: 1px solid var(--signal-blue); }}
+        .good-signal.green {{ background: rgba(74, 222, 128, 0.12); color: var(--signal-green); border: 1px solid var(--signal-green); }}
+        .good-signal.yellow {{ background: rgba(251, 191, 36, 0.12); color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
+        .good-signal.red {{ background: rgba(239, 68, 68, 0.12); color: var(--signal-red); border: 1px solid var(--signal-red); }}
+        .good-grade {{
+            font-family: var(--font-mono);
+            font-size: var(--text-xl);
+            font-weight: 700;
+            color: var(--fg-primary);
+        }}
+        .good-fragility {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .good-fragility-value {{
+            font-family: var(--font-mono);
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--fg-primary);
+        }}
+        .good-section {{
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .good-section-label {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin: 0 0 var(--sp-2);
+        }}
+        .good-contributor {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+        }}
+        .good-contributor:last-child {{ border-bottom: none; }}
+        .good-contributor-type {{
+            color: var(--fg-primary);
+            font-weight: 500;
+        }}
+        .good-contributor-impact {{
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            padding: var(--sp-1) var(--sp-2);
+            border-radius: var(--radius-sm);
+        }}
+        .good-contributor-impact.low {{ color: var(--signal-blue); background: rgba(74, 158, 255, 0.08); }}
+        .good-contributor-impact.medium {{ color: var(--signal-yellow); background: rgba(251, 191, 36, 0.08); }}
+        .good-contributor-impact.high {{ color: var(--signal-red); background: rgba(239, 68, 68, 0.08); }}
+        .good-warnings-list, .good-tips-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .good-warnings-list li {{
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+            color: var(--signal-yellow);
+        }}
+        .good-warnings-list li:last-child {{ border-bottom: none; }}
+        .good-tips-list li {{
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+            color: var(--fg-primary);
+        }}
+        .good-tips-list li:last-child {{ border-bottom: none; }}
+        .good-removal-item {{
+            display: inline-block;
+            padding: var(--sp-1) var(--sp-2);
+            margin: var(--sp-1);
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid var(--signal-red);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+            font-family: var(--font-mono);
+            color: var(--signal-red);
+        }}
+        .good-section.empty {{
+            display: none;
+        }}
+
         /* Post-Result Actions */
         .post-actions {{
             display: flex;
@@ -2081,6 +2199,35 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     </div>
 
                     <div id="eval-results-content" class="hidden">
+                        <!-- GOOD Tier Structured Output (exclusive to GOOD) -->
+                        <div id="eval-good-output" class="good-output hidden">
+                            <div class="good-signal-grade" id="good-signal-grade">
+                                <div class="good-signal" id="good-signal-indicator"></div>
+                                <div class="good-grade" id="good-grade-value"></div>
+                            </div>
+                            <div class="good-fragility" id="good-fragility">
+                                <span class="good-section-label">Fragility Score</span>
+                                <span class="good-fragility-value" id="good-fragility-value">--</span>
+                            </div>
+                            <div class="good-section" id="good-contributors-section">
+                                <h4 class="good-section-label">Contributors</h4>
+                                <div class="good-contributors-list" id="good-contributors-list"></div>
+                            </div>
+                            <div class="good-section" id="good-warnings-section">
+                                <h4 class="good-section-label">Warnings</h4>
+                                <ul class="good-warnings-list" id="good-warnings-list"></ul>
+                            </div>
+                            <div class="good-section" id="good-tips-section">
+                                <h4 class="good-section-label">Tips</h4>
+                                <ul class="good-tips-list" id="good-tips-list"></ul>
+                            </div>
+                            <div class="good-section" id="good-removals-section">
+                                <h4 class="good-section-label">Suggested Removals</h4>
+                                <div class="good-removals-list" id="good-removals-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- Shared tier panels (BETTER/BEST) -->
                         <!-- Signal Badge + Fragility Score -->
                         <div class="signal-display" id="eval-signal-display">
                             <div class="signal-badge" id="eval-signal-badge">--</div>
@@ -3012,101 +3159,184 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 const metrics = evaluation.metrics;
                 const correlations = evaluation.correlations || [];
 
-                // === SIGNAL SYSTEM ===
-                // Map bucket → signal: low=Blue, medium=Green, high=Yellow, critical=Red
-                const signalMap = {{
-                    'low': {{ cls: 'signal-blue', label: 'Strong' }},
-                    'medium': {{ cls: 'signal-green', label: 'Solid' }},
-                    'high': {{ cls: 'signal-yellow', label: 'Fixable' }},
-                    'critical': {{ cls: 'signal-red', label: 'Fragile' }}
-                }};
-                const signal = signalMap[fragility.bucket] || signalMap['medium'];
+                // === GOOD TIER: Structured Output ===
+                const goodOutput = document.getElementById('eval-good-output');
+                const sharedSignal = document.getElementById('eval-signal-display');
+                const sharedVerdict = document.getElementById('eval-verdict-bar');
+                const sharedMetrics = document.getElementById('eval-metrics-grid');
+                const sharedTips = document.getElementById('eval-tips-panel');
 
-                const signalBadge = document.getElementById('eval-signal-badge');
-                signalBadge.textContent = signal.label;
-                signalBadge.className = 'signal-badge ' + signal.cls;
+                if (tier === 'good' && explain.overallSignal) {{
+                    // Show GOOD output, hide shared panels
+                    goodOutput.classList.remove('hidden');
+                    sharedSignal.classList.add('hidden');
+                    sharedVerdict.classList.add('hidden');
+                    sharedMetrics.classList.add('hidden');
+                    sharedTips.classList.add('hidden');
 
-                document.getElementById('eval-signal-score').textContent = Math.round(fragility.display_value);
+                    // Signal + Grade
+                    const signalEl = document.getElementById('good-signal-indicator');
+                    signalEl.textContent = explain.overallSignal.toUpperCase();
+                    signalEl.className = 'good-signal ' + explain.overallSignal;
+                    document.getElementById('good-grade-value').textContent = 'Grade: ' + explain.grade;
 
-                // === VERDICT BAR (GOOD+) ===
-                const action = evaluation.recommendation.action;
-                const verdictAction = document.getElementById('eval-verdict-action');
-                const verdictReason = document.getElementById('eval-verdict-reason');
-                verdictAction.textContent = action.toUpperCase();
-                verdictAction.className = 'verdict-action action-' + action;
-                verdictReason.textContent = evaluation.recommendation.reason;
+                    // Fragility Score
+                    document.getElementById('good-fragility-value').textContent = Math.round(explain.fragilityScore);
 
-                // === METRICS GRID (GOOD+) ===
-                document.getElementById('eval-metric-leg').textContent = '+' + (metrics.leg_penalty || 0).toFixed(1);
-                document.getElementById('eval-metric-corr').textContent = '+' + (metrics.correlation_penalty || 0).toFixed(1);
-                document.getElementById('eval-metric-raw').textContent = (metrics.raw_fragility || 0).toFixed(1);
-                document.getElementById('eval-metric-final').textContent = Math.round(metrics.final_fragility || 0);
-
-                // === IMPROVEMENT TIPS (GOOD+) ===
-                const tipsContent = document.getElementById('eval-tips-content');
-                const tipsPanel = document.getElementById('eval-tips-panel');
-                const whatToDo = fragility.what_to_do || '';
-                const meaning = fragility.meaning || '';
-                if (whatToDo || meaning) {{
-                    let tipsHtml = '';
-                    if (meaning) {{
-                        tipsHtml += '<div class="tip-item">' + meaning + '</div>';
+                    // Contributors
+                    const contribList = document.getElementById('good-contributors-list');
+                    const contribSection = document.getElementById('good-contributors-section');
+                    if (explain.contributors && explain.contributors.length > 0) {{
+                        let contribHtml = '';
+                        explain.contributors.forEach(function(c) {{
+                            contribHtml += '<div class="good-contributor">';
+                            contribHtml += '<span class="good-contributor-type">' + c.type + '</span>';
+                            contribHtml += '<span class="good-contributor-impact ' + c.impact + '">' + c.impact + '</span>';
+                            contribHtml += '</div>';
+                        }});
+                        contribList.innerHTML = contribHtml;
+                        contribSection.classList.remove('empty');
+                    }} else {{
+                        contribSection.classList.add('empty');
                     }}
-                    if (whatToDo) {{
-                        tipsHtml += '<div class="tip-item">' + whatToDo + '</div>';
+
+                    // Warnings
+                    const warningsList = document.getElementById('good-warnings-list');
+                    const warningsSection = document.getElementById('good-warnings-section');
+                    if (explain.warnings && explain.warnings.length > 0) {{
+                        warningsList.innerHTML = explain.warnings.map(function(w) {{
+                            return '<li>' + w + '</li>';
+                        }}).join('');
+                        warningsSection.classList.remove('empty');
+                    }} else {{
+                        warningsSection.classList.add('empty');
                     }}
-                    tipsContent.innerHTML = tipsHtml;
-                    tipsPanel.classList.remove('hidden');
-                }} else {{
-                    tipsPanel.classList.add('hidden');
-                }}
 
-                // === CORRELATIONS PANEL (BETTER+) ===
-                const corrPanel = document.getElementById('eval-correlations-panel');
-                const corrList = document.getElementById('eval-correlations-list');
-                if ((tier === 'better' || tier === 'best') && correlations.length > 0) {{
-                    let corrHtml = '';
-                    correlations.forEach(function(c) {{
-                        corrHtml += '<div class="correlation-item">';
-                        corrHtml += '<span>' + c.block_a + ' / ' + c.block_b + '</span>';
-                        corrHtml += '<span class="correlation-type">' + c.type + '</span>';
-                        corrHtml += '<span class="correlation-penalty">+' + (c.penalty || 0).toFixed(1) + '</span>';
-                        corrHtml += '</div>';
-                    }});
-                    corrList.innerHTML = corrHtml;
-                    corrPanel.classList.remove('hidden');
-                }} else {{
-                    corrPanel.classList.add('hidden');
-                }}
+                    // Tips
+                    const tipsList = document.getElementById('good-tips-list');
+                    const tipsSection = document.getElementById('good-tips-section');
+                    if (explain.tips && explain.tips.length > 0) {{
+                        tipsList.innerHTML = explain.tips.map(function(t) {{
+                            return '<li>' + t + '</li>';
+                        }}).join('');
+                        tipsSection.classList.remove('empty');
+                    }} else {{
+                        tipsSection.classList.add('empty');
+                    }}
 
-                // === SUMMARY INSIGHTS (BETTER+) ===
-                const summaryPanel = document.getElementById('eval-summary-panel');
-                const summaryList = document.getElementById('eval-summary-list');
-                const summaryItems = explain.summary || [];
-                if ((tier === 'better' || tier === 'best') && summaryItems.length > 0) {{
-                    let summaryHtml = '';
-                    summaryItems.forEach(function(s) {{
-                        summaryHtml += '<div class="summary-item">' + s + '</div>';
-                    }});
-                    summaryList.innerHTML = summaryHtml;
-                    summaryPanel.classList.remove('hidden');
-                }} else {{
-                    summaryPanel.classList.add('hidden');
-                }}
+                    // Removal Suggestions
+                    const removalsList = document.getElementById('good-removals-list');
+                    const removalsSection = document.getElementById('good-removals-section');
+                    if (explain.removalSuggestions && explain.removalSuggestions.length > 0) {{
+                        removalsList.innerHTML = explain.removalSuggestions.map(function(r) {{
+                            return '<span class="good-removal-item">' + r.substring(0, 8) + '</span>';
+                        }}).join('');
+                        removalsSection.classList.remove('empty');
+                    }} else {{
+                        removalsSection.classList.add('empty');
+                    }}
 
-                // === ALERTS (BEST only) ===
-                const alertsPanel = document.getElementById('eval-alerts-panel');
-                const alertsList = document.getElementById('eval-alerts-list');
-                const alertItems = explain.alerts || [];
-                if (tier === 'best' && alertItems.length > 0) {{
-                    let alertsHtml = '';
-                    alertItems.forEach(function(a) {{
-                        alertsHtml += '<div class="alert-detail-item">' + a + '</div>';
-                    }});
-                    alertsList.innerHTML = alertsHtml;
-                    alertsPanel.classList.remove('hidden');
+                    // Hide BETTER/BEST panels
+                    document.getElementById('eval-correlations-panel').classList.add('hidden');
+                    document.getElementById('eval-summary-panel').classList.add('hidden');
+                    document.getElementById('eval-alerts-panel').classList.add('hidden');
+
                 }} else {{
-                    alertsPanel.classList.add('hidden');
+                    // === BETTER/BEST: Shared panels ===
+                    goodOutput.classList.add('hidden');
+                    sharedSignal.classList.remove('hidden');
+                    sharedVerdict.classList.remove('hidden');
+                    sharedMetrics.classList.remove('hidden');
+
+                    // Signal badge
+                    const signalMap = {{
+                        'low': {{ cls: 'signal-blue', label: 'Strong' }},
+                        'medium': {{ cls: 'signal-green', label: 'Solid' }},
+                        'high': {{ cls: 'signal-yellow', label: 'Fixable' }},
+                        'critical': {{ cls: 'signal-red', label: 'Fragile' }}
+                    }};
+                    const signal = signalMap[fragility.bucket] || signalMap['medium'];
+                    const signalBadge = document.getElementById('eval-signal-badge');
+                    signalBadge.textContent = signal.label;
+                    signalBadge.className = 'signal-badge ' + signal.cls;
+                    document.getElementById('eval-signal-score').textContent = Math.round(fragility.display_value);
+
+                    // Verdict
+                    const action = evaluation.recommendation.action;
+                    const verdictAction = document.getElementById('eval-verdict-action');
+                    const verdictReason = document.getElementById('eval-verdict-reason');
+                    verdictAction.textContent = action.toUpperCase();
+                    verdictAction.className = 'verdict-action action-' + action;
+                    verdictReason.textContent = evaluation.recommendation.reason;
+
+                    // Metrics grid
+                    document.getElementById('eval-metric-leg').textContent = '+' + (metrics.leg_penalty || 0).toFixed(1);
+                    document.getElementById('eval-metric-corr').textContent = '+' + (metrics.correlation_penalty || 0).toFixed(1);
+                    document.getElementById('eval-metric-raw').textContent = (metrics.raw_fragility || 0).toFixed(1);
+                    document.getElementById('eval-metric-final').textContent = Math.round(metrics.final_fragility || 0);
+
+                    // Tips
+                    const tipsContent = document.getElementById('eval-tips-content');
+                    const tipsPanel = document.getElementById('eval-tips-panel');
+                    const whatToDo = fragility.what_to_do || '';
+                    const meaning = fragility.meaning || '';
+                    if (whatToDo || meaning) {{
+                        let tipsHtml = '';
+                        if (meaning) tipsHtml += '<div class="tip-item">' + meaning + '</div>';
+                        if (whatToDo) tipsHtml += '<div class="tip-item">' + whatToDo + '</div>';
+                        tipsContent.innerHTML = tipsHtml;
+                        tipsPanel.classList.remove('hidden');
+                    }} else {{
+                        tipsPanel.classList.add('hidden');
+                    }}
+
+                    // Correlations (BETTER+)
+                    const corrPanel = document.getElementById('eval-correlations-panel');
+                    const corrList = document.getElementById('eval-correlations-list');
+                    if ((tier === 'better' || tier === 'best') && correlations.length > 0) {{
+                        let corrHtml = '';
+                        correlations.forEach(function(c) {{
+                            corrHtml += '<div class="correlation-item">';
+                            corrHtml += '<span>' + c.block_a + ' / ' + c.block_b + '</span>';
+                            corrHtml += '<span class="correlation-type">' + c.type + '</span>';
+                            corrHtml += '<span class="correlation-penalty">+' + (c.penalty || 0).toFixed(1) + '</span>';
+                            corrHtml += '</div>';
+                        }});
+                        corrList.innerHTML = corrHtml;
+                        corrPanel.classList.remove('hidden');
+                    }} else {{
+                        corrPanel.classList.add('hidden');
+                    }}
+
+                    // Summary (BETTER+)
+                    const summaryPanel = document.getElementById('eval-summary-panel');
+                    const summaryList = document.getElementById('eval-summary-list');
+                    const summaryItems = explain.summary || [];
+                    if ((tier === 'better' || tier === 'best') && summaryItems.length > 0) {{
+                        let summaryHtml = '';
+                        summaryItems.forEach(function(s) {{
+                            summaryHtml += '<div class="summary-item">' + s + '</div>';
+                        }});
+                        summaryList.innerHTML = summaryHtml;
+                        summaryPanel.classList.remove('hidden');
+                    }} else {{
+                        summaryPanel.classList.add('hidden');
+                    }}
+
+                    // Alerts (BEST only)
+                    const alertsPanel = document.getElementById('eval-alerts-panel');
+                    const alertsList = document.getElementById('eval-alerts-list');
+                    const alertItems = explain.alerts || [];
+                    if (tier === 'best' && alertItems.length > 0) {{
+                        let alertsHtml = '';
+                        alertItems.forEach(function(a) {{
+                            alertsHtml += '<div class="alert-detail-item">' + a + '</div>';
+                        }});
+                        alertsList.innerHTML = alertsHtml;
+                        alertsPanel.classList.remove('hidden');
+                    }} else {{
+                        alertsPanel.classList.add('hidden');
+                    }}
                 }}
 
                 // === IMAGE PARSE INFO ===
