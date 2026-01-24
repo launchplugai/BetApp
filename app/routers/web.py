@@ -1437,6 +1437,30 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             color: var(--fg-secondary);
         }}
 
+        /* Collapsible panels */
+        .summary-panel details,
+        .alerts-detail-panel details {{
+            border: none;
+        }}
+        .summary-panel summary,
+        .alerts-detail-panel summary {{
+            cursor: pointer;
+            list-style: none;
+        }}
+        .summary-panel summary::-webkit-details-marker,
+        .alerts-detail-panel summary::-webkit-details-marker {{
+            display: none;
+        }}
+        .summary-panel summary h3::after,
+        .alerts-detail-panel summary h3::after {{
+            content: ' \u25B6';
+            font-size: var(--text-xs);
+        }}
+        .summary-panel details[open] summary h3::after,
+        .alerts-detail-panel details[open] summary h3::after {{
+            content: ' \u25BC';
+        }}
+
         /* GOOD Tier Structured Output */
         .good-output {{
             display: flex;
@@ -2327,14 +2351,18 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
 
                         <!-- Summary Insights (BETTER+) -->
                         <div class="summary-panel hidden" id="eval-summary-panel">
-                            <h3>Deeper Insights</h3>
-                            <div class="summary-list" id="eval-summary-list"></div>
+                            <details>
+                                <summary><h3>Deeper Insights</h3></summary>
+                                <div class="summary-list" id="eval-summary-list"></div>
+                            </details>
                         </div>
 
                         <!-- Alerts (BEST only) -->
                         <div class="alerts-detail-panel hidden" id="eval-alerts-panel">
-                            <h3>Alerts</h3>
-                            <div class="alerts-list" id="eval-alerts-list"></div>
+                            <details>
+                                <summary><h3>Alerts</h3></summary>
+                                <div class="alerts-list" id="eval-alerts-list"></div>
+                            </details>
                         </div>
 
                         <!-- Post-Result Actions -->
@@ -3377,15 +3405,55 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     const alertsPanel = document.getElementById('eval-alerts-panel');
                     const alertsList = document.getElementById('eval-alerts-list');
                     const alertItems = explain.alerts || [];
-                    if (tier === 'best' && alertItems.length > 0) {{
+                    const contextAlerts = (data.context && data.context.alerts_generated) || 0;
+                    if (tier === 'best' && (alertItems.length > 0 || contextAlerts > 0)) {{
                         let alertsHtml = '';
                         alertItems.forEach(function(a) {{
                             alertsHtml += '<div class="alert-detail-item">' + a + '</div>';
                         }});
+                        if (contextAlerts > 0) {{
+                            alertsHtml += '<div class="alert-detail-item">\u26A0 Live conditions affecting this parlay</div>';
+                        }}
                         alertsList.innerHTML = alertsHtml;
                         alertsPanel.classList.remove('hidden');
                     }} else {{
                         alertsPanel.classList.add('hidden');
+                    }}
+                }}
+
+                // === CONTEXT MODIFIERS (weather/injury) ===
+                const ctxMods = (data.context && data.context.impact && data.context.impact.modifiers) || [];
+                if (ctxMods.length > 0) {{
+                    const weatherMods = ctxMods.filter(function(m) {{
+                        return m.reason && m.reason.toLowerCase().indexOf('weather') !== -1;
+                    }});
+                    const injuryMods = ctxMods.filter(function(m) {{
+                        return m.affected_players && m.affected_players.length > 0;
+                    }});
+                    if (tier === 'good') {{
+                        const wList = document.getElementById('good-warnings-list');
+                        const wSection = document.getElementById('good-warnings-section');
+                        weatherMods.forEach(function(m) {{
+                            wList.innerHTML += '<li>' + m.reason + '</li>';
+                        }});
+                        injuryMods.forEach(function(m) {{
+                            wList.innerHTML += '<li>' + m.reason + '</li>';
+                        }});
+                        if (weatherMods.length > 0 || injuryMods.length > 0) {{
+                            wSection.classList.remove('empty');
+                        }}
+                    }} else {{
+                        const sList = document.getElementById('eval-summary-list');
+                        const sPanel = document.getElementById('eval-summary-panel');
+                        weatherMods.forEach(function(m) {{
+                            sList.innerHTML += '<div class="summary-item">' + m.reason + '</div>';
+                        }});
+                        injuryMods.forEach(function(m) {{
+                            sList.innerHTML += '<div class="summary-item">' + m.reason + '</div>';
+                        }});
+                        if (weatherMods.length > 0 || injuryMods.length > 0) {{
+                            sPanel.classList.remove('hidden');
+                        }}
                     }}
                 }}
 
