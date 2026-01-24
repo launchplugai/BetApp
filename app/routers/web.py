@@ -1108,6 +1108,249 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             width: 100%;
             margin-top: 0.75rem;
         }}
+
+        /* Signal System */
+        .signal-display {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }}
+        .signal-badge {{
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }}
+        .signal-badge.signal-blue {{ background: #1a2a4a; color: #4a9eff; border: 2px solid #4a9eff; }}
+        .signal-badge.signal-green {{ background: #1a3a2a; color: #4ade80; border: 2px solid #4ade80; }}
+        .signal-badge.signal-yellow {{ background: #3a3a1a; color: #fbbf24; border: 2px solid #fbbf24; }}
+        .signal-badge.signal-red {{ background: #3a1a1a; color: #ef4444; border: 2px solid #ef4444; }}
+        .signal-score {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .signal-score-value {{
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+        }}
+        .signal-score-label {{
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        /* Verdict Bar */
+        .verdict-bar {{
+            padding: 0.75rem 1rem;
+            background: #1a1a1a;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }}
+        .verdict-action {{
+            font-weight: 700;
+            margin-right: 0.5rem;
+        }}
+        .verdict-action.action-accept {{ color: #4ade80; }}
+        .verdict-action.action-reduce {{ color: #fbbf24; }}
+        .verdict-action.action-avoid {{ color: #ef4444; }}
+        .verdict-reason {{
+            color: #ccc;
+        }}
+
+        /* Metrics Grid */
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }}
+        .metric-item {{
+            background: #1a1a1a;
+            padding: 0.75rem;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }}
+        .metric-label {{
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }}
+        .metric-value {{
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }}
+
+        /* Tips Panel */
+        .tips-panel {{
+            background: #1a2a1a;
+            border: 1px solid #2a4a2a;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }}
+        .tips-panel h3 {{
+            font-size: 0.7rem;
+            color: #4ade80;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }}
+        .tips-content {{
+            font-size: 0.875rem;
+            color: #ccc;
+            line-height: 1.5;
+        }}
+        .tip-item {{
+            padding: 0.4rem 0;
+            padding-left: 1rem;
+            position: relative;
+        }}
+        .tip-item::before {{
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.7rem;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #4ade80;
+        }}
+
+        /* Correlations Panel (BETTER+) */
+        .correlations-panel {{
+            background: #2a2a1a;
+            border: 1px solid #4a4a2a;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }}
+        .correlations-panel h3 {{
+            font-size: 0.7rem;
+            color: #fbbf24;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }}
+        .correlation-item {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
+            font-size: 0.85rem;
+        }}
+        .correlation-item:last-child {{ border-bottom: none; }}
+        .correlation-type {{
+            color: #fbbf24;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }}
+        .correlation-penalty {{
+            color: #ef4444;
+            font-weight: 600;
+        }}
+
+        /* Summary Panel (BETTER+) */
+        .summary-panel {{
+            background: #1a1a2a;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }}
+        .summary-panel h3 {{
+            font-size: 0.7rem;
+            color: #4a9eff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }}
+        .summary-item {{
+            padding: 0.4rem 0;
+            font-size: 0.85rem;
+            color: #ccc;
+            border-bottom: 1px solid #2a2a4a;
+        }}
+        .summary-item:last-child {{ border-bottom: none; }}
+
+        /* Alerts Panel (BEST) */
+        .alerts-detail-panel {{
+            background: #2a1a1a;
+            border: 1px solid #4a2a2a;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }}
+        .alerts-detail-panel h3 {{
+            font-size: 0.7rem;
+            color: #ef4444;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }}
+        .alert-detail-item {{
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: #1a1a1a;
+            border-left: 3px solid #ef4444;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #ccc;
+        }}
+
+        /* Post-Result Actions */
+        .post-actions {{
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #333;
+        }}
+        .action-btn {{
+            flex: 1;
+            padding: 0.6rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid;
+            transition: all 0.2s;
+        }}
+        .action-improve {{
+            background: transparent;
+            border-color: #4a9eff;
+            color: #4a9eff;
+        }}
+        .action-improve:hover {{ background: #4a9eff; color: #000; }}
+        .action-reeval {{
+            background: transparent;
+            border-color: #fbbf24;
+            color: #fbbf24;
+        }}
+        .action-reeval:hover {{ background: #fbbf24; color: #000; }}
+        .action-save {{
+            background: transparent;
+            border-color: #4ade80;
+            color: #4ade80;
+        }}
+        .action-save:hover {{ background: #4ade80; color: #000; }}
+
         .input-tabs {{
             display: flex;
             gap: 0.5rem;
@@ -1641,7 +1884,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         </div> <!-- End tab-builder -->
 
         <!-- Evaluate Tab Content -->
-        <div class="tab-content" id="tab-evaluate">
+        <div class="tab-content {evaluate_active}" id="tab-evaluate">
             <div class="main-grid">
                 <div class="evaluate-section">
                     <div class="section-header">
@@ -1738,17 +1981,70 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     </div>
 
                     <div id="eval-results-content" class="hidden">
-                        <!-- Grade Display -->
-                        <div class="grade-display" id="eval-grade-display">
-                            <div class="grade-label">Fragility Score</div>
-                            <div class="grade-value" id="eval-grade-value">--</div>
-                            <div class="grade-bucket" id="eval-grade-bucket">--</div>
+                        <!-- Signal Badge + Fragility Score -->
+                        <div class="signal-display" id="eval-signal-display">
+                            <div class="signal-badge" id="eval-signal-badge">--</div>
+                            <div class="signal-score">
+                                <span class="signal-score-value" id="eval-signal-score">--</span>
+                                <span class="signal-score-label">Fragility</span>
+                            </div>
                         </div>
 
-                        <!-- Decision Summary -->
-                        <div class="decision-summary" id="eval-decision-summary">
-                            <h3>Decision Summary</h3>
-                            <div class="decision-verdict" id="eval-decision-verdict"></div>
+                        <!-- Verdict (GOOD+) -->
+                        <div class="verdict-bar" id="eval-verdict-bar">
+                            <span class="verdict-action" id="eval-verdict-action"></span>
+                            <span class="verdict-reason" id="eval-verdict-reason"></span>
+                        </div>
+
+                        <!-- Metrics (GOOD+) -->
+                        <div class="metrics-grid" id="eval-metrics-grid">
+                            <div class="metric-item">
+                                <span class="metric-label">Leg Penalty</span>
+                                <span class="metric-value" id="eval-metric-leg">--</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Correlation</span>
+                                <span class="metric-value" id="eval-metric-corr">--</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Raw Fragility</span>
+                                <span class="metric-value" id="eval-metric-raw">--</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Final Score</span>
+                                <span class="metric-value" id="eval-metric-final">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Improvement Tips (GOOD+) -->
+                        <div class="tips-panel" id="eval-tips-panel">
+                            <h3>How to Improve</h3>
+                            <div class="tips-content" id="eval-tips-content"></div>
+                        </div>
+
+                        <!-- Correlations Panel (BETTER+) -->
+                        <div class="correlations-panel hidden" id="eval-correlations-panel">
+                            <h3>Correlations Found</h3>
+                            <div class="correlations-list" id="eval-correlations-list"></div>
+                        </div>
+
+                        <!-- Summary Insights (BETTER+) -->
+                        <div class="summary-panel hidden" id="eval-summary-panel">
+                            <h3>Deeper Insights</h3>
+                            <div class="summary-list" id="eval-summary-list"></div>
+                        </div>
+
+                        <!-- Alerts (BEST only) -->
+                        <div class="alerts-detail-panel hidden" id="eval-alerts-panel">
+                            <h3>Alerts</h3>
+                            <div class="alerts-list" id="eval-alerts-list"></div>
+                        </div>
+
+                        <!-- Post-Result Actions -->
+                        <div class="post-actions" id="eval-post-actions">
+                            <button type="button" class="action-btn action-improve" id="eval-action-improve" onclick="switchToTab('builder')">Improve in Builder</button>
+                            <button type="button" class="action-btn action-reeval" id="eval-action-reeval">Re-Evaluate</button>
+                            <button type="button" class="action-btn action-save" id="eval-action-save">Save</button>
                         </div>
                     </div>
 
@@ -1761,7 +2057,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         </div> <!-- End tab-evaluate -->
 
         <!-- History Tab Content -->
-        <div class="tab-content" id="tab-history">
+        <div class="tab-content {history_active}" id="tab-history">
             <div class="history-section">
                 <div class="section-header">
                     <span class="section-title">Evaluation History</span>
@@ -2611,42 +2907,123 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 const evaluation = data.evaluation;
                 const interpretation = data.interpretation;
                 const fragility = interpretation.fragility;
+                const explain = data.explain || {{}};
+                const tier = (data.input && data.input.tier) || 'good';
+                const metrics = evaluation.metrics;
+                const correlations = evaluation.correlations || [];
 
-                // Show image parse info if present
-                let parseInfoHtml = '';
+                // === SIGNAL SYSTEM ===
+                // Map bucket → signal: low=Blue, medium=Green, high=Yellow, critical=Red
+                const signalMap = {{
+                    'low': {{ cls: 'signal-blue', label: 'Strong' }},
+                    'medium': {{ cls: 'signal-green', label: 'Solid' }},
+                    'high': {{ cls: 'signal-yellow', label: 'Fixable' }},
+                    'critical': {{ cls: 'signal-red', label: 'Fragile' }}
+                }};
+                const signal = signalMap[fragility.bucket] || signalMap['medium'];
+
+                const signalBadge = document.getElementById('eval-signal-badge');
+                signalBadge.textContent = signal.label;
+                signalBadge.className = 'signal-badge ' + signal.cls;
+
+                document.getElementById('eval-signal-score').textContent = Math.round(fragility.display_value);
+
+                // === VERDICT BAR (GOOD+) ===
+                const action = evaluation.recommendation.action;
+                const verdictAction = document.getElementById('eval-verdict-action');
+                const verdictReason = document.getElementById('eval-verdict-reason');
+                verdictAction.textContent = action.toUpperCase();
+                verdictAction.className = 'verdict-action action-' + action;
+                verdictReason.textContent = evaluation.recommendation.reason;
+
+                // === METRICS GRID (GOOD+) ===
+                document.getElementById('eval-metric-leg').textContent = '+' + (metrics.leg_penalty || 0).toFixed(1);
+                document.getElementById('eval-metric-corr').textContent = '+' + (metrics.correlation_penalty || 0).toFixed(1);
+                document.getElementById('eval-metric-raw').textContent = (metrics.raw_fragility || 0).toFixed(1);
+                document.getElementById('eval-metric-final').textContent = Math.round(metrics.final_fragility || 0);
+
+                // === IMPROVEMENT TIPS (GOOD+) ===
+                const tipsContent = document.getElementById('eval-tips-content');
+                const tipsPanel = document.getElementById('eval-tips-panel');
+                const whatToDo = fragility.what_to_do || '';
+                const meaning = fragility.meaning || '';
+                if (whatToDo || meaning) {{
+                    let tipsHtml = '';
+                    if (meaning) {{
+                        tipsHtml += '<div class="tip-item">' + meaning + '</div>';
+                    }}
+                    if (whatToDo) {{
+                        tipsHtml += '<div class="tip-item">' + whatToDo + '</div>';
+                    }}
+                    tipsContent.innerHTML = tipsHtml;
+                    tipsPanel.classList.remove('hidden');
+                }} else {{
+                    tipsPanel.classList.add('hidden');
+                }}
+
+                // === CORRELATIONS PANEL (BETTER+) ===
+                const corrPanel = document.getElementById('eval-correlations-panel');
+                const corrList = document.getElementById('eval-correlations-list');
+                if ((tier === 'better' || tier === 'best') && correlations.length > 0) {{
+                    let corrHtml = '';
+                    correlations.forEach(function(c) {{
+                        corrHtml += '<div class="correlation-item">';
+                        corrHtml += '<span>' + c.block_a + ' / ' + c.block_b + '</span>';
+                        corrHtml += '<span class="correlation-type">' + c.type + '</span>';
+                        corrHtml += '<span class="correlation-penalty">+' + (c.penalty || 0).toFixed(1) + '</span>';
+                        corrHtml += '</div>';
+                    }});
+                    corrList.innerHTML = corrHtml;
+                    corrPanel.classList.remove('hidden');
+                }} else {{
+                    corrPanel.classList.add('hidden');
+                }}
+
+                // === SUMMARY INSIGHTS (BETTER+) ===
+                const summaryPanel = document.getElementById('eval-summary-panel');
+                const summaryList = document.getElementById('eval-summary-list');
+                const summaryItems = explain.summary || [];
+                if ((tier === 'better' || tier === 'best') && summaryItems.length > 0) {{
+                    let summaryHtml = '';
+                    summaryItems.forEach(function(s) {{
+                        summaryHtml += '<div class="summary-item">' + s + '</div>';
+                    }});
+                    summaryList.innerHTML = summaryHtml;
+                    summaryPanel.classList.remove('hidden');
+                }} else {{
+                    summaryPanel.classList.add('hidden');
+                }}
+
+                // === ALERTS (BEST only) ===
+                const alertsPanel = document.getElementById('eval-alerts-panel');
+                const alertsList = document.getElementById('eval-alerts-list');
+                const alertItems = explain.alerts || [];
+                if (tier === 'best' && alertItems.length > 0) {{
+                    let alertsHtml = '';
+                    alertItems.forEach(function(a) {{
+                        alertsHtml += '<div class="alert-detail-item">' + a + '</div>';
+                    }});
+                    alertsList.innerHTML = alertsHtml;
+                    alertsPanel.classList.remove('hidden');
+                }} else {{
+                    alertsPanel.classList.add('hidden');
+                }}
+
+                // === IMAGE PARSE INFO ===
+                const existingParseInfo = evalResultsContent.querySelector('.image-parse-info');
+                if (existingParseInfo) existingParseInfo.remove();
                 if (imageParse) {{
                     const confidencePct = Math.round((imageParse.confidence || 0) * 100);
-                    parseInfoHtml = '<div class="image-parse-info">';
-                    parseInfoHtml += '<span class="image-parse-confidence">Parsed from image (' + confidencePct + '% confidence)</span>';
+                    let parseHtml = '<div class="image-parse-info">';
+                    parseHtml += '<span class="image-parse-confidence">Parsed from image (' + confidencePct + '% confidence)</span>';
                     if (imageParse.notes && imageParse.notes.length > 0) {{
-                        parseInfoHtml += '<div class="image-parse-notes">' + imageParse.notes.join(' | ') + '</div>';
+                        parseHtml += '<div class="image-parse-notes">' + imageParse.notes.join(' | ') + '</div>';
                     }}
-                    parseInfoHtml += '</div>';
+                    parseHtml += '</div>';
+                    evalResultsContent.insertAdjacentHTML('afterbegin', parseHtml);
                 }}
 
-                // Grade display
-                const gradeValue = document.getElementById('eval-grade-value');
-                const gradeBucket = document.getElementById('eval-grade-bucket');
-                gradeValue.textContent = Math.round(fragility.display_value);
-                gradeBucket.textContent = fragility.bucket;
-                gradeValue.className = 'grade-value ' + fragility.bucket;
-
-                // Decision summary with optional parse info
-                const decisionSummary = document.getElementById('eval-decision-summary');
-                const decisionVerdict = document.getElementById('eval-decision-verdict');
-                const action = evaluation.recommendation.action;
-
-                // Insert parse info before decision summary if present
-                const existingParseInfo = decisionSummary.parentElement.querySelector('.image-parse-info');
-                if (existingParseInfo) existingParseInfo.remove();
-                if (parseInfoHtml) {{
-                    decisionSummary.insertAdjacentHTML('beforebegin', parseInfoHtml);
-                }}
-
-                decisionVerdict.innerHTML = '<span class="action-' + action + '">' +
-                    action.toUpperCase() + '</span>: ' + evaluation.recommendation.reason;
-
-                // Enable Builder CTA after successful evaluation
+                // === ENABLE BUILDER CTA ===
                 const builderCtaBtn = document.getElementById('builder-cta-btn');
                 if (builderCtaBtn) {{
                     builderCtaBtn.disabled = false;
@@ -2654,6 +3031,9 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     builderCtaBtn.title = 'Build a custom parlay';
                     builderCtaBtn.onclick = function() {{ switchToTab('builder'); }};
                 }}
+
+                // Store last eval data for re-evaluate
+                window._lastEvalData = data;
             }}
 
             // Submit evaluation
@@ -2727,6 +3107,37 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     updateEvalSubmitState();
                 }}
             }});
+
+            // Re-Evaluate button: reset results and focus input
+            const reEvalBtn = document.getElementById('eval-action-reeval');
+            if (reEvalBtn) {{
+                reEvalBtn.addEventListener('click', function() {{
+                    evalResultsContent.classList.add('hidden');
+                    evalResultsPlaceholder.classList.remove('hidden');
+                    evalErrorPanel.classList.add('hidden');
+                    if (currentInputMode === 'text') {{
+                        textInput.focus();
+                        textInput.select();
+                    }}
+                    updateEvalSubmitState();
+                }});
+            }}
+
+            // Save button: persist evaluation
+            const saveBtn = document.getElementById('eval-action-save');
+            if (saveBtn) {{
+                saveBtn.addEventListener('click', function() {{
+                    if (window._lastEvalData && window._lastEvalData.evaluation_id) {{
+                        saveBtn.textContent = 'Saved';
+                        saveBtn.disabled = true;
+                        saveBtn.style.background = '#4ade80';
+                        saveBtn.style.color = '#000';
+                    }} else {{
+                        saveBtn.textContent = 'Login to Save';
+                        saveBtn.disabled = true;
+                    }}
+                }});
+            }}
         }})();
 
         // ============================================================

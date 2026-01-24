@@ -279,6 +279,205 @@ class TestUIFlowLock:
         assert "coming soon" not in response.text.lower()
 
 
+class TestCoreLoopReinforcement:
+    """Ticket 2: Core Loop Reinforcement tests."""
+
+    # --- Signal System ---
+
+    def test_signal_display_exists(self, client):
+        """Signal badge and score elements are in the DOM."""
+        response = client.get("/app")
+        assert "eval-signal-badge" in response.text
+        assert "eval-signal-score" in response.text
+        assert "signal-display" in response.text
+
+    def test_signal_map_in_javascript(self, client):
+        """Signal map has all four signals: blue, green, yellow, red."""
+        response = client.get("/app")
+        assert "signal-blue" in response.text
+        assert "signal-green" in response.text
+        assert "signal-yellow" in response.text
+        assert "signal-red" in response.text
+
+    def test_signal_labels_correct(self, client):
+        """Signal labels: Strong, Solid, Fixable, Fragile."""
+        response = client.get("/app")
+        # These are in the JS signalMap
+        assert "'Strong'" in response.text or "Strong" in response.text
+        assert "'Solid'" in response.text or "Solid" in response.text
+        assert "'Fixable'" in response.text or "Fixable" in response.text
+        assert "'Fragile'" in response.text or "Fragile" in response.text
+
+    # --- Metrics Grid (GOOD+) ---
+
+    def test_metrics_grid_exists(self, client):
+        """Metrics grid with leg penalty, correlation, raw, final."""
+        response = client.get("/app")
+        assert "eval-metrics-grid" in response.text
+        assert "eval-metric-leg" in response.text
+        assert "eval-metric-corr" in response.text
+        assert "eval-metric-raw" in response.text
+        assert "eval-metric-final" in response.text
+
+    # --- Improvement Tips (GOOD+) ---
+
+    def test_tips_panel_exists(self, client):
+        """Tips panel exists with 'How to Improve' heading."""
+        response = client.get("/app")
+        assert "eval-tips-panel" in response.text
+        assert "How to Improve" in response.text
+
+    # --- Tier Differentiation ---
+
+    def test_correlations_panel_exists(self, client):
+        """Correlations panel exists for BETTER+ tier rendering."""
+        response = client.get("/app")
+        assert "eval-correlations-panel" in response.text
+        assert "Correlations Found" in response.text
+
+    def test_summary_panel_exists(self, client):
+        """Summary panel exists for BETTER+ tier rendering."""
+        response = client.get("/app")
+        assert "eval-summary-panel" in response.text
+        assert "Deeper Insights" in response.text
+
+    def test_alerts_panel_exists(self, client):
+        """Alerts panel exists for BEST tier rendering."""
+        response = client.get("/app")
+        assert "eval-alerts-panel" in response.text
+
+    def test_correlations_hidden_by_default(self, client):
+        """Correlations panel is hidden in initial render."""
+        response = client.get("/app")
+        assert 'correlations-panel hidden' in response.text
+
+    def test_summary_hidden_by_default(self, client):
+        """Summary panel is hidden in initial render."""
+        response = client.get("/app")
+        assert 'summary-panel hidden' in response.text
+
+    def test_alerts_hidden_by_default(self, client):
+        """Alerts panel is hidden in initial render."""
+        response = client.get("/app")
+        assert 'alerts-detail-panel hidden' in response.text
+
+    def test_tier_gating_logic_in_js(self, client):
+        """JavaScript gates correlations/summary to BETTER+, alerts to BEST."""
+        response = client.get("/app")
+        # BETTER+ check for correlations
+        assert "tier === 'better' || tier === 'best'" in response.text
+        # BEST-only check for alerts
+        assert "tier === 'best'" in response.text
+
+    # --- Post-Result Actions ---
+
+    def test_post_actions_exist(self, client):
+        """Post-result action buttons exist: Improve, Re-Evaluate, Save."""
+        response = client.get("/app")
+        assert "eval-action-improve" in response.text
+        assert "eval-action-reeval" in response.text
+        assert "eval-action-save" in response.text
+
+    def test_improve_routes_to_builder(self, client):
+        """Improve button switches to Builder tab."""
+        response = client.get("/app")
+        assert "Improve in Builder" in response.text
+        assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
+
+    def test_reeval_button_text(self, client):
+        """Re-Evaluate button is present."""
+        response = client.get("/app")
+        assert "Re-Evaluate" in response.text
+
+    def test_save_button_text(self, client):
+        """Save button is present."""
+        response = client.get("/app")
+        assert ">Save<" in response.text
+
+    # --- Verdict Bar ---
+
+    def test_verdict_bar_exists(self, client):
+        """Verdict bar with action and reason elements exists."""
+        response = client.get("/app")
+        assert "eval-verdict-bar" in response.text
+        assert "eval-verdict-action" in response.text
+        assert "eval-verdict-reason" in response.text
+
+    # --- Tab Content Active Class ---
+
+    def test_evaluate_tab_content_active_by_default(self, client):
+        """Evaluate tab content has 'active' class on default load."""
+        response = client.get("/app")
+        # Check the tab-evaluate div has the active class
+        import re
+        match = re.search(r'<div class="tab-content\s+active"\s+id="tab-evaluate"', response.text)
+        assert match is not None
+
+    # --- API Tier Differentiation (end-to-end) ---
+
+    def test_good_tier_returns_metrics(self, client):
+        """GOOD tier response includes metrics for rendering."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "good"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "metrics" in data["evaluation"]
+        assert "final_fragility" in data["evaluation"]["metrics"]
+        assert "leg_penalty" in data["evaluation"]["metrics"]
+
+    def test_good_tier_has_interpretation(self, client):
+        """GOOD tier has fragility interpretation with what_to_do."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "good"}
+        )
+        data = response.json()
+        assert "interpretation" in data
+        assert "fragility" in data["interpretation"]
+        frag = data["interpretation"]["fragility"]
+        assert "bucket" in frag
+        assert "what_to_do" in frag
+        assert "meaning" in frag
+
+    def test_better_tier_has_summary(self, client):
+        """BETTER tier includes explain.summary list."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "better"}
+        )
+        data = response.json()
+        assert "explain" in data
+        assert "summary" in data["explain"]
+        assert isinstance(data["explain"]["summary"], list)
+
+    def test_best_tier_has_alerts(self, client):
+        """BEST tier includes explain.alerts and recommended_next_step."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "best"}
+        )
+        data = response.json()
+        assert "explain" in data
+        assert "alerts" in data["explain"]
+        assert "recommended_next_step" in data["explain"]
+
+    def test_good_vs_better_output_differs(self, client):
+        """GOOD and BETTER tier outputs are structurally different."""
+        good = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "good"}
+        ).json()
+        better = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "better"}
+        ).json()
+        # GOOD has empty explain, BETTER has summary
+        assert good["explain"] == {}
+        assert "summary" in better["explain"]
+
+
 class TestEvaluateProxy:
     """Tests for POST /app/evaluate endpoint."""
 
