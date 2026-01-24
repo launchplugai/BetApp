@@ -1260,3 +1260,264 @@ class TestGoodTierStructuredOutput:
         assert 'eval-correlations-panel' not in good_section
         assert 'eval-summary-panel' not in good_section
         assert 'eval-alerts-panel' not in good_section
+
+
+class TestPrimaryFailureAndDeltaPreview:
+    """Ticket 4: primaryFailure + deltaPreview tests."""
+
+    BANNED_PHRASES = [
+        "too risky", "too fragile", "exceeds safe",
+        "structure exceeds", "high fragility thresholds",
+    ]
+
+    # --- primaryFailure presence for all tiers ---
+
+    def test_primary_failure_exists_good(self, client):
+        """primaryFailure present in GOOD tier response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "primaryFailure" in data
+        assert data["primaryFailure"] is not None
+
+    def test_primary_failure_exists_better(self, client):
+        """primaryFailure present in BETTER tier response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "better"})
+        assert resp.status_code == 200
+        assert "primaryFailure" in resp.json()
+        assert resp.json()["primaryFailure"] is not None
+
+    def test_primary_failure_exists_best(self, client):
+        """primaryFailure present in BEST tier response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "best"})
+        assert resp.status_code == 200
+        assert "primaryFailure" in resp.json()
+        assert resp.json()["primaryFailure"] is not None
+
+    # --- primaryFailure schema ---
+
+    def test_primary_failure_has_required_keys(self, client):
+        """primaryFailure has type, severity, description, affectedLegIds, fastestFix."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        pf = resp.json()["primaryFailure"]
+        assert "type" in pf
+        assert "severity" in pf
+        assert "description" in pf
+        assert "affectedLegIds" in pf
+        assert "fastestFix" in pf
+
+    def test_primary_failure_type_is_valid_enum(self, client):
+        """primaryFailure.type is one of the allowed types."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        pf = resp.json()["primaryFailure"]
+        assert pf["type"] in ("correlation", "leg_count", "dependency", "volatility")
+
+    def test_primary_failure_severity_is_valid_enum(self, client):
+        """primaryFailure.severity is low/medium/high."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        pf = resp.json()["primaryFailure"]
+        assert pf["severity"] in ("low", "medium", "high")
+
+    def test_primary_failure_affected_leg_ids_is_list(self, client):
+        """affectedLegIds is always a list."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        pf = resp.json()["primaryFailure"]
+        assert isinstance(pf["affectedLegIds"], list)
+
+    def test_fastest_fix_has_required_keys(self, client):
+        """fastestFix has action, description, candidateLegIds."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        fix = resp.json()["primaryFailure"]["fastestFix"]
+        assert "action" in fix
+        assert "description" in fix
+        assert "candidateLegIds" in fix
+
+    def test_fastest_fix_action_is_valid_enum(self, client):
+        """fastestFix.action is one of the allowed actions."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        fix = resp.json()["primaryFailure"]["fastestFix"]
+        valid_actions = ("remove_leg", "swap_leg", "split_parlay", "reduce_same_game", "reduce_props")
+        assert fix["action"] in valid_actions
+
+    # --- No banned phrases ---
+
+    def test_primary_failure_no_banned_phrases(self, client):
+        """primaryFailure.description must not contain banned generic phrases."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3", "tier": "good"})
+        pf = resp.json()["primaryFailure"]
+        desc_lower = pf["description"].lower()
+        for phrase in self.BANNED_PHRASES:
+            assert phrase not in desc_lower, f"Banned phrase '{phrase}' found in: {pf['description']}"
+
+    def test_fastest_fix_no_banned_phrases(self, client):
+        """fastestFix.description must not contain generic phrases."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        fix = resp.json()["primaryFailure"]["fastestFix"]
+        desc_lower = fix["description"].lower()
+        for phrase in self.BANNED_PHRASES:
+            assert phrase not in desc_lower
+
+    def test_good_warnings_no_banned_phrases(self, client):
+        """GOOD tier warnings must not contain banned phrases."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3", "tier": "good"})
+        warnings = resp.json()["explain"].get("warnings", [])
+        for w in warnings:
+            w_lower = w.lower()
+            for phrase in self.BANNED_PHRASES:
+                assert phrase not in w_lower, f"Banned phrase '{phrase}' in warning: {w}"
+
+    # --- deltaPreview ---
+
+    def test_delta_preview_exists_all_tiers(self, client):
+        """deltaPreview present in response for all tiers."""
+        for tier in ("good", "better", "best"):
+            resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": tier})
+            assert "deltaPreview" in resp.json(), f"deltaPreview missing for tier={tier}"
+
+    def test_delta_preview_has_before(self, client):
+        """deltaPreview.before is always present with signal/grade/fragilityScore."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        dp = resp.json()["deltaPreview"]
+        assert dp["before"] is not None
+        assert "signal" in dp["before"]
+        assert "grade" in dp["before"]
+        assert "fragilityScore" in dp["before"]
+
+    def test_delta_preview_before_signal_valid(self, client):
+        """deltaPreview.before.signal is a valid color."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        dp = resp.json()["deltaPreview"]
+        assert dp["before"]["signal"] in ("blue", "green", "yellow", "red")
+
+    def test_delta_preview_multi_leg_has_after(self, client):
+        """Multi-leg parlay with remove_leg action produces non-null after."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3",
+            "tier": "good"
+        })
+        data = resp.json()
+        pf = data["primaryFailure"]
+        dp = data["deltaPreview"]
+        # If action is remove_leg with candidates, after should exist
+        if pf["fastestFix"]["action"] == "remove_leg" and pf["fastestFix"]["candidateLegIds"]:
+            assert dp["after"] is not None
+            assert dp["change"] is not None
+
+    def test_delta_preview_after_fragility_improves(self, client):
+        """When deltaPreview.after exists, fragility should decrease (fix improves bet)."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3",
+            "tier": "good"
+        })
+        dp = resp.json()["deltaPreview"]
+        if dp["after"] is not None:
+            assert dp["after"]["fragilityScore"] <= dp["before"]["fragilityScore"]
+
+    def test_delta_preview_single_leg_no_after(self, client):
+        """Single-leg bet cannot simulate remove_leg, so after=null."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        dp = resp.json()["deltaPreview"]
+        # Single leg cannot remove, so after should be null
+        assert dp["after"] is None
+        assert dp["change"] is None
+
+    def test_delta_preview_deterministic(self, client):
+        """Same input produces same deltaPreview."""
+        input_data = {"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"}
+        dp1 = client.post("/app/evaluate", json=input_data).json()["deltaPreview"]
+        dp2 = client.post("/app/evaluate", json=input_data).json()["deltaPreview"]
+        assert dp1["before"]["fragilityScore"] == dp2["before"]["fragilityScore"]
+        if dp1["after"]:
+            assert dp1["after"]["fragilityScore"] == dp2["after"]["fragilityScore"]
+
+    def test_delta_preview_change_directions(self, client):
+        """change.signal and change.fragility use valid direction values."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets ML",
+            "tier": "good"
+        })
+        dp = resp.json()["deltaPreview"]
+        if dp["change"] is not None:
+            assert dp["change"]["signal"] in ("up", "down", "same")
+            assert dp["change"]["fragility"] in ("up", "down", "same")
+
+    # --- Tier separation ---
+
+    def test_good_does_not_include_best_keys(self, client):
+        """GOOD tier explain does not contain BEST-only keys."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        explain = resp.json()["explain"]
+        assert "alerts" not in explain
+        assert "recommended_next_step" not in explain
+        assert "summary" not in explain
+
+    def test_better_does_not_include_best_keys(self, client):
+        """BETTER tier explain does not contain BEST-only keys."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "better"})
+        explain = resp.json()["explain"]
+        assert "alerts" not in explain
+        assert "recommended_next_step" not in explain
+
+    def test_primary_failure_same_across_tiers(self, client):
+        """primaryFailure is the same regardless of tier (core truth)."""
+        input_text = "Lakers -5.5 + Celtics ML + Nuggets ML"
+        good = client.post("/app/evaluate", json={"input": input_text, "tier": "good"}).json()
+        better = client.post("/app/evaluate", json={"input": input_text, "tier": "better"}).json()
+        best = client.post("/app/evaluate", json={"input": input_text, "tier": "best"}).json()
+        assert good["primaryFailure"]["type"] == better["primaryFailure"]["type"]
+        assert good["primaryFailure"]["type"] == best["primaryFailure"]["type"]
+        assert good["primaryFailure"]["severity"] == better["primaryFailure"]["severity"]
+
+    # --- Frontend HTML ---
+
+    def test_primary_failure_card_exists_in_html(self, client):
+        """Primary failure card element exists in the app HTML."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="eval-primary-failure"' in html
+        assert 'id="pf-badge"' in html
+        assert 'id="pf-description"' in html
+        assert 'id="pf-fix-desc"' in html
+
+    def test_delta_preview_elements_exist_in_html(self, client):
+        """Delta preview elements exist in app HTML."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="pf-delta"' in html
+        assert 'id="pf-delta-before"' in html
+        assert 'id="pf-delta-after"' in html
+
+    def test_primary_failure_card_above_tips(self, client):
+        """Primary failure card appears before tips panel in DOM order."""
+        resp = client.get("/app")
+        html = resp.text
+        pf_pos = html.find('id="eval-primary-failure"')
+        tips_pos = html.find('id="eval-tips-panel"')
+        assert pf_pos < tips_pos, "Primary failure card must be above tips panel"
+
+    # --- Description specificity ---
+
+    def test_primary_failure_description_not_empty(self, client):
+        """primaryFailure.description is never empty."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        pf = resp.json()["primaryFailure"]
+        assert len(pf["description"]) > 10
+
+    def test_primary_failure_description_references_cause(self, client):
+        """Description references numeric data (penalty, count, etc)."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3",
+            "tier": "good"
+        })
+        pf = resp.json()["primaryFailure"]
+        # Must contain at least one number (penalty value, count, etc.)
+        import re
+        assert re.search(r'\d', pf["description"]), f"Description has no numeric data: {pf['description']}"
+
+    def test_fastest_fix_description_is_actionable(self, client):
+        """fastestFix.description starts with an action verb."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        fix = resp.json()["primaryFailure"]["fastestFix"]
+        action_verbs = ("remove", "split", "replace", "reduce", "move", "simplify")
+        assert any(fix["description"].lower().startswith(v) for v in action_verbs), \
+            f"Fix description not actionable: {fix['description']}"
