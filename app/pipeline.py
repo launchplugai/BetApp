@@ -76,6 +76,10 @@ class PipelineResponse:
     # Context impact (Sprint 3 - additive only, does not modify engine)
     context: Optional[dict] = None
 
+    # Primary failure diagnosis + delta preview (Ticket 4)
+    primary_failure: Optional[dict] = None
+    delta_preview: Optional[dict] = None
+
     # Metadata
     leg_count: int = 0
     tier: str = "good"
@@ -237,7 +241,7 @@ def _interpret_fragility(final_fragility: float) -> dict:
 # =============================================================================
 
 
-def _apply_tier_filtering(tier: Tier, explain: dict, evaluation=None, blocks=None) -> dict:
+def _apply_tier_filtering(tier: Tier, explain: dict, evaluation=None, blocks=None, primary_failure=None) -> dict:
     """
     Apply tier-based filtering to explain content.
 
@@ -247,14 +251,14 @@ def _apply_tier_filtering(tier: Tier, explain: dict, evaluation=None, blocks=Non
     - BEST: summary + alerts + recommended_next_step
     """
     if tier == Tier.GOOD:
-        return _build_good_tier_output(evaluation, blocks) if evaluation else {}
+        return _build_good_tier_output(evaluation, blocks, primary_failure) if evaluation else {}
     elif tier == Tier.BETTER:
         return {"summary": explain.get("summary", [])}
     else:  # BEST
         return explain
 
 
-def _build_good_tier_output(evaluation, blocks) -> dict:
+def _build_good_tier_output(evaluation, blocks, primary_failure=None) -> dict:
     """
     Build structured GOOD tier output from evaluation response.
 
@@ -300,31 +304,43 @@ def _build_good_tier_output(evaluation, blocks) -> dict:
             impact = "high" if prop_count > 2 else ("medium" if prop_count > 1 else "low")
             contributors.append({"type": "volatility", "impact": impact})
 
-    # Warnings: short, direct risk statements (no advice)
+    # Warnings: specific risk statements referencing primary failure
     warnings = []
-    if evaluation.inductor.level.value == "critical":
-        warnings.append("Structure exceeds safe fragility thresholds")
-    if evaluation.inductor.level.value == "tense":
-        warnings.append("Multiple failure points detected")
-    if metrics.correlation_multiplier >= 1.5:
-        warnings.append("High correlation between selections")
-    if metrics.leg_penalty > 20:
-        warnings.append("Leg count significantly amplifies risk")
-    if len(evaluation.correlations) > 2:
-        warnings.append("Multiple dependent outcomes in structure")
+    pf_type = primary_failure.get("type") if primary_failure else None
+    pf_action = primary_failure.get("fastestFix", {}).get("action") if primary_failure else None
 
-    # Tips: actionable, concrete improvements
+    if pf_type == "correlation" and metrics.correlation_multiplier >= 1.5:
+        warnings.append(f"Correlation penalty: +{metrics.correlation_penalty:.1f}pt from shared outcomes")
+    elif pf_type == "correlation" and metrics.correlation_penalty > 0:
+        warnings.append(f"Correlated selections add +{metrics.correlation_penalty:.1f}pt penalty")
+    if pf_type == "leg_count" and metrics.leg_penalty > 10:
+        warnings.append(f"Leg penalty: +{metrics.leg_penalty:.1f}pt from {len(blocks or [])} selections")
+    if pf_type == "volatility":
+        prop_count = sum(1 for b in (blocks or []) if b.base_fragility >= 0.20)
+        warnings.append(f"{prop_count} prop-type bet{'s' if prop_count != 1 else ''} with elevated base fragility")
+    if pf_type == "dependency" and len(evaluation.correlations) > 1:
+        warnings.append(f"{len(evaluation.correlations)} outcome pairs share dependent variables")
+    # Secondary warnings (only if they reference a real factor)
+    if metrics.correlation_multiplier >= 1.5 and pf_type != "correlation":
+        warnings.append(f"Correlation multiplier at {metrics.correlation_multiplier:.1f}x")
+    if metrics.leg_penalty > 20 and pf_type != "leg_count":
+        warnings.append(f"{len(blocks or [])} legs add +{metrics.leg_penalty:.1f}pt structural penalty")
+
+    # Tips: actionable, referencing primary failure fix path
     tips = []
-    if len(blocks or []) >= 4:
-        tips.append("Reduce same-game legs")
-    if metrics.correlation_penalty > 0:
+    if pf_action == "remove_leg" and metrics.leg_penalty > 10:
+        tips.append(f"Remove 1 leg to reduce penalty by ~{metrics.leg_penalty * 0.3:.0f}pt")
+    if pf_action == "split_parlay":
         tips.append("Split correlated legs into separate tickets")
-    if any(b.base_fragility >= 0.20 for b in (blocks or [])):
+    if pf_action in ("reduce_props", "swap_leg"):
         tips.append("Replace prop bets with totals or spreads")
-    if metrics.leg_penalty > 15:
-        tips.append("Remove 1-2 legs to lower structural penalty")
-    if final_fragility > 35 and not tips:
-        tips.append("Simplify structure to reduce failure paths")
+    if pf_action == "reduce_same_game":
+        tips.append("Move same-game legs to separate tickets")
+    # Secondary tips (only if specific)
+    if len(blocks or []) >= 4 and pf_action != "remove_leg":
+        tips.append(f"Reduce from {len(blocks)} to {max(2, len(blocks) - 2)} legs")
+    if metrics.correlation_penalty > 0 and pf_action != "split_parlay":
+        tips.append("Separate correlated selections into distinct tickets")
 
     # Removal suggestions: blocks involved in most correlations
     removal_suggestions = []
@@ -350,7 +366,202 @@ def _build_good_tier_output(evaluation, blocks) -> dict:
     }
 
 
-# =============================================================================
+def _fragility_to_signal(fragility: float) -> str:
+    """Map fragility score to signal color."""
+    if fragility <= 15:
+        return "blue"
+    elif fragility <= 35:
+        return "green"
+    elif fragility <= 60:
+        return "yellow"
+    else:
+        return "red"
+
+
+def _signal_to_grade(signal: str) -> str:
+    """Map signal to grade letter."""
+    return {"blue": "A", "green": "B", "yellow": "C", "red": "D"}[signal]
+
+
+def _build_primary_failure(evaluation, blocks) -> dict:
+    """
+    Identify the single biggest cause of fragility.
+
+    Returns exactly one primaryFailure object with:
+    - type, severity, description, affectedLegIds, fastestFix
+    """
+    metrics = evaluation.metrics
+    correlations = evaluation.correlations
+    leg_count = len(blocks) if blocks else 0
+
+    # Score each failure type by its contribution to final fragility
+    scores = {
+        "correlation": metrics.correlation_penalty * (metrics.correlation_multiplier or 1.0),
+        "leg_count": metrics.leg_penalty,
+        "volatility": sum(1 for b in (blocks or []) if b.base_fragility >= 0.20) * 5.0,
+        "dependency": len(correlations) * 3.0,
+    }
+
+    # Primary = highest scoring factor
+    primary_type = max(scores, key=lambda k: scores[k])
+
+    # If all scores are 0, default to leg_count for single legs
+    if all(v == 0 for v in scores.values()):
+        primary_type = "leg_count"
+
+    # Severity from the primary factor's magnitude
+    primary_score = scores[primary_type]
+    if primary_score >= 15:
+        severity = "high"
+    elif primary_score >= 5:
+        severity = "medium"
+    else:
+        severity = "low"
+
+    # Build specific description (no banned phrases)
+    affected_leg_ids = []
+    candidate_leg_ids = []
+
+    if primary_type == "correlation":
+        if correlations:
+            top_corr = max(correlations, key=lambda c: c.penalty)
+            affected_leg_ids = [str(top_corr.block_a), str(top_corr.block_b)]
+            candidate_leg_ids = [str(top_corr.block_b)]
+            corr_type = top_corr.type
+            description = f"{corr_type.replace('_', ' ').title()} correlation between 2 legs adds +{top_corr.penalty:.1f}pt penalty"
+        else:
+            description = f"Correlation penalty of +{metrics.correlation_penalty:.1f}pt detected across selections"
+
+    elif primary_type == "leg_count":
+        description = f"{leg_count} leg{'s' if leg_count != 1 else ''} produce{'s' if leg_count == 1 else ''} +{metrics.leg_penalty:.1f}pt structural penalty"
+        if blocks and leg_count > 2:
+            # Suggest removing the last-added leg
+            candidate_leg_ids = [str(blocks[-1].block_id)]
+
+    elif primary_type == "volatility":
+        prop_blocks = [b for b in (blocks or []) if b.base_fragility >= 0.20]
+        prop_count = len(prop_blocks)
+        description = f"{prop_count} high-variance selection{'s' if prop_count != 1 else ''} with base fragility >= 20pt"
+        affected_leg_ids = [str(b.block_id) for b in prop_blocks[:3]]
+        candidate_leg_ids = [str(prop_blocks[0].block_id)] if prop_blocks else []
+
+    else:  # dependency
+        dep_count = len(correlations)
+        description = f"{dep_count} dependent outcome pair{'s' if dep_count != 1 else ''} share variables"
+        if correlations:
+            # Find the block appearing most in correlations
+            block_freq = {}
+            for c in correlations:
+                block_freq[str(c.block_a)] = block_freq.get(str(c.block_a), 0) + 1
+                block_freq[str(c.block_b)] = block_freq.get(str(c.block_b), 0) + 1
+            top_block = max(block_freq, key=lambda k: block_freq[k])
+            affected_leg_ids = [top_block]
+            candidate_leg_ids = [top_block]
+
+    # Determine fastestFix action
+    if primary_type == "correlation":
+        action = "split_parlay" if len(correlations) > 1 else "remove_leg"
+    elif primary_type == "leg_count":
+        action = "remove_leg"
+    elif primary_type == "volatility":
+        action = "reduce_props" if len([b for b in (blocks or []) if b.base_fragility >= 0.20]) > 1 else "swap_leg"
+    else:
+        action = "split_parlay"
+
+    # Build fix description
+    fix_descriptions = {
+        "remove_leg": f"Remove the most correlated leg to reduce penalty by ~{primary_score * 0.5:.0f}pt",
+        "split_parlay": "Split into 2 uncorrelated tickets to eliminate dependency penalty",
+        "swap_leg": "Replace the high-variance selection with a spread or total",
+        "reduce_props": "Replace prop selections with game-level bets (spread/total)",
+        "reduce_same_game": "Move same-game legs to separate tickets",
+    }
+
+    return {
+        "type": primary_type,
+        "severity": severity,
+        "description": description,
+        "affectedLegIds": affected_leg_ids,
+        "fastestFix": {
+            "action": action,
+            "description": fix_descriptions.get(action, "Simplify parlay structure"),
+            "candidateLegIds": candidate_leg_ids,
+        },
+    }
+
+
+def _build_delta_preview(evaluation, blocks, primary_failure) -> dict:
+    """
+    Compute a deterministic 'what if you apply fastestFix' preview.
+
+    Uses existing evaluate_parlay() — no new math.
+    If candidate leg exists and action is remove_leg, re-evaluates without it.
+    Otherwise returns null after/change.
+    """
+    fastest_fix = primary_failure.get("fastestFix", {})
+    candidate_ids = fastest_fix.get("candidateLegIds", [])
+    action = fastest_fix.get("action", "")
+
+    # Before state (current)
+    before_fragility = evaluation.metrics.final_fragility
+    before_signal = _fragility_to_signal(before_fragility)
+    before_state = {
+        "signal": before_signal,
+        "grade": _signal_to_grade(before_signal),
+        "fragilityScore": before_fragility,
+    }
+
+    # Can only simulate remove_leg with a known candidate and >1 blocks
+    if action == "remove_leg" and candidate_ids and blocks and len(blocks) > 1:
+        remove_id = candidate_ids[0]
+        remaining_blocks = [b for b in blocks if str(b.block_id) != remove_id]
+
+        if remaining_blocks:
+            after_eval = evaluate_parlay(
+                blocks=remaining_blocks,
+                dna_profile=None,
+                bankroll=None,
+                candidates=None,
+                max_suggestions=0,
+            )
+            after_fragility = after_eval.metrics.final_fragility
+            after_signal = _fragility_to_signal(after_fragility)
+            after_state = {
+                "signal": after_signal,
+                "grade": _signal_to_grade(after_signal),
+                "fragilityScore": after_fragility,
+            }
+
+            # Determine direction of change
+            signal_order = {"blue": 0, "green": 1, "yellow": 2, "red": 3}
+            before_idx = signal_order[before_signal]
+            after_idx = signal_order[after_signal]
+            if after_idx < before_idx:
+                signal_change = "up"
+            elif after_idx > before_idx:
+                signal_change = "down"
+            else:
+                signal_change = "same"
+
+            if after_fragility < before_fragility:
+                fragility_change = "down"
+            elif after_fragility > before_fragility:
+                fragility_change = "up"
+            else:
+                fragility_change = "same"
+
+            return {
+                "before": before_state,
+                "after": after_state,
+                "change": {"signal": signal_change, "fragility": fragility_change},
+            }
+
+    # No simulation possible
+    return {
+        "before": before_state,
+        "after": None,
+        "change": None,
+    }
 # Main Pipeline Function
 # =============================================================================
 
@@ -566,14 +777,20 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         "recommended_next_step": evaluation.recommendation.reason,
     }
 
-    # Step 6: Apply tier filtering
-    explain_filtered = _apply_tier_filtering(normalized.tier, explain_full, evaluation, blocks)
+    # Step 6: Build primary failure + delta preview (Ticket 4)
+    primary_failure = _build_primary_failure(evaluation, blocks)
+    delta_preview = _build_delta_preview(evaluation, blocks, primary_failure)
+
+    # Step 7: Apply tier filtering (uses primary_failure for specific warnings/tips)
+    explain_filtered = _apply_tier_filtering(normalized.tier, explain_full, evaluation, blocks, primary_failure)
 
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
         explain=explain_filtered,
         context=context_data,
+        primary_failure=primary_failure,
+        delta_preview=delta_preview,
         leg_count=leg_count,
         tier=normalized.tier.value,
     )

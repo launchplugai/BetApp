@@ -1314,6 +1314,91 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             font-family: var(--font-mono);
         }}
 
+        /* Primary Failure Card */
+        .primary-failure-card {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-strong);
+            border-left: 4px solid var(--signal-yellow);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .primary-failure-card.severity-high {{
+            border-left-color: var(--signal-red);
+        }}
+        .primary-failure-card.severity-low {{
+            border-left-color: var(--signal-green);
+        }}
+        .pf-header {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            margin-bottom: var(--sp-2);
+        }}
+        .pf-title {{
+            font-size: var(--text-xs);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--fg-primary);
+        }}
+        .pf-badge {{
+            font-size: var(--text-xs);
+            padding: 2px var(--sp-2);
+            border-radius: var(--radius-sm);
+            background: var(--surface-base);
+            border: 1px solid var(--border-default);
+            color: var(--fg-secondary);
+        }}
+        .pf-description {{
+            font-size: var(--text-sm);
+            color: var(--fg-primary);
+            margin-bottom: var(--sp-2);
+            line-height: 1.4;
+        }}
+        .pf-affected {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            margin-bottom: var(--sp-3);
+        }}
+        .pf-fix {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            padding: var(--sp-2) var(--sp-3);
+            background: var(--surface-base);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--sp-2);
+        }}
+        .pf-fix-label {{
+            font-weight: 600;
+            color: var(--signal-green);
+            margin-right: var(--sp-1);
+        }}
+        .pf-delta {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            font-size: var(--text-sm);
+            padding: var(--sp-2) var(--sp-3);
+            background: var(--surface-base);
+            border-radius: var(--radius-sm);
+        }}
+        .pf-delta-label {{
+            color: var(--fg-muted);
+            font-size: var(--text-xs);
+        }}
+        .pf-delta-before {{
+            color: var(--fg-secondary);
+        }}
+        .pf-delta-arrow {{
+            color: var(--signal-green);
+            font-weight: 700;
+        }}
+        .pf-delta-after {{
+            color: var(--fg-primary);
+            font-weight: 600;
+        }}
+
         /* Tips Panel */
         .tips-panel {{
             background: var(--surface-overlay);
@@ -2334,6 +2419,26 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                             <div class="metric-item">
                                 <span class="metric-label">Final Score</span>
                                 <span class="metric-value" id="eval-metric-final">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Primary Failure (all tiers) -->
+                        <div class="primary-failure-card hidden" id="eval-primary-failure">
+                            <div class="pf-header">
+                                <span class="pf-title">PRIMARY FAILURE</span>
+                                <span class="pf-badge" id="pf-badge"></span>
+                            </div>
+                            <div class="pf-description" id="pf-description"></div>
+                            <div class="pf-affected" id="pf-affected"></div>
+                            <div class="pf-fix" id="pf-fix">
+                                <span class="pf-fix-label">Fastest Fix:</span>
+                                <span class="pf-fix-desc" id="pf-fix-desc"></span>
+                            </div>
+                            <div class="pf-delta hidden" id="pf-delta">
+                                <span class="pf-delta-label">If you do this:</span>
+                                <span class="pf-delta-before" id="pf-delta-before"></span>
+                                <span class="pf-delta-arrow">&rarr;</span>
+                                <span class="pf-delta-after" id="pf-delta-after"></span>
                             </div>
                         </div>
 
@@ -3421,6 +3526,53 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     }}
                 }}
 
+                // === PRIMARY FAILURE + DELTA PREVIEW (all tiers) ===
+                const pfCard = document.getElementById('eval-primary-failure');
+                const pf = data.primaryFailure;
+                if (pf && pf.description) {{
+                    // Badge: type + severity
+                    const pfBadge = document.getElementById('pf-badge');
+                    pfBadge.textContent = pf.type.replace('_', ' ') + ' \u00B7 ' + pf.severity;
+
+                    // Description
+                    document.getElementById('pf-description').textContent = pf.description;
+
+                    // Affected legs
+                    const pfAffected = document.getElementById('pf-affected');
+                    if (pf.affectedLegIds && pf.affectedLegIds.length > 0) {{
+                        pfAffected.textContent = pf.affectedLegIds.length + ' leg' + (pf.affectedLegIds.length > 1 ? 's' : '') + ' affected';
+                        pfAffected.classList.remove('hidden');
+                    }} else {{
+                        pfAffected.classList.add('hidden');
+                    }}
+
+                    // Fastest Fix
+                    const pfFixDesc = document.getElementById('pf-fix-desc');
+                    if (pf.fastestFix && pf.fastestFix.description) {{
+                        pfFixDesc.textContent = pf.fastestFix.description;
+                        document.getElementById('pf-fix').classList.remove('hidden');
+                    }} else {{
+                        document.getElementById('pf-fix').classList.add('hidden');
+                    }}
+
+                    // Delta Preview
+                    const pfDelta = document.getElementById('pf-delta');
+                    const dp = data.deltaPreview;
+                    if (dp && dp.after && dp.before) {{
+                        document.getElementById('pf-delta-before').textContent = dp.before.grade + ' (' + Math.round(dp.before.fragilityScore) + ')';
+                        document.getElementById('pf-delta-after').textContent = dp.after.grade + ' (' + Math.round(dp.after.fragilityScore) + ')';
+                        pfDelta.classList.remove('hidden');
+                    }} else {{
+                        pfDelta.classList.add('hidden');
+                    }}
+
+                    // Severity styling
+                    pfCard.className = 'primary-failure-card severity-' + pf.severity;
+                    pfCard.classList.remove('hidden');
+                }} else {{
+                    pfCard.classList.add('hidden');
+                }}
+
                 // === CONTEXT MODIFIERS (weather/injury) ===
                 const ctxMods = (data.context && data.context.impact && data.context.impact.modifiers) || [];
                 if (ctxMods.length > 0) {{
@@ -3882,6 +4034,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "interpretation": result.interpretation,
             "explain": result.explain,
             "context": result.context,
+            "primaryFailure": result.primary_failure,
+            "deltaPreview": result.delta_preview,
         }
 
         # Sprint 5: Persist evaluation for sharing
@@ -4181,6 +4335,8 @@ async def evaluate_image(
             "interpretation": result.interpretation,
             "explain": result.explain,
             "context": result.context,
+            "primaryFailure": result.primary_failure,
+            "deltaPreview": result.delta_preview,
             "image_parse": {
                 "confidence": parse_result.confidence,
                 "notes": parse_result.notes,
