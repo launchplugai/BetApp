@@ -1143,10 +1143,42 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             border-radius: var(--radius-lg);
             margin-bottom: var(--sp-6);
         }}
-        .eval-explainer {{
-            font-size: var(--text-base);
-            color: var(--fg-secondary);
+        .eval-step {{
             margin-bottom: var(--sp-4);
+            padding-bottom: var(--sp-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }}
+        .eval-step:last-of-type {{
+            border-bottom: none;
+            margin-bottom: var(--sp-3);
+            padding-bottom: 0;
+        }}
+        .eval-step-indicator {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            margin-bottom: var(--sp-3);
+        }}
+        .eval-step-number {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-surface);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }}
+        .eval-step-label {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
         }}
         .bundle-prompt {{
             border: 1px dashed var(--border-strong);
@@ -1193,11 +1225,11 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             display: flex;
             align-items: center;
             gap: var(--sp-4);
-            padding: var(--sp-4);
+            padding: var(--sp-5) var(--sp-4);
             background: var(--surface-overlay);
-            border: 1px solid var(--border-default);
+            border: 1px solid var(--border-strong);
             border-radius: var(--radius-lg);
-            margin-bottom: var(--sp-4);
+            margin-bottom: var(--sp-3);
         }}
         .signal-badge {{
             width: 56px;
@@ -1415,16 +1447,17 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             display: flex;
             align-items: center;
             gap: var(--sp-4);
-            padding: var(--sp-4);
-            background: var(--surface-raised);
-            border: 1px solid var(--border-default);
+            padding: var(--sp-5) var(--sp-4);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-strong);
             border-radius: var(--radius-md);
+            margin-bottom: var(--sp-3);
         }}
         .good-signal {{
-            padding: var(--sp-1) var(--sp-3);
+            padding: var(--sp-2) var(--sp-4);
             border-radius: var(--radius-sm);
-            font-size: var(--text-sm);
-            font-weight: 600;
+            font-size: var(--text-base);
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }}
@@ -1915,8 +1948,8 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     <div class="discover-step">
                         <div class="step-number">3</div>
                         <div class="step-content">
-                            <h3>Decide With Confidence</h3>
-                            <p>Understand exactly why a bet is strong or weak before you commit.</p>
+                            <h3>See What's Weak</h3>
+                            <p>Know which legs add risk and what to change before you commit.</p>
                         </div>
                     </div>
                 </div>
@@ -2109,50 +2142,59 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                         <span class="section-title">Evaluate Bet</span>
                     </div>
 
-                    <!-- Short Explainer -->
-                    <p class="eval-explainer">Submit your bet for analysis. We check risk, correlation, and fragility.</p>
+                    <!-- Step 1: Provide Bet -->
+                    <div class="eval-step">
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">1</span>
+                            <span class="eval-step-label">Provide bet</span>
+                        </div>
 
-                    <!-- Input Type Tabs -->
-                    <div class="input-tabs">
-                        <div class="input-tab active" data-input="text">Text</div>
-                        <div class="input-tab" data-input="image">Image</div>
-                        <div class="input-tab" data-input="bundle">Bundle</div>
-                    </div>
+                        <!-- Input Type Tabs -->
+                        <div class="input-tabs">
+                            <div class="input-tab active" data-input="text">Text</div>
+                            <div class="input-tab" data-input="image">Image</div>
+                            <div class="input-tab" data-input="bundle">Bundle</div>
+                        </div>
 
-                    <!-- Text Input Panel -->
-                    <div class="input-panel active" id="text-input-panel">
-                        <textarea class="text-input" id="eval-text-input" placeholder="Paste your bet slip text here...&#10;&#10;Example:&#10;Lakers -5.5 + Celtics ML + LeBron O27.5 pts parlay"></textarea>
-                    </div>
+                        <!-- Text Input Panel -->
+                        <div class="input-panel active" id="text-input-panel">
+                            <textarea class="text-input" id="eval-text-input" placeholder="Paste your bet slip text here...&#10;&#10;Example:&#10;Lakers -5.5 + Celtics ML + LeBron O27.5 pts parlay"></textarea>
+                        </div>
 
-                    <!-- Image Input Panel -->
-                    <div class="input-panel" id="image-input-panel">
-                        <div class="file-upload-area" id="file-upload-area">
-                            <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp">
-                            <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
-                            <div class="file-upload-text" id="file-upload-text">
-                                Click or drag to upload bet slip image<br>
-                                <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                        <!-- Image Input Panel -->
+                        <div class="input-panel" id="image-input-panel">
+                            <div class="file-upload-area" id="file-upload-area">
+                                <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp">
+                                <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
+                                <div class="file-upload-text" id="file-upload-text">
+                                    Click or drag to upload bet slip image<br>
+                                    <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                                </div>
+                                <div class="file-selected hidden" id="file-selected">
+                                    <div class="file-selected-icon">&#9989;</div>
+                                    <div class="file-selected-name" id="file-name"></div>
+                                    <button type="button" class="clear-file-btn" id="clear-file">Remove</button>
+                                </div>
                             </div>
-                            <div class="file-selected hidden" id="file-selected">
-                                <div class="file-selected-icon">&#9989;</div>
-                                <div class="file-selected-name" id="file-name"></div>
-                                <button type="button" class="clear-file-btn" id="clear-file">Remove</button>
+                            <div class="image-error hidden" id="image-error"></div>
+                        </div>
+
+                        <!-- Bundle Input Panel -->
+                        <div class="input-panel" id="bundle-input-panel">
+                            <div class="bundle-prompt">
+                                <p>Build a custom parlay using the Builder.</p>
+                                <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Go to Builder</button>
                             </div>
                         </div>
-                        <div class="image-error hidden" id="image-error"></div>
                     </div>
 
-                    <!-- Bundle Input Panel -->
-                    <div class="input-panel" id="bundle-input-panel">
-                        <div class="bundle-prompt">
-                            <p>Build a custom parlay using the Builder.</p>
-                            <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Go to Builder</button>
+                    <!-- Step 2: Choose Depth -->
+                    <div class="eval-step">
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">2</span>
+                            <span class="eval-step-label">Choose depth</span>
                         </div>
-                    </div>
 
-                    <!-- Tier Selector -->
-                    <div class="tier-selector-wrapper" style="margin-top: 1rem;">
-                        <div class="tier-selector-label">Analysis detail level</div>
                         <div class="tier-selector">
                             <div class="tier-option">
                                 <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
@@ -2172,19 +2214,27 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                                 <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
                                 <label for="eval-tier-best">
                                     <div class="tier-name">BEST</div>
-                                    <div class="tier-desc">+ Full Analysis</div>
+                                    <div class="tier-desc">Full Analysis</div>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
-                        Evaluate
-                    </button>
+                    <!-- Step 3: Analyze -->
+                    <div class="eval-step">
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">3</span>
+                            <span class="eval-step-label">Analyze</span>
+                        </div>
 
-                    <!-- Disabled Builder CTA (shown until evaluation exists) -->
+                        <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
+                            Evaluate
+                        </button>
+                    </div>
+
+                    <!-- Builder CTA: response to evaluation, not destination -->
                     <button type="button" class="secondary-btn builder-cta disabled" id="builder-cta-btn" disabled title="Evaluate a bet first">
-                        Build Custom Parlay
+                        Improve This Bet
                     </button>
                 </div>
 
@@ -2289,7 +2339,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
 
                         <!-- Post-Result Actions -->
                         <div class="post-actions" id="eval-post-actions">
-                            <button type="button" class="action-btn action-improve" id="eval-action-improve" onclick="switchToTab('builder')">Improve in Builder</button>
+                            <button type="button" class="action-btn action-improve" id="eval-action-improve" onclick="switchToTab('builder')">Improve This Bet</button>
                             <button type="button" class="action-btn action-reeval" id="eval-action-reeval">Re-Evaluate</button>
                             <button type="button" class="action-btn action-save" id="eval-action-save">Save</button>
                         </div>
@@ -2307,7 +2357,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         <div class="tab-content {history_active}" id="tab-history">
             <div class="history-section">
                 <div class="section-header">
-                    <span class="section-title">Evaluation History</span>
+                    <span class="section-title">Past Decisions</span>
                 </div>
 
                 <div id="history-content">

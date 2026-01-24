@@ -106,11 +106,11 @@ class TestAppPage:
         # Check for login hint (anonymous users)
         assert "Log in to save history" in response.text
 
-    def test_tier_selector_has_detail_label(self, client):
-        """Tier selector shows 'detail level' label without billing language."""
+    def test_tier_selector_in_step_lane(self, client):
+        """Tier selector is in step 2 of the evaluation lane."""
         response = client.get("/app")
-        assert "tier-selector-label" in response.text
-        assert "Analysis detail level" in response.text
+        assert "tier-selector" in response.text
+        assert "Choose depth" in response.text
 
     def test_image_upload_panel_exists(self, client):
         """Image upload panel exists with upload UI."""
@@ -183,11 +183,13 @@ class TestUIFlowLock:
         assert "Go to Builder" in response.text
         assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
 
-    def test_evaluate_has_explainer(self, client):
-        """Evaluate tab has short explainer text."""
+    def test_evaluate_has_step_lane(self, client):
+        """Evaluate tab has step lane (1→2→3)."""
         response = client.get("/app")
-        assert "eval-explainer" in response.text
-        assert "Submit your bet for analysis" in response.text
+        assert "eval-step-number" in response.text
+        assert "Provide bet" in response.text
+        assert "Choose depth" in response.text
+        assert "Analyze" in response.text
 
     # --- Post-Evaluation State ---
 
@@ -209,12 +211,10 @@ class TestUIFlowLock:
     # --- Tier Selector ---
 
     def test_tier_label_no_pricing(self, client):
-        """Tier selector uses 'Analysis detail level', not pricing language."""
+        """Tier selector step label uses neutral language, not pricing."""
         response = client.get("/app")
-        assert "Analysis detail level" in response.text
+        assert "Choose depth" in response.text
         # Must NOT contain pricing language in main app flow
-        # (Account page is separate and allowed to have pricing)
-        # Check that the upgrade CTA in the builder results doesn't have pricing
         assert "$19.99" not in response.text
 
     def test_no_unlock_with_price(self, client):
@@ -381,7 +381,7 @@ class TestCoreLoopReinforcement:
     def test_improve_routes_to_builder(self, client):
         """Improve button switches to Builder tab."""
         response = client.get("/app")
-        assert "Improve in Builder" in response.text
+        assert "Improve This Bet" in response.text
         assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
 
     def test_reeval_button_text(self, client):
