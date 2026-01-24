@@ -195,12 +195,12 @@ def _get_landing_page_html() -> str:
 </html>"""
 
 
-def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
+def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
     """Generate app page HTML with tabbed interface.
 
     Args:
         user: Authenticated user object or None
-        active_tab: Active tab (builder, evaluate, history)
+        active_tab: Active tab (discover, evaluate, builder, history)
     """
     # User info for header
     user_email = user.email if user else None
@@ -208,8 +208,9 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
     is_logged_in = user is not None
 
     # Tab active states
-    builder_active = "active" if active_tab == "builder" else ""
+    discover_active = "active" if active_tab == "discover" else ""
     evaluate_active = "active" if active_tab == "evaluate" else ""
+    builder_active = "active" if active_tab == "builder" else ""
     history_active = "active" if active_tab == "history" else ""
 
     # User section in header (tier badge + email, both clickable to account)
@@ -244,16 +245,88 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DNA Bet Engine</title>
     <style>
+        /* ============================================
+           DESIGN SYSTEM: Precision & Density (Dark)
+           Based on interface-design/system-precision
+           Base unit: 4px | Depth: borders-only
+           ============================================ */
+        :root {{
+            /* Spacing (4px base) */
+            --sp-1: 4px;
+            --sp-2: 8px;
+            --sp-3: 12px;
+            --sp-4: 16px;
+            --sp-5: 20px;
+            --sp-6: 24px;
+            --sp-8: 32px;
+            --sp-12: 48px;
+
+            /* Surfaces (darkest to lightest) */
+            --surface-base: #0a0a0a;
+            --surface-raised: #111111;
+            --surface-overlay: #1a1a1a;
+            --surface-hover: #222222;
+
+            /* Foreground */
+            --fg-primary: #e8e8e8;
+            --fg-secondary: #999999;
+            --fg-muted: #666666;
+            --fg-faint: #444444;
+
+            /* Border */
+            --border-default: rgba(255, 255, 255, 0.08);
+            --border-subtle: rgba(255, 255, 255, 0.05);
+            --border-strong: rgba(255, 255, 255, 0.15);
+
+            /* Accent */
+            --accent: #4a9eff;
+            --accent-hover: #3a8eef;
+            --accent-surface: #1a2a3a;
+
+            /* Signals */
+            --signal-blue: #4a9eff;
+            --signal-green: #4ade80;
+            --signal-yellow: #fbbf24;
+            --signal-red: #ef4444;
+
+            /* Semantic */
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --danger: #ef4444;
+            --info: #4a9eff;
+
+            /* Radius (sharp, technical) */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+
+            /* Typography */
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            --text-xs: 11px;
+            --text-sm: 12px;
+            --text-base: 14px;
+            --text-md: 16px;
+            --text-lg: 18px;
+            --text-xl: 24px;
+
+            /* Transitions */
+            --transition-fast: 150ms ease;
+        }}
+
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
-            color: #e0e0e0;
+            font-family: var(--font-sans);
+            background: var(--surface-base);
+            color: var(--fg-primary);
             min-height: 100vh;
-            padding: 1.5rem;
+            padding: var(--sp-6);
+            font-size: var(--text-base);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }}
         .container {{
-            max-width: 1000px;
+            max-width: 960px;
             margin: 0 auto;
         }}
         header {{
@@ -261,119 +334,117 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #333;
+            padding-bottom: var(--sp-4);
+            border-bottom: 1px solid var(--border-default);
         }}
         .header-left {{
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: var(--sp-3);
         }}
-        h1 {{ font-size: 1.5rem; color: #fff; }}
+        h1 {{ font-size: var(--text-lg); color: var(--fg-primary); font-weight: 600; }}
         header a {{
-            color: #4a9eff;
+            color: var(--accent);
             text-decoration: none;
-            font-size: 0.875rem;
+            font-size: var(--text-sm);
         }}
         .user-info-header {{
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: var(--sp-3);
             text-decoration: none;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            transition: background 0.2s;
+            padding: var(--sp-1) var(--sp-2);
+            border-radius: var(--radius-sm);
+            transition: background var(--transition-fast);
         }}
         .user-info-header:hover {{
-            background: #1a1a1a;
+            background: var(--surface-overlay);
         }}
         .account-email {{
-            color: #888;
-            font-size: 0.875rem;
+            color: var(--fg-secondary);
+            font-size: var(--text-sm);
         }}
         .tier-badge {{
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
+            padding: var(--sp-1) var(--sp-2);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
             font-weight: 600;
             text-transform: uppercase;
         }}
-        .tier-badge.good {{ background: #1a2a3a; color: #4a9eff; }}
-        .tier-badge.better {{ background: #2a2a1a; color: #f39c12; }}
-        .tier-badge.best {{ background: #1a2a1a; color: #2ecc71; }}
+        .tier-badge.good {{ background: var(--accent-surface); color: var(--accent); }}
+        .tier-badge.better {{ background: rgba(251, 191, 36, 0.1); color: var(--signal-yellow); }}
+        .tier-badge.best {{ background: rgba(74, 222, 128, 0.1); color: var(--signal-green); }}
         .login-link {{
-            padding: 0.5rem 1rem;
-            border: 1px solid #4a9eff;
-            border-radius: 4px;
+            padding: var(--sp-2) var(--sp-4);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
         }}
 
         /* Orientation Banner */
         .orientation-banner {{
-            background: linear-gradient(135deg, #1a1a2a 0%, #1a2a2a 100%);
-            border: 1px solid #2a3a4a;
-            border-radius: 6px;
-            padding: 0.75rem 1rem;
-            margin: 1rem 0 0.5rem;
-            font-size: 0.9rem;
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-3) var(--sp-4);
+            margin: var(--sp-4) 0 var(--sp-2);
+            font-size: var(--text-base);
         }}
         .orientation-main {{
-            color: #ccc;
+            color: var(--fg-secondary);
         }}
         .orientation-login {{
             display: block;
-            margin-top: 0.25rem;
-            font-size: 0.8rem;
-            color: #888;
+            margin-top: var(--sp-1);
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
         }}
         .orientation-login a {{
-            color: #4a9eff;
+            color: var(--accent);
         }}
 
         /* Upgrade CTA */
         .upgrade-cta {{
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: linear-gradient(135deg, #2a1a3a 0%, #1a2a3a 100%);
-            border: 1px solid #f39c12;
-            border-radius: 4px;
-            color: #f39c12;
+            gap: var(--sp-2);
+            padding: var(--sp-2) var(--sp-4);
+            background: transparent;
+            border: 1px solid var(--signal-yellow);
+            border-radius: var(--radius-sm);
+            color: var(--signal-yellow);
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: var(--text-sm);
             font-weight: 500;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
         }}
         .upgrade-cta:hover {{
-            background: #f39c12;
-            color: #111;
-        }}
-        .upgrade-cta-inline {{
-            margin-top: 0.75rem;
-            text-align: center;
+            background: var(--signal-yellow);
+            color: var(--surface-base);
         }}
 
         /* Navigation Tabs */
         .nav-tabs {{
             display: flex;
             gap: 0;
-            margin: 1rem 0;
-            border-bottom: 1px solid #333;
+            margin: var(--sp-4) 0;
+            border-bottom: 1px solid var(--border-default);
         }}
         .nav-tab {{
-            padding: 0.75rem 1.5rem;
-            color: #888;
+            padding: var(--sp-3) var(--sp-5);
+            color: var(--fg-muted);
             text-decoration: none;
+            font-size: var(--text-base);
+            font-weight: 500;
             border-bottom: 2px solid transparent;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
             cursor: pointer;
         }}
         .nav-tab:hover {{
-            color: #e0e0e0;
+            color: var(--fg-primary);
         }}
         .nav-tab.active {{
-            color: #f39c12;
-            border-bottom-color: #f39c12;
+            color: var(--accent);
+            border-bottom-color: var(--accent);
         }}
 
         /* Tab Content */
@@ -387,7 +458,7 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         .main-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+            gap: var(--sp-6);
         }}
         @media (max-width: 768px) {{
             .main-grid {{ grid-template-columns: 1fr; }}
@@ -395,56 +466,57 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
         /* Builder Section */
         .builder-section {{
-            background: #111;
-            padding: 1.25rem;
-            border-radius: 8px;
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            padding: var(--sp-4);
+            border-radius: var(--radius-lg);
         }}
         .section-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: var(--sp-4);
         }}
         .section-title {{
-            font-size: 1.1rem;
+            font-size: var(--text-md);
             font-weight: 600;
-            color: #fff;
+            color: var(--fg-primary);
         }}
         .leg-count {{
-            font-size: 0.875rem;
-            color: #888;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
         }}
 
         /* Sport Selector */
         .sport-selector {{
-            margin-bottom: 1rem;
+            margin-bottom: var(--sp-4);
         }}
         .sport-selector select {{
             width: 100%;
-            padding: 0.75rem;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            color: #e0e0e0;
-            font-size: 0.9rem;
+            padding: var(--sp-2) var(--sp-3);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--fg-primary);
+            font-size: var(--text-base);
         }}
         .sport-selector select:focus {{
             outline: none;
-            border-color: #4a9eff;
+            border-color: var(--accent);
         }}
 
         /* Legs Container */
         .legs-container {{
             max-height: 400px;
             overflow-y: auto;
-            margin-bottom: 1rem;
+            margin-bottom: var(--sp-4);
         }}
         .leg-card {{
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-3);
             position: relative;
         }}
         .leg-card:last-child {{ margin-bottom: 0; }}
@@ -452,30 +524,30 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
+            margin-bottom: var(--sp-3);
         }}
         .leg-number {{
             font-weight: 600;
-            font-size: 0.875rem;
-            color: #4a9eff;
+            font-size: var(--text-sm);
+            color: var(--accent);
         }}
         .remove-leg {{
             background: transparent;
             border: none;
-            color: #ff4a4a;
+            color: var(--danger);
             cursor: pointer;
-            font-size: 1.25rem;
+            font-size: var(--text-md);
             padding: 0;
             width: auto;
             line-height: 1;
         }}
-        .remove-leg:hover {{ color: #ff6b6b; }}
-        .remove-leg:disabled {{ color: #444; cursor: not-allowed; }}
+        .remove-leg:hover {{ color: var(--signal-red); }}
+        .remove-leg:disabled {{ color: var(--fg-faint); cursor: not-allowed; }}
 
         .leg-fields {{
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
+            gap: var(--sp-2);
         }}
         .leg-field {{
             display: flex;
@@ -485,65 +557,65 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             grid-column: 1 / -1;
         }}
         .leg-field label {{
-            font-size: 0.7rem;
-            color: #888;
-            margin-bottom: 0.25rem;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
+            margin-bottom: var(--sp-1);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }}
         .leg-field input, .leg-field select {{
-            padding: 0.5rem;
-            background: #0a0a0a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            color: #e0e0e0;
-            font-size: 0.875rem;
+            padding: var(--sp-2);
+            background: var(--surface-base);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--fg-primary);
+            font-size: var(--text-base);
         }}
         .leg-field input:focus, .leg-field select:focus {{
             outline: none;
-            border-color: #4a9eff;
+            border-color: var(--accent);
         }}
         .leg-field input::placeholder {{
-            color: #555;
+            color: var(--fg-faint);
         }}
 
         /* Add Leg Button */
         .add-leg-btn {{
             width: 100%;
-            padding: 0.75rem;
+            padding: var(--sp-3);
             background: transparent;
-            border: 2px dashed #333;
-            border-radius: 6px;
-            color: #888;
-            font-size: 0.875rem;
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--radius-md);
+            color: var(--fg-muted);
+            font-size: var(--text-base);
             cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 1rem;
+            transition: all var(--transition-fast);
+            margin-bottom: var(--sp-4);
         }}
         .add-leg-btn:hover {{
-            border-color: #4a9eff;
-            color: #4a9eff;
+            border-color: var(--accent);
+            color: var(--accent);
         }}
         .add-leg-btn:disabled {{
-            border-color: #222;
-            color: #444;
+            border-color: var(--border-subtle);
+            color: var(--fg-faint);
             cursor: not-allowed;
         }}
 
         /* Tier Selector */
         .tier-selector-wrapper {{
-            margin-bottom: 1rem;
+            margin-bottom: var(--sp-4);
         }}
         .tier-selector-label {{
-            font-size: 0.7rem;
-            color: #666;
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
         }}
         .tier-selector {{
             display: flex;
-            gap: 0.5rem;
+            gap: var(--sp-2);
         }}
         .tier-option {{
             flex: 1;
@@ -555,136 +627,141 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         }}
         .tier-option label {{
             display: block;
-            padding: 0.625rem 0.5rem;
-            background: #1a1a1a;
-            border: 2px solid #333;
-            border-radius: 4px;
+            padding: var(--sp-2) var(--sp-2);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
         }}
         .tier-option input:checked + label {{
-            border-color: #4a9eff;
-            background: #1a2a3a;
+            border-color: var(--accent);
+            background: var(--accent-surface);
         }}
         .tier-option label:hover {{
-            border-color: #555;
+            border-color: var(--border-strong);
         }}
         .tier-name {{
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: var(--text-sm);
         }}
         .tier-desc {{
-            font-size: 0.65rem;
-            color: #888;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
         }}
 
         /* Submit Button */
         .submit-btn {{
             width: 100%;
-            padding: 1rem;
-            background: #4a9eff;
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--accent);
             border: none;
-            border-radius: 4px;
-            color: #000;
-            font-size: 1rem;
+            border-radius: var(--radius-sm);
+            color: var(--surface-base);
+            font-size: var(--text-base);
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background var(--transition-fast);
         }}
-        .submit-btn:hover {{ background: #3a8eef; }}
+        .submit-btn:hover {{ background: var(--accent-hover); }}
         .submit-btn:disabled {{
-            background: #333;
-            color: #666;
+            background: var(--surface-overlay);
+            color: var(--fg-muted);
             cursor: not-allowed;
         }}
 
         /* Results Section */
         .results-section {{
-            background: #111;
-            padding: 1.25rem;
-            border-radius: 8px;
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            padding: var(--sp-4);
+            border-radius: var(--radius-lg);
         }}
         .results-placeholder {{
             text-align: center;
-            color: #555;
-            padding: 3rem 1rem;
+            color: var(--fg-faint);
+            padding: var(--sp-12) var(--sp-4);
         }}
         .results-placeholder p {{
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
         }}
 
         /* Grade Display */
         .grade-display {{
             text-align: center;
-            padding: 1.5rem;
-            background: #1a1a1a;
-            border-radius: 8px;
-            margin-bottom: 1rem;
+            padding: var(--sp-6);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--sp-4);
         }}
         .grade-label {{
-            font-size: 0.75rem;
-            color: #888;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
         }}
         .grade-value {{
-            font-size: 3rem;
+            font-size: var(--text-xl);
             font-weight: 700;
             line-height: 1;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
+            font-family: var(--font-mono);
         }}
-        .grade-value.low {{ color: #4ade80; }}
-        .grade-value.medium {{ color: #fbbf24; }}
-        .grade-value.high {{ color: #f97316; }}
-        .grade-value.critical {{ color: #ef4444; }}
+        .grade-value.low {{ color: var(--signal-green); }}
+        .grade-value.medium {{ color: var(--signal-yellow); }}
+        .grade-value.high {{ color: var(--signal-yellow); }}
+        .grade-value.critical {{ color: var(--signal-red); }}
         .grade-bucket {{
-            font-size: 0.875rem;
+            font-size: var(--text-sm);
             font-weight: 600;
             text-transform: uppercase;
         }}
 
         /* Verdict */
         .verdict-panel {{
-            background: #1a1a1a;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
         }}
         .verdict-panel h3 {{
-            font-size: 0.75rem;
-            color: #888;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
         }}
         .verdict-text {{
-            font-size: 1rem;
+            font-size: var(--text-base);
             line-height: 1.5;
         }}
-        .action-accept {{ color: #4ade80; }}
-        .action-reduce {{ color: #fbbf24; }}
-        .action-avoid {{ color: #ef4444; }}
+        .action-accept {{ color: var(--signal-green); }}
+        .action-reduce {{ color: var(--signal-yellow); }}
+        .action-avoid {{ color: var(--signal-red); }}
 
         /* Insights Panel */
         .insights-panel {{
-            background: #1a1a1a;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
         }}
         .insights-panel h3 {{
-            font-size: 0.75rem;
-            color: #888;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.75rem;
+            margin-bottom: var(--sp-3);
         }}
         .insight-item {{
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #333;
-            font-size: 0.875rem;
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-default);
+            font-size: var(--text-sm);
         }}
         .insight-item:last-child {{ border-bottom: none; }}
 
@@ -699,7 +776,7 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(10, 10, 10, 0.8);
+            background: rgba(10, 10, 10, 0.85);
             backdrop-filter: blur(4px);
             display: flex;
             flex-direction: column;
@@ -708,35 +785,35 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             z-index: 10;
         }}
         .locked-icon {{
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            font-size: var(--text-lg);
+            margin-bottom: var(--sp-2);
         }}
         .locked-text {{
-            font-size: 0.75rem;
-            color: #888;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
         }}
 
         /* Decision Summary (Always shown) */
         .decision-summary {{
-            background: linear-gradient(135deg, #1a2a3a 0%, #1a1a2a 100%);
-            border: 1px solid #2a3a4a;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
         }}
         .decision-summary h3 {{
-            font-size: 0.7rem;
-            color: #4a9eff;
+            font-size: var(--text-xs);
+            color: var(--accent);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 0.75rem;
+            margin-bottom: var(--sp-3);
         }}
         .decision-verdict {{
-            font-size: 1rem;
+            font-size: var(--text-base);
             line-height: 1.4;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid #2a3a4a;
+            margin-bottom: var(--sp-3);
+            padding-bottom: var(--sp-3);
+            border-bottom: 1px solid var(--border-default);
         }}
         .decision-bullets {{
             list-style: none;
@@ -744,11 +821,11 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             margin: 0;
         }}
         .decision-bullets li {{
-            font-size: 0.8rem;
-            padding: 0.35rem 0;
-            padding-left: 1.25rem;
+            font-size: var(--text-sm);
+            padding: var(--sp-1) 0;
+            padding-left: var(--sp-5);
             position: relative;
-            color: #bbb;
+            color: var(--fg-secondary);
         }}
         .decision-bullets li::before {{
             content: '';
@@ -759,100 +836,101 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             height: 6px;
             border-radius: 50%;
         }}
-        .bullet-risk::before {{ background: #ef4444; }}
-        .bullet-improve::before {{ background: #4ade80; }}
-        .bullet-unknown::before {{ background: #888; }}
+        .bullet-risk::before {{ background: var(--danger); }}
+        .bullet-improve::before {{ background: var(--success); }}
+        .bullet-unknown::before {{ background: var(--fg-secondary); }}
 
         /* Why Section */
         .why-section {{
-            margin-bottom: 1rem;
+            margin-bottom: var(--sp-4);
         }}
         .why-section-title {{
-            font-size: 0.7rem;
-            color: #888;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
         }}
         .why-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
+            gap: var(--sp-2);
         }}
         @media (max-width: 500px) {{
             .why-grid {{ grid-template-columns: 1fr; }}
         }}
         .why-panel {{
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
-            padding: 0.75rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-3);
             min-height: 80px;
         }}
         .why-panel h4 {{
-            font-size: 0.7rem;
-            color: #888;
+            font-size: var(--text-xs);
+            color: var(--fg-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--sp-2);
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: var(--sp-1);
         }}
         .why-panel h4 .icon {{
-            font-size: 0.9rem;
+            font-size: var(--text-base);
         }}
         .why-panel-content {{
-            font-size: 0.8rem;
+            font-size: var(--text-sm);
             line-height: 1.4;
-            color: #ccc;
+            color: var(--fg-primary);
         }}
         .why-panel-content .metric {{
             font-weight: 600;
             color: #fff;
         }}
         .why-panel-content .detail {{
-            color: #888;
-            font-size: 0.75rem;
+            color: var(--fg-secondary);
+            font-size: var(--text-sm);
         }}
 
         /* Alerts (BEST only) */
         .alerts-panel {{
-            background: #2a1a1a;
-            border: 1px solid #4a2a2a;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
         }}
         .alerts-panel h3 {{
-            font-size: 0.75rem;
-            color: #ef4444;
+            font-size: var(--text-xs);
+            color: var(--signal-red);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 0.75rem;
+            margin-bottom: var(--sp-3);
         }}
         .alert-item {{
-            font-size: 0.875rem;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #4a2a2a;
+            font-size: var(--text-sm);
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid rgba(239, 68, 68, 0.15);
         }}
         .alert-item:last-child {{ border-bottom: none; }}
 
         /* Error Panel */
         .error-panel {{
-            background: #2a1a1a;
-            border: 1px solid #ff4a4a;
-            border-radius: 6px;
-            padding: 1rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--danger);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
         }}
         .error-panel h3 {{
-            color: #ff4a4a;
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
+            color: var(--danger);
+            font-size: var(--text-base);
+            font-weight: 600;
+            margin-bottom: var(--sp-2);
         }}
         .error-text {{
-            font-size: 0.875rem;
-            color: #e0e0e0;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
         }}
 
         /* Hidden utility */
@@ -860,30 +938,30 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
         /* Context Panel Styles (Sprint 3) */
         .context-panel {{
-            border: 1px solid #2a5a2a;
-            background: #0a1a0a;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            background: rgba(74, 222, 128, 0.03);
         }}
         .context-panel h3 {{
-            color: #4a9e4a;
+            color: var(--signal-green);
         }}
         .context-header {{
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #333;
+            margin-bottom: var(--sp-3);
+            padding-bottom: var(--sp-2);
+            border-bottom: 1px solid var(--border-default);
         }}
         .context-source {{
-            font-size: 0.75rem;
-            color: #888;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
         }}
         .context-summary {{
-            background: #1a2a1a;
-            padding: 0.75rem;
-            border-radius: 4px;
-            margin-bottom: 0.75rem;
-            font-size: 0.9rem;
+            background: rgba(74, 222, 128, 0.05);
+            padding: var(--sp-3);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--sp-3);
+            font-size: var(--text-base);
         }}
         .context-modifiers {{
             list-style: none;
@@ -891,121 +969,121 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             margin: 0;
         }}
         .context-modifier {{
-            padding: 0.5rem;
-            margin-bottom: 0.5rem;
-            background: #1a1a1a;
-            border-radius: 4px;
-            border-left: 3px solid #666;
+            padding: var(--sp-2);
+            margin-bottom: var(--sp-2);
+            background: var(--surface-overlay);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--fg-muted);
         }}
         .context-modifier.negative {{
-            border-left-color: #e74c3c;
+            border-left-color: var(--signal-red);
         }}
         .context-modifier.positive {{
-            border-left-color: #2ecc71;
+            border-left-color: var(--signal-green);
         }}
         .context-modifier-reason {{
-            font-size: 0.85rem;
+            font-size: var(--text-sm);
         }}
         .context-modifier-adjustment {{
-            font-size: 0.75rem;
-            color: #888;
-            margin-top: 0.25rem;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            margin-top: var(--sp-1);
         }}
         .context-missing {{
-            font-size: 0.8rem;
-            color: #f39c12;
-            margin-top: 0.5rem;
-            padding: 0.5rem;
-            background: #2a2a1a;
-            border-radius: 4px;
+            font-size: var(--text-sm);
+            color: var(--signal-yellow);
+            margin-top: var(--sp-2);
+            padding: var(--sp-2);
+            background: rgba(251, 191, 36, 0.05);
+            border-radius: var(--radius-sm);
         }}
         .context-entities {{
-            font-size: 0.75rem;
-            color: #888;
-            margin-top: 0.5rem;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            margin-top: var(--sp-2);
         }}
 
         /* Alerts Feed Styles (Sprint 4) */
         .alerts-feed {{
-            border: 1px solid #e74c3c;
-            background: #1a0a0a;
-            margin-bottom: 1rem;
+            border: 1px solid var(--signal-red);
+            background: rgba(239, 68, 68, 0.03);
+            margin-bottom: var(--sp-4);
         }}
         .alerts-feed h3 {{
-            color: #e74c3c;
+            color: var(--signal-red);
         }}
         .alerts-feed.locked {{
-            border-color: #444;
-            background: #1a1a1a;
+            border-color: var(--fg-faint);
+            background: var(--surface-overlay);
         }}
         .alerts-feed.locked h3 {{
-            color: #666;
+            color: var(--fg-muted);
         }}
         .alert-item {{
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            background: #1a1a1a;
-            border-radius: 4px;
-            border-left: 3px solid #e74c3c;
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-2);
+            background: var(--surface-overlay);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--signal-red);
         }}
         .alert-item.warning {{
-            border-left-color: #f39c12;
+            border-left-color: var(--signal-yellow);
         }}
         .alert-item.info {{
-            border-left-color: #3498db;
+            border-left-color: var(--accent);
         }}
         .alert-title {{
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            margin-bottom: var(--sp-1);
         }}
         .alert-message {{
-            font-size: 0.85rem;
-            color: #aaa;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
         }}
         .alert-meta {{
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 0.5rem;
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+            margin-top: var(--sp-2);
         }}
         .alerts-empty {{
-            color: #666;
+            color: var(--fg-muted);
             font-style: italic;
-            padding: 0.5rem;
+            padding: var(--sp-2);
         }}
         .alerts-locked-message {{
-            color: #888;
-            font-size: 0.9rem;
-            padding: 0.5rem;
+            color: var(--fg-secondary);
+            font-size: var(--text-base);
+            padding: var(--sp-2);
         }}
 
         /* Share Button Styles (Sprint 5) */
         .share-section {{
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #333;
+            margin-top: var(--sp-4);
+            padding-top: var(--sp-4);
+            border-top: 1px solid var(--border-default);
             text-align: center;
         }}
         .share-btn {{
-            background: #3498db;
-            color: white;
+            background: var(--accent);
+            color: var(--surface-base);
             border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 4px;
+            padding: var(--sp-2) var(--sp-6);
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: var(--text-base);
         }}
         .share-btn:hover {{
-            background: #2980b9;
+            background: var(--accent-hover);
         }}
         .share-btn:disabled {{
-            background: #555;
+            background: var(--fg-faint);
             cursor: not-allowed;
         }}
         .share-link {{
-            margin-top: 0.75rem;
-            padding: 0.5rem;
-            background: #1a1a1a;
-            border-radius: 4px;
+            margin-top: var(--sp-3);
+            padding: var(--sp-2);
+            background: var(--surface-overlay);
+            border-radius: var(--radius-sm);
             display: none;
         }}
         .share-link.visible {{
@@ -1013,75 +1091,526 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         }}
         .share-link input {{
             width: 100%;
-            padding: 0.5rem;
-            background: #0a0a0a;
-            border: 1px solid #333;
-            color: #eee;
-            border-radius: 4px;
-            font-family: monospace;
+            padding: var(--sp-2);
+            background: var(--surface-base);
+            border: 1px solid var(--border-default);
+            color: var(--fg-primary);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
         }}
         .share-link .copy-btn {{
-            margin-top: 0.5rem;
-            padding: 0.25rem 1rem;
-            font-size: 0.8rem;
+            margin-top: var(--sp-2);
+            padding: var(--sp-1) var(--sp-4);
+            font-size: var(--text-sm);
         }}
 
         /* Upgrade Nudge Styles (Sprint 5) */
         .upgrade-nudge {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border: 1px solid #f39c12;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-top: 1rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--signal-yellow);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-top: var(--sp-4);
             text-align: center;
         }}
         .upgrade-nudge h4 {{
-            color: #f39c12;
-            margin: 0 0 0.5rem;
-            font-size: 0.95rem;
+            color: var(--signal-yellow);
+            margin: 0 0 var(--sp-2);
+            font-size: var(--text-base);
         }}
         .upgrade-nudge p {{
-            color: #aaa;
-            font-size: 0.85rem;
-            margin: 0 0 0.75rem;
+            color: var(--fg-secondary);
+            font-size: var(--text-sm);
+            margin: 0 0 var(--sp-3);
         }}
         .upgrade-nudge .upgrade-btn {{
-            background: #f39c12;
-            color: #111;
+            background: var(--signal-yellow);
+            color: var(--surface-base);
             border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 4px;
+            padding: var(--sp-2) var(--sp-6);
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-weight: 600;
         }}
         .upgrade-nudge .upgrade-btn:hover {{
-            background: #e67e22;
+            opacity: 0.9;
         }}
         /* Evaluate Tab Styles */
         .evaluate-section {{
-            background: #111;
-            padding: 1.25rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            padding: var(--sp-4);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--sp-6);
         }}
+        .eval-step {{
+            margin-bottom: var(--sp-4);
+            padding-bottom: var(--sp-4);
+            border-bottom: 1px solid var(--border-subtle);
+        }}
+        .eval-step:last-of-type {{
+            border-bottom: none;
+            margin-bottom: var(--sp-3);
+            padding-bottom: 0;
+        }}
+        .eval-step-indicator {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            margin-bottom: var(--sp-3);
+        }}
+        .eval-step-number {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-surface);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }}
+        .eval-step-label {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }}
+        .bundle-prompt {{
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--radius-lg);
+            padding: var(--sp-8);
+            text-align: center;
+            background: var(--surface-overlay);
+        }}
+        .bundle-prompt p {{
+            color: var(--fg-secondary);
+            margin-bottom: var(--sp-4);
+        }}
+        .secondary-btn {{
+            padding: var(--sp-3) var(--sp-6);
+            background: transparent;
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            color: var(--accent);
+            font-size: var(--text-base);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }}
+        .secondary-btn:hover {{
+            background: var(--accent);
+            color: var(--surface-base);
+        }}
+        .secondary-btn.disabled {{
+            border-color: var(--fg-faint);
+            color: var(--fg-faint);
+            cursor: not-allowed;
+        }}
+        .secondary-btn.disabled:hover {{
+            background: transparent;
+            color: var(--fg-faint);
+        }}
+        .builder-cta {{
+            width: 100%;
+            margin-top: var(--sp-3);
+        }}
+
+        /* Signal System */
+        .signal-display {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-4);
+            padding: var(--sp-5) var(--sp-4);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--sp-3);
+        }}
+        .signal-badge {{
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: var(--text-xs);
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .signal-badge.signal-blue {{ background: transparent; color: var(--signal-blue); border: 2px solid var(--signal-blue); }}
+        .signal-badge.signal-green {{ background: transparent; color: var(--signal-green); border: 2px solid var(--signal-green); }}
+        .signal-badge.signal-yellow {{ background: transparent; color: var(--signal-yellow); border: 2px solid var(--signal-yellow); }}
+        .signal-badge.signal-red {{ background: transparent; color: var(--signal-red); border: 2px solid var(--signal-red); }}
+        .signal-score {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .signal-score-value {{
+            font-size: var(--text-xl);
+            font-weight: 700;
+            color: var(--fg-primary);
+            font-family: var(--font-mono);
+        }}
+        .signal-score-label {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        /* Verdict Bar */
+        .verdict-bar {{
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--sp-4);
+            font-size: var(--text-base);
+        }}
+        .verdict-action {{
+            font-weight: 700;
+            margin-right: var(--sp-2);
+        }}
+        .verdict-action.action-accept {{ color: var(--signal-green); }}
+        .verdict-action.action-reduce {{ color: var(--signal-yellow); }}
+        .verdict-action.action-avoid {{ color: var(--signal-red); }}
+        .verdict-reason {{
+            color: var(--fg-secondary);
+        }}
+
+        /* Metrics Grid */
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--sp-2);
+            margin-bottom: var(--sp-4);
+        }}
+        .metric-item {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-subtle);
+            padding: var(--sp-3);
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+        }}
+        .metric-label {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-1);
+        }}
+        .metric-value {{
+            font-size: var(--text-md);
+            font-weight: 600;
+            color: var(--fg-primary);
+            font-family: var(--font-mono);
+        }}
+
+        /* Tips Panel */
+        .tips-panel {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-left: 3px solid var(--signal-green);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .tips-panel h3 {{
+            font-size: var(--text-xs);
+            color: var(--signal-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-2);
+        }}
+        .tips-content {{
+            font-size: var(--text-base);
+            color: var(--fg-secondary);
+            line-height: 1.5;
+        }}
+        .tip-item {{
+            padding: var(--sp-1) 0;
+            padding-left: var(--sp-4);
+            position: relative;
+        }}
+        .tip-item::before {{
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.7rem;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--signal-green);
+        }}
+
+        /* Correlations Panel (BETTER+) */
+        .correlations-panel {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-left: 3px solid var(--signal-yellow);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .correlations-panel h3 {{
+            font-size: var(--text-xs);
+            color: var(--signal-yellow);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-2);
+        }}
+        .correlation-item {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+        }}
+        .correlation-item:last-child {{ border-bottom: none; }}
+        .correlation-type {{
+            color: var(--signal-yellow);
+            font-weight: 600;
+            font-size: var(--text-xs);
+        }}
+        .correlation-penalty {{
+            color: var(--signal-red);
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }}
+
+        /* Summary Panel (BETTER+) */
+        .summary-panel {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .summary-panel h3 {{
+            font-size: var(--text-xs);
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-2);
+        }}
+        .summary-item {{
+            padding: var(--sp-1) 0;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }}
+        .summary-item:last-child {{ border-bottom: none; }}
+
+        /* Alerts Panel (BEST) */
+        .alerts-detail-panel {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-left: 3px solid var(--signal-red);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .alerts-detail-panel h3 {{
+            font-size: var(--text-xs);
+            color: var(--signal-red);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-2);
+        }}
+        .alert-detail-item {{
+            padding: var(--sp-2) var(--sp-3);
+            margin-bottom: var(--sp-2);
+            background: var(--surface-base);
+            border-left: 2px solid var(--signal-red);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+        }}
+
+        /* GOOD Tier Structured Output */
+        .good-output {{
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-4);
+        }}
+        .good-signal-grade {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-4);
+            padding: var(--sp-5) var(--sp-4);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--sp-3);
+        }}
+        .good-signal {{
+            padding: var(--sp-2) var(--sp-4);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-base);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .good-signal.blue {{ background: rgba(74, 158, 255, 0.12); color: var(--signal-blue); border: 1px solid var(--signal-blue); }}
+        .good-signal.green {{ background: rgba(74, 222, 128, 0.12); color: var(--signal-green); border: 1px solid var(--signal-green); }}
+        .good-signal.yellow {{ background: rgba(251, 191, 36, 0.12); color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
+        .good-signal.red {{ background: rgba(239, 68, 68, 0.12); color: var(--signal-red); border: 1px solid var(--signal-red); }}
+        .good-grade {{
+            font-family: var(--font-mono);
+            font-size: var(--text-xl);
+            font-weight: 700;
+            color: var(--fg-primary);
+        }}
+        .good-fragility {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .good-fragility-value {{
+            font-family: var(--font-mono);
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--fg-primary);
+        }}
+        .good-section {{
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .good-section-label {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin: 0 0 var(--sp-2);
+        }}
+        .good-contributor {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+        }}
+        .good-contributor:last-child {{ border-bottom: none; }}
+        .good-contributor-type {{
+            color: var(--fg-primary);
+            font-weight: 500;
+        }}
+        .good-contributor-impact {{
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+            padding: var(--sp-1) var(--sp-2);
+            border-radius: var(--radius-sm);
+        }}
+        .good-contributor-impact.low {{ color: var(--signal-blue); background: rgba(74, 158, 255, 0.08); }}
+        .good-contributor-impact.medium {{ color: var(--signal-yellow); background: rgba(251, 191, 36, 0.08); }}
+        .good-contributor-impact.high {{ color: var(--signal-red); background: rgba(239, 68, 68, 0.08); }}
+        .good-warnings-list, .good-tips-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .good-warnings-list li {{
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+            color: var(--signal-yellow);
+        }}
+        .good-warnings-list li:last-child {{ border-bottom: none; }}
+        .good-tips-list li {{
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: var(--text-sm);
+            color: var(--fg-primary);
+        }}
+        .good-tips-list li:last-child {{ border-bottom: none; }}
+        .good-removal-item {{
+            display: inline-block;
+            padding: var(--sp-1) var(--sp-2);
+            margin: var(--sp-1);
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid var(--signal-red);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-xs);
+            font-family: var(--font-mono);
+            color: var(--signal-red);
+        }}
+        .good-section.empty {{
+            display: none;
+        }}
+
+        /* Post-Result Actions */
+        .post-actions {{
+            display: flex;
+            gap: var(--sp-2);
+            margin-top: var(--sp-4);
+            padding-top: var(--sp-4);
+            border-top: 1px solid var(--border-default);
+        }}
+        .action-btn {{
+            flex: 1;
+            padding: var(--sp-2) var(--sp-2);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid;
+            background: transparent;
+            transition: all var(--transition-fast);
+        }}
+        .action-improve {{
+            border-color: var(--accent);
+            color: var(--accent);
+        }}
+        .action-improve:hover {{ background: var(--accent); color: var(--surface-base); }}
+        .action-reeval {{
+            border-color: var(--signal-yellow);
+            color: var(--signal-yellow);
+        }}
+        .action-reeval:hover {{ background: var(--signal-yellow); color: var(--surface-base); }}
+        .action-save {{
+            border-color: var(--signal-green);
+            color: var(--signal-green);
+        }}
+        .action-save:hover {{ background: var(--signal-green); color: var(--surface-base); }}
+
         .input-tabs {{
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: var(--sp-2);
+            margin-bottom: var(--sp-4);
         }}
         .input-tab {{
-            padding: 0.5rem 1rem;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            color: #888;
+            padding: var(--sp-2) var(--sp-4);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            color: var(--fg-muted);
+            font-size: var(--text-sm);
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
         }}
         .input-tab.active {{
-            background: #2a2a2a;
-            border-color: #4a9eff;
-            color: #4a9eff;
+            background: var(--surface-hover);
+            border-color: var(--accent);
+            color: var(--accent);
         }}
         .input-panel {{
             display: none;
@@ -1091,75 +1620,77 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         }}
         .text-input {{
             width: 100%;
-            min-height: 150px;
-            padding: 1rem;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            color: #e0e0e0;
-            font-size: 0.95rem;
+            min-height: 140px;
+            padding: var(--sp-3);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            color: var(--fg-primary);
+            font-size: var(--text-base);
+            font-family: var(--font-sans);
             resize: vertical;
+            line-height: 1.5;
         }}
         .text-input:focus {{
             outline: none;
-            border-color: #4a9eff;
+            border-color: var(--accent);
         }}
         /* Image Not Available (OCR not implemented) */
         .image-not-available {{
-            border: 2px dashed #444;
-            border-radius: 8px;
-            padding: 2rem;
+            border: 2px dashed var(--fg-faint);
+            border-radius: var(--radius-lg);
+            padding: var(--sp-8);
             text-align: center;
-            background: #1a1a1a;
+            background: var(--surface-overlay);
         }}
         .image-not-available-icon {{
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+            font-size: var(--text-xl);
+            margin-bottom: var(--sp-2);
             opacity: 0.5;
         }}
         .image-not-available-title {{
             font-weight: 600;
-            color: #f39c12;
-            margin-bottom: 0.5rem;
+            color: var(--signal-yellow);
+            margin-bottom: var(--sp-2);
         }}
         .image-not-available-text {{
-            font-size: 0.85rem;
-            color: #888;
-            margin-bottom: 1rem;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            margin-bottom: var(--sp-4);
         }}
         .switch-to-text-btn {{
             display: inline-block;
-            padding: 0.5rem 1rem;
-            background: #4a9eff;
-            color: #111;
+            padding: var(--sp-2) var(--sp-4);
+            background: var(--accent);
+            color: var(--surface-base);
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: var(--radius-sm);
             font-weight: 500;
-            font-size: 0.85rem;
+            font-size: var(--text-sm);
         }}
         .switch-to-text-btn:hover {{
-            background: #3a8eef;
+            background: var(--accent-hover);
         }}
 
         .file-upload-area {{
-            border: 2px dashed #333;
-            border-radius: 8px;
-            padding: 2rem;
+            border: 2px dashed var(--border-strong);
+            border-radius: var(--radius-lg);
+            padding: var(--sp-8);
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
         }}
         .file-upload-area:hover {{
-            border-color: #4a9eff;
-            background: #1a1a2a;
+            border-color: var(--accent);
+            background: var(--accent-surface);
         }}
         .file-upload-area.has-file {{
-            border-color: #2ecc71;
-            background: #1a2a1a;
+            border-color: var(--signal-green);
+            background: rgba(74, 222, 128, 0.05);
         }}
         .file-upload-area.dragover {{
-            border-color: #4a9eff;
-            background: #1a1a2a;
+            border-color: var(--accent);
+            background: var(--accent-surface);
         }}
         .file-upload-area.uploading {{
             pointer-events: none;
@@ -1169,138 +1700,204 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             display: none;
         }}
         .file-upload-icon {{
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
+            font-size: var(--text-xl);
+            margin-bottom: var(--sp-3);
         }}
         .file-upload-text {{
-            color: #888;
+            color: var(--fg-secondary);
             line-height: 1.5;
         }}
         .file-types {{
-            font-size: 0.75rem;
-            color: #666;
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
         }}
         .file-selected {{
-            color: #2ecc71;
+            color: var(--signal-green);
         }}
         .file-selected-icon {{
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
+            font-size: var(--text-xl);
+            margin-bottom: var(--sp-2);
         }}
         .file-selected-name {{
             font-weight: 600;
-            margin-bottom: 0.75rem;
+            margin-bottom: var(--sp-3);
             word-break: break-all;
         }}
         .clear-file-btn {{
-            padding: 0.375rem 1rem;
+            padding: var(--sp-1) var(--sp-4);
             background: transparent;
-            border: 1px solid #e74c3c;
-            color: #e74c3c;
-            border-radius: 4px;
+            border: 1px solid var(--signal-red);
+            color: var(--signal-red);
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s;
+            font-size: var(--text-sm);
+            transition: all var(--transition-fast);
         }}
         .clear-file-btn:hover {{
-            background: #e74c3c;
+            background: var(--signal-red);
             color: #fff;
         }}
         .image-error {{
-            margin-top: 0.75rem;
-            padding: 0.75rem;
-            background: #2a1a1a;
-            border: 1px solid #e74c3c;
-            border-radius: 4px;
-            color: #e74c3c;
-            font-size: 0.85rem;
+            margin-top: var(--sp-3);
+            padding: var(--sp-3);
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid var(--signal-red);
+            border-radius: var(--radius-sm);
+            color: var(--signal-red);
+            font-size: var(--text-sm);
         }}
         .image-parse-info {{
-            background: #1a2a1a;
-            border: 1px solid #2ecc71;
-            border-radius: 6px;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
+            background: rgba(74, 222, 128, 0.05);
+            border: 1px solid var(--signal-green);
+            border-radius: var(--radius-md);
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-4);
+            font-size: var(--text-sm);
         }}
         .image-parse-confidence {{
-            color: #2ecc71;
+            color: var(--signal-green);
             font-weight: 600;
         }}
         .image-parse-notes {{
-            color: #888;
-            margin-top: 0.25rem;
-            font-size: 0.8rem;
+            color: var(--fg-secondary);
+            margin-top: var(--sp-1);
+            font-size: var(--text-sm);
         }}
         .clear-file {{
-            margin-top: 0.5rem;
-            padding: 0.25rem 0.75rem;
+            margin-top: var(--sp-2);
+            padding: var(--sp-1) var(--sp-3);
             background: transparent;
-            border: 1px solid #e74c3c;
-            color: #e74c3c;
-            border-radius: 4px;
+            border: 1px solid var(--signal-red);
+            color: var(--signal-red);
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: var(--text-sm);
         }}
         .eval-submit {{
             width: 100%;
-            margin-top: 1rem;
+            margin-top: var(--sp-4);
+        }}
+
+        /* Discover Tab Styles */
+        .discover-section {{
+            max-width: 560px;
+            margin: 0 auto;
+            padding: var(--sp-8) var(--sp-4);
+        }}
+        .discover-hero {{
+            text-align: center;
+            margin-bottom: var(--sp-8);
+        }}
+        .discover-hero h2 {{
+            font-size: var(--text-xl);
+            color: var(--fg-primary);
+            margin-bottom: var(--sp-3);
+            font-weight: 600;
+        }}
+        .discover-tagline {{
+            color: var(--fg-secondary);
+            font-size: var(--text-base);
+        }}
+        .discover-steps {{
+            margin-bottom: var(--sp-8);
+        }}
+        .discover-step {{
+            display: flex;
+            gap: var(--sp-4);
+            padding: var(--sp-4);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--sp-3);
+        }}
+        .step-number {{
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: var(--surface-base);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: var(--text-sm);
+            flex-shrink: 0;
+        }}
+        .step-content h3 {{
+            font-size: var(--text-base);
+            color: var(--fg-primary);
+            font-weight: 600;
+            margin-bottom: var(--sp-1);
+        }}
+        .step-content p {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            margin: 0;
+        }}
+        .discover-cta {{
+            text-align: center;
+        }}
+        .discover-start-btn {{
+            max-width: 280px;
         }}
 
         /* History Tab Styles */
         .history-section {{
-            background: #111;
-            padding: 1.25rem;
-            border-radius: 8px;
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            padding: var(--sp-4);
+            border-radius: var(--radius-lg);
         }}
         .history-empty {{
             text-align: center;
-            padding: 2rem;
-            color: #666;
+            padding: var(--sp-8);
+            color: var(--fg-muted);
         }}
         .history-item {{
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-3);
         }}
         .history-date {{
-            font-size: 0.75rem;
-            color: #666;
-            margin-bottom: 0.5rem;
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            margin-bottom: var(--sp-2);
         }}
         .history-text {{
-            font-family: monospace;
-            font-size: 0.9rem;
-            color: #ccc;
-            margin-bottom: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            margin-bottom: var(--sp-2);
         }}
         .history-grade {{
             display: inline-block;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
+            padding: var(--sp-1) var(--sp-2);
+            border-radius: var(--radius-sm);
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: var(--text-sm);
+            font-family: var(--font-mono);
         }}
-        .history-grade.low {{ background: #1a3a2a; color: #4ade80; }}
-        .history-grade.medium {{ background: #3a3a1a; color: #fbbf24; }}
-        .history-grade.high {{ background: #3a2a1a; color: #f97316; }}
-        .history-grade.critical {{ background: #3a1a1a; color: #ef4444; }}
+        .history-grade.low {{ background: transparent; color: var(--signal-green); border: 1px solid var(--signal-green); }}
+        .history-grade.medium {{ background: transparent; color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
+        .history-grade.high {{ background: transparent; color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
+        .history-grade.critical {{ background: transparent; color: var(--signal-red); border: 1px solid var(--signal-red); }}
         .login-prompt {{
             text-align: center;
-            padding: 2rem;
-            background: #1a1a1a;
-            border-radius: 8px;
+            padding: var(--sp-8);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
         }}
         .login-prompt a {{
             display: inline-block;
-            margin-top: 1rem;
-            padding: 0.75rem 1.5rem;
-            background: #f39c12;
-            color: #111;
+            margin-top: var(--sp-4);
+            padding: var(--sp-3) var(--sp-6);
+            background: var(--accent);
+            color: var(--surface-base);
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
         }}
     </style>
@@ -1319,10 +1916,51 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
+            <a class="nav-tab {discover_active}" data-tab="discover">Discover</a>
             <a class="nav-tab {evaluate_active}" data-tab="evaluate">Evaluate</a>
+            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
             <a class="nav-tab {history_active}" data-tab="history">History</a>
         </nav>
+
+        <!-- Discover Tab Content -->
+        <div class="tab-content {discover_active}" id="tab-discover">
+            <div class="discover-section">
+                <div class="discover-hero">
+                    <h2>Know Your Bet Before You Place It</h2>
+                    <p class="discover-tagline">We analyze risk, correlation, and fragility so you can make informed decisions.</p>
+                </div>
+
+                <div class="discover-steps">
+                    <div class="discover-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Submit Your Bet</h3>
+                            <p>Paste text, upload an image, or build a parlay from scratch.</p>
+                        </div>
+                    </div>
+                    <div class="discover-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Get Your Analysis</h3>
+                            <p>See fragility score, correlation risks, and actionable recommendations.</p>
+                        </div>
+                    </div>
+                    <div class="discover-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>See What's Weak</h3>
+                            <p>Know which legs add risk and what to change before you commit.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="discover-cta">
+                    <button type="button" class="submit-btn discover-start-btn" onclick="switchToTab('evaluate')">
+                        Start Evaluating
+                    </button>
+                </div>
+            </div>
+        </div> <!-- End tab-discover -->
 
         <!-- Builder Tab Content -->
         <div class="tab-content {builder_active}" id="tab-builder">
@@ -1347,7 +1985,7 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 <button type="button" class="add-leg-btn" id="add-leg-btn">+ Add Leg</button>
 
                 <div class="tier-selector-wrapper">
-                    <div class="tier-selector-label">Preview tier (what you'll see)</div>
+                    <div class="tier-selector-label">Analysis detail level</div>
                     <div class="tier-selector">
                         <div class="tier-option">
                             <input type="radio" name="tier" id="tier-good" value="good" checked>
@@ -1482,9 +2120,9 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
 
                     <!-- Upgrade Nudge (Sprint 5) -->
                     <div class="upgrade-nudge hidden" id="upgrade-nudge">
-                        <h4>Unlock Full Analysis</h4>
+                        <h4>Get Full Analysis</h4>
                         <p id="upgrade-message">See detailed breakdowns, correlations, and live alerts</p>
-                        <a href="{upgrade_link}" class="upgrade-cta">Unlock BEST ($19.99/mo)</a>
+                        <a href="{upgrade_link}" class="upgrade-cta">Upgrade to BEST</a>
                     </div>
                 </div>
 
@@ -1497,45 +2135,66 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         </div> <!-- End tab-builder -->
 
         <!-- Evaluate Tab Content -->
-        <div class="tab-content" id="tab-evaluate">
+        <div class="tab-content {evaluate_active}" id="tab-evaluate">
             <div class="main-grid">
                 <div class="evaluate-section">
                     <div class="section-header">
                         <span class="section-title">Evaluate Bet</span>
                     </div>
 
-                    <!-- Input Type Tabs -->
-                    <div class="input-tabs">
-                        <div class="input-tab active" data-input="text">Text</div>
-                        <div class="input-tab" data-input="image">Image</div>
-                    </div>
+                    <!-- Step 1: Provide Bet -->
+                    <div class="eval-step">
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">1</span>
+                            <span class="eval-step-label">Provide bet</span>
+                        </div>
 
-                    <!-- Text Input Panel -->
-                    <div class="input-panel active" id="text-input-panel">
-                        <textarea class="text-input" id="eval-text-input" placeholder="Paste your bet slip text here...&#10;&#10;Example:&#10;Lakers -5.5 + Celtics ML + LeBron O27.5 pts parlay"></textarea>
-                    </div>
+                        <!-- Input Type Tabs -->
+                        <div class="input-tabs">
+                            <div class="input-tab active" data-input="text">Text</div>
+                            <div class="input-tab" data-input="image">Image</div>
+                            <div class="input-tab" data-input="bundle">Bundle</div>
+                        </div>
 
-                    <!-- Image Input Panel -->
-                    <div class="input-panel" id="image-input-panel">
-                        <div class="file-upload-area" id="file-upload-area">
-                            <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp">
-                            <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
-                            <div class="file-upload-text" id="file-upload-text">
-                                Click or drag to upload bet slip image<br>
-                                <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                        <!-- Text Input Panel -->
+                        <div class="input-panel active" id="text-input-panel">
+                            <textarea class="text-input" id="eval-text-input" placeholder="Paste your bet slip text here...&#10;&#10;Example:&#10;Lakers -5.5 + Celtics ML + LeBron O27.5 pts parlay"></textarea>
+                        </div>
+
+                        <!-- Image Input Panel -->
+                        <div class="input-panel" id="image-input-panel">
+                            <div class="file-upload-area" id="file-upload-area">
+                                <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp">
+                                <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
+                                <div class="file-upload-text" id="file-upload-text">
+                                    Click or drag to upload bet slip image<br>
+                                    <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                                </div>
+                                <div class="file-selected hidden" id="file-selected">
+                                    <div class="file-selected-icon">&#9989;</div>
+                                    <div class="file-selected-name" id="file-name"></div>
+                                    <button type="button" class="clear-file-btn" id="clear-file">Remove</button>
+                                </div>
                             </div>
-                            <div class="file-selected hidden" id="file-selected">
-                                <div class="file-selected-icon">&#9989;</div>
-                                <div class="file-selected-name" id="file-name"></div>
-                                <button type="button" class="clear-file-btn" id="clear-file">Remove</button>
+                            <div class="image-error hidden" id="image-error"></div>
+                        </div>
+
+                        <!-- Bundle Input Panel -->
+                        <div class="input-panel" id="bundle-input-panel">
+                            <div class="bundle-prompt">
+                                <p>Build a custom parlay using the Builder.</p>
+                                <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Go to Builder</button>
                             </div>
                         </div>
-                        <div class="image-error hidden" id="image-error"></div>
                     </div>
 
-                    <!-- Tier Selector -->
-                    <div class="tier-selector-wrapper" style="margin-top: 1rem;">
-                        <div class="tier-selector-label">Preview tier (what you'll see)</div>
+                    <!-- Step 2: Choose Depth -->
+                    <div class="eval-step">
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">2</span>
+                            <span class="eval-step-label">Choose depth</span>
+                        </div>
+
                         <div class="tier-selector">
                             <div class="tier-option">
                                 <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
@@ -1555,14 +2214,27 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                                 <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
                                 <label for="eval-tier-best">
                                     <div class="tier-name">BEST</div>
-                                    <div class="tier-desc">+ Full Analysis</div>
+                                    <div class="tier-desc">Full Analysis</div>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
-                        Evaluate
+                    <!-- Step 3: Analyze -->
+                    <div class="eval-step">
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">3</span>
+                            <span class="eval-step-label">Analyze</span>
+                        </div>
+
+                        <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
+                            Evaluate
+                        </button>
+                    </div>
+
+                    <!-- Builder CTA: response to evaluation, not destination -->
+                    <button type="button" class="secondary-btn builder-cta disabled" id="builder-cta-btn" disabled title="Evaluate a bet first">
+                        Improve This Bet
                     </button>
                 </div>
 
@@ -1577,17 +2249,99 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                     </div>
 
                     <div id="eval-results-content" class="hidden">
-                        <!-- Grade Display -->
-                        <div class="grade-display" id="eval-grade-display">
-                            <div class="grade-label">Fragility Score</div>
-                            <div class="grade-value" id="eval-grade-value">--</div>
-                            <div class="grade-bucket" id="eval-grade-bucket">--</div>
+                        <!-- GOOD Tier Structured Output (exclusive to GOOD) -->
+                        <div id="eval-good-output" class="good-output hidden">
+                            <div class="good-signal-grade" id="good-signal-grade">
+                                <div class="good-signal" id="good-signal-indicator"></div>
+                                <div class="good-grade" id="good-grade-value"></div>
+                            </div>
+                            <div class="good-fragility" id="good-fragility">
+                                <span class="good-section-label">Fragility Score</span>
+                                <span class="good-fragility-value" id="good-fragility-value">--</span>
+                            </div>
+                            <div class="good-section" id="good-contributors-section">
+                                <h4 class="good-section-label">Contributors</h4>
+                                <div class="good-contributors-list" id="good-contributors-list"></div>
+                            </div>
+                            <div class="good-section" id="good-warnings-section">
+                                <h4 class="good-section-label">Warnings</h4>
+                                <ul class="good-warnings-list" id="good-warnings-list"></ul>
+                            </div>
+                            <div class="good-section" id="good-tips-section">
+                                <h4 class="good-section-label">Tips</h4>
+                                <ul class="good-tips-list" id="good-tips-list"></ul>
+                            </div>
+                            <div class="good-section" id="good-removals-section">
+                                <h4 class="good-section-label">Suggested Removals</h4>
+                                <div class="good-removals-list" id="good-removals-list"></div>
+                            </div>
                         </div>
 
-                        <!-- Decision Summary -->
-                        <div class="decision-summary" id="eval-decision-summary">
-                            <h3>Decision Summary</h3>
-                            <div class="decision-verdict" id="eval-decision-verdict"></div>
+                        <!-- Shared tier panels (BETTER/BEST) -->
+                        <!-- Signal Badge + Fragility Score -->
+                        <div class="signal-display" id="eval-signal-display">
+                            <div class="signal-badge" id="eval-signal-badge">--</div>
+                            <div class="signal-score">
+                                <span class="signal-score-value" id="eval-signal-score">--</span>
+                                <span class="signal-score-label">Fragility</span>
+                            </div>
+                        </div>
+
+                        <!-- Verdict (GOOD+) -->
+                        <div class="verdict-bar" id="eval-verdict-bar">
+                            <span class="verdict-action" id="eval-verdict-action"></span>
+                            <span class="verdict-reason" id="eval-verdict-reason"></span>
+                        </div>
+
+                        <!-- Metrics (GOOD+) -->
+                        <div class="metrics-grid" id="eval-metrics-grid">
+                            <div class="metric-item">
+                                <span class="metric-label">Leg Penalty</span>
+                                <span class="metric-value" id="eval-metric-leg">--</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Correlation</span>
+                                <span class="metric-value" id="eval-metric-corr">--</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Raw Fragility</span>
+                                <span class="metric-value" id="eval-metric-raw">--</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Final Score</span>
+                                <span class="metric-value" id="eval-metric-final">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Improvement Tips (GOOD+) -->
+                        <div class="tips-panel" id="eval-tips-panel">
+                            <h3>How to Improve</h3>
+                            <div class="tips-content" id="eval-tips-content"></div>
+                        </div>
+
+                        <!-- Correlations Panel (BETTER+) -->
+                        <div class="correlations-panel hidden" id="eval-correlations-panel">
+                            <h3>Correlations Found</h3>
+                            <div class="correlations-list" id="eval-correlations-list"></div>
+                        </div>
+
+                        <!-- Summary Insights (BETTER+) -->
+                        <div class="summary-panel hidden" id="eval-summary-panel">
+                            <h3>Deeper Insights</h3>
+                            <div class="summary-list" id="eval-summary-list"></div>
+                        </div>
+
+                        <!-- Alerts (BEST only) -->
+                        <div class="alerts-detail-panel hidden" id="eval-alerts-panel">
+                            <h3>Alerts</h3>
+                            <div class="alerts-list" id="eval-alerts-list"></div>
+                        </div>
+
+                        <!-- Post-Result Actions -->
+                        <div class="post-actions" id="eval-post-actions">
+                            <button type="button" class="action-btn action-improve" id="eval-action-improve" onclick="switchToTab('builder')">Improve This Bet</button>
+                            <button type="button" class="action-btn action-reeval" id="eval-action-reeval">Re-Evaluate</button>
+                            <button type="button" class="action-btn action-save" id="eval-action-save">Save</button>
                         </div>
                     </div>
 
@@ -1600,10 +2354,10 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         </div> <!-- End tab-evaluate -->
 
         <!-- History Tab Content -->
-        <div class="tab-content" id="tab-history">
+        <div class="tab-content {history_active}" id="tab-history">
             <div class="history-section">
                 <div class="section-header">
-                    <span class="section-title">Evaluation History</span>
+                    <span class="section-title">Past Decisions</span>
                 </div>
 
                 <div id="history-content">
@@ -2248,30 +3002,37 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
         // ============================================================
         // TAB SWITCHING
         // ============================================================
-        (function() {{
+        // Global function for programmatic tab switching
+        function switchToTab(tabName) {{
             const navTabs = document.querySelectorAll('.nav-tab');
             const tabContents = document.querySelectorAll('.tab-content');
 
+            // Update URL
+            const url = new URL(window.location);
+            url.searchParams.set('tab', tabName);
+            window.history.pushState({{}}, '', url);
+
+            // Switch tabs
+            navTabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            const activeTab = document.querySelector('.nav-tab[data-tab="' + tabName + '"]');
+            if (activeTab) activeTab.classList.add('active');
+            const activeContent = document.getElementById('tab-' + tabName);
+            if (activeContent) activeContent.classList.add('active');
+
+            // Load history if switching to history tab
+            if (tabName === 'history') {{
+                loadHistory();
+            }}
+        }}
+
+        (function() {{
+            const navTabs = document.querySelectorAll('.nav-tab');
+
             navTabs.forEach(tab => {{
                 tab.addEventListener('click', function() {{
-                    const tabName = this.dataset.tab;
-
-                    // Update URL
-                    const url = new URL(window.location);
-                    url.searchParams.set('tab', tabName);
-                    window.history.pushState({{}}, '', url);
-
-                    // Switch tabs
-                    navTabs.forEach(t => t.classList.remove('active'));
-                    tabContents.forEach(c => c.classList.remove('active'));
-
-                    this.classList.add('active');
-                    document.getElementById('tab-' + tabName).classList.add('active');
-
-                    // Load history if switching to history tab
-                    if (tabName === 'history') {{
-                        loadHistory();
-                    }}
+                    switchToTab(this.dataset.tab);
                 }});
             }});
         }})();
@@ -2415,8 +3176,11 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
             function updateEvalSubmitState() {{
                 if (currentInputMode === 'text') {{
                     evalSubmitBtn.disabled = textInput.value.trim().length < 5;
-                }} else {{
+                }} else if (currentInputMode === 'image') {{
                     evalSubmitBtn.disabled = !selectedFile;
+                }} else {{
+                    // Bundle mode - submit button not used (redirects to builder)
+                    evalSubmitBtn.disabled = true;
                 }}
             }}
 
@@ -2440,40 +3204,216 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                 const evaluation = data.evaluation;
                 const interpretation = data.interpretation;
                 const fragility = interpretation.fragility;
+                const explain = data.explain || {{}};
+                const tier = (data.input && data.input.tier) || 'good';
+                const metrics = evaluation.metrics;
+                const correlations = evaluation.correlations || [];
 
-                // Show image parse info if present
-                let parseInfoHtml = '';
+                // === GOOD TIER: Structured Output ===
+                const goodOutput = document.getElementById('eval-good-output');
+                const sharedSignal = document.getElementById('eval-signal-display');
+                const sharedVerdict = document.getElementById('eval-verdict-bar');
+                const sharedMetrics = document.getElementById('eval-metrics-grid');
+                const sharedTips = document.getElementById('eval-tips-panel');
+
+                if (tier === 'good' && explain.overallSignal) {{
+                    // Show GOOD output, hide shared panels
+                    goodOutput.classList.remove('hidden');
+                    sharedSignal.classList.add('hidden');
+                    sharedVerdict.classList.add('hidden');
+                    sharedMetrics.classList.add('hidden');
+                    sharedTips.classList.add('hidden');
+
+                    // Signal + Grade
+                    const signalEl = document.getElementById('good-signal-indicator');
+                    signalEl.textContent = explain.overallSignal.toUpperCase();
+                    signalEl.className = 'good-signal ' + explain.overallSignal;
+                    document.getElementById('good-grade-value').textContent = 'Grade: ' + explain.grade;
+
+                    // Fragility Score
+                    document.getElementById('good-fragility-value').textContent = Math.round(explain.fragilityScore);
+
+                    // Contributors
+                    const contribList = document.getElementById('good-contributors-list');
+                    const contribSection = document.getElementById('good-contributors-section');
+                    if (explain.contributors && explain.contributors.length > 0) {{
+                        let contribHtml = '';
+                        explain.contributors.forEach(function(c) {{
+                            contribHtml += '<div class="good-contributor">';
+                            contribHtml += '<span class="good-contributor-type">' + c.type + '</span>';
+                            contribHtml += '<span class="good-contributor-impact ' + c.impact + '">' + c.impact + '</span>';
+                            contribHtml += '</div>';
+                        }});
+                        contribList.innerHTML = contribHtml;
+                        contribSection.classList.remove('empty');
+                    }} else {{
+                        contribSection.classList.add('empty');
+                    }}
+
+                    // Warnings
+                    const warningsList = document.getElementById('good-warnings-list');
+                    const warningsSection = document.getElementById('good-warnings-section');
+                    if (explain.warnings && explain.warnings.length > 0) {{
+                        warningsList.innerHTML = explain.warnings.map(function(w) {{
+                            return '<li>' + w + '</li>';
+                        }}).join('');
+                        warningsSection.classList.remove('empty');
+                    }} else {{
+                        warningsSection.classList.add('empty');
+                    }}
+
+                    // Tips
+                    const tipsList = document.getElementById('good-tips-list');
+                    const tipsSection = document.getElementById('good-tips-section');
+                    if (explain.tips && explain.tips.length > 0) {{
+                        tipsList.innerHTML = explain.tips.map(function(t) {{
+                            return '<li>' + t + '</li>';
+                        }}).join('');
+                        tipsSection.classList.remove('empty');
+                    }} else {{
+                        tipsSection.classList.add('empty');
+                    }}
+
+                    // Removal Suggestions
+                    const removalsList = document.getElementById('good-removals-list');
+                    const removalsSection = document.getElementById('good-removals-section');
+                    if (explain.removalSuggestions && explain.removalSuggestions.length > 0) {{
+                        removalsList.innerHTML = explain.removalSuggestions.map(function(r) {{
+                            return '<span class="good-removal-item">' + r.substring(0, 8) + '</span>';
+                        }}).join('');
+                        removalsSection.classList.remove('empty');
+                    }} else {{
+                        removalsSection.classList.add('empty');
+                    }}
+
+                    // Hide BETTER/BEST panels
+                    document.getElementById('eval-correlations-panel').classList.add('hidden');
+                    document.getElementById('eval-summary-panel').classList.add('hidden');
+                    document.getElementById('eval-alerts-panel').classList.add('hidden');
+
+                }} else {{
+                    // === BETTER/BEST: Shared panels ===
+                    goodOutput.classList.add('hidden');
+                    sharedSignal.classList.remove('hidden');
+                    sharedVerdict.classList.remove('hidden');
+                    sharedMetrics.classList.remove('hidden');
+
+                    // Signal badge
+                    const signalMap = {{
+                        'low': {{ cls: 'signal-blue', label: 'Strong' }},
+                        'medium': {{ cls: 'signal-green', label: 'Solid' }},
+                        'high': {{ cls: 'signal-yellow', label: 'Fixable' }},
+                        'critical': {{ cls: 'signal-red', label: 'Fragile' }}
+                    }};
+                    const signal = signalMap[fragility.bucket] || signalMap['medium'];
+                    const signalBadge = document.getElementById('eval-signal-badge');
+                    signalBadge.textContent = signal.label;
+                    signalBadge.className = 'signal-badge ' + signal.cls;
+                    document.getElementById('eval-signal-score').textContent = Math.round(fragility.display_value);
+
+                    // Verdict
+                    const action = evaluation.recommendation.action;
+                    const verdictAction = document.getElementById('eval-verdict-action');
+                    const verdictReason = document.getElementById('eval-verdict-reason');
+                    verdictAction.textContent = action.toUpperCase();
+                    verdictAction.className = 'verdict-action action-' + action;
+                    verdictReason.textContent = evaluation.recommendation.reason;
+
+                    // Metrics grid
+                    document.getElementById('eval-metric-leg').textContent = '+' + (metrics.leg_penalty || 0).toFixed(1);
+                    document.getElementById('eval-metric-corr').textContent = '+' + (metrics.correlation_penalty || 0).toFixed(1);
+                    document.getElementById('eval-metric-raw').textContent = (metrics.raw_fragility || 0).toFixed(1);
+                    document.getElementById('eval-metric-final').textContent = Math.round(metrics.final_fragility || 0);
+
+                    // Tips
+                    const tipsContent = document.getElementById('eval-tips-content');
+                    const tipsPanel = document.getElementById('eval-tips-panel');
+                    const whatToDo = fragility.what_to_do || '';
+                    const meaning = fragility.meaning || '';
+                    if (whatToDo || meaning) {{
+                        let tipsHtml = '';
+                        if (meaning) tipsHtml += '<div class="tip-item">' + meaning + '</div>';
+                        if (whatToDo) tipsHtml += '<div class="tip-item">' + whatToDo + '</div>';
+                        tipsContent.innerHTML = tipsHtml;
+                        tipsPanel.classList.remove('hidden');
+                    }} else {{
+                        tipsPanel.classList.add('hidden');
+                    }}
+
+                    // Correlations (BETTER+)
+                    const corrPanel = document.getElementById('eval-correlations-panel');
+                    const corrList = document.getElementById('eval-correlations-list');
+                    if ((tier === 'better' || tier === 'best') && correlations.length > 0) {{
+                        let corrHtml = '';
+                        correlations.forEach(function(c) {{
+                            corrHtml += '<div class="correlation-item">';
+                            corrHtml += '<span>' + c.block_a + ' / ' + c.block_b + '</span>';
+                            corrHtml += '<span class="correlation-type">' + c.type + '</span>';
+                            corrHtml += '<span class="correlation-penalty">+' + (c.penalty || 0).toFixed(1) + '</span>';
+                            corrHtml += '</div>';
+                        }});
+                        corrList.innerHTML = corrHtml;
+                        corrPanel.classList.remove('hidden');
+                    }} else {{
+                        corrPanel.classList.add('hidden');
+                    }}
+
+                    // Summary (BETTER+)
+                    const summaryPanel = document.getElementById('eval-summary-panel');
+                    const summaryList = document.getElementById('eval-summary-list');
+                    const summaryItems = explain.summary || [];
+                    if ((tier === 'better' || tier === 'best') && summaryItems.length > 0) {{
+                        let summaryHtml = '';
+                        summaryItems.forEach(function(s) {{
+                            summaryHtml += '<div class="summary-item">' + s + '</div>';
+                        }});
+                        summaryList.innerHTML = summaryHtml;
+                        summaryPanel.classList.remove('hidden');
+                    }} else {{
+                        summaryPanel.classList.add('hidden');
+                    }}
+
+                    // Alerts (BEST only)
+                    const alertsPanel = document.getElementById('eval-alerts-panel');
+                    const alertsList = document.getElementById('eval-alerts-list');
+                    const alertItems = explain.alerts || [];
+                    if (tier === 'best' && alertItems.length > 0) {{
+                        let alertsHtml = '';
+                        alertItems.forEach(function(a) {{
+                            alertsHtml += '<div class="alert-detail-item">' + a + '</div>';
+                        }});
+                        alertsList.innerHTML = alertsHtml;
+                        alertsPanel.classList.remove('hidden');
+                    }} else {{
+                        alertsPanel.classList.add('hidden');
+                    }}
+                }}
+
+                // === IMAGE PARSE INFO ===
+                const existingParseInfo = evalResultsContent.querySelector('.image-parse-info');
+                if (existingParseInfo) existingParseInfo.remove();
                 if (imageParse) {{
                     const confidencePct = Math.round((imageParse.confidence || 0) * 100);
-                    parseInfoHtml = '<div class="image-parse-info">';
-                    parseInfoHtml += '<span class="image-parse-confidence">Parsed from image (' + confidencePct + '% confidence)</span>';
+                    let parseHtml = '<div class="image-parse-info">';
+                    parseHtml += '<span class="image-parse-confidence">Parsed from image (' + confidencePct + '% confidence)</span>';
                     if (imageParse.notes && imageParse.notes.length > 0) {{
-                        parseInfoHtml += '<div class="image-parse-notes">' + imageParse.notes.join(' | ') + '</div>';
+                        parseHtml += '<div class="image-parse-notes">' + imageParse.notes.join(' | ') + '</div>';
                     }}
-                    parseInfoHtml += '</div>';
+                    parseHtml += '</div>';
+                    evalResultsContent.insertAdjacentHTML('afterbegin', parseHtml);
                 }}
 
-                // Grade display
-                const gradeValue = document.getElementById('eval-grade-value');
-                const gradeBucket = document.getElementById('eval-grade-bucket');
-                gradeValue.textContent = Math.round(fragility.display_value);
-                gradeBucket.textContent = fragility.bucket;
-                gradeValue.className = 'grade-value ' + fragility.bucket;
-
-                // Decision summary with optional parse info
-                const decisionSummary = document.getElementById('eval-decision-summary');
-                const decisionVerdict = document.getElementById('eval-decision-verdict');
-                const action = evaluation.recommendation.action;
-
-                // Insert parse info before decision summary if present
-                const existingParseInfo = decisionSummary.parentElement.querySelector('.image-parse-info');
-                if (existingParseInfo) existingParseInfo.remove();
-                if (parseInfoHtml) {{
-                    decisionSummary.insertAdjacentHTML('beforebegin', parseInfoHtml);
+                // === ENABLE BUILDER CTA ===
+                const builderCtaBtn = document.getElementById('builder-cta-btn');
+                if (builderCtaBtn) {{
+                    builderCtaBtn.disabled = false;
+                    builderCtaBtn.classList.remove('disabled');
+                    builderCtaBtn.title = 'Build a custom parlay';
+                    builderCtaBtn.onclick = function() {{ switchToTab('builder'); }};
                 }}
 
-                decisionVerdict.innerHTML = '<span class="action-' + action + '">' +
-                    action.toUpperCase() + '</span>: ' + evaluation.recommendation.reason;
+                // Store last eval data for re-evaluate
+                window._lastEvalData = data;
             }}
 
             // Submit evaluation
@@ -2547,6 +3487,37 @@ def _get_app_page_html(user=None, active_tab: str = "builder") -> str:
                     updateEvalSubmitState();
                 }}
             }});
+
+            // Re-Evaluate button: reset results and focus input
+            const reEvalBtn = document.getElementById('eval-action-reeval');
+            if (reEvalBtn) {{
+                reEvalBtn.addEventListener('click', function() {{
+                    evalResultsContent.classList.add('hidden');
+                    evalResultsPlaceholder.classList.remove('hidden');
+                    evalErrorPanel.classList.add('hidden');
+                    if (currentInputMode === 'text') {{
+                        textInput.focus();
+                        textInput.select();
+                    }}
+                    updateEvalSubmitState();
+                }});
+            }}
+
+            // Save button: persist evaluation
+            const saveBtn = document.getElementById('eval-action-save');
+            if (saveBtn) {{
+                saveBtn.addEventListener('click', function() {{
+                    if (window._lastEvalData && window._lastEvalData.evaluation_id) {{
+                        saveBtn.textContent = 'Saved';
+                        saveBtn.disabled = true;
+                        saveBtn.style.background = '#4ade80';
+                        saveBtn.style.color = '#000';
+                    }} else {{
+                        saveBtn.textContent = 'Login to Save';
+                        saveBtn.disabled = true;
+                    }}
+                }});
+            }}
         }})();
 
         // ============================================================
@@ -2658,15 +3629,15 @@ async def login_page(raw_request: Request):
 
 
 @router.get("/app", response_class=HTMLResponse)
-async def app_page(raw_request: Request, tab: str = "builder"):
+async def app_page(raw_request: Request, tab: str = "evaluate"):
     """
     Main application page with tabbed interface.
 
     Tabs:
-    - builder: Parlay builder (default)
-    - evaluate: Text/image evaluation
+    - discover: Product intro (default landing)
+    - evaluate: Text/image evaluation (default)
+    - builder: Parlay builder
     - history: Saved history (requires login)
-    - account: Account settings
 
     Returns HTML with unified app shell.
     """

@@ -237,21 +237,117 @@ def _interpret_fragility(final_fragility: float) -> dict:
 # =============================================================================
 
 
-def _apply_tier_filtering(tier: Tier, explain: dict) -> dict:
+def _apply_tier_filtering(tier: Tier, explain: dict, evaluation=None, blocks=None) -> dict:
     """
     Apply tier-based filtering to explain content.
 
     Tier rules:
-    - GOOD: Empty explain (interpretation only)
+    - GOOD: Structured output (signal, grade, contributors, warnings, tips, removals)
     - BETTER: summary only
     - BEST: summary + alerts + recommended_next_step
     """
     if tier == Tier.GOOD:
-        return {}
+        return _build_good_tier_output(evaluation, blocks) if evaluation else {}
     elif tier == Tier.BETTER:
         return {"summary": explain.get("summary", [])}
     else:  # BEST
         return explain
+
+
+def _build_good_tier_output(evaluation, blocks) -> dict:
+    """
+    Build structured GOOD tier output from evaluation response.
+
+    Derives signal, grade, contributors, warnings, tips, and removal
+    suggestions from existing evaluation metrics. Does NOT modify engine math.
+    """
+    metrics = evaluation.metrics
+    final_fragility = metrics.final_fragility
+
+    # Map fragility to signal: low→blue, medium→green, high→yellow, critical→red
+    if final_fragility <= 15:
+        signal = "blue"
+    elif final_fragility <= 35:
+        signal = "green"
+    elif final_fragility <= 60:
+        signal = "yellow"
+    else:
+        signal = "red"
+
+    # Grade: A=blue, B=green, C=yellow, D=red
+    grade_map = {"blue": "A", "green": "B", "yellow": "C", "red": "D"}
+    grade = grade_map[signal]
+
+    # Contributors: factors that materially affect risk
+    contributors = []
+
+    if metrics.correlation_penalty > 0:
+        impact = "high" if metrics.correlation_penalty > 5 else ("medium" if metrics.correlation_penalty > 2 else "low")
+        contributors.append({"type": "correlation", "impact": impact})
+
+    if metrics.leg_penalty > 0:
+        impact = "high" if metrics.leg_penalty > 20 else ("medium" if metrics.leg_penalty > 10 else "low")
+        contributors.append({"type": "leg_count", "impact": impact})
+
+    if len(evaluation.correlations) > 0:
+        impact = "high" if len(evaluation.correlations) > 2 else ("medium" if len(evaluation.correlations) > 1 else "low")
+        contributors.append({"type": "dependency", "impact": impact})
+
+    # Check for prop-type volatility from blocks
+    if blocks:
+        prop_count = sum(1 for b in blocks if b.base_fragility >= 0.20)
+        if prop_count > 0:
+            impact = "high" if prop_count > 2 else ("medium" if prop_count > 1 else "low")
+            contributors.append({"type": "volatility", "impact": impact})
+
+    # Warnings: short, direct risk statements (no advice)
+    warnings = []
+    if evaluation.inductor.level.value == "critical":
+        warnings.append("Structure exceeds safe fragility thresholds")
+    if evaluation.inductor.level.value == "tense":
+        warnings.append("Multiple failure points detected")
+    if metrics.correlation_multiplier >= 1.5:
+        warnings.append("High correlation between selections")
+    if metrics.leg_penalty > 20:
+        warnings.append("Leg count significantly amplifies risk")
+    if len(evaluation.correlations) > 2:
+        warnings.append("Multiple dependent outcomes in structure")
+
+    # Tips: actionable, concrete improvements
+    tips = []
+    if len(blocks or []) >= 4:
+        tips.append("Reduce same-game legs")
+    if metrics.correlation_penalty > 0:
+        tips.append("Split correlated legs into separate tickets")
+    if any(b.base_fragility >= 0.20 for b in (blocks or [])):
+        tips.append("Replace prop bets with totals or spreads")
+    if metrics.leg_penalty > 15:
+        tips.append("Remove 1-2 legs to lower structural penalty")
+    if final_fragility > 35 and not tips:
+        tips.append("Simplify structure to reduce failure paths")
+
+    # Removal suggestions: blocks involved in most correlations
+    removal_suggestions = []
+    if evaluation.correlations:
+        block_corr_count = {}
+        for corr in evaluation.correlations:
+            block_corr_count[str(corr.block_a)] = block_corr_count.get(str(corr.block_a), 0) + 1
+            block_corr_count[str(corr.block_b)] = block_corr_count.get(str(corr.block_b), 0) + 1
+        # Sort by frequency, suggest top offenders
+        sorted_blocks = sorted(block_corr_count.items(), key=lambda x: x[1], reverse=True)
+        for block_id, count in sorted_blocks[:2]:
+            if count > 0:
+                removal_suggestions.append(block_id)
+
+    return {
+        "overallSignal": signal,
+        "grade": grade,
+        "fragilityScore": final_fragility,
+        "contributors": contributors,
+        "warnings": warnings,
+        "tips": tips,
+        "removalSuggestions": removal_suggestions,
+    }
 
 
 # =============================================================================
@@ -471,7 +567,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     }
 
     # Step 6: Apply tier filtering
-    explain_filtered = _apply_tier_filtering(normalized.tier, explain_full)
+    explain_filtered = _apply_tier_filtering(normalized.tier, explain_full, evaluation, blocks)
 
     return PipelineResponse(
         evaluation=evaluation,

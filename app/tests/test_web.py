@@ -106,11 +106,11 @@ class TestAppPage:
         # Check for login hint (anonymous users)
         assert "Log in to save history" in response.text
 
-    def test_tier_selector_has_preview_label(self, client):
-        """Tier selector shows 'preview' label to clarify it's not billing."""
+    def test_tier_selector_in_step_lane(self, client):
+        """Tier selector is in step 2 of the evaluation lane."""
         response = client.get("/app")
-        assert "tier-selector-label" in response.text
-        assert "Preview tier" in response.text
+        assert "tier-selector" in response.text
+        assert "Choose depth" in response.text
 
     def test_image_upload_panel_exists(self, client):
         """Image upload panel exists with upload UI."""
@@ -119,6 +119,365 @@ class TestAppPage:
         assert "file-upload-area" in response.text
         assert "file-input" in response.text
         assert "image-input-panel" in response.text
+
+
+class TestUIFlowLock:
+    """Ticket 1: UI Flow Lock verification tests."""
+
+    # --- Cold Load (new user, no state) ---
+
+    def test_cold_load_lands_on_evaluate(self, client):
+        """Default tab is Evaluate, not Builder."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        # Evaluate tab should have 'active' class
+        assert 'id="tab-evaluate"' in response.text
+        # The evaluate tab content div should be active
+        text = response.text
+        # Find tab-evaluate and check it has active class
+        import re
+        eval_tab = re.search(r'<div class="tab-content[^"]*"[^>]*id="tab-evaluate"', text)
+        assert eval_tab is not None
+
+    def test_cold_load_evaluate_is_active_tab(self, client):
+        """Evaluate nav tab has active class by default."""
+        response = client.get("/app")
+        assert 'class="nav-tab active" data-tab="evaluate"' in response.text
+
+    def test_cold_load_builder_not_active(self, client):
+        """Builder tab is NOT active on cold load."""
+        response = client.get("/app")
+        assert 'class="nav-tab active" data-tab="builder"' not in response.text
+
+    def test_discover_tab_has_cta_to_evaluate(self, client):
+        """Discover tab exists with CTA that routes to Evaluate."""
+        response = client.get("/app?tab=discover")
+        assert response.status_code == 200
+        assert "tab-discover" in response.text
+        assert "Start Evaluating" in response.text
+        assert "switchToTab(&#x27;evaluate&#x27;)" in response.text or "switchToTab('evaluate')" in response.text
+
+    # --- Evaluate Flow ---
+
+    def test_evaluate_has_text_input(self, client):
+        """Evaluate tab has Text input option."""
+        response = client.get("/app")
+        assert 'data-input="text"' in response.text
+        assert "text-input-panel" in response.text
+
+    def test_evaluate_has_image_input(self, client):
+        """Evaluate tab has Image input option."""
+        response = client.get("/app")
+        assert 'data-input="image"' in response.text
+        assert "image-input-panel" in response.text
+
+    def test_evaluate_has_bundle_input(self, client):
+        """Evaluate tab has Bundle input option."""
+        response = client.get("/app")
+        assert 'data-input="bundle"' in response.text
+        assert "bundle-input-panel" in response.text
+
+    def test_bundle_routes_to_builder(self, client):
+        """Bundle panel contains action to switch to Builder."""
+        response = client.get("/app")
+        assert "Go to Builder" in response.text
+        assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
+
+    def test_evaluate_has_step_lane(self, client):
+        """Evaluate tab has step lane (1→2→3)."""
+        response = client.get("/app")
+        assert "eval-step-number" in response.text
+        assert "Provide bet" in response.text
+        assert "Choose depth" in response.text
+        assert "Analyze" in response.text
+
+    # --- Post-Evaluation State ---
+
+    def test_builder_cta_disabled_by_default(self, client):
+        """Builder CTA button is disabled until evaluation completes."""
+        response = client.get("/app")
+        # Check that the builder CTA is present and disabled
+        assert "builder-cta-btn" in response.text
+        assert 'id="builder-cta-btn" disabled' in response.text
+        assert "Evaluate a bet first" in response.text
+
+    def test_builder_cta_has_enable_logic(self, client):
+        """JavaScript enables Builder CTA after showEvalResults."""
+        response = client.get("/app")
+        # Verify the JS logic to enable the button is present
+        assert "builderCtaBtn.disabled = false" in response.text
+        assert "builderCtaBtn.classList.remove" in response.text
+
+    # --- Tier Selector ---
+
+    def test_tier_label_no_pricing(self, client):
+        """Tier selector step label uses neutral language, not pricing."""
+        response = client.get("/app")
+        assert "Choose depth" in response.text
+        # Must NOT contain pricing language in main app flow
+        assert "$19.99" not in response.text
+
+    def test_no_unlock_with_price(self, client):
+        """No 'Unlock' CTA with price anchoring in main app."""
+        response = client.get("/app")
+        assert "Unlock BEST" not in response.text
+        assert "Unlock Full Analysis" not in response.text
+
+    def test_upgrade_cta_no_billing_implication(self, client):
+        """Upgrade CTA exists but without pricing."""
+        response = client.get("/app")
+        # The upgrade nudge should say "Upgrade to BEST" without price
+        assert "Upgrade to BEST" in response.text
+        assert "/mo)" not in response.text
+
+    # --- Regression: All tabs load ---
+
+    def test_all_four_tabs_present(self, client):
+        """All four tabs render in correct order."""
+        response = client.get("/app")
+        text = response.text
+        assert 'data-tab="discover"' in text
+        assert 'data-tab="evaluate"' in text
+        assert 'data-tab="builder"' in text
+        assert 'data-tab="history"' in text
+
+    def test_navigation_order_locked(self, client):
+        """Tabs appear in order: Discover, Evaluate, Builder, History."""
+        response = client.get("/app")
+        text = response.text
+        discover_pos = text.find('data-tab="discover"')
+        evaluate_pos = text.find('data-tab="evaluate"')
+        builder_pos = text.find('data-tab="builder"')
+        history_pos = text.find('data-tab="history"')
+        assert discover_pos < evaluate_pos < builder_pos < history_pos
+
+    def test_tab_content_containers_exist(self, client):
+        """All tab content containers are in the DOM."""
+        response = client.get("/app")
+        assert 'id="tab-discover"' in response.text
+        assert 'id="tab-evaluate"' in response.text
+        assert 'id="tab-builder"' in response.text
+        assert 'id="tab-history"' in response.text
+
+    def test_builder_tab_still_functional(self, client):
+        """Builder tab content still has form elements."""
+        response = client.get("/app?tab=builder")
+        assert response.status_code == 200
+        assert "Parlay Builder" in response.text
+        assert "add-leg-btn" in response.text
+        assert "submit-btn" in response.text
+
+    def test_history_tab_still_functional(self, client):
+        """History tab content still loads."""
+        response = client.get("/app?tab=history")
+        assert response.status_code == 200
+        assert "tab-history" in response.text
+
+    def test_no_coming_soon_text(self, client):
+        """No placeholder 'coming soon' text anywhere."""
+        response = client.get("/app")
+        assert "coming soon" not in response.text.lower()
+
+
+class TestCoreLoopReinforcement:
+    """Ticket 2: Core Loop Reinforcement tests."""
+
+    # --- Signal System ---
+
+    def test_signal_display_exists(self, client):
+        """Signal badge and score elements are in the DOM."""
+        response = client.get("/app")
+        assert "eval-signal-badge" in response.text
+        assert "eval-signal-score" in response.text
+        assert "signal-display" in response.text
+
+    def test_signal_map_in_javascript(self, client):
+        """Signal map has all four signals: blue, green, yellow, red."""
+        response = client.get("/app")
+        assert "signal-blue" in response.text
+        assert "signal-green" in response.text
+        assert "signal-yellow" in response.text
+        assert "signal-red" in response.text
+
+    def test_signal_labels_correct(self, client):
+        """Signal labels: Strong, Solid, Fixable, Fragile."""
+        response = client.get("/app")
+        # These are in the JS signalMap
+        assert "'Strong'" in response.text or "Strong" in response.text
+        assert "'Solid'" in response.text or "Solid" in response.text
+        assert "'Fixable'" in response.text or "Fixable" in response.text
+        assert "'Fragile'" in response.text or "Fragile" in response.text
+
+    # --- Metrics Grid (GOOD+) ---
+
+    def test_metrics_grid_exists(self, client):
+        """Metrics grid with leg penalty, correlation, raw, final."""
+        response = client.get("/app")
+        assert "eval-metrics-grid" in response.text
+        assert "eval-metric-leg" in response.text
+        assert "eval-metric-corr" in response.text
+        assert "eval-metric-raw" in response.text
+        assert "eval-metric-final" in response.text
+
+    # --- Improvement Tips (GOOD+) ---
+
+    def test_tips_panel_exists(self, client):
+        """Tips panel exists with 'How to Improve' heading."""
+        response = client.get("/app")
+        assert "eval-tips-panel" in response.text
+        assert "How to Improve" in response.text
+
+    # --- Tier Differentiation ---
+
+    def test_correlations_panel_exists(self, client):
+        """Correlations panel exists for BETTER+ tier rendering."""
+        response = client.get("/app")
+        assert "eval-correlations-panel" in response.text
+        assert "Correlations Found" in response.text
+
+    def test_summary_panel_exists(self, client):
+        """Summary panel exists for BETTER+ tier rendering."""
+        response = client.get("/app")
+        assert "eval-summary-panel" in response.text
+        assert "Deeper Insights" in response.text
+
+    def test_alerts_panel_exists(self, client):
+        """Alerts panel exists for BEST tier rendering."""
+        response = client.get("/app")
+        assert "eval-alerts-panel" in response.text
+
+    def test_correlations_hidden_by_default(self, client):
+        """Correlations panel is hidden in initial render."""
+        response = client.get("/app")
+        assert 'correlations-panel hidden' in response.text
+
+    def test_summary_hidden_by_default(self, client):
+        """Summary panel is hidden in initial render."""
+        response = client.get("/app")
+        assert 'summary-panel hidden' in response.text
+
+    def test_alerts_hidden_by_default(self, client):
+        """Alerts panel is hidden in initial render."""
+        response = client.get("/app")
+        assert 'alerts-detail-panel hidden' in response.text
+
+    def test_tier_gating_logic_in_js(self, client):
+        """JavaScript gates correlations/summary to BETTER+, alerts to BEST."""
+        response = client.get("/app")
+        # BETTER+ check for correlations
+        assert "tier === 'better' || tier === 'best'" in response.text
+        # BEST-only check for alerts
+        assert "tier === 'best'" in response.text
+
+    # --- Post-Result Actions ---
+
+    def test_post_actions_exist(self, client):
+        """Post-result action buttons exist: Improve, Re-Evaluate, Save."""
+        response = client.get("/app")
+        assert "eval-action-improve" in response.text
+        assert "eval-action-reeval" in response.text
+        assert "eval-action-save" in response.text
+
+    def test_improve_routes_to_builder(self, client):
+        """Improve button switches to Builder tab."""
+        response = client.get("/app")
+        assert "Improve This Bet" in response.text
+        assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
+
+    def test_reeval_button_text(self, client):
+        """Re-Evaluate button is present."""
+        response = client.get("/app")
+        assert "Re-Evaluate" in response.text
+
+    def test_save_button_text(self, client):
+        """Save button is present."""
+        response = client.get("/app")
+        assert ">Save<" in response.text
+
+    # --- Verdict Bar ---
+
+    def test_verdict_bar_exists(self, client):
+        """Verdict bar with action and reason elements exists."""
+        response = client.get("/app")
+        assert "eval-verdict-bar" in response.text
+        assert "eval-verdict-action" in response.text
+        assert "eval-verdict-reason" in response.text
+
+    # --- Tab Content Active Class ---
+
+    def test_evaluate_tab_content_active_by_default(self, client):
+        """Evaluate tab content has 'active' class on default load."""
+        response = client.get("/app")
+        # Check the tab-evaluate div has the active class
+        import re
+        match = re.search(r'<div class="tab-content\s+active"\s+id="tab-evaluate"', response.text)
+        assert match is not None
+
+    # --- API Tier Differentiation (end-to-end) ---
+
+    def test_good_tier_returns_metrics(self, client):
+        """GOOD tier response includes metrics for rendering."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "good"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "metrics" in data["evaluation"]
+        assert "final_fragility" in data["evaluation"]["metrics"]
+        assert "leg_penalty" in data["evaluation"]["metrics"]
+
+    def test_good_tier_has_interpretation(self, client):
+        """GOOD tier has fragility interpretation with what_to_do."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "good"}
+        )
+        data = response.json()
+        assert "interpretation" in data
+        assert "fragility" in data["interpretation"]
+        frag = data["interpretation"]["fragility"]
+        assert "bucket" in frag
+        assert "what_to_do" in frag
+        assert "meaning" in frag
+
+    def test_better_tier_has_summary(self, client):
+        """BETTER tier includes explain.summary list."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "better"}
+        )
+        data = response.json()
+        assert "explain" in data
+        assert "summary" in data["explain"]
+        assert isinstance(data["explain"]["summary"], list)
+
+    def test_best_tier_has_alerts(self, client):
+        """BEST tier includes explain.alerts and recommended_next_step."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "best"}
+        )
+        data = response.json()
+        assert "explain" in data
+        assert "alerts" in data["explain"]
+        assert "recommended_next_step" in data["explain"]
+
+    def test_good_vs_better_output_differs(self, client):
+        """GOOD and BETTER tier outputs are structurally different."""
+        good = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "good"}
+        ).json()
+        better = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML parlay", "tier": "better"}
+        ).json()
+        # GOOD has structured output, BETTER has summary
+        assert "overallSignal" in good["explain"]
+        assert "summary" not in good["explain"]
+        assert "summary" in better["explain"]
+        assert "overallSignal" not in better["explain"]
 
 
 class TestEvaluateProxy:
@@ -188,16 +547,23 @@ class TestEvaluateProxy:
 class TestTierEnforcement:
     """Tests for tier-based explain filtering."""
 
-    def test_tier_good_returns_empty_explain(self, client):
-        """GOOD tier returns empty explain dict."""
+    def test_tier_good_returns_structured_output(self, client):
+        """GOOD tier returns structured explain with exact schema."""
         response = client.post(
             "/app/evaluate",
             json={"input": "Lakers -5.5", "tier": "good"}
         )
         assert response.status_code == 200
         data = response.json()
-        # GOOD tier should have empty explain
-        assert data["explain"] == {}
+        explain = data["explain"]
+        # GOOD tier should have structured output
+        assert "overallSignal" in explain
+        assert "grade" in explain
+        assert "fragilityScore" in explain
+        assert "contributors" in explain
+        assert "warnings" in explain
+        assert "tips" in explain
+        assert "removalSuggestions" in explain
 
     def test_tier_better_returns_summary_only(self, client):
         """BETTER tier returns explain with summary only."""
@@ -587,3 +953,310 @@ class TestImageEvaluateMocked:
             assert "image_parse" in data
 
         del os.environ["OPENAI_API_KEY"]
+
+
+class TestGoodTierStructuredOutput:
+    """Tests for Ticket 3: GOOD tier structured evaluation output.
+
+    Verifies:
+    - GOOD tier returns exact schema (overallSignal, grade, fragilityScore,
+      contributors, warnings, tips, removalSuggestions)
+    - GOOD tier does NOT return summary/alerts/recommended_next_step
+    - GOOD output differs structurally from BETTER and BEST
+    - Signal/grade mapping is correct
+    - Red signal is rare (only for critical fragility)
+    - Contributors are typed and impact-rated
+    """
+
+    def test_good_returns_exact_schema_keys(self, client):
+        """GOOD tier explain contains all required keys."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5", "tier": "good"}
+        )
+        assert response.status_code == 200
+        explain = response.json()["explain"]
+        required_keys = {"overallSignal", "grade", "fragilityScore",
+                         "contributors", "warnings", "tips", "removalSuggestions"}
+        assert required_keys == set(explain.keys())
+
+    def test_good_does_not_return_summary(self, client):
+        """GOOD tier must NOT include summary."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert "summary" not in explain
+
+    def test_good_does_not_return_alerts(self, client):
+        """GOOD tier must NOT include alerts."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert "alerts" not in explain
+
+    def test_good_does_not_return_recommended_next_step(self, client):
+        """GOOD tier must NOT include recommended_next_step."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert "recommended_next_step" not in explain
+
+    def test_good_signal_is_valid_enum(self, client):
+        """overallSignal must be one of blue/green/yellow/red."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert explain["overallSignal"] in ("blue", "green", "yellow", "red")
+
+    def test_good_grade_is_valid_enum(self, client):
+        """grade must be one of A/B/C/D."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert explain["grade"] in ("A", "B", "C", "D")
+
+    def test_good_grade_maps_to_signal(self, client):
+        """Grade must correspond to signal: A=blue, B=green, C=yellow, D=red."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML + Nuggets over 210", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        grade_signal_map = {"A": "blue", "B": "green", "C": "yellow", "D": "red"}
+        expected_signal = grade_signal_map[explain["grade"]]
+        assert explain["overallSignal"] == expected_signal
+
+    def test_good_fragility_score_is_numeric(self, client):
+        """fragilityScore must be a number."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert isinstance(explain["fragilityScore"], (int, float))
+
+    def test_good_fragility_score_uses_existing_scale(self, client):
+        """fragilityScore must be on the 0-100 scale."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert 0 <= explain["fragilityScore"] <= 100
+
+    def test_good_contributors_are_typed(self, client):
+        """Each contributor must have type and impact fields."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML + Nuggets over", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        for contrib in explain["contributors"]:
+            assert "type" in contrib
+            assert "impact" in contrib
+
+    def test_good_contributor_types_are_valid(self, client):
+        """Contributor type must be one of: correlation, volatility, leg_count, dependency."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML + Nuggets over", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        valid_types = {"correlation", "volatility", "leg_count", "dependency"}
+        for contrib in explain["contributors"]:
+            assert contrib["type"] in valid_types
+
+    def test_good_contributor_impacts_are_valid(self, client):
+        """Contributor impact must be one of: low, medium, high."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML + Nuggets over", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        valid_impacts = {"low", "medium", "high"}
+        for contrib in explain["contributors"]:
+            assert contrib["impact"] in valid_impacts
+
+    def test_good_warnings_are_strings(self, client):
+        """Warnings must be a list of strings."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert isinstance(explain["warnings"], list)
+        for w in explain["warnings"]:
+            assert isinstance(w, str)
+
+    def test_good_tips_are_strings(self, client):
+        """Tips must be a list of strings."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert isinstance(explain["tips"], list)
+        for t in explain["tips"]:
+            assert isinstance(t, str)
+
+    def test_good_removal_suggestions_are_strings(self, client):
+        """removalSuggestions must be a list of strings (leg_ids)."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert isinstance(explain["removalSuggestions"], list)
+        for r in explain["removalSuggestions"]:
+            assert isinstance(r, str)
+
+    def test_good_differs_from_better(self, client):
+        """GOOD output must be structurally different from BETTER."""
+        good_resp = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        better_resp = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "better"}
+        )
+        good_explain = good_resp.json()["explain"]
+        better_explain = better_resp.json()["explain"]
+        # GOOD has overallSignal, BETTER has summary
+        assert "overallSignal" in good_explain
+        assert "overallSignal" not in better_explain
+        assert "summary" in better_explain
+        assert "summary" not in good_explain
+
+    def test_good_differs_from_best(self, client):
+        """GOOD output must be structurally different from BEST."""
+        good_resp = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        )
+        best_resp = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "best"}
+        )
+        good_explain = good_resp.json()["explain"]
+        best_explain = best_resp.json()["explain"]
+        # GOOD has structured fields, BEST has prose fields
+        assert "grade" in good_explain
+        assert "grade" not in best_explain
+        assert "alerts" in best_explain
+        assert "alerts" not in good_explain
+
+    def test_red_signal_only_for_critical(self, client):
+        """Red signal only appears when fragility is critical (>60)."""
+        # Simple input -> low fragility -> not red
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers ML", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        if explain["fragilityScore"] <= 60:
+            assert explain["overallSignal"] != "red"
+
+    def test_yellow_is_common_for_multi_leg(self, client):
+        """Multi-leg parlays typically produce yellow signal."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML + Nuggets over 210.5 + Bucks -3", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        # 4-leg parlay should produce yellow or higher
+        assert explain["overallSignal"] in ("yellow", "red")
+        assert explain["grade"] in ("C", "D")
+
+    def test_good_has_leg_count_contributor_for_multi_leg(self, client):
+        """Multi-leg parlay should have leg_count as contributor."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML + Nuggets over 210.5", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        contrib_types = [c["type"] for c in explain["contributors"]]
+        assert "leg_count" in contrib_types
+
+    def test_good_has_tips_for_high_fragility(self, client):
+        """High fragility should produce tips."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lebron 25 points + AD 10 rebounds + Tatum 30 points + Jokic 12 assists", "tier": "good"}
+        )
+        explain = response.json()["explain"]
+        assert len(explain["tips"]) > 0
+
+    def test_good_deterministic(self, client):
+        """Same input produces same GOOD output (deterministic)."""
+        input_data = {"input": "Lakers -5.5 + Celtics ML", "tier": "good"}
+        resp1 = client.post("/app/evaluate", json=input_data)
+        resp2 = client.post("/app/evaluate", json=input_data)
+        explain1 = resp1.json()["explain"]
+        explain2 = resp2.json()["explain"]
+        assert explain1["overallSignal"] == explain2["overallSignal"]
+        assert explain1["grade"] == explain2["grade"]
+        assert explain1["fragilityScore"] == explain2["fragilityScore"]
+        assert explain1["contributors"] == explain2["contributors"]
+
+    def test_better_unchanged(self, client):
+        """BETTER tier response is not affected by GOOD changes."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "better"}
+        )
+        explain = response.json()["explain"]
+        assert "summary" in explain
+        assert isinstance(explain["summary"], list)
+        assert "overallSignal" not in explain
+        assert "grade" not in explain
+
+    def test_best_unchanged(self, client):
+        """BEST tier response is not affected by GOOD changes."""
+        response = client.post(
+            "/app/evaluate",
+            json={"input": "Lakers -5.5 + Celtics ML", "tier": "best"}
+        )
+        explain = response.json()["explain"]
+        assert "summary" in explain
+        assert "alerts" in explain
+        assert "recommended_next_step" in explain
+        assert "overallSignal" not in explain
+
+    def test_good_output_html_container_exists(self, client):
+        """Frontend has dedicated GOOD tier output container."""
+        response = client.get("/app")
+        html = response.text
+        assert 'id="eval-good-output"' in html
+        assert 'class="good-output hidden"' in html
+
+    def test_good_output_has_all_sections(self, client):
+        """Frontend GOOD output has all required section elements."""
+        response = client.get("/app")
+        html = response.text
+        assert 'id="good-signal-grade"' in html
+        assert 'id="good-fragility"' in html
+        assert 'id="good-contributors-section"' in html
+        assert 'id="good-warnings-section"' in html
+        assert 'id="good-tips-section"' in html
+        assert 'id="good-removals-section"' in html
+
+    def test_good_output_does_not_reuse_better_best_ids(self, client):
+        """GOOD output uses its own IDs, not shared tier panel IDs."""
+        response = client.get("/app")
+        html = response.text
+        # GOOD container should not reference the shared panel IDs
+        good_section = html[html.find('id="eval-good-output"'):html.find('<!-- Shared tier panels')]
+        assert 'eval-correlations-panel' not in good_section
+        assert 'eval-summary-panel' not in good_section
+        assert 'eval-alerts-panel' not in good_section
