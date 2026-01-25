@@ -2462,6 +2462,76 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             color: var(--fg-muted);
             margin-top: var(--sp-1);
         }}
+        /* Ticket 6: History item actions */
+        .history-item-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--sp-2);
+        }}
+        .history-item-meta {{
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-1);
+        }}
+        .history-item-actions {{
+            display: flex;
+            gap: var(--sp-2);
+        }}
+        .history-action-btn {{
+            padding: var(--sp-1) var(--sp-2);
+            font-size: var(--text-xs);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            border: 1px solid var(--border-default);
+            background: var(--surface-overlay);
+            color: var(--fg-secondary);
+            transition: all 0.15s ease;
+        }}
+        .history-action-btn:hover {{
+            background: var(--surface-hover);
+            color: var(--fg-primary);
+        }}
+        .history-action-btn.primary {{
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--surface-base);
+        }}
+        .history-action-btn.primary:hover {{
+            background: var(--accent-hover);
+        }}
+        .history-sport {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .history-empty-state {{
+            text-align: center;
+            padding: var(--sp-8);
+            color: var(--fg-muted);
+        }}
+        .history-empty-state p {{
+            margin-bottom: var(--sp-4);
+        }}
+        .history-start-btn {{
+            padding: var(--sp-3) var(--sp-6);
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--surface-base);
+            font-size: var(--text-base);
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .history-start-btn:hover {{
+            background: var(--accent-hover);
+        }}
+        .history-loading {{
+            text-align: center;
+            padding: var(--sp-8);
+            color: var(--fg-muted);
+        }}
         .login-prompt {{
             text-align: center;
             padding: var(--sp-8);
@@ -3004,15 +3074,21 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             </div>
         </div> <!-- End tab-evaluate -->
 
-        <!-- History Tab Content -->
+        <!-- History Tab Content (Ticket 6) -->
         <div class="tab-content {history_active}" id="tab-history">
             <div class="history-section">
                 <div class="section-header">
-                    <span class="section-title">Past Decisions</span>
+                    <span class="section-title">Evaluation History</span>
                 </div>
 
                 <div id="history-content">
-                    {"<div class='login-prompt'><p>Sign in to view your evaluation history</p><a href='/login'>Login</a></div>" if not is_logged_in else "<div class='loading'>Loading history...</div>"}
+                    <div class="history-loading">Loading history...</div>
+                </div>
+
+                <!-- Empty state (shown when no items) -->
+                <div id="history-empty" class="history-empty-state hidden">
+                    <p>No evaluations yet.</p>
+                    <button type="button" class="history-start-btn" onclick="switchToTab('evaluate')">Start Evaluating</button>
                 </div>
             </div>
         </div> <!-- End tab-history -->
@@ -3792,56 +3868,98 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         }})();
 
         // ============================================================
-        // HISTORY TAB FUNCTIONALITY
+        // HISTORY TAB FUNCTIONALITY (Ticket 6)
         // ============================================================
         (function() {{
             let historyLoaded = false;
 
-            window.loadHistory = async function() {{
-                if (historyLoaded) return;
+            // Re-evaluate: load input into Evaluate tab and trigger evaluation
+            window.historyReEvaluate = async function(itemId) {{
+                try {{
+                    const response = await fetch('/app/history/' + itemId);
+                    const data = await response.json();
+                    if (data.item && data.item.raw) {{
+                        const inputText = data.item.inputText || (data.item.raw.input && data.item.raw.input.bet_text) || '';
+                        const textInput = document.getElementById('text-input');
+                        if (textInput && inputText) {{
+                            textInput.value = inputText;
+                            switchToTab('evaluate');
+                            // Focus the input
+                            textInput.focus();
+                        }}
+                    }}
+                }} catch (err) {{
+                    console.error('Failed to load history item for re-evaluate:', err);
+                }}
+            }};
+
+            // Edit: load into Builder with fix context (if available)
+            window.historyEdit = async function(itemId) {{
+                try {{
+                    const response = await fetch('/app/history/' + itemId);
+                    const data = await response.json();
+                    if (data.item && data.item.raw) {{
+                        const raw = data.item.raw;
+                        // Set up fix context if we have primaryFailure
+                        if (raw.primaryFailure && raw.primaryFailure.fastestFix) {{
+                            window._fixContext = {{
+                                evaluationId: itemId,
+                                primaryFailure: raw.primaryFailure,
+                                fastestFix: raw.primaryFailure.fastestFix,
+                                deltaPreview: raw.deltaPreview || null
+                            }};
+                        }}
+                        switchToTab('builder');
+                    }}
+                }} catch (err) {{
+                    console.error('Failed to load history item for edit:', err);
+                }}
+            }};
+
+            window.loadHistory = async function(forceReload) {{
+                if (historyLoaded && !forceReload) return;
 
                 const historyContent = document.getElementById('history-content');
+                const historyEmpty = document.getElementById('history-empty');
 
-                // Check if logged in (if login prompt is shown, don't try to load)
-                if (historyContent.querySelector('.login-prompt')) {{
-                    return;
-                }}
+                historyContent.innerHTML = '<div class="history-loading">Loading history...</div>';
+                if (historyEmpty) historyEmpty.classList.add('hidden');
 
                 try {{
-                    const response = await fetch('/app/account/history');
+                    const response = await fetch('/app/history');
                     const data = await response.json();
+                    const items = data.items || [];
 
-                    if (!data.logged_in) {{
-                        historyContent.innerHTML = "<div class='login-prompt'><p>Sign in to view your evaluation history</p><a href='/login'>Login</a></div>";
+                    if (items.length === 0) {{
+                        historyContent.innerHTML = '';
+                        if (historyEmpty) historyEmpty.classList.remove('hidden');
+                        historyLoaded = true;
                         return;
                     }}
 
-                    const evaluations = data.evaluations || [];
-
-                    if (evaluations.length === 0) {{
-                        historyContent.innerHTML = "<div class='history-empty'>No evaluations yet. Build a parlay and evaluate it!</div>";
-                        return;
-                    }}
+                    if (historyEmpty) historyEmpty.classList.add('hidden');
 
                     let html = '';
-                    evaluations.forEach(function(e) {{
-                        const result = e.result || {{}};
-                        const interpretation = result.interpretation || {{}};
-                        const fragility = interpretation.fragility || {{}};
-                        const score = Math.round(fragility.display_value || 0);
-                        const date = new Date(e.created_at).toLocaleString();
+                    items.forEach(function(item) {{
+                        const date = new Date(item.createdAt).toLocaleString();
+                        const score = Math.round(item.fragilityScore || 0);
+                        const signal = item.signal || 'green';
+                        const label = item.label || 'Solid';
+                        const sport = item.sport || '';
 
-                        // Use signalInfo if available, else derive from bucket
-                        const si = result.signalInfo || {{}};
-                        const hSignal = si.signal || ({{ 'low': 'blue', 'medium': 'green', 'high': 'yellow', 'critical': 'red' }}[fragility.bucket || 'medium'] || 'green');
-                        const hLabel = si.label || ({{ 'blue': 'Strong', 'green': 'Solid', 'yellow': 'Fixable', 'red': 'Fragile' }}[hSignal] || 'Solid');
-                        const hLine = si.signalLine || '';
-
-                        html += '<div class="history-item">';
+                        html += '<div class="history-item" data-id="' + item.id + '">';
+                        html += '<div class="history-item-header">';
+                        html += '<div class="history-item-meta">';
                         html += '<div class="history-date">' + date + '</div>';
-                        html += '<div class="history-text">' + (e.input_text || 'N/A') + '</div>';
-                        html += '<span class="history-grade ' + hSignal + '">' + score + ' - ' + hLabel + '</span>';
-                        if (hLine) {{ html += '<div class="history-signal-line">' + hLine + '</div>'; }}
+                        if (sport) {{ html += '<div class="history-sport">' + sport + '</div>'; }}
+                        html += '</div>';
+                        html += '<div class="history-item-actions">';
+                        html += '<button type="button" class="history-action-btn primary" onclick="historyReEvaluate(\'' + item.id + '\')">Re-Evaluate</button>';
+                        html += '<button type="button" class="history-action-btn" onclick="historyEdit(\'' + item.id + '\')">Edit</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '<div class="history-text">' + (item.inputText || 'N/A') + '</div>';
+                        html += '<span class="history-grade ' + signal + '">' + score + ' - ' + label + '</span>';
                         html += '</div>';
                     }});
 
@@ -3850,7 +3968,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
 
                 }} catch (err) {{
                     console.error('Failed to load history:', err);
-                    historyContent.innerHTML = "<div class='history-empty'>Failed to load history</div>";
+                    historyContent.innerHTML = "<div class='history-empty-state'><p>Failed to load history</p></div>";
                 }}
             }};
 
@@ -4125,6 +4243,17 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         except Exception as persist_err:
             _logger.warning(f"Failed to persist evaluation: {persist_err}")
             # Don't fail the request if persistence fails
+
+        # Ticket 6/6B: Save to history store (in-memory, no auth required)
+        try:
+            from app.history_store import get_history_store, create_history_item
+            history_item = create_history_item(response_data, normalized.input_text)
+            get_history_store().add(history_item)
+            # Ticket 6B: evaluationId is canonical, historyId is deprecated alias
+            response_data["evaluationId"] = history_item.id
+            response_data["historyId"] = history_item.id  # Deprecated, use evaluationId
+        except Exception as history_err:
+            _logger.warning(f"Failed to save to history: {history_err}")
 
         return response_data
 
@@ -4544,6 +4673,17 @@ async def evaluate_image(
                 "evaluation": round(eval_latency, 2),
             },
         }
+
+        # Ticket 6/6B: Save to history store (in-memory, no auth required)
+        try:
+            from app.history_store import get_history_store, create_history_item
+            history_item = create_history_item(response, normalized.input_text)
+            get_history_store().add(history_item)
+            # Ticket 6B: evaluationId is canonical, historyId is deprecated alias
+            response["evaluationId"] = history_item.id
+            response["historyId"] = history_item.id  # Deprecated, use evaluationId
+        except Exception as history_err:
+            _logger.warning(f"Failed to save image eval to history: {history_err}")
 
         return response
 
@@ -5278,6 +5418,61 @@ async def get_user_history(raw_request: Request):
                 "detail": "Failed to fetch history",
             },
         )
+
+
+# =============================================================================
+# History API (Ticket 6)
+# =============================================================================
+
+
+@router.get("/app/history")
+async def get_history(raw_request: Request, limit: int = 50):
+    """
+    Get evaluation history.
+
+    Returns items in reverse chronological order (newest first).
+    No authentication required - uses in-memory store.
+    """
+    from app.history_store import get_history_store
+
+    request_id = get_request_id(raw_request) or "unknown"
+    store = get_history_store()
+
+    items = store.list(limit=limit)
+    return {
+        "request_id": request_id,
+        "items": [item.to_dict() for item in items],
+        "count": len(items),
+    }
+
+
+@router.get("/app/history/{item_id}")
+async def get_history_item(item_id: str, raw_request: Request):
+    """
+    Get a specific history item by ID.
+
+    Returns the item with optional raw evaluation data.
+    """
+    from app.history_store import get_history_store
+
+    request_id = get_request_id(raw_request) or "unknown"
+    store = get_history_store()
+
+    item = store.get(item_id)
+    if not item:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "request_id": request_id,
+                "error": "not_found",
+                "detail": f"History item {item_id} not found",
+            },
+        )
+
+    return {
+        "request_id": request_id,
+        "item": item.to_dict_with_raw(),
+    }
 
 
 # =============================================================================

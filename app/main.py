@@ -13,6 +13,7 @@ from app.correlation import CorrelationIdMiddleware
 from app.routers import leading_light
 from app.routers import panel
 from app.routers import web
+from app.routers import history
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -87,6 +88,7 @@ app.include_router(web.router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)
+app.include_router(history.router)
 
 
 @app.get("/health")

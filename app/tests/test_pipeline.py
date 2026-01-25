@@ -200,11 +200,17 @@ class TestRunEvaluation:
         result = run_evaluation(normalized)
         assert result.tier == "better"
 
-    def test_good_tier_empty_explain(self):
-        """GOOD tier returns empty explain in pipeline response."""
+    def test_good_tier_structured_explain(self):
+        """GOOD tier returns structured explain in pipeline response (Ticket 3)."""
         normalized = airlock_ingest("Lakers -5.5", tier="good")
         result = run_evaluation(normalized)
-        assert result.explain == {}
+        # Ticket 3: GOOD tier now returns structured output
+        assert "overallSignal" in result.explain
+        assert "grade" in result.explain
+        assert "fragilityScore" in result.explain
+        # GOOD tier should NOT have BETTER/BEST fields
+        assert "summary" not in result.explain
+        assert "alerts" not in result.explain
 
     def test_best_tier_full_explain(self):
         """BEST tier returns full explain in pipeline response."""
@@ -292,13 +298,17 @@ class TestRouteIntegration:
         from fastapi.testclient import TestClient
         client = TestClient(app)
 
-        # GOOD tier should have empty explain
+        # GOOD tier should have structured explain (Ticket 3)
         response_good = client.post(
             "/app/evaluate",
             json={"input": "Lakers -5.5", "tier": "good"},
         )
         assert response_good.status_code == 200
-        assert response_good.json()["explain"] == {}
+        good_explain = response_good.json()["explain"]
+        assert "overallSignal" in good_explain
+        assert "grade" in good_explain
+        # GOOD should NOT have BETTER/BEST fields
+        assert "summary" not in good_explain
 
         # BEST tier should have full explain
         response_best = client.post(

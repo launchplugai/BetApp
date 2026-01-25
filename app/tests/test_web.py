@@ -1863,3 +1863,369 @@ class TestVC3DeltaPayoff:
         assert "success" in fix_data
         if fix_data.get("success"):
             assert "evaluation" in fix_data
+
+
+class TestHistoryMVP:
+    """Ticket 6: History MVP tests.
+
+    Verifies:
+    - Successful evaluation creates a history item
+    - /history returns items in reverse chronological order
+    - History item contains correct signal + label + grade + fragilityScore
+    - Failed evaluation does NOT create history item
+    - Re-evaluate/edit actions exist in DOM for each item
+    """
+
+    @pytest.fixture(autouse=True)
+    def clear_history_before_test(self):
+        """Clear history store before each test."""
+        from app.history_store import get_history_store
+        store = get_history_store()
+        store.clear()
+        yield
+        # Also clear after test
+        store.clear()
+
+    def test_successful_evaluation_creates_history_item(self, client):
+        """Successful evaluation creates a history item."""
+        # Run evaluation
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Response should include historyId
+        assert "evaluationId" in data, "Response should include evaluationId"
+        assert data["evaluationId"] is not None
+
+        # History endpoint should return the item
+        history_resp = client.get("/app/history")
+        assert history_resp.status_code == 200
+        history_data = history_resp.json()
+        assert "items" in history_data
+        assert len(history_data["items"]) >= 1, "History should have at least one item"
+
+    def test_history_returns_items_in_reverse_chronological_order(self, client):
+        """History returns items in reverse chronological order (newest first)."""
+        import time
+
+        # Run multiple evaluations
+        for i, bet in enumerate(["Lakers -5.5", "Celtics ML", "Nuggets ML"]):
+            resp = client.post("/app/evaluate", json={
+                "input": bet,
+                "tier": "good"
+            })
+            assert resp.status_code == 200
+            # Small delay to ensure different timestamps
+            time.sleep(0.01)
+
+        # Get history
+        history_resp = client.get("/app/history")
+        assert history_resp.status_code == 200
+        history_data = history_resp.json()
+        items = history_data["items"]
+        assert len(items) >= 3
+
+        # Verify reverse chronological order (newest first)
+        # Parse ISO timestamps and verify order
+        timestamps = []
+        for item in items[:3]:
+            ts = item.get("createdAt")
+            assert ts is not None, "History item should have createdAt"
+            timestamps.append(ts)
+
+        # Verify descending order
+        for i in range(len(timestamps) - 1):
+            assert timestamps[i] >= timestamps[i + 1], \
+                f"History not in reverse chronological order: {timestamps[i]} should be >= {timestamps[i + 1]}"
+
+    def test_history_item_contains_correct_signal_fields(self, client):
+        """History item contains correct signal + label + grade + fragilityScore."""
+        # Run evaluation
+        eval_resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        assert eval_resp.status_code == 200
+        eval_data = eval_resp.json()
+
+        # Get expected values from signalInfo
+        signal_info = eval_data.get("signalInfo", {})
+        expected_signal = signal_info.get("signal")
+        expected_label = signal_info.get("label")
+        expected_grade = signal_info.get("grade")
+        expected_fragility = signal_info.get("fragilityScore")
+
+        # Get history item
+        history_resp = client.get("/app/history")
+        history_data = history_resp.json()
+        items = history_data["items"]
+        assert len(items) >= 1
+
+        # Find the item (most recent)
+        item = items[0]
+
+        # Verify all required fields
+        assert "signal" in item, "History item missing signal"
+        assert "label" in item, "History item missing label"
+        assert "grade" in item, "History item missing grade"
+        assert "fragilityScore" in item, "History item missing fragilityScore"
+
+        # Verify values match signalInfo
+        assert item["signal"] == expected_signal, \
+            f"Signal mismatch: {item['signal']} != {expected_signal}"
+        assert item["label"] == expected_label, \
+            f"Label mismatch: {item['label']} != {expected_label}"
+        assert item["grade"] == expected_grade, \
+            f"Grade mismatch: {item['grade']} != {expected_grade}"
+        assert item["fragilityScore"] == expected_fragility, \
+            f"Fragility mismatch: {item['fragilityScore']} != {expected_fragility}"
+
+    def test_failed_evaluation_does_not_create_history_item(self, client):
+        """Failed evaluation does NOT create history item."""
+        # Get initial history count
+        initial_resp = client.get("/app/history")
+        initial_count = initial_resp.json()["count"]
+
+        # Run failed evaluation (empty input should return 400)
+        resp = client.post("/app/evaluate", json={
+            "input": "",
+            "tier": "good"
+        })
+        assert resp.status_code == 400
+
+        # History count should be unchanged
+        after_resp = client.get("/app/history")
+        after_count = after_resp.json()["count"]
+        assert after_count == initial_count, \
+            f"Failed evaluation should not create history item: {initial_count} -> {after_count}"
+
+    def test_history_item_includes_input_text(self, client):
+        """History item includes original input text."""
+        test_input = "Lakers -5.5 + Celtics ML"
+        resp = client.post("/app/evaluate", json={
+            "input": test_input,
+            "tier": "good"
+        })
+        assert resp.status_code == 200
+
+        history_resp = client.get("/app/history")
+        history_data = history_resp.json()
+        items = history_data["items"]
+        assert len(items) >= 1
+
+        item = items[0]
+        assert "inputText" in item, "History item missing inputText"
+        assert item["inputText"] == test_input
+
+    def test_history_re_evaluate_actions_exist_in_dom(self, client):
+        """Re-evaluate actions exist in DOM for history items."""
+        resp = client.get("/app")
+        html = resp.text
+
+        # Check for historyReEvaluate function
+        assert "historyReEvaluate" in html, "historyReEvaluate function should exist"
+
+        # Check for re-evaluate button in history item template
+        assert "history-action" in html
+        assert "Re-Evaluate" in html
+
+    def test_history_edit_actions_exist_in_dom(self, client):
+        """Edit actions exist in DOM for history items."""
+        resp = client.get("/app")
+        html = resp.text
+
+        # Check for historyEdit function
+        assert "historyEdit" in html, "historyEdit function should exist"
+
+        # Check for edit button in history item template
+        assert "Edit" in html
+
+    def test_history_tab_shows_empty_state(self, client):
+        """History tab shows empty state when no items."""
+        resp = client.get("/app?tab=history")
+        html = resp.text
+
+        # Empty state should be visible by default
+        assert "history-empty" in html
+        assert "No evaluations yet" in html
+
+    def test_history_endpoint_returns_json_with_items(self, client):
+        """History endpoint returns JSON with items array."""
+        resp = client.get("/app/history")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "count" in data
+        assert isinstance(data["items"], list)
+
+    def test_history_item_endpoint_returns_item_with_raw(self, client):
+        """History item endpoint returns item with raw evaluation."""
+        # First create a history item
+        eval_resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        assert eval_resp.status_code == 200
+        eval_id = eval_resp.json().get("evaluationId")
+        assert eval_id is not None
+
+        # Get specific item
+        item_resp = client.get(f"/app/history/{eval_id}")
+        assert item_resp.status_code == 200
+        data = item_resp.json()
+
+        # Response should have 'item' key
+        assert "item" in data, "Response should have 'item' key"
+        item = data["item"]
+
+        # Should include raw evaluation
+        assert "raw" in item, "History item detail should include raw evaluation"
+        assert item["raw"] is not None
+
+    def test_history_item_endpoint_returns_404_for_unknown(self, client):
+        """History item endpoint returns 404 for unknown ID."""
+        resp = client.get("/app/history/unknown-id-that-does-not-exist")
+        assert resp.status_code == 404
+
+    def test_history_css_exists(self, client):
+        """History-related CSS exists."""
+        resp = client.get("/app")
+        html = resp.text
+        assert ".history-item" in html
+        assert ".history-empty" in html
+        assert ".history-action" in html
+
+    def test_load_history_function_exists(self, client):
+        """loadHistory JavaScript function exists."""
+        resp = client.get("/app")
+        html = resp.text
+        assert "loadHistory" in html
+
+
+class TestHistoryCanonicalEndpoints:
+    """Ticket 6B: Canonical /history endpoints and evaluationId contract.
+
+    Verifies:
+    - GET /history returns same data as /app/history
+    - GET /history/{id} returns same item as /app/history/{id}
+    - evaluationId present in evaluation responses (text + image)
+    - sport is explicit or null
+    """
+
+    @pytest.fixture(autouse=True)
+    def clear_history_before_test(self):
+        """Clear history store before each test."""
+        from app.history_store import get_history_store
+        store = get_history_store()
+        store.clear()
+        yield
+        store.clear()
+
+    def test_canonical_history_endpoint_exists(self, client):
+        """GET /history returns 200."""
+        resp = client.get("/history")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "count" in data
+
+    def test_canonical_history_matches_app_history(self, client):
+        """GET /history returns same data as /app/history."""
+        # Create an evaluation
+        client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+
+        # Get from both endpoints
+        canonical = client.get("/history").json()
+        app_endpoint = client.get("/app/history").json()
+
+        # Same count
+        assert canonical["count"] == app_endpoint["count"]
+
+        # Same items (by ID)
+        canonical_ids = {item["id"] for item in canonical["items"]}
+        app_ids = {item["id"] for item in app_endpoint["items"]}
+        assert canonical_ids == app_ids
+
+    def test_canonical_history_item_endpoint_exists(self, client):
+        """GET /history/{id} returns item."""
+        # Create an evaluation
+        eval_resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+        eval_id = eval_resp.json().get("evaluationId")
+        assert eval_id is not None
+
+        # Get from canonical endpoint
+        resp = client.get(f"/history/{eval_id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "item" in data
+        assert data["item"]["id"] == eval_id
+
+    def test_canonical_history_item_matches_app_history_item(self, client):
+        """GET /history/{id} returns same data as /app/history/{id}."""
+        # Create an evaluation
+        eval_resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+        eval_id = eval_resp.json().get("evaluationId")
+
+        # Get from both endpoints
+        canonical = client.get(f"/history/{eval_id}").json()
+        app_endpoint = client.get(f"/app/history/{eval_id}").json()
+
+        # Same item data
+        assert canonical["item"]["id"] == app_endpoint["item"]["id"]
+        assert canonical["item"]["signal"] == app_endpoint["item"]["signal"]
+        assert canonical["item"]["fragilityScore"] == app_endpoint["item"]["fragilityScore"]
+
+    def test_canonical_history_item_404_for_unknown(self, client):
+        """GET /history/{id} returns 404 for unknown ID."""
+        resp = client.get("/history/unknown-id-xyz")
+        assert resp.status_code == 404
+
+    def test_evaluation_response_has_evaluationId(self, client):
+        """Text evaluation response includes evaluationId."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "evaluationId" in data, "Response must include evaluationId"
+        assert data["evaluationId"] is not None
+
+    def test_evaluation_response_has_historyId_alias(self, client):
+        """Text evaluation response includes historyId (deprecated alias)."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+        data = resp.json()
+        assert "historyId" in data, "historyId should exist as deprecated alias"
+        assert data["historyId"] == data["evaluationId"], "historyId must equal evaluationId"
+
+    def test_history_item_sport_explicit_or_null(self, client):
+        """History item sport is explicit value or null, not guessed."""
+        # NBA bet - should detect sport
+        client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+
+        history = client.get("/history").json()
+        item = history["items"][0]
+
+        # Sport should be explicit string or null
+        assert item["sport"] is None or isinstance(item["sport"], str)
+        # If sport is set, it should be a known league
+        if item["sport"]:
+            assert item["sport"] in ["NBA", "NFL", "MLB", "NHL"]
