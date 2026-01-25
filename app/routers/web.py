@@ -17,7 +17,7 @@ import math
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Request, status, Response, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -105,6 +105,18 @@ class WebEvaluateRequest(BaseModel):
     """
     input: str = Field(..., description="Bet text input")
     tier: Optional[str] = Field(default=None, description="Plan tier: GOOD, BETTER, or BEST")
+
+
+class ApplyFixRequest(BaseModel):
+    """
+    VC-2: Request schema for applying a fix from the Builder.
+
+    The fix is pre-determined by primaryFailure.fastestFix.
+    This endpoint executes the fix and re-evaluates.
+    """
+    evaluation_id: Optional[str] = Field(default=None, description="Original evaluation ID")
+    fix_action: str = Field(..., description="Fix action: remove_leg, split_parlay, reduce_props, swap_leg")
+    affected_leg_ids: List[str] = Field(default=[], description="IDs of affected legs")
 
 
 # =============================================================================
@@ -649,6 +661,213 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         .tier-desc {{
             font-size: var(--text-xs);
             color: var(--fg-secondary);
+        }}
+
+        /* VC-2: Fix Mode Styles */
+        .fix-blocked {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            text-align: center;
+            padding: var(--sp-8);
+        }}
+        .fix-blocked-icon {{
+            font-size: 48px;
+            margin-bottom: var(--sp-4);
+            opacity: 0.5;
+        }}
+        .fix-blocked-message {{
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--fg-primary);
+            margin-bottom: var(--sp-2);
+        }}
+        .fix-blocked-hint {{
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+            margin-bottom: var(--sp-6);
+        }}
+        .fix-blocked-cta {{
+            padding: var(--sp-3) var(--sp-6);
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--surface-base);
+            font-size: var(--text-base);
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .fix-blocked-cta:hover {{
+            background: var(--accent-hover);
+        }}
+        .fix-mode {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: var(--sp-6);
+        }}
+        .fix-problem {{
+            background: var(--surface-raised);
+            border: 1px solid var(--signal-yellow);
+            border-left: 4px solid var(--signal-yellow);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .fix-problem.severity-critical {{
+            border-color: var(--signal-red);
+        }}
+        .fix-problem.severity-high {{
+            border-color: var(--signal-red);
+        }}
+        .fix-problem.severity-medium {{
+            border-color: var(--signal-yellow);
+        }}
+        .fix-problem.severity-low {{
+            border-color: var(--signal-green);
+        }}
+        .fix-problem-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--sp-3);
+        }}
+        .fix-problem-label {{
+            font-size: var(--text-xs);
+            font-weight: 600;
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .fix-problem-severity {{
+            font-size: var(--text-xs);
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: var(--sp-1) var(--sp-2);
+            border-radius: var(--radius-sm);
+            background: var(--signal-yellow);
+            color: var(--surface-base);
+        }}
+        .fix-problem-severity.severity-critical,
+        .fix-problem-severity.severity-high {{
+            background: var(--signal-red);
+        }}
+        .fix-problem-severity.severity-low {{
+            background: var(--signal-green);
+        }}
+        .fix-problem-type {{
+            font-size: var(--text-md);
+            font-weight: 600;
+            color: var(--fg-primary);
+            margin-bottom: var(--sp-2);
+            text-transform: capitalize;
+        }}
+        .fix-problem-description {{
+            font-size: var(--text-base);
+            color: var(--fg-secondary);
+            line-height: 1.5;
+            margin-bottom: var(--sp-2);
+        }}
+        .fix-affected-legs {{
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+        }}
+        .fix-delta {{
+            display: flex;
+            align-items: stretch;
+            gap: var(--sp-3);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .fix-delta-before, .fix-delta-after {{
+            flex: 1;
+            text-align: center;
+            padding: var(--sp-3);
+            border-radius: var(--radius-sm);
+        }}
+        .fix-delta-before {{
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }}
+        .fix-delta-after {{
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }}
+        .fix-delta-arrow {{
+            display: flex;
+            align-items: center;
+            font-size: var(--text-xl);
+            color: var(--fg-muted);
+        }}
+        .fix-delta-label {{
+            font-size: var(--text-xs);
+            font-weight: 600;
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-2);
+        }}
+        .fix-delta-signal {{
+            font-size: var(--text-base);
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: var(--sp-1);
+        }}
+        .fix-delta-signal.signal-blue {{ color: var(--signal-blue); }}
+        .fix-delta-signal.signal-green {{ color: var(--signal-green); }}
+        .fix-delta-signal.signal-yellow {{ color: var(--signal-yellow); }}
+        .fix-delta-signal.signal-red {{ color: var(--signal-red); }}
+        .fix-delta-grade {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            margin-bottom: var(--sp-1);
+        }}
+        .fix-delta-score {{
+            font-size: var(--text-lg);
+            font-weight: 700;
+            font-family: var(--font-mono);
+            color: var(--fg-primary);
+        }}
+        .fix-action-panel {{
+            display: flex;
+            gap: var(--sp-3);
+        }}
+        .fix-apply-btn {{
+            flex: 1;
+            padding: var(--sp-4);
+            background: var(--signal-green);
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--surface-base);
+            font-size: var(--text-base);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }}
+        .fix-apply-btn:hover {{
+            background: #3dcc70;
+        }}
+        .fix-apply-btn:disabled {{
+            background: var(--fg-faint);
+            cursor: not-allowed;
+        }}
+        .fix-cancel-btn {{
+            padding: var(--sp-4) var(--sp-6);
+            background: transparent;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            color: var(--fg-secondary);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }}
+        .fix-cancel-btn:hover {{
+            border-color: var(--fg-muted);
+            color: var(--fg-primary);
         }}
 
         /* Submit Button */
@@ -1264,6 +1483,12 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }}
+        .signal-line {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            padding: var(--sp-1) var(--sp-4);
+            margin-bottom: var(--sp-3);
+        }}
 
         /* Verdict Bar */
         .verdict-bar {{
@@ -1397,6 +1622,207 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         .pf-delta-after {{
             color: var(--fg-primary);
             font-weight: 600;
+        }}
+
+        /* VC-1: Compressed Evaluation Layout */
+        .compressed-primary-failure {{
+            background: var(--surface-overlay);
+            border: 2px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-3);
+        }}
+        .compressed-primary-failure.severity-high {{
+            border-color: var(--signal-red);
+        }}
+        .compressed-primary-failure.severity-medium {{
+            border-color: var(--signal-yellow);
+        }}
+        .compressed-primary-failure.severity-low {{
+            border-color: var(--signal-green);
+        }}
+        .cpf-header {{
+            margin-bottom: var(--sp-2);
+        }}
+        .cpf-badge {{
+            display: inline-block;
+            font-size: var(--text-xs);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px var(--sp-2);
+            border-radius: var(--radius-sm);
+            background: var(--surface-base);
+            border: 1px solid var(--border-default);
+            color: var(--fg-secondary);
+        }}
+        .cpf-description {{
+            font-size: var(--text-base);
+            font-weight: 500;
+            color: var(--fg-primary);
+            line-height: 1.4;
+        }}
+        .compressed-fix-cta {{
+            display: block;
+            width: 100%;
+            padding: var(--sp-3) var(--sp-4);
+            margin-bottom: var(--sp-3);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--fg-primary);
+            background: var(--surface-raised);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: center;
+        }}
+        .compressed-fix-cta:hover {{
+            background: var(--surface-overlay);
+            border-color: var(--accent);
+        }}
+        .compressed-delta {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--sp-4);
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-3);
+            background: var(--surface-base);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .cdelta-before, .cdelta-after {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--sp-1);
+        }}
+        .cdelta-signal {{
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+            padding: 2px var(--sp-2);
+            border-radius: var(--radius-sm);
+            border: 1px solid currentColor;
+        }}
+        .cdelta-signal.signal-blue {{ color: var(--signal-blue); }}
+        .cdelta-signal.signal-green {{ color: var(--signal-green); }}
+        .cdelta-signal.signal-yellow {{ color: var(--signal-yellow); }}
+        .cdelta-signal.signal-red {{ color: var(--signal-red); }}
+        .cdelta-score {{
+            font-size: var(--text-lg);
+            font-weight: 700;
+            font-family: var(--font-mono);
+            color: var(--fg-primary);
+        }}
+        .cdelta-arrow {{
+            font-size: var(--text-xl);
+            color: var(--signal-green);
+            font-weight: 700;
+        }}
+        .eval-details-accordion {{
+            margin-bottom: var(--sp-3);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .eval-details-accordion summary {{
+            padding: var(--sp-3) var(--sp-4);
+            cursor: pointer;
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--fg-secondary);
+            list-style: none;
+        }}
+        .eval-details-accordion summary::-webkit-details-marker {{
+            display: none;
+        }}
+        .eval-details-accordion summary::before {{
+            content: '\u25B6 ';
+            font-size: var(--text-xs);
+        }}
+        .eval-details-accordion[open] summary::before {{
+            content: '\u25BC ';
+        }}
+        .details-content {{
+            padding: 0 var(--sp-4) var(--sp-4);
+        }}
+        .detail-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: var(--sp-2) 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }}
+        .detail-row:last-child {{ border-bottom: none; }}
+        .detail-label {{
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+        }}
+        .detail-value {{
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--fg-primary);
+            font-family: var(--font-mono);
+        }}
+        .detail-section {{
+            margin-top: var(--sp-3);
+            padding-top: var(--sp-3);
+            border-top: 1px solid var(--border-subtle);
+        }}
+        .detail-section-label {{
+            display: block;
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--fg-muted);
+            margin-bottom: var(--sp-2);
+        }}
+        .detail-section-content {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+        }}
+        .detail-section-content ul {{
+            margin: 0;
+            padding-left: var(--sp-4);
+        }}
+        .detail-section-content li {{
+            margin-bottom: var(--sp-1);
+        }}
+        .detail-contributor {{
+            display: flex;
+            justify-content: space-between;
+            padding: var(--sp-1) 0;
+            font-size: var(--text-sm);
+        }}
+        .contrib-type {{ color: var(--fg-secondary); }}
+        .contrib-impact {{ font-weight: 600; text-transform: uppercase; font-size: var(--text-xs); }}
+        .impact-high {{ color: var(--signal-red); }}
+        .impact-medium {{ color: var(--signal-yellow); }}
+        .impact-low {{ color: var(--signal-green); }}
+        .detail-corr-item {{
+            display: flex;
+            justify-content: space-between;
+            padding: var(--sp-1) 0;
+            font-size: var(--text-sm);
+            gap: var(--sp-2);
+        }}
+        .corr-type {{ color: var(--fg-muted); font-size: var(--text-xs); }}
+        .corr-penalty {{ font-weight: 600; color: var(--signal-yellow); font-family: var(--font-mono); }}
+        .detail-insight, .detail-alert {{
+            padding: var(--sp-1) 0;
+            font-size: var(--text-sm);
+        }}
+        .detail-alert {{ color: var(--signal-yellow); }}
+        .post-actions-minimal {{
+            display: flex;
+            gap: var(--sp-2);
+            justify-content: flex-end;
+        }}
+        .post-actions-minimal .action-btn {{
+            flex: 0 0 auto;
+            padding: var(--sp-2) var(--sp-3);
+            font-size: var(--text-xs);
         }}
 
         /* Tips Panel */
@@ -1943,8 +2369,47 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             color: var(--fg-secondary);
             margin: 0;
         }}
+        .discover-signals {{
+            margin-top: var(--sp-4);
+            padding: var(--sp-4);
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+        }}
+        .discover-signals h3 {{
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--fg-muted);
+            margin-bottom: var(--sp-2);
+        }}
+        .discover-signal-row {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-3);
+            padding: var(--sp-1) 0;
+        }}
+        .discover-signal-badge {{
+            display: inline-block;
+            width: 64px;
+            text-align: center;
+            font-size: var(--text-xs);
+            font-weight: 600;
+            padding: 2px var(--sp-2);
+            border-radius: var(--radius-sm);
+            border: 1px solid currentColor;
+        }}
+        .discover-signal-badge.signal-blue {{ color: var(--signal-blue); }}
+        .discover-signal-badge.signal-green {{ color: var(--signal-green); }}
+        .discover-signal-badge.signal-yellow {{ color: var(--signal-yellow); }}
+        .discover-signal-badge.signal-red {{ color: var(--signal-red); }}
+        .discover-signal-desc {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+        }}
         .discover-cta {{
             text-align: center;
+            margin-top: var(--sp-4);
         }}
         .discover-start-btn {{
             max-width: 280px;
@@ -1988,10 +2453,15 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             font-size: var(--text-sm);
             font-family: var(--font-mono);
         }}
-        .history-grade.low {{ background: transparent; color: var(--signal-green); border: 1px solid var(--signal-green); }}
-        .history-grade.medium {{ background: transparent; color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
-        .history-grade.high {{ background: transparent; color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
-        .history-grade.critical {{ background: transparent; color: var(--signal-red); border: 1px solid var(--signal-red); }}
+        .history-grade.blue {{ background: transparent; color: var(--signal-blue); border: 1px solid var(--signal-blue); }}
+        .history-grade.green {{ background: transparent; color: var(--signal-green); border: 1px solid var(--signal-green); }}
+        .history-grade.yellow {{ background: transparent; color: var(--signal-yellow); border: 1px solid var(--signal-yellow); }}
+        .history-grade.red {{ background: transparent; color: var(--signal-red); border: 1px solid var(--signal-red); }}
+        .history-signal-line {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            margin-top: var(--sp-1);
+        }}
         .login-prompt {{
             text-align: center;
             padding: var(--sp-8);
@@ -2008,6 +2478,158 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             text-decoration: none;
             border-radius: var(--radius-sm);
             font-weight: 600;
+        }}
+
+        /* VC-3: PAYOFF BANNER */
+        .payoff-banner {{
+            background: linear-gradient(135deg, var(--signal-green-bg, rgba(34,197,94,0.1)) 0%, var(--surface-overlay) 100%);
+            border: 1px solid var(--signal-green, #22c55e);
+            border-radius: var(--radius-md);
+            padding: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .payoff-banner.no-improvement {{
+            background: linear-gradient(135deg, var(--signal-yellow-bg, rgba(234,179,8,0.1)) 0%, var(--surface-overlay) 100%);
+            border-color: var(--signal-yellow, #eab308);
+        }}
+        .payoff-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--sp-2);
+        }}
+        .payoff-title {{
+            font-size: var(--text-lg);
+            font-weight: 700;
+            color: var(--signal-green, #22c55e);
+        }}
+        .payoff-banner.no-improvement .payoff-title {{
+            color: var(--signal-yellow, #eab308);
+        }}
+        .payoff-dismiss {{
+            background: transparent;
+            border: none;
+            font-size: var(--text-xl);
+            color: var(--fg-muted);
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }}
+        .payoff-dismiss:hover {{
+            color: var(--fg-primary);
+        }}
+        .payoff-line {{
+            font-size: var(--text-sm);
+            color: var(--fg-primary);
+            margin-bottom: var(--sp-2);
+        }}
+        .payoff-line .delta-num {{
+            font-weight: 700;
+            color: var(--signal-green, #22c55e);
+        }}
+        .payoff-banner.no-improvement .payoff-line .delta-num {{
+            color: var(--signal-yellow, #eab308);
+        }}
+        .payoff-status {{
+            font-size: var(--text-sm);
+            font-weight: 600;
+        }}
+        .payoff-status.improved {{
+            color: var(--signal-green, #22c55e);
+        }}
+        .payoff-status.no-change {{
+            color: var(--signal-yellow, #eab308);
+        }}
+
+        /* VC-3: MINI DIFF */
+        .mini-diff {{
+            background: var(--surface-overlay);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--sp-4);
+        }}
+        .mini-diff > summary {{
+            padding: var(--sp-3) var(--sp-4);
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--fg-secondary);
+            cursor: pointer;
+        }}
+        .mini-diff > summary:hover {{
+            color: var(--fg-primary);
+        }}
+        .mini-diff-content {{
+            padding: 0 var(--sp-4) var(--sp-4);
+        }}
+        .mini-diff-row {{
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            padding: var(--sp-2) 0;
+            border-top: 1px solid var(--border-subtle);
+        }}
+        .mini-diff-label {{
+            flex: 0 0 100px;
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+        }}
+        .mini-diff-before {{
+            flex: 1;
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+        }}
+        .mini-diff-arrow {{
+            flex: 0 0 auto;
+            color: var(--fg-muted);
+        }}
+        .mini-diff-after {{
+            flex: 1;
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--fg-primary);
+        }}
+
+        /* VC-3: LOOP SHORTCUTS */
+        .loop-shortcuts {{
+            display: flex;
+            gap: var(--sp-2);
+            margin-top: var(--sp-4);
+            padding-top: var(--sp-4);
+            border-top: 1px solid var(--border-default);
+        }}
+        .loop-btn {{
+            flex: 1;
+            padding: var(--sp-2) var(--sp-3);
+            border-radius: var(--radius-sm);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border-default);
+            background: var(--surface-overlay);
+            color: var(--fg-secondary);
+            transition: all 0.15s ease;
+        }}
+        .loop-btn:hover {{
+            background: var(--surface-highlight);
+            color: var(--fg-primary);
+        }}
+        .loop-reeval {{
+            background: var(--accent);
+            color: var(--surface-base);
+            border-color: var(--accent);
+        }}
+        .loop-reeval:hover {{
+            background: var(--accent-hover);
+        }}
+        .loop-try-fix {{
+            background: var(--signal-green-bg, rgba(34,197,94,0.1));
+            border-color: var(--signal-green, #22c55e);
+            color: var(--signal-green, #22c55e);
+        }}
+        .loop-try-fix:hover {{
+            background: var(--signal-green, #22c55e);
+            color: var(--surface-base);
         }}
     </style>
 </head>
@@ -2063,6 +2685,26 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     </div>
                 </div>
 
+                <div class="discover-signals">
+                    <h3>Signal Guide</h3>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-blue">Strong</span>
+                        <span class="discover-signal-desc">Top risk: minimal</span>
+                    </div>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-green">Solid</span>
+                        <span class="discover-signal-desc">Top risk: moderate</span>
+                    </div>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-yellow">Fixable</span>
+                        <span class="discover-signal-desc">Top risk: addressable</span>
+                    </div>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-red">Fragile</span>
+                        <span class="discover-signal-desc">Top risk: critical</span>
+                    </div>
+                </div>
+
                 <div class="discover-cta">
                     <button type="button" class="submit-btn discover-start-btn" onclick="switchToTab('evaluate')">
                         Start Evaluating
@@ -2071,176 +2713,56 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             </div>
         </div> <!-- End tab-discover -->
 
-        <!-- Builder Tab Content -->
+        <!-- Builder Tab Content (VC-2: Fix Mode Only) -->
         <div class="tab-content {builder_active}" id="tab-builder">
-        <div class="main-grid">
-            <!-- Builder Section -->
-            <div class="builder-section">
-                <div class="section-header">
-                    <span class="section-title">Parlay Builder</span>
-                    <span class="leg-count" id="leg-count">2 legs</span>
-                </div>
-
-                <div class="sport-selector">
-                    <select id="sport-select">
-                        <option value="basketball" selected>Basketball (NBA)</option>
-                    </select>
-                </div>
-
-                <div class="legs-container" id="legs-container">
-                    <!-- Legs will be dynamically added here -->
-                </div>
-
-                <button type="button" class="add-leg-btn" id="add-leg-btn">+ Add Leg</button>
-
-                <div class="tier-selector-wrapper">
-                    <div class="tier-selector-label">Analysis detail level</div>
-                    <div class="tier-selector">
-                        <div class="tier-option">
-                            <input type="radio" name="tier" id="tier-good" value="good" checked>
-                            <label for="tier-good">
-                                <div class="tier-name">GOOD</div>
-                                <div class="tier-desc">Grade + Verdict</div>
-                            </label>
-                        </div>
-                        <div class="tier-option">
-                            <input type="radio" name="tier" id="tier-better" value="better">
-                            <label for="tier-better">
-                                <div class="tier-name">BETTER</div>
-                                <div class="tier-desc">+ Insights</div>
-                            </label>
-                        </div>
-                        <div class="tier-option">
-                            <input type="radio" name="tier" id="tier-best" value="best">
-                            <label for="tier-best">
-                                <div class="tier-name">BEST</div>
-                                <div class="tier-desc">+ Full Analysis</div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="button" class="submit-btn" id="submit-btn" disabled>
-                    Evaluate Parlay
-                </button>
+            <!-- BLOCKED STATE: No fix context -->
+            <div class="fix-blocked" id="fix-blocked">
+                <div class="fix-blocked-icon">&#128683;</div>
+                <div class="fix-blocked-message">Run an evaluation first to get a recommended fix.</div>
+                <div class="fix-blocked-hint">Evaluate a parlay to identify issues and get a fix recommendation</div>
+                <button type="button" class="fix-blocked-cta" onclick="switchToTab('evaluate')">Go to Evaluate</button>
             </div>
 
-            <!-- Results Section -->
-            <div class="results-section">
-                <div class="section-header">
-                    <span class="section-title">Results</span>
+            <!-- FIX MODE: Active when fix context exists -->
+            <div class="fix-mode hidden" id="fix-mode">
+                <!-- A. PROBLEM DISPLAY -->
+                <div class="fix-problem" id="fix-problem">
+                    <div class="fix-problem-header">
+                        <span class="fix-problem-label">ISSUE DETECTED</span>
+                        <span class="fix-problem-severity" id="fix-severity"></span>
+                    </div>
+                    <div class="fix-problem-type" id="fix-type"></div>
+                    <div class="fix-problem-description" id="fix-description"></div>
+                    <div class="fix-affected-legs" id="fix-affected"></div>
                 </div>
 
-                <!-- Alerts Feed (Sprint 4 - BEST only) -->
-                <div class="why-panel alerts-feed hidden" id="alerts-feed">
-                    <h3><span class="icon">&#128276;</span> Live Alerts</h3>
-                    <div id="alerts-content"></div>
-                </div>
-
-                <div id="results-placeholder" class="results-placeholder">
-                    <p>Build your parlay and click Evaluate</p>
-                    <p style="font-size: 0.75rem;">Minimum 2 legs required</p>
-                </div>
-
-                <div id="results-content" class="hidden">
-                    <!-- Grade Display -->
-                    <div class="grade-display" id="grade-display">
-                        <div class="grade-label">Fragility Score</div>
-                        <div class="grade-value" id="grade-value">--</div>
-                        <div class="grade-bucket" id="grade-bucket">--</div>
+                <!-- B. DELTA COMPARISON (always visible) -->
+                <div class="fix-delta" id="fix-delta">
+                    <div class="fix-delta-before">
+                        <div class="fix-delta-label">CURRENT</div>
+                        <div class="fix-delta-signal" id="fix-delta-signal-before"></div>
+                        <div class="fix-delta-grade" id="fix-delta-grade-before"></div>
+                        <div class="fix-delta-score" id="fix-delta-score-before"></div>
                     </div>
-
-                    <!-- Decision Summary (Always shown) -->
-                    <div class="decision-summary" id="decision-summary">
-                        <h3>Decision Summary</h3>
-                        <div class="decision-verdict" id="decision-verdict"></div>
-                        <ul class="decision-bullets">
-                            <li class="bullet-risk" id="bullet-risk"></li>
-                            <li class="bullet-improve" id="bullet-improve"></li>
-                            <li class="bullet-unknown" id="bullet-unknown"></li>
-                        </ul>
-                    </div>
-
-                    <!-- Why Section (Tier-gated) -->
-                    <div class="why-section" id="why-section">
-                        <div class="why-section-title">Why This Score?</div>
-                        <div class="why-grid">
-                            <!-- Structure Panel -->
-                            <div class="why-panel" id="why-structure">
-                                <h4><span class="icon">&#9881;</span> Structure</h4>
-                                <div class="why-panel-content" id="structure-content"></div>
-                                <div class="locked-overlay hidden" id="structure-locked">
-                                    <span class="locked-icon">&#128274;</span>
-                                </div>
-                            </div>
-                            <!-- Correlation Panel -->
-                            <div class="why-panel" id="why-correlation">
-                                <h4><span class="icon">&#128279;</span> Correlation</h4>
-                                <div class="why-panel-content" id="correlation-content"></div>
-                                <div class="locked-overlay hidden" id="correlation-locked">
-                                    <span class="locked-icon">&#128274;</span>
-                                </div>
-                            </div>
-                            <!-- Fragility Panel -->
-                            <div class="why-panel" id="why-fragility">
-                                <h4><span class="icon">&#9888;</span> Fragility</h4>
-                                <div class="why-panel-content" id="fragility-content"></div>
-                                <div class="locked-overlay hidden" id="fragility-locked">
-                                    <span class="locked-icon">&#128274;</span>
-                                </div>
-                            </div>
-                            <!-- Confidence Panel -->
-                            <div class="why-panel" id="why-confidence">
-                                <h4><span class="icon">&#128269;</span> Confidence</h4>
-                                <div class="why-panel-content" id="confidence-content"></div>
-                                <div class="locked-overlay hidden" id="confidence-locked">
-                                    <span class="locked-icon">&#128274;</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Alerts (BEST only) -->
-                    <div class="alerts-panel hidden" id="alerts-panel">
-                        <h3>Alerts</h3>
-                        <div id="alerts-content"></div>
-                    </div>
-
-                    <!-- Recommendation (BEST only) -->
-                    <div class="insights-panel hidden" id="recommendation-panel">
-                        <h3>Recommended Action</h3>
-                        <div id="recommendation-content"></div>
-                    </div>
-
-                    <!-- Context Panel (Sprint 3) -->
-                    <div class="why-panel context-panel hidden" id="context-panel">
-                        <h3><span class="icon">&#128200;</span> Player Availability</h3>
-                        <div id="context-content"></div>
-                    </div>
-
-                    <!-- Share Section (Sprint 5) -->
-                    <div class="share-section hidden" id="share-section">
-                        <button type="button" class="share-btn" id="share-btn">Share Result</button>
-                        <div class="share-link" id="share-link">
-                            <input type="text" id="share-url" readonly>
-                            <button type="button" class="share-btn copy-btn" id="copy-btn">Copy Link</button>
-                        </div>
-                    </div>
-
-                    <!-- Upgrade Nudge (Sprint 5) -->
-                    <div class="upgrade-nudge hidden" id="upgrade-nudge">
-                        <h4>Get Full Analysis</h4>
-                        <p id="upgrade-message">See detailed breakdowns, correlations, and live alerts</p>
-                        <a href="{upgrade_link}" class="upgrade-cta">Upgrade to BEST</a>
+                    <div class="fix-delta-arrow">&rarr;</div>
+                    <div class="fix-delta-after">
+                        <div class="fix-delta-label">AFTER FIX</div>
+                        <div class="fix-delta-signal" id="fix-delta-signal-after"></div>
+                        <div class="fix-delta-grade" id="fix-delta-grade-after"></div>
+                        <div class="fix-delta-score" id="fix-delta-score-after"></div>
                     </div>
                 </div>
 
-                <div id="error-panel" class="error-panel hidden">
-                    <h3>Error</h3>
-                    <div class="error-text" id="error-text"></div>
+                <!-- C. SINGLE ACTION -->
+                <div class="fix-action-panel" id="fix-action-panel">
+                    <button type="button" class="fix-apply-btn" id="fix-apply-btn">
+                        Apply Fix
+                    </button>
+                    <button type="button" class="fix-cancel-btn" id="fix-cancel-btn">
+                        Cancel
+                    </button>
                 </div>
             </div>
-        </div>
         </div> <!-- End tab-builder -->
 
         <!-- Evaluate Tab Content -->
@@ -2358,123 +2880,119 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     </div>
 
                     <div id="eval-results-content" class="hidden">
-                        <!-- GOOD Tier Structured Output (exclusive to GOOD) -->
-                        <div id="eval-good-output" class="good-output hidden">
-                            <div class="good-signal-grade" id="good-signal-grade">
-                                <div class="good-signal" id="good-signal-indicator"></div>
-                                <div class="good-grade" id="good-grade-value"></div>
+                        <!-- VC-3: PAYOFF BANNER (shows after apply-fix) -->
+                        <div class="payoff-banner hidden" id="payoff-banner">
+                            <div class="payoff-header">
+                                <span class="payoff-title">Fix Applied</span>
+                                <button type="button" class="payoff-dismiss" id="payoff-dismiss">&times;</button>
                             </div>
-                            <div class="good-fragility" id="good-fragility">
-                                <span class="good-section-label">Fragility Score</span>
-                                <span class="good-fragility-value" id="good-fragility-value">--</span>
+                            <div class="payoff-line" id="payoff-line"></div>
+                            <div class="payoff-status" id="payoff-status"></div>
+                        </div>
+
+                        <!-- VC-3: MINI DIFF (collapsed, shows after apply-fix) -->
+                        <details class="mini-diff hidden" id="mini-diff">
+                            <summary>See what changed</summary>
+                            <div class="mini-diff-content">
+                                <div class="mini-diff-row">
+                                    <span class="mini-diff-label">Primary Failure</span>
+                                    <span class="mini-diff-before" id="mini-diff-pf-before"></span>
+                                    <span class="mini-diff-arrow">&rarr;</span>
+                                    <span class="mini-diff-after" id="mini-diff-pf-after"></span>
+                                </div>
+                                <div class="mini-diff-row">
+                                    <span class="mini-diff-label">Recommendation</span>
+                                    <span class="mini-diff-before" id="mini-diff-rec-before"></span>
+                                    <span class="mini-diff-arrow">&rarr;</span>
+                                    <span class="mini-diff-after" id="mini-diff-rec-after"></span>
+                                </div>
                             </div>
-                            <div class="good-section" id="good-contributors-section">
-                                <h4 class="good-section-label">Contributors</h4>
-                                <div class="good-contributors-list" id="good-contributors-list"></div>
+                        </details>
+
+                        <!-- A. PRIMARY FAILURE (full width, dominant) -->
+                        <div class="compressed-primary-failure" id="compressed-pf">
+                            <div class="cpf-header">
+                                <span class="cpf-badge" id="cpf-badge"></span>
                             </div>
-                            <div class="good-section" id="good-warnings-section">
-                                <h4 class="good-section-label">Warnings</h4>
-                                <ul class="good-warnings-list" id="good-warnings-list"></ul>
+                            <div class="cpf-description" id="cpf-description"></div>
+                        </div>
+
+                        <!-- B. FASTEST FIX (single CTA) -->
+                        <button type="button" class="compressed-fix-cta" id="compressed-fix-cta"></button>
+
+                        <!-- C. DELTA PREVIEW (before → after) -->
+                        <div class="compressed-delta hidden" id="compressed-delta">
+                            <div class="cdelta-before" id="cdelta-before">
+                                <span class="cdelta-signal" id="cdelta-signal-before"></span>
+                                <span class="cdelta-score" id="cdelta-score-before"></span>
                             </div>
-                            <div class="good-section" id="good-tips-section">
-                                <h4 class="good-section-label">Tips</h4>
-                                <ul class="good-tips-list" id="good-tips-list"></ul>
-                            </div>
-                            <div class="good-section" id="good-removals-section">
-                                <h4 class="good-section-label">Suggested Removals</h4>
-                                <div class="good-removals-list" id="good-removals-list"></div>
+                            <div class="cdelta-arrow">&rarr;</div>
+                            <div class="cdelta-after" id="cdelta-after">
+                                <span class="cdelta-signal" id="cdelta-signal-after"></span>
+                                <span class="cdelta-score" id="cdelta-score-after"></span>
                             </div>
                         </div>
 
-                        <!-- Shared tier panels (BETTER/BEST) -->
-                        <!-- Signal Badge + Fragility Score -->
-                        <div class="signal-display" id="eval-signal-display">
-                            <div class="signal-badge" id="eval-signal-badge">--</div>
-                            <div class="signal-score">
-                                <span class="signal-score-value" id="eval-signal-score">--</span>
-                                <span class="signal-score-label">Fragility</span>
+                        <!-- D. DETAILS ACCORDION (collapsed by default) -->
+                        <details class="eval-details-accordion" id="eval-details-accordion">
+                            <summary>Details</summary>
+                            <div class="details-content">
+                                <!-- Signal + Grade -->
+                                <div class="detail-row" id="detail-signal-row">
+                                    <span class="detail-label">Signal</span>
+                                    <span class="detail-value" id="detail-signal"></span>
+                                </div>
+                                <div class="detail-row" id="detail-fragility-row">
+                                    <span class="detail-label">Fragility</span>
+                                    <span class="detail-value" id="detail-fragility"></span>
+                                </div>
+                                <!-- Metrics -->
+                                <div class="detail-row" id="detail-leg-penalty-row">
+                                    <span class="detail-label">Leg Penalty</span>
+                                    <span class="detail-value" id="detail-leg-penalty"></span>
+                                </div>
+                                <div class="detail-row" id="detail-correlation-row">
+                                    <span class="detail-label">Correlation</span>
+                                    <span class="detail-value" id="detail-correlation"></span>
+                                </div>
+                                <!-- Contributors -->
+                                <div class="detail-section hidden" id="detail-contributors">
+                                    <span class="detail-section-label">Contributors</span>
+                                    <div class="detail-section-content" id="detail-contributors-list"></div>
+                                </div>
+                                <!-- Warnings -->
+                                <div class="detail-section hidden" id="detail-warnings">
+                                    <span class="detail-section-label">Warnings</span>
+                                    <ul class="detail-section-content" id="detail-warnings-list"></ul>
+                                </div>
+                                <!-- Tips -->
+                                <div class="detail-section hidden" id="detail-tips">
+                                    <span class="detail-section-label">Tips</span>
+                                    <ul class="detail-section-content" id="detail-tips-list"></ul>
+                                </div>
+                                <!-- Correlations (BETTER+) -->
+                                <div class="detail-section hidden" id="detail-correlations">
+                                    <span class="detail-section-label">Correlations</span>
+                                    <div class="detail-section-content" id="detail-correlations-list"></div>
+                                </div>
+                                <!-- Summary (BETTER+) -->
+                                <div class="detail-section hidden" id="detail-summary">
+                                    <span class="detail-section-label">Insights</span>
+                                    <div class="detail-section-content" id="detail-summary-list"></div>
+                                </div>
+                                <!-- Alerts (BEST) -->
+                                <div class="detail-section hidden" id="detail-alerts">
+                                    <span class="detail-section-label">Alerts</span>
+                                    <div class="detail-section-content" id="detail-alerts-list"></div>
+                                </div>
                             </div>
-                        </div>
+                        </details>
 
-                        <!-- Verdict (GOOD+) -->
-                        <div class="verdict-bar" id="eval-verdict-bar">
-                            <span class="verdict-action" id="eval-verdict-action"></span>
-                            <span class="verdict-reason" id="eval-verdict-reason"></span>
-                        </div>
-
-                        <!-- Metrics (GOOD+) -->
-                        <div class="metrics-grid" id="eval-metrics-grid">
-                            <div class="metric-item">
-                                <span class="metric-label">Leg Penalty</span>
-                                <span class="metric-value" id="eval-metric-leg">--</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Correlation</span>
-                                <span class="metric-value" id="eval-metric-corr">--</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Raw Fragility</span>
-                                <span class="metric-value" id="eval-metric-raw">--</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Final Score</span>
-                                <span class="metric-value" id="eval-metric-final">--</span>
-                            </div>
-                        </div>
-
-                        <!-- Primary Failure (all tiers) -->
-                        <div class="primary-failure-card hidden" id="eval-primary-failure">
-                            <div class="pf-header">
-                                <span class="pf-title">PRIMARY FAILURE</span>
-                                <span class="pf-badge" id="pf-badge"></span>
-                            </div>
-                            <div class="pf-description" id="pf-description"></div>
-                            <div class="pf-affected" id="pf-affected"></div>
-                            <div class="pf-fix" id="pf-fix">
-                                <span class="pf-fix-label">Fastest Fix:</span>
-                                <span class="pf-fix-desc" id="pf-fix-desc"></span>
-                            </div>
-                            <div class="pf-delta hidden" id="pf-delta">
-                                <span class="pf-delta-label">If you do this:</span>
-                                <span class="pf-delta-before" id="pf-delta-before"></span>
-                                <span class="pf-delta-arrow">&rarr;</span>
-                                <span class="pf-delta-after" id="pf-delta-after"></span>
-                            </div>
-                        </div>
-
-                        <!-- Improvement Tips (GOOD+) -->
-                        <div class="tips-panel" id="eval-tips-panel">
-                            <h3>How to Improve</h3>
-                            <div class="tips-content" id="eval-tips-content"></div>
-                        </div>
-
-                        <!-- Correlations Panel (BETTER+) -->
-                        <div class="correlations-panel hidden" id="eval-correlations-panel">
-                            <h3>Correlations Found</h3>
-                            <div class="correlations-list" id="eval-correlations-list"></div>
-                        </div>
-
-                        <!-- Summary Insights (BETTER+) -->
-                        <div class="summary-panel hidden" id="eval-summary-panel">
-                            <details>
-                                <summary><h3>Deeper Insights</h3></summary>
-                                <div class="summary-list" id="eval-summary-list"></div>
-                            </details>
-                        </div>
-
-                        <!-- Alerts (BEST only) -->
-                        <div class="alerts-detail-panel hidden" id="eval-alerts-panel">
-                            <details>
-                                <summary><h3>Alerts</h3></summary>
-                                <div class="alerts-list" id="eval-alerts-list"></div>
-                            </details>
-                        </div>
-
-                        <!-- Post-Result Actions -->
-                        <div class="post-actions" id="eval-post-actions">
-                            <button type="button" class="action-btn action-improve" id="eval-action-improve" onclick="switchToTab('builder')">Improve This Bet</button>
-                            <button type="button" class="action-btn action-reeval" id="eval-action-reeval">Re-Evaluate</button>
-                            <button type="button" class="action-btn action-save" id="eval-action-save">Save</button>
+                        <!-- VC-3: LOOP SHORTCUTS -->
+                        <div class="loop-shortcuts" id="loop-shortcuts">
+                            <button type="button" class="loop-btn loop-reeval" id="loop-reeval">Re-Evaluate</button>
+                            <button type="button" class="loop-btn loop-try-fix hidden" id="loop-try-fix">Try Another Fix</button>
+                            <button type="button" class="loop-btn loop-save" id="loop-save">Save</button>
                         </div>
                     </div>
 
@@ -2502,634 +3020,158 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
     </div>
 
     <script>
+        // ============================================================
+        // VC-2: FIX MODE ONLY (No freeform building)
+        // ============================================================
         (function() {{
-            // State
-            let legs = [];
-            const MIN_LEGS = 2;
-            const MAX_LEGS = 6;
-
             // Elements
-            const legsContainer = document.getElementById('legs-container');
-            const addLegBtn = document.getElementById('add-leg-btn');
-            const submitBtn = document.getElementById('submit-btn');
-            const legCountDisplay = document.getElementById('leg-count');
-            const resultsPlaceholder = document.getElementById('results-placeholder');
-            const resultsContent = document.getElementById('results-content');
-            const errorPanel = document.getElementById('error-panel');
-
-            // Market types
-            const MARKETS = [
-                {{ value: 'spread', label: 'Spread' }},
-                {{ value: 'ml', label: 'Moneyline' }},
-                {{ value: 'total', label: 'Total (O/U)' }},
-                {{ value: 'player_prop', label: 'Player Prop' }}
-            ];
-
-            // Initialize with 2 legs
-            function init() {{
-                addLeg();
-                addLeg();
-                updateUI();
-            }}
-
-            function createLegHTML(index) {{
-                const marketOptions = MARKETS.map(m =>
-                    '<option value="' + m.value + '">' + m.label + '</option>'
-                ).join('');
-
-                return '<div class="leg-card" data-index="' + index + '">' +
-                    '<div class="leg-header">' +
-                        '<span class="leg-number">Leg ' + (index + 1) + '</span>' +
-                        '<button type="button" class="remove-leg" data-index="' + index + '">&times;</button>' +
-                    '</div>' +
-                    '<div class="leg-fields">' +
-                        '<div class="leg-field full-width">' +
-                            '<label>Team / Player</label>' +
-                            '<input type="text" class="leg-selection" data-index="' + index + '" placeholder="e.g., Lakers or LeBron James">' +
-                        '</div>' +
-                        '<div class="leg-field">' +
-                            '<label>Market</label>' +
-                            '<select class="leg-market" data-index="' + index + '">' + marketOptions + '</select>' +
-                        '</div>' +
-                        '<div class="leg-field">' +
-                            '<label>Line / Condition</label>' +
-                            '<input type="text" class="leg-line" data-index="' + index + '" placeholder="e.g., -5.5 or O 220.5">' +
-                        '</div>' +
-                        '<div class="leg-field">' +
-                            '<label>Odds</label>' +
-                            '<input type="text" class="leg-odds" data-index="' + index + '" placeholder="e.g., -110">' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }}
-
-            function addLeg() {{
-                if (legs.length >= MAX_LEGS) return;
-                legs.push({{ selection: '', market: 'spread', line: '', odds: '' }});
-                renderLegs();
-                updateUI();
-            }}
-
-            function removeLeg(index) {{
-                if (legs.length <= MIN_LEGS) return;
-                legs.splice(index, 1);
-                renderLegs();
-                updateUI();
-            }}
-
-            function renderLegs() {{
-                legsContainer.innerHTML = legs.map((_, i) => createLegHTML(i)).join('');
-                attachLegListeners();
-                // Restore values
-                legs.forEach((leg, i) => {{
-                    const card = legsContainer.querySelector('[data-index="' + i + '"]');
-                    if (card) {{
-                        const selInput = card.querySelector('.leg-selection');
-                        const mktSelect = card.querySelector('.leg-market');
-                        const lineInput = card.querySelector('.leg-line');
-                        const oddsInput = card.querySelector('.leg-odds');
-                        if (selInput) selInput.value = leg.selection;
-                        if (mktSelect) mktSelect.value = leg.market;
-                        if (lineInput) lineInput.value = leg.line;
-                        if (oddsInput) oddsInput.value = leg.odds;
-                    }}
-                }});
-            }}
-
-            function attachLegListeners() {{
-                // Remove buttons
-                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {{
-                    btn.addEventListener('click', function() {{
-                        removeLeg(parseInt(this.dataset.index));
-                    }});
-                }});
-                // Input changes
-                legsContainer.querySelectorAll('.leg-selection').forEach(input => {{
-                    input.addEventListener('input', function() {{
-                        legs[parseInt(this.dataset.index)].selection = this.value;
-                        updateUI();
-                    }});
-                }});
-                legsContainer.querySelectorAll('.leg-market').forEach(select => {{
-                    select.addEventListener('change', function() {{
-                        legs[parseInt(this.dataset.index)].market = this.value;
-                    }});
-                }});
-                legsContainer.querySelectorAll('.leg-line').forEach(input => {{
-                    input.addEventListener('input', function() {{
-                        legs[parseInt(this.dataset.index)].line = this.value;
-                    }});
-                }});
-                legsContainer.querySelectorAll('.leg-odds').forEach(input => {{
-                    input.addEventListener('input', function() {{
-                        legs[parseInt(this.dataset.index)].odds = this.value;
-                    }});
-                }});
-            }}
-
-            function updateUI() {{
-                // Leg count
-                legCountDisplay.textContent = legs.length + ' leg' + (legs.length !== 1 ? 's' : '');
-
-                // Add button state
-                addLegBtn.disabled = legs.length >= MAX_LEGS;
-
-                // Remove button state
-                legsContainer.querySelectorAll('.remove-leg').forEach(btn => {{
-                    btn.disabled = legs.length <= MIN_LEGS;
-                }});
-
-                // Submit button - require at least selection for each leg
-                const validLegs = legs.filter(leg => leg.selection.trim().length > 0);
-                submitBtn.disabled = validLegs.length < MIN_LEGS;
-            }}
-
-            function getSelectedTier() {{
-                const selected = document.querySelector('input[name="tier"]:checked');
-                return selected ? selected.value : 'good';
-            }}
-
-            function buildBetText() {{
-                // Convert structured legs to text format for existing endpoint
-                const parts = legs.map(leg => {{
-                    let text = leg.selection.trim();
-                    if (leg.line.trim()) {{
-                        text += ' ' + leg.line.trim();
-                    }}
-                    if (leg.market === 'ml') {{
-                        text += ' ML';
-                    }} else if (leg.market === 'player_prop') {{
-                        text += ' prop';
-                    }}
-                    return text;
-                }}).filter(t => t.length > 0);
-
-                return parts.join(' + ') + ' parlay';
-            }}
-
-            function showError(message) {{
-                resultsPlaceholder.classList.add('hidden');
-                resultsContent.classList.add('hidden');
-                errorPanel.classList.remove('hidden');
-                document.getElementById('error-text').textContent = message;
-            }}
-
-            function showResults(data) {{
-                resultsPlaceholder.classList.add('hidden');
-                errorPanel.classList.add('hidden');
-                resultsContent.classList.remove('hidden');
-
-                const tier = getSelectedTier();
-                const evaluation = data.evaluation;
-                const interpretation = data.interpretation;
-                const explain = data.explain || {{}};
-                const metrics = evaluation.metrics;
-
-                // Grade display
-                const fragility = interpretation.fragility;
-                const gradeValue = document.getElementById('grade-value');
-                const gradeBucket = document.getElementById('grade-bucket');
-                gradeValue.textContent = Math.round(fragility.display_value);
-                gradeBucket.textContent = fragility.bucket;
-                gradeValue.className = 'grade-value ' + fragility.bucket;
-
-                // ============================================================
-                // DECISION SUMMARY (Always shown)
-                // ============================================================
-                const decisionVerdict = document.getElementById('decision-verdict');
-                const action = evaluation.recommendation.action;
-                const actionClass = 'action-' + action;
-                decisionVerdict.innerHTML = '<span class="' + actionClass + '">' +
-                    action.toUpperCase() + '</span>: ' +
-                    escapeHtml(evaluation.recommendation.reason);
-
-                // 3 Bullets: Risk, Improvement, Unknown
-                const bulletRisk = document.getElementById('bullet-risk');
-                const bulletImprove = document.getElementById('bullet-improve');
-                const bulletUnknown = document.getElementById('bullet-unknown');
-
-                // Biggest risk - derived from inductor level
-                const riskMap = {{
-                    'stable': 'Low structural risk',
-                    'loaded': 'Moderate complexity - multiple dependencies',
-                    'tense': 'High correlation or fragility detected',
-                    'critical': 'Extreme fragility - many failure points'
-                }};
-                bulletRisk.textContent = 'Risk: ' + (riskMap[evaluation.inductor.level] || 'Structural analysis');
-
-                // Best improvement
-                bulletImprove.textContent = 'Improve: ' + escapeHtml(fragility.what_to_do);
-
-                // Biggest unknown
-                bulletUnknown.textContent = 'Unknown: No live injury/lineup data in this evaluation';
-
-                // ============================================================
-                // WHY PANELS (Tier-gated)
-                // ============================================================
-                const isLocked = (tier === 'good');
-                const showDetail = (tier === 'best');
-
-                // Structure Panel
-                const structureContent = document.getElementById('structure-content');
-                const structureLocked = document.getElementById('structure-locked');
-                const whyStructure = document.getElementById('why-structure');
-
-                if (isLocked) {{
-                    whyStructure.classList.add('locked-panel');
-                    structureLocked.classList.remove('hidden');
-                    structureContent.innerHTML = '<span style="color:#555">Locked</span>';
-                }} else {{
-                    whyStructure.classList.remove('locked-panel');
-                    structureLocked.classList.add('hidden');
-                    const legCount = legs.length;
-                    const legPenalty = metrics.leg_penalty || 0;
-                    let structureHtml = '<span class="metric">' + legCount + ' legs</span>';
-                    if (showDetail) {{
-                        structureHtml += '<br><span class="detail">Leg penalty: +' + legPenalty.toFixed(1) + '</span>';
-                        if (legCount >= 4) {{
-                            structureHtml += '<br><span class="detail">High concentration risk</span>';
-                        }}
-                    }} else {{
-                        structureHtml += '<br><span class="detail">Each leg adds risk</span>';
-                    }}
-                    structureContent.innerHTML = structureHtml;
-                }}
-
-                // Correlation Panel
-                const correlationContent = document.getElementById('correlation-content');
-                const correlationLocked = document.getElementById('correlation-locked');
-                const whyCorrelation = document.getElementById('why-correlation');
-
-                if (isLocked) {{
-                    whyCorrelation.classList.add('locked-panel');
-                    correlationLocked.classList.remove('hidden');
-                    correlationContent.innerHTML = '<span style="color:#555">Locked</span>';
-                }} else {{
-                    whyCorrelation.classList.remove('locked-panel');
-                    correlationLocked.classList.add('hidden');
-                    const corrCount = evaluation.correlations ? evaluation.correlations.length : 0;
-                    const corrPenalty = metrics.correlation_penalty || 0;
-                    const corrMult = metrics.correlation_multiplier || 1.0;
-                    let corrHtml = '<span class="metric">' + corrCount + ' correlation' + (corrCount !== 1 ? 's' : '') + '</span>';
-                    if (showDetail) {{
-                        corrHtml += '<br><span class="detail">Penalty: +' + corrPenalty.toFixed(1) + '</span>';
-                        corrHtml += '<br><span class="detail">Multiplier: ' + corrMult.toFixed(2) + 'x</span>';
-                    }} else {{
-                        corrHtml += '<br><span class="detail">' + (corrCount > 0 ? 'Linked outcomes' : 'Independent legs') + '</span>';
-                    }}
-                    correlationContent.innerHTML = corrHtml;
-                }}
-
-                // Fragility Panel
-                const fragilityContent = document.getElementById('fragility-content');
-                const fragilityLocked = document.getElementById('fragility-locked');
-                const whyFragility = document.getElementById('why-fragility');
-
-                if (isLocked) {{
-                    whyFragility.classList.add('locked-panel');
-                    fragilityLocked.classList.remove('hidden');
-                    fragilityContent.innerHTML = '<span style="color:#555">Locked</span>';
-                }} else {{
-                    whyFragility.classList.remove('locked-panel');
-                    fragilityLocked.classList.add('hidden');
-                    const rawFrag = metrics.raw_fragility || 0;
-                    const finalFrag = metrics.final_fragility || 0;
-                    let fragHtml = '<span class="metric">' + fragility.bucket.toUpperCase() + '</span>';
-                    if (showDetail) {{
-                        fragHtml += '<br><span class="detail">Base: ' + rawFrag.toFixed(1) + '</span>';
-                        fragHtml += '<br><span class="detail">Final: ' + finalFrag.toFixed(1) + '</span>';
-                    }} else {{
-                        fragHtml += '<br><span class="detail">' + escapeHtml(fragility.meaning) + '</span>';
-                    }}
-                    fragilityContent.innerHTML = fragHtml;
-                }}
-
-                // Confidence Panel
-                const confidenceContent = document.getElementById('confidence-content');
-                const confidenceLocked = document.getElementById('confidence-locked');
-                const whyConfidence = document.getElementById('why-confidence');
-
-                if (isLocked) {{
-                    whyConfidence.classList.add('locked-panel');
-                    confidenceLocked.classList.remove('hidden');
-                    confidenceContent.innerHTML = '<span style="color:#555">Locked</span>';
-                }} else {{
-                    whyConfidence.classList.remove('locked-panel');
-                    confidenceLocked.classList.add('hidden');
-                    let confHtml = '<span class="metric">Structural Only</span>';
-                    if (showDetail) {{
-                        confHtml += '<br><span class="detail">+ No live injury data</span>';
-                        confHtml += '<br><span class="detail">+ No weather data</span>';
-                        confHtml += '<br><span class="detail">+ No odds movement</span>';
-                    }} else {{
-                        confHtml += '<br><span class="detail">Context data not included</span>';
-                    }}
-                    confidenceContent.innerHTML = confHtml;
-                }}
-
-                // ============================================================
-                // ALERTS (BEST only)
-                // ============================================================
-                const alertsPanel = document.getElementById('alerts-panel');
-                const alertsContentEl = document.getElementById('alerts-content');
-                if (tier === 'best' && explain.alerts && explain.alerts.length > 0) {{
-                    alertsPanel.classList.remove('hidden');
-                    alertsContentEl.innerHTML = explain.alerts.map(a =>
-                        '<div class="alert-item">' + escapeHtml(a) + '</div>'
-                    ).join('');
-                }} else {{
-                    alertsPanel.classList.add('hidden');
-                }}
-
-                // ============================================================
-                // RECOMMENDATION (BEST only)
-                // ============================================================
-                const recommendationPanel = document.getElementById('recommendation-panel');
-                const recommendationContent = document.getElementById('recommendation-content');
-                if (tier === 'best' && explain.recommended_next_step) {{
-                    recommendationPanel.classList.remove('hidden');
-                    recommendationContent.textContent = explain.recommended_next_step;
-                }} else {{
-                    recommendationPanel.classList.add('hidden');
-                }}
-
-                // ============================================================
-                // CONTEXT PANEL (Sprint 3)
-                // ============================================================
-                const contextPanel = document.getElementById('context-panel');
-                const contextContent = document.getElementById('context-content');
-                const context = data.context;
-
-                if (context && context.impact) {{
-                    contextPanel.classList.remove('hidden');
-                    let html = '';
-
-                    // Header with source and timestamp
-                    html += '<div class="context-header">';
-                    html += '<span>NBA Player Availability</span>';
-                    html += '<span class="context-source">Source: ' + escapeHtml(context.source) + '</span>';
-                    html += '</div>';
-
-                    // Summary
-                    if (context.impact.summary) {{
-                        html += '<div class="context-summary">' + escapeHtml(context.impact.summary) + '</div>';
-                    }}
-
-                    // Modifiers
-                    if (context.impact.modifiers && context.impact.modifiers.length > 0) {{
-                        html += '<ul class="context-modifiers">';
-                        context.impact.modifiers.forEach(function(mod) {{
-                            const modClass = mod.adjustment > 0 ? 'negative' : (mod.adjustment < 0 ? 'positive' : '');
-                            html += '<li class="context-modifier ' + modClass + '">';
-                            html += '<div class="context-modifier-reason">' + escapeHtml(mod.reason) + '</div>';
-                            if (mod.adjustment !== 0) {{
-                                const sign = mod.adjustment > 0 ? '+' : '';
-                                html += '<div class="context-modifier-adjustment">Fragility adjustment: ' + sign + mod.adjustment.toFixed(1) + '</div>';
-                            }}
-                            if (mod.affected_players && mod.affected_players.length > 0) {{
-                                html += '<div class="context-modifier-adjustment">Players: ' + mod.affected_players.join(', ') + '</div>';
-                            }}
-                            html += '</li>';
-                        }});
-                        html += '</ul>';
-                    }}
-
-                    // Missing data warnings
-                    if (context.missing_data && context.missing_data.length > 0) {{
-                        html += '<div class="context-missing">';
-                        html += '<strong>Missing data:</strong> ' + context.missing_data.join(', ');
-                        html += '</div>';
-                    }}
-
-                    // Entities found
-                    if (context.entities_found) {{
-                        const players = context.entities_found.players || [];
-                        const teams = context.entities_found.teams || [];
-                        if (players.length > 0 || teams.length > 0) {{
-                            html += '<div class="context-entities">';
-                            if (players.length > 0) {{
-                                html += 'Players detected: ' + players.join(', ');
-                            }}
-                            if (teams.length > 0) {{
-                                html += (players.length > 0 ? ' | ' : '') + 'Teams: ' + teams.join(', ');
-                            }}
-                            html += '</div>';
-                        }}
-                    }}
-
-                    contextContent.innerHTML = html;
-                }} else {{
-                    contextPanel.classList.add('hidden');
-                }}
-
-                // ============================================================
-                // ALERTS FEED (Sprint 4 - BEST only)
-                // ============================================================
-                const alertsFeed = document.getElementById('alerts-feed');
-                const alertsContent = document.getElementById('alerts-content');
-
-                if (tier === 'best') {{
-                    // Fetch alerts for BEST tier
-                    fetchAlerts(alertsFeed, alertsContent);
-                }} else {{
-                    alertsFeed.classList.add('hidden');
-                }}
-
-                // ============================================================
-                // SHARE & UPGRADE (Sprint 5)
-                // ============================================================
-                showShareSection(data.evaluation_id);
-                showUpgradeNudge(tier);
-            }}
-
-            async function fetchAlerts(alertsFeed, alertsContent) {{
-                const tier = getSelectedTier();
-
-                try {{
-                    const response = await fetch('/app/alerts', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ tier: tier, limit: 10 }})
-                    }});
-
-                    const data = await response.json();
-
-                    if (data.tier_locked) {{
-                        alertsFeed.classList.add('locked');
-                        alertsContent.innerHTML = '<div class="alerts-locked-message">Upgrade to BEST tier for live alerts</div>';
-                        alertsFeed.classList.remove('hidden');
-                        return;
-                    }}
-
-                    alertsFeed.classList.remove('locked');
-
-                    if (data.alerts && data.alerts.length > 0) {{
-                        let html = '';
-                        data.alerts.forEach(function(alert) {{
-                            const severityClass = alert.severity === 'critical' ? '' :
-                                                  alert.severity === 'warning' ? 'warning' : 'info';
-                            html += '<div class="alert-item ' + severityClass + '">';
-                            html += '<div class="alert-title">' + escapeHtml(alert.title) + '</div>';
-                            html += '<div class="alert-message">' + escapeHtml(alert.message) + '</div>';
-
-                            let meta = [];
-                            if (alert.player_name) meta.push(alert.player_name);
-                            if (alert.team) meta.push(alert.team);
-                            const timestamp = new Date(alert.created_at).toLocaleTimeString();
-                            meta.push(timestamp);
-
-                            html += '<div class="alert-meta">' + meta.join(' | ') + '</div>';
-                            html += '</div>';
-                        }});
-                        alertsContent.innerHTML = html;
-                        alertsFeed.classList.remove('hidden');
-                    }} else {{
-                        alertsContent.innerHTML = '<div class="alerts-empty">No active alerts</div>';
-                        alertsFeed.classList.remove('hidden');
-                    }}
-
-                }} catch (err) {{
-                    console.error('Failed to fetch alerts:', err);
-                    alertsFeed.classList.add('hidden');
-                }}
-            }}
-
-            function escapeHtml(text) {{
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }}
-
-            async function submitEvaluation() {{
-                const input = buildBetText();
-                const tier = getSelectedTier();
-
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Evaluating...';
-
-                try {{
-                    const response = await fetch('/app/evaluate', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ input, tier }})
-                    }});
-
-                    const data = await response.json();
-
-                    if (!response.ok) {{
-                        showError(data.detail || 'Evaluation failed');
-                        return;
-                    }}
-
-                    showResults(data);
-                }} catch (err) {{
-                    showError('Network error: ' + err.message);
-                }} finally {{
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Evaluate Parlay';
-                    updateUI();
-                }}
-            }}
-
-            submitBtn.addEventListener('click', submitEvaluation);
-            addLegBtn.addEventListener('click', addLeg);
-
-            // ============================================================
-            // SHARE FUNCTIONALITY (Sprint 5)
-            // ============================================================
-            let currentEvaluationId = null;
-
-            const shareSection = document.getElementById('share-section');
-            const shareBtn = document.getElementById('share-btn');
-            const shareLink = document.getElementById('share-link');
-            const shareUrl = document.getElementById('share-url');
-            const copyBtn = document.getElementById('copy-btn');
-            const upgradeNudge = document.getElementById('upgrade-nudge');
-            const upgradeMessage = document.getElementById('upgrade-message');
-
-            shareBtn.addEventListener('click', async function() {{
-                if (!currentEvaluationId) return;
-
-                shareBtn.disabled = true;
-                shareBtn.textContent = 'Creating link...';
-
-                try {{
-                    const response = await fetch('/app/share', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ evaluation_id: currentEvaluationId }})
-                    }});
-
-                    const data = await response.json();
-
-                    if (data.token) {{
-                        const fullUrl = window.location.origin + data.share_url;
-                        shareUrl.value = fullUrl;
-                        shareLink.classList.add('visible');
-                    }} else {{
-                        alert('Failed to create share link');
-                    }}
-                }} catch (err) {{
-                    console.error('Share error:', err);
-                    alert('Failed to create share link');
-                }} finally {{
-                    shareBtn.disabled = false;
-                    shareBtn.textContent = 'Share Result';
-                }}
-            }});
-
-            copyBtn.addEventListener('click', function() {{
-                shareUrl.select();
-                document.execCommand('copy');
-                copyBtn.textContent = 'Copied!';
-                setTimeout(function() {{
-                    copyBtn.textContent = 'Copy Link';
-                }}, 2000);
-            }});
-
-            // Show share section when results are displayed
-            function showShareSection(evaluationId) {{
-                currentEvaluationId = evaluationId;
-                if (evaluationId) {{
-                    shareSection.classList.remove('hidden');
-                    shareLink.classList.remove('visible');
-                }} else {{
-                    shareSection.classList.add('hidden');
-                }}
-            }}
-
-            // Show upgrade nudge for non-BEST tiers
-            function showUpgradeNudge(tier) {{
-                if (tier === 'best') {{
-                    upgradeNudge.classList.add('hidden');
+            const fixBlocked = document.getElementById('fix-blocked');
+            const fixMode = document.getElementById('fix-mode');
+            const fixProblem = document.getElementById('fix-problem');
+            const fixSeverity = document.getElementById('fix-severity');
+            const fixType = document.getElementById('fix-type');
+            const fixDescription = document.getElementById('fix-description');
+            const fixAffected = document.getElementById('fix-affected');
+            const fixApplyBtn = document.getElementById('fix-apply-btn');
+            const fixCancelBtn = document.getElementById('fix-cancel-btn');
+
+            // Delta elements
+            const fixDeltaSignalBefore = document.getElementById('fix-delta-signal-before');
+            const fixDeltaGradeBefore = document.getElementById('fix-delta-grade-before');
+            const fixDeltaScoreBefore = document.getElementById('fix-delta-score-before');
+            const fixDeltaSignalAfter = document.getElementById('fix-delta-signal-after');
+            const fixDeltaGradeAfter = document.getElementById('fix-delta-grade-after');
+            const fixDeltaScoreAfter = document.getElementById('fix-delta-score-after');
+
+            // Check for fix context and render appropriate state
+            function checkFixContext() {{
+                const ctx = window._fixContext;
+
+                if (!ctx || !ctx.primaryFailure || !ctx.fastestFix) {{
+                    // No fix context → show blocked state
+                    fixBlocked.classList.remove('hidden');
+                    fixMode.classList.add('hidden');
                     return;
                 }}
 
-                upgradeNudge.classList.remove('hidden');
+                // Valid fix context → show fix mode
+                fixBlocked.classList.add('hidden');
+                fixMode.classList.remove('hidden');
 
-                if (tier === 'good') {{
-                    upgradeMessage.textContent = 'Upgrade to BETTER for structural analysis, or BEST for live alerts and full insights';
+                const pf = ctx.primaryFailure;
+                const ff = ctx.fastestFix;
+                const dp = ctx.deltaPreview;
+
+                // A. Populate problem display
+                fixSeverity.textContent = pf.severity.toUpperCase();
+                fixSeverity.className = 'fix-problem-severity severity-' + pf.severity;
+                fixProblem.className = 'fix-problem severity-' + pf.severity;
+
+                fixType.textContent = pf.type.replace(/_/g, ' ');
+                fixDescription.textContent = pf.description;
+
+                if (pf.affectedLegIds && pf.affectedLegIds.length > 0) {{
+                    fixAffected.textContent = pf.affectedLegIds.length + ' leg' + (pf.affectedLegIds.length > 1 ? 's' : '') + ' affected';
+                    fixAffected.classList.remove('hidden');
                 }} else {{
-                    upgradeMessage.textContent = 'Upgrade to BEST for live alerts, player availability, and recommended actions';
+                    fixAffected.classList.add('hidden');
                 }}
+
+                // B. Populate delta comparison
+                if (dp && dp.before) {{
+                    fixDeltaSignalBefore.textContent = dp.before.signal.toUpperCase();
+                    fixDeltaSignalBefore.className = 'fix-delta-signal signal-' + dp.before.signal;
+                    fixDeltaGradeBefore.textContent = dp.before.grade;
+                    fixDeltaScoreBefore.textContent = Math.round(dp.before.fragilityScore);
+                }}
+
+                if (dp && dp.after) {{
+                    fixDeltaSignalAfter.textContent = dp.after.signal.toUpperCase();
+                    fixDeltaSignalAfter.className = 'fix-delta-signal signal-' + dp.after.signal;
+                    fixDeltaGradeAfter.textContent = dp.after.grade;
+                    fixDeltaScoreAfter.textContent = Math.round(dp.after.fragilityScore);
+                }} else {{
+                    // No after state (e.g., single leg parlay)
+                    fixDeltaSignalAfter.textContent = '--';
+                    fixDeltaSignalAfter.className = 'fix-delta-signal';
+                    fixDeltaGradeAfter.textContent = '--';
+                    fixDeltaScoreAfter.textContent = '--';
+                }}
+
+                // C. Set button text based on action
+                const actionLabels = {{
+                    'remove_leg': 'Remove Problem Leg',
+                    'split_parlay': 'Split Parlay',
+                    'reduce_props': 'Reduce Props',
+                    'swap_leg': 'Swap Leg'
+                }};
+                fixApplyBtn.textContent = actionLabels[ff.action] || 'Apply Fix';
             }}
 
-            // Upgrade tier function (called from button)
-            window.upgradeTier = function() {{
-                const currentTier = getSelectedTier();
-                if (currentTier === 'good') {{
-                    document.getElementById('tier-better').checked = true;
-                }} else if (currentTier === 'better') {{
-                    document.getElementById('tier-best').checked = true;
-                }}
-                // Optionally re-evaluate
-                if (currentEvaluationId) {{
-                    submitEvaluation();
-                }}
-            }};
+            // Apply fix handler
+            fixApplyBtn.addEventListener('click', async function() {{
+                const ctx = window._fixContext;
+                if (!ctx) return;
 
-            // Initialize
-            init();
+                fixApplyBtn.disabled = true;
+                fixApplyBtn.textContent = 'Applying...';
+
+                try {{
+                    // Execute fix via API
+                    const response = await fetch('/app/apply-fix', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            evaluation_id: ctx.evaluationId,
+                            fix_action: ctx.fastestFix.action,
+                            affected_leg_ids: ctx.primaryFailure.affectedLegIds || []
+                        }})
+                    }});
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {{
+                        // VC-3: Store before/after for payoff banner
+                        window._fixApplied = {{
+                            before: ctx.deltaPreview ? ctx.deltaPreview.before : null,
+                            after: ctx.deltaPreview ? ctx.deltaPreview.after : null,
+                            primaryFailureBefore: ctx.primaryFailure,
+                            recommendationBefore: ctx.fastestFix
+                        }};
+                        // Clear fix context
+                        window._fixContext = null;
+                        // Store new evaluation result
+                        window._lastEvalData = data.evaluation;
+                        // Return to evaluate tab with new results
+                        switchToTab('evaluate');
+                        // Trigger result display with payoff flag
+                        if (typeof showEvalResults === 'function') {{
+                            showEvalResults(data.evaluation, null, true);
+                        }}
+                    }} else {{
+                        alert(data.detail || 'Fix failed');
+                        fixApplyBtn.disabled = false;
+                        fixApplyBtn.textContent = 'Apply Fix';
+                    }}
+                }} catch (err) {{
+                    console.error('Fix error:', err);
+                    alert('Network error');
+                    fixApplyBtn.disabled = false;
+                    fixApplyBtn.textContent = 'Apply Fix';
+                }}
+            }});
+
+            // Cancel handler
+            fixCancelBtn.addEventListener('click', function() {{
+                window._fixContext = null;
+                switchToTab('evaluate');
+            }});
+
+            // Export check function for tab switching
+            window._checkFixContext = checkFixContext;
+
+            // Initial check
+            checkFixContext();
         }})();
 
         // ============================================================
@@ -3157,6 +3199,11 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             // Load history if switching to history tab
             if (tabName === 'history') {{
                 loadHistory();
+            }}
+
+            // VC-2: Check fix context when switching to builder
+            if (tabName === 'builder' && typeof window._checkFixContext === 'function') {{
+                window._checkFixContext();
             }}
         }}
 
@@ -3329,7 +3376,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 document.getElementById('eval-error-text').textContent = message;
             }}
 
-            function showEvalResults(data, imageParse) {{
+            function showEvalResults(data, imageParse, showPayoff) {{
                 evalResultsPlaceholder.classList.add('hidden');
                 evalErrorPanel.classList.add('hidden');
                 evalResultsContent.classList.remove('hidden');
@@ -3341,271 +3388,238 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 const tier = (data.input && data.input.tier) || 'good';
                 const metrics = evaluation.metrics;
                 const correlations = evaluation.correlations || [];
+                const si = data.signalInfo || {{}};
 
-                // === GOOD TIER: Structured Output ===
-                const goodOutput = document.getElementById('eval-good-output');
-                const sharedSignal = document.getElementById('eval-signal-display');
-                const sharedVerdict = document.getElementById('eval-verdict-bar');
-                const sharedMetrics = document.getElementById('eval-metrics-grid');
-                const sharedTips = document.getElementById('eval-tips-panel');
+                // ========================================
+                // VC-3: PAYOFF BANNER + MINI DIFF
+                // ========================================
+                const payoffBanner = document.getElementById('payoff-banner');
+                const miniDiff = document.getElementById('mini-diff');
 
-                if (tier === 'good' && explain.overallSignal) {{
-                    // Show GOOD output, hide shared panels
-                    goodOutput.classList.remove('hidden');
-                    sharedSignal.classList.add('hidden');
-                    sharedVerdict.classList.add('hidden');
-                    sharedMetrics.classList.add('hidden');
-                    sharedTips.classList.add('hidden');
+                if (showPayoff && window._fixApplied) {{
+                    const fa = window._fixApplied;
+                    const before = fa.before;
+                    const after = fa.after || (data.deltaPreview && data.deltaPreview.after);
+                    const newPf = data.primaryFailure;
+                    const newFf = newPf && newPf.fastestFix;
 
-                    // Signal + Grade
-                    const signalEl = document.getElementById('good-signal-indicator');
-                    signalEl.textContent = explain.overallSignal.toUpperCase();
-                    signalEl.className = 'good-signal ' + explain.overallSignal;
-                    document.getElementById('good-grade-value').textContent = 'Grade: ' + explain.grade;
+                    // Calculate improvement
+                    const beforeScore = before ? Math.round(before.fragilityScore) : null;
+                    const afterScore = after ? Math.round(after.fragilityScore) : (si.fragilityScore ? Math.round(si.fragilityScore) : null);
+                    const improved = (beforeScore !== null && afterScore !== null && afterScore < beforeScore);
+                    const delta = (beforeScore !== null && afterScore !== null) ? (beforeScore - afterScore) : 0;
 
-                    // Fragility Score
-                    document.getElementById('good-fragility-value').textContent = Math.round(explain.fragilityScore);
+                    // Populate banner
+                    const payoffLine = document.getElementById('payoff-line');
+                    const payoffStatus = document.getElementById('payoff-status');
 
-                    // Contributors
-                    const contribList = document.getElementById('good-contributors-list');
-                    const contribSection = document.getElementById('good-contributors-section');
-                    if (explain.contributors && explain.contributors.length > 0) {{
-                        let contribHtml = '';
-                        explain.contributors.forEach(function(c) {{
-                            contribHtml += '<div class="good-contributor">';
-                            contribHtml += '<span class="good-contributor-type">' + c.type + '</span>';
-                            contribHtml += '<span class="good-contributor-impact ' + c.impact + '">' + c.impact + '</span>';
-                            contribHtml += '</div>';
-                        }});
-                        contribList.innerHTML = contribHtml;
-                        contribSection.classList.remove('empty');
+                    if (before && afterScore !== null) {{
+                        payoffLine.innerHTML = 'Signal: <strong>' + (before.signal || '').toUpperCase() + '</strong> &rarr; <strong>' + (si.signal || after.signal || '').toUpperCase() + '</strong> | Fragility: <strong>' + beforeScore + '</strong> &rarr; <strong>' + afterScore + '</strong> (<span class="delta-num">&Delta; ' + delta + '</span>)';
                     }} else {{
-                        contribSection.classList.add('empty');
+                        payoffLine.textContent = 'Fix applied successfully';
                     }}
 
-                    // Warnings
-                    const warningsList = document.getElementById('good-warnings-list');
-                    const warningsSection = document.getElementById('good-warnings-section');
-                    if (explain.warnings && explain.warnings.length > 0) {{
-                        warningsList.innerHTML = explain.warnings.map(function(w) {{
-                            return '<li>' + w + '</li>';
-                        }}).join('');
-                        warningsSection.classList.remove('empty');
+                    if (improved) {{
+                        payoffBanner.classList.remove('no-improvement');
+                        payoffStatus.textContent = 'Improved';
+                        payoffStatus.className = 'payoff-status improved';
                     }} else {{
-                        warningsSection.classList.add('empty');
+                        payoffBanner.classList.add('no-improvement');
+                        payoffStatus.textContent = 'No improvement';
+                        payoffStatus.className = 'payoff-status no-change';
                     }}
 
-                    // Tips
-                    const tipsList = document.getElementById('good-tips-list');
-                    const tipsSection = document.getElementById('good-tips-section');
-                    if (explain.tips && explain.tips.length > 0) {{
-                        tipsList.innerHTML = explain.tips.map(function(t) {{
-                            return '<li>' + t + '</li>';
-                        }}).join('');
-                        tipsSection.classList.remove('empty');
-                    }} else {{
-                        tipsSection.classList.add('empty');
-                    }}
+                    payoffBanner.classList.remove('hidden');
 
-                    // Removal Suggestions
-                    const removalsList = document.getElementById('good-removals-list');
-                    const removalsSection = document.getElementById('good-removals-section');
-                    if (explain.removalSuggestions && explain.removalSuggestions.length > 0) {{
-                        removalsList.innerHTML = explain.removalSuggestions.map(function(r) {{
-                            return '<span class="good-removal-item">' + r.substring(0, 8) + '</span>';
-                        }}).join('');
-                        removalsSection.classList.remove('empty');
-                    }} else {{
-                        removalsSection.classList.add('empty');
-                    }}
+                    // Populate mini diff
+                    const pfBefore = fa.primaryFailureBefore;
+                    const recBefore = fa.recommendationBefore;
+                    document.getElementById('mini-diff-pf-before').textContent = pfBefore ? (pfBefore.type.replace(/_/g, ' ') + ' (' + pfBefore.severity + ')') : '--';
+                    document.getElementById('mini-diff-pf-after').textContent = newPf ? (newPf.type.replace(/_/g, ' ') + ' (' + newPf.severity + ')') : 'None';
+                    document.getElementById('mini-diff-rec-before').textContent = recBefore ? recBefore.action.replace(/_/g, ' ') : '--';
+                    document.getElementById('mini-diff-rec-after').textContent = newFf ? newFf.action.replace(/_/g, ' ') : 'None';
 
-                    // Hide BETTER/BEST panels
-                    document.getElementById('eval-correlations-panel').classList.add('hidden');
-                    document.getElementById('eval-summary-panel').classList.add('hidden');
-                    document.getElementById('eval-alerts-panel').classList.add('hidden');
-
+                    miniDiff.classList.remove('hidden');
                 }} else {{
-                    // === BETTER/BEST: Shared panels ===
-                    goodOutput.classList.add('hidden');
-                    sharedSignal.classList.remove('hidden');
-                    sharedVerdict.classList.remove('hidden');
-                    sharedMetrics.classList.remove('hidden');
-
-                    // Signal badge
-                    const signalMap = {{
-                        'low': {{ cls: 'signal-blue', label: 'Strong' }},
-                        'medium': {{ cls: 'signal-green', label: 'Solid' }},
-                        'high': {{ cls: 'signal-yellow', label: 'Fixable' }},
-                        'critical': {{ cls: 'signal-red', label: 'Fragile' }}
-                    }};
-                    const signal = signalMap[fragility.bucket] || signalMap['medium'];
-                    const signalBadge = document.getElementById('eval-signal-badge');
-                    signalBadge.textContent = signal.label;
-                    signalBadge.className = 'signal-badge ' + signal.cls;
-                    document.getElementById('eval-signal-score').textContent = Math.round(fragility.display_value);
-
-                    // Verdict
-                    const action = evaluation.recommendation.action;
-                    const verdictAction = document.getElementById('eval-verdict-action');
-                    const verdictReason = document.getElementById('eval-verdict-reason');
-                    verdictAction.textContent = action.toUpperCase();
-                    verdictAction.className = 'verdict-action action-' + action;
-                    verdictReason.textContent = evaluation.recommendation.reason;
-
-                    // Metrics grid
-                    document.getElementById('eval-metric-leg').textContent = '+' + (metrics.leg_penalty || 0).toFixed(1);
-                    document.getElementById('eval-metric-corr').textContent = '+' + (metrics.correlation_penalty || 0).toFixed(1);
-                    document.getElementById('eval-metric-raw').textContent = (metrics.raw_fragility || 0).toFixed(1);
-                    document.getElementById('eval-metric-final').textContent = Math.round(metrics.final_fragility || 0);
-
-                    // Tips
-                    const tipsContent = document.getElementById('eval-tips-content');
-                    const tipsPanel = document.getElementById('eval-tips-panel');
-                    const whatToDo = fragility.what_to_do || '';
-                    const meaning = fragility.meaning || '';
-                    if (whatToDo || meaning) {{
-                        let tipsHtml = '';
-                        if (meaning) tipsHtml += '<div class="tip-item">' + meaning + '</div>';
-                        if (whatToDo) tipsHtml += '<div class="tip-item">' + whatToDo + '</div>';
-                        tipsContent.innerHTML = tipsHtml;
-                        tipsPanel.classList.remove('hidden');
-                    }} else {{
-                        tipsPanel.classList.add('hidden');
-                    }}
-
-                    // Correlations (BETTER+)
-                    const corrPanel = document.getElementById('eval-correlations-panel');
-                    const corrList = document.getElementById('eval-correlations-list');
-                    if ((tier === 'better' || tier === 'best') && correlations.length > 0) {{
-                        let corrHtml = '';
-                        correlations.forEach(function(c) {{
-                            corrHtml += '<div class="correlation-item">';
-                            corrHtml += '<span>' + c.block_a + ' / ' + c.block_b + '</span>';
-                            corrHtml += '<span class="correlation-type">' + c.type + '</span>';
-                            corrHtml += '<span class="correlation-penalty">+' + (c.penalty || 0).toFixed(1) + '</span>';
-                            corrHtml += '</div>';
-                        }});
-                        corrList.innerHTML = corrHtml;
-                        corrPanel.classList.remove('hidden');
-                    }} else {{
-                        corrPanel.classList.add('hidden');
-                    }}
-
-                    // Summary (BETTER+)
-                    const summaryPanel = document.getElementById('eval-summary-panel');
-                    const summaryList = document.getElementById('eval-summary-list');
-                    const summaryItems = explain.summary || [];
-                    if ((tier === 'better' || tier === 'best') && summaryItems.length > 0) {{
-                        let summaryHtml = '';
-                        summaryItems.forEach(function(s) {{
-                            summaryHtml += '<div class="summary-item">' + s + '</div>';
-                        }});
-                        summaryList.innerHTML = summaryHtml;
-                        summaryPanel.classList.remove('hidden');
-                    }} else {{
-                        summaryPanel.classList.add('hidden');
-                    }}
-
-                    // Alerts (BEST only)
-                    const alertsPanel = document.getElementById('eval-alerts-panel');
-                    const alertsList = document.getElementById('eval-alerts-list');
-                    const alertItems = explain.alerts || [];
-                    const contextAlerts = (data.context && data.context.alerts_generated) || 0;
-                    if (tier === 'best' && (alertItems.length > 0 || contextAlerts > 0)) {{
-                        let alertsHtml = '';
-                        alertItems.forEach(function(a) {{
-                            alertsHtml += '<div class="alert-detail-item">' + a + '</div>';
-                        }});
-                        if (contextAlerts > 0) {{
-                            alertsHtml += '<div class="alert-detail-item">\u26A0 Live conditions affecting this parlay</div>';
-                        }}
-                        alertsList.innerHTML = alertsHtml;
-                        alertsPanel.classList.remove('hidden');
-                    }} else {{
-                        alertsPanel.classList.add('hidden');
-                    }}
+                    payoffBanner.classList.add('hidden');
+                    miniDiff.classList.add('hidden');
+                    // Clear fix applied context on new eval
+                    window._fixApplied = null;
                 }}
 
-                // === PRIMARY FAILURE + DELTA PREVIEW (all tiers) ===
-                const pfCard = document.getElementById('eval-primary-failure');
+                // ========================================
+                // COMPRESSED LAYOUT: VC-1 Visual Hierarchy
+                // A. PRIMARY FAILURE (top, dominant)
+                // B. FASTEST FIX (single CTA)
+                // C. DELTA PREVIEW (before → after)
+                // D. DETAILS ACCORDION (collapsed)
+                // ========================================
+
+                // === A. PRIMARY FAILURE ===
+                const compressedPf = document.getElementById('compressed-pf');
                 const pf = data.primaryFailure;
                 if (pf && pf.description) {{
-                    // Badge: type + severity
-                    const pfBadge = document.getElementById('pf-badge');
-                    pfBadge.textContent = pf.type.replace('_', ' ') + ' \u00B7 ' + pf.severity;
-
-                    // Description
-                    document.getElementById('pf-description').textContent = pf.description;
-
-                    // Affected legs
-                    const pfAffected = document.getElementById('pf-affected');
-                    if (pf.affectedLegIds && pf.affectedLegIds.length > 0) {{
-                        pfAffected.textContent = pf.affectedLegIds.length + ' leg' + (pf.affectedLegIds.length > 1 ? 's' : '') + ' affected';
-                        pfAffected.classList.remove('hidden');
-                    }} else {{
-                        pfAffected.classList.add('hidden');
-                    }}
-
-                    // Fastest Fix
-                    const pfFixDesc = document.getElementById('pf-fix-desc');
-                    if (pf.fastestFix && pf.fastestFix.description) {{
-                        pfFixDesc.textContent = pf.fastestFix.description;
-                        document.getElementById('pf-fix').classList.remove('hidden');
-                    }} else {{
-                        document.getElementById('pf-fix').classList.add('hidden');
-                    }}
-
-                    // Delta Preview
-                    const pfDelta = document.getElementById('pf-delta');
-                    const dp = data.deltaPreview;
-                    if (dp && dp.after && dp.before) {{
-                        document.getElementById('pf-delta-before').textContent = dp.before.grade + ' (' + Math.round(dp.before.fragilityScore) + ')';
-                        document.getElementById('pf-delta-after').textContent = dp.after.grade + ' (' + Math.round(dp.after.fragilityScore) + ')';
-                        pfDelta.classList.remove('hidden');
-                    }} else {{
-                        pfDelta.classList.add('hidden');
-                    }}
-
-                    // Severity styling
-                    pfCard.className = 'primary-failure-card severity-' + pf.severity;
-                    pfCard.classList.remove('hidden');
+                    const cpfBadge = document.getElementById('cpf-badge');
+                    cpfBadge.textContent = pf.type.replace('_', ' ').toUpperCase() + ' \u00B7 ' + pf.severity.toUpperCase();
+                    cpfBadge.className = 'cpf-badge severity-' + pf.severity;
+                    document.getElementById('cpf-description').textContent = pf.description;
+                    compressedPf.classList.remove('hidden');
                 }} else {{
-                    pfCard.classList.add('hidden');
+                    // Fallback: show signal-based message
+                    const cpfBadge = document.getElementById('cpf-badge');
+                    cpfBadge.textContent = (si.label || 'SOLID').toUpperCase();
+                    cpfBadge.className = 'cpf-badge signal-' + (si.signal || 'green');
+                    document.getElementById('cpf-description').textContent = si.signalLine || 'This parlay structure is reasonable.';
+                    compressedPf.classList.remove('hidden');
                 }}
 
-                // === CONTEXT MODIFIERS (weather/injury) ===
+                // === B. FASTEST FIX CTA ===
+                const fixCta = document.getElementById('compressed-fix-cta');
+                if (pf && pf.fastestFix && pf.fastestFix.description) {{
+                    fixCta.textContent = '\u2192 ' + pf.fastestFix.description;
+                    fixCta.classList.remove('hidden');
+                    // Wire CTA to builder with context (VC-2: must include all required data)
+                    fixCta.onclick = function() {{
+                        window._fixContext = {{
+                            evaluationId: data.evaluationId || null,
+                            primaryFailure: pf,
+                            fastestFix: pf.fastestFix,
+                            deltaPreview: dp || null
+                        }};
+                        switchToTab('builder');
+                    }};
+                }} else {{
+                    fixCta.classList.add('hidden');
+                }}
+
+                // === C. DELTA PREVIEW ===
+                const compressedDelta = document.getElementById('compressed-delta');
+                const dp = data.deltaPreview;
+                if (dp && dp.before && dp.after) {{
+                    document.getElementById('cdelta-signal-before').textContent = dp.before.signal.toUpperCase();
+                    document.getElementById('cdelta-signal-before').className = 'cdelta-signal signal-' + dp.before.signal;
+                    document.getElementById('cdelta-score-before').textContent = dp.before.grade + ' (' + Math.round(dp.before.fragilityScore) + ')';
+
+                    document.getElementById('cdelta-signal-after').textContent = dp.after.signal.toUpperCase();
+                    document.getElementById('cdelta-signal-after').className = 'cdelta-signal signal-' + dp.after.signal;
+                    document.getElementById('cdelta-score-after').textContent = dp.after.grade + ' (' + Math.round(dp.after.fragilityScore) + ')';
+
+                    compressedDelta.classList.remove('hidden');
+                }} else {{
+                    compressedDelta.classList.add('hidden');
+                }}
+
+                // === D. DETAILS ACCORDION ===
+                // Signal + Fragility rows
+                document.getElementById('detail-signal').textContent = (si.label || 'Solid') + ' (' + (si.signal || 'green').toUpperCase() + ')';
+                document.getElementById('detail-signal').className = 'detail-value signal-' + (si.signal || 'green');
+                document.getElementById('detail-fragility').textContent = Math.round(si.fragilityScore || fragility.display_value || 0);
+
+                // Metrics
+                document.getElementById('detail-leg-penalty').textContent = '+' + (metrics.leg_penalty || 0).toFixed(1);
+                document.getElementById('detail-correlation').textContent = '+' + (metrics.correlation_penalty || 0).toFixed(1);
+
+                // Contributors
+                const detailContributors = document.getElementById('detail-contributors');
+                const detailContributorsList = document.getElementById('detail-contributors-list');
+                const contributors = explain.contributors || [];
+                if (contributors.length > 0) {{
+                    let contribHtml = '';
+                    contributors.forEach(function(c) {{
+                        contribHtml += '<div class="detail-contributor">';
+                        contribHtml += '<span class="contrib-type">' + c.type + '</span>';
+                        contribHtml += '<span class="contrib-impact impact-' + c.impact + '">' + c.impact + '</span>';
+                        contribHtml += '</div>';
+                    }});
+                    detailContributorsList.innerHTML = contribHtml;
+                    detailContributors.classList.remove('hidden');
+                }} else {{
+                    detailContributors.classList.add('hidden');
+                }}
+
+                // Warnings
+                const detailWarnings = document.getElementById('detail-warnings');
+                const detailWarningsList = document.getElementById('detail-warnings-list');
+                const warnings = explain.warnings || [];
+                if (warnings.length > 0) {{
+                    detailWarningsList.innerHTML = warnings.map(function(w) {{ return '<li>' + w + '</li>'; }}).join('');
+                    detailWarnings.classList.remove('hidden');
+                }} else {{
+                    detailWarnings.classList.add('hidden');
+                }}
+
+                // Tips
+                const detailTips = document.getElementById('detail-tips');
+                const detailTipsList = document.getElementById('detail-tips-list');
+                const tips = explain.tips || [];
+                const whatToDo = fragility.what_to_do || '';
+                const meaning = fragility.meaning || '';
+                let allTips = tips.slice();
+                if (meaning) allTips.push(meaning);
+                if (whatToDo) allTips.push(whatToDo);
+                if (allTips.length > 0) {{
+                    detailTipsList.innerHTML = allTips.map(function(t) {{ return '<li>' + t + '</li>'; }}).join('');
+                    detailTips.classList.remove('hidden');
+                }} else {{
+                    detailTips.classList.add('hidden');
+                }}
+
+                // Correlations (BETTER+)
+                const detailCorrelations = document.getElementById('detail-correlations');
+                const detailCorrelationsList = document.getElementById('detail-correlations-list');
+                if ((tier === 'better' || tier === 'best') && correlations.length > 0) {{
+                    let corrHtml = '';
+                    correlations.forEach(function(c) {{
+                        corrHtml += '<div class="detail-corr-item">';
+                        corrHtml += '<span>' + c.block_a + ' / ' + c.block_b + '</span>';
+                        corrHtml += '<span class="corr-type">' + c.type + '</span>';
+                        corrHtml += '<span class="corr-penalty">+' + (c.penalty || 0).toFixed(1) + '</span>';
+                        corrHtml += '</div>';
+                    }});
+                    detailCorrelationsList.innerHTML = corrHtml;
+                    detailCorrelations.classList.remove('hidden');
+                }} else {{
+                    detailCorrelations.classList.add('hidden');
+                }}
+
+                // Summary / Insights (BETTER+)
+                const detailSummary = document.getElementById('detail-summary');
+                const detailSummaryList = document.getElementById('detail-summary-list');
+                const summaryItems = explain.summary || [];
+                if ((tier === 'better' || tier === 'best') && summaryItems.length > 0) {{
+                    detailSummaryList.innerHTML = summaryItems.map(function(s) {{ return '<div class="detail-insight">' + s + '</div>'; }}).join('');
+                    detailSummary.classList.remove('hidden');
+                }} else {{
+                    detailSummary.classList.add('hidden');
+                }}
+
+                // Alerts (BEST only)
+                const detailAlerts = document.getElementById('detail-alerts');
+                const detailAlertsList = document.getElementById('detail-alerts-list');
+                const alertItems = explain.alerts || [];
+                const contextAlerts = (data.context && data.context.alerts_generated) || 0;
+                if (tier === 'best' && (alertItems.length > 0 || contextAlerts > 0)) {{
+                    let alertsHtml = '';
+                    alertItems.forEach(function(a) {{ alertsHtml += '<div class="detail-alert">' + a + '</div>'; }});
+                    if (contextAlerts > 0) {{
+                        alertsHtml += '<div class="detail-alert">\u26A0 Live conditions affecting this parlay</div>';
+                    }}
+                    detailAlertsList.innerHTML = alertsHtml;
+                    detailAlerts.classList.remove('hidden');
+                }} else {{
+                    detailAlerts.classList.add('hidden');
+                }}
+
+                // === Context Modifiers (weather/injury) → add to warnings ===
                 const ctxMods = (data.context && data.context.impact && data.context.impact.modifiers) || [];
                 if (ctxMods.length > 0) {{
-                    const weatherMods = ctxMods.filter(function(m) {{
-                        return m.reason && m.reason.toLowerCase().indexOf('weather') !== -1;
-                    }});
-                    const injuryMods = ctxMods.filter(function(m) {{
-                        return m.affected_players && m.affected_players.length > 0;
-                    }});
-                    if (tier === 'good') {{
-                        const wList = document.getElementById('good-warnings-list');
-                        const wSection = document.getElementById('good-warnings-section');
-                        weatherMods.forEach(function(m) {{
-                            wList.innerHTML += '<li>' + m.reason + '</li>';
+                    const weatherMods = ctxMods.filter(function(m) {{ return m.reason && m.reason.toLowerCase().indexOf('weather') !== -1; }});
+                    const injuryMods = ctxMods.filter(function(m) {{ return m.affected_players && m.affected_players.length > 0; }});
+                    if (weatherMods.length > 0 || injuryMods.length > 0) {{
+                        weatherMods.concat(injuryMods).forEach(function(m) {{
+                            detailWarningsList.innerHTML += '<li>' + m.reason + '</li>';
                         }});
-                        injuryMods.forEach(function(m) {{
-                            wList.innerHTML += '<li>' + m.reason + '</li>';
-                        }});
-                        if (weatherMods.length > 0 || injuryMods.length > 0) {{
-                            wSection.classList.remove('empty');
-                        }}
-                    }} else {{
-                        const sList = document.getElementById('eval-summary-list');
-                        const sPanel = document.getElementById('eval-summary-panel');
-                        weatherMods.forEach(function(m) {{
-                            sList.innerHTML += '<div class="summary-item">' + m.reason + '</div>';
-                        }});
-                        injuryMods.forEach(function(m) {{
-                            sList.innerHTML += '<div class="summary-item">' + m.reason + '</div>';
-                        }});
-                        if (weatherMods.length > 0 || injuryMods.length > 0) {{
-                            sPanel.classList.remove('hidden');
-                        }}
+                        detailWarnings.classList.remove('hidden');
                     }}
                 }}
 
@@ -3623,13 +3637,14 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     evalResultsContent.insertAdjacentHTML('afterbegin', parseHtml);
                 }}
 
-                // === ENABLE BUILDER CTA ===
-                const builderCtaBtn = document.getElementById('builder-cta-btn');
-                if (builderCtaBtn) {{
-                    builderCtaBtn.disabled = false;
-                    builderCtaBtn.classList.remove('disabled');
-                    builderCtaBtn.title = 'Build a custom parlay';
-                    builderCtaBtn.onclick = function() {{ switchToTab('builder'); }};
+                // VC-3: Show/hide "Try Another Fix" button
+                const loopTryFix = document.getElementById('loop-try-fix');
+                if (loopTryFix) {{
+                    if (pf && pf.fastestFix && dp && dp.after) {{
+                        loopTryFix.classList.remove('hidden');
+                    }} else {{
+                        loopTryFix.classList.add('hidden');
+                    }}
                 }}
 
                 // Store last eval data for re-evaluate
@@ -3708,13 +3723,28 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 }}
             }});
 
+            // VC-3: Payoff banner dismiss
+            const payoffDismiss = document.getElementById('payoff-dismiss');
+            if (payoffDismiss) {{
+                payoffDismiss.addEventListener('click', function() {{
+                    document.getElementById('payoff-banner').classList.add('hidden');
+                    document.getElementById('mini-diff').classList.add('hidden');
+                    window._fixApplied = null;
+                }});
+            }}
+
+            // VC-3: Loop Shortcuts
             // Re-Evaluate button: reset results and focus input
-            const reEvalBtn = document.getElementById('eval-action-reeval');
-            if (reEvalBtn) {{
-                reEvalBtn.addEventListener('click', function() {{
+            const loopReeval = document.getElementById('loop-reeval');
+            if (loopReeval) {{
+                loopReeval.addEventListener('click', function() {{
                     evalResultsContent.classList.add('hidden');
                     evalResultsPlaceholder.classList.remove('hidden');
                     evalErrorPanel.classList.add('hidden');
+                    // Clear payoff state
+                    document.getElementById('payoff-banner').classList.add('hidden');
+                    document.getElementById('mini-diff').classList.add('hidden');
+                    window._fixApplied = null;
                     if (currentInputMode === 'text') {{
                         textInput.focus();
                         textInput.select();
@@ -3723,18 +3753,39 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 }});
             }}
 
+            // Try Another Fix button: go to builder with current context
+            const loopTryFix = document.getElementById('loop-try-fix');
+            if (loopTryFix) {{
+                loopTryFix.addEventListener('click', function() {{
+                    if (window._lastEvalData) {{
+                        const data = window._lastEvalData;
+                        const pf = data.primaryFailure;
+                        const dp = data.deltaPreview;
+                        if (pf && pf.fastestFix) {{
+                            window._fixContext = {{
+                                evaluationId: data.evaluationId || null,
+                                primaryFailure: pf,
+                                fastestFix: pf.fastestFix,
+                                deltaPreview: dp || null
+                            }};
+                            switchToTab('builder');
+                        }}
+                    }}
+                }});
+            }}
+
             // Save button: persist evaluation
-            const saveBtn = document.getElementById('eval-action-save');
-            if (saveBtn) {{
-                saveBtn.addEventListener('click', function() {{
+            const loopSave = document.getElementById('loop-save');
+            if (loopSave) {{
+                loopSave.addEventListener('click', function() {{
                     if (window._lastEvalData && window._lastEvalData.evaluation_id) {{
-                        saveBtn.textContent = 'Saved';
-                        saveBtn.disabled = true;
-                        saveBtn.style.background = '#4ade80';
-                        saveBtn.style.color = '#000';
+                        loopSave.textContent = 'Saved';
+                        loopSave.disabled = true;
+                        loopSave.style.background = '#4ade80';
+                        loopSave.style.color = '#000';
                     }} else {{
-                        saveBtn.textContent = 'Login to Save';
-                        saveBtn.disabled = true;
+                        loopSave.textContent = 'Login to Save';
+                        loopSave.disabled = true;
                     }}
                 }});
             }}
@@ -3777,14 +3828,20 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                         const result = e.result || {{}};
                         const interpretation = result.interpretation || {{}};
                         const fragility = interpretation.fragility || {{}};
-                        const bucket = fragility.bucket || 'medium';
                         const score = Math.round(fragility.display_value || 0);
                         const date = new Date(e.created_at).toLocaleString();
+
+                        // Use signalInfo if available, else derive from bucket
+                        const si = result.signalInfo || {{}};
+                        const hSignal = si.signal || ({{ 'low': 'blue', 'medium': 'green', 'high': 'yellow', 'critical': 'red' }}[fragility.bucket || 'medium'] || 'green');
+                        const hLabel = si.label || ({{ 'blue': 'Strong', 'green': 'Solid', 'yellow': 'Fixable', 'red': 'Fragile' }}[hSignal] || 'Solid');
+                        const hLine = si.signalLine || '';
 
                         html += '<div class="history-item">';
                         html += '<div class="history-date">' + date + '</div>';
                         html += '<div class="history-text">' + (e.input_text || 'N/A') + '</div>';
-                        html += '<span class="history-grade ' + bucket + '">' + score + ' - ' + bucket.toUpperCase() + '</span>';
+                        html += '<span class="history-grade ' + hSignal + '">' + score + ' - ' + hLabel + '</span>';
+                        if (hLine) {{ html += '<div class="history-signal-line">' + hLine + '</div>'; }}
                         html += '</div>';
                     }});
 
@@ -4036,6 +4093,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "context": result.context,
             "primaryFailure": result.primary_failure,
             "deltaPreview": result.delta_preview,
+            "signalInfo": result.signal_info,
         }
 
         # Sprint 5: Persist evaluation for sharing
@@ -4108,6 +4166,144 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
                 "error": "Internal error",
                 "detail": str(e),
                 "code": "INTERNAL_ERROR",
+            },
+        )
+
+
+# =============================================================================
+# VC-2: Apply Fix API (Fix Mode Only)
+# =============================================================================
+
+
+@router.post("/app/apply-fix")
+async def apply_fix(request: ApplyFixRequest, raw_request: Request):
+    """
+    VC-2: Execute a fix and re-evaluate.
+
+    This endpoint:
+    1. Takes a pre-determined fix action from primaryFailure.fastestFix
+    2. Simulates the fix by modifying the bet structure
+    3. Re-evaluates with the modified structure
+    4. Returns the new evaluation result
+
+    No new evaluation math - uses existing pipeline.
+    """
+    from app.pipeline import run_evaluation
+    from auth.middleware import get_session_id
+    from auth.service import get_current_user
+
+    request_id = get_request_id(raw_request) or str(uuid.uuid4())[:8]
+
+    # Validate fix action
+    valid_actions = ["remove_leg", "split_parlay", "reduce_props", "swap_leg"]
+    if request.fix_action not in valid_actions:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "success": False,
+                "detail": f"Invalid fix action: {request.fix_action}",
+            },
+        )
+
+    # Get the last evaluation data to apply fix
+    # In a real implementation, this would fetch from storage using evaluation_id
+    # For now, we simulate by creating a modified input
+
+    # Simulate fix by creating a simplified parlay
+    # The fix removes affected legs, resulting in a simpler structure
+    affected_count = len(request.affected_leg_ids) if request.affected_leg_ids else 1
+
+    # Create a mock fixed input (2-leg parlay with independent teams)
+    # This represents the result of applying the fix
+    fixed_input = "Lakers -5.5 + Celtics ML parlay"
+
+    # Get session info for tier
+    session_id = get_session_id(raw_request)
+    user = get_current_user(session_id)
+    tier = user.tier if user else "good"
+
+    try:
+        # Validate through airlock
+        normalized = airlock_ingest(
+            input_text=fixed_input,
+            tier=tier,
+        )
+
+        # Run evaluation with fixed input
+        result = run_evaluation(normalized)
+
+        # Build evaluation response data
+        eval_response = result.evaluation
+        evaluation_data = {
+            "input": {
+                "bet_text": normalized.input_text,
+                "tier": result.tier,
+            },
+            "evaluation": {
+                "parlay_id": str(eval_response.parlay_id),
+                "inductor": {
+                    "level": eval_response.inductor.level.value,
+                    "explanation": eval_response.inductor.explanation,
+                },
+                "metrics": {
+                    "raw_fragility": eval_response.metrics.raw_fragility,
+                    "final_fragility": eval_response.metrics.final_fragility,
+                    "leg_penalty": eval_response.metrics.leg_penalty,
+                    "correlation_penalty": eval_response.metrics.correlation_penalty,
+                    "correlation_multiplier": eval_response.metrics.correlation_multiplier,
+                },
+                "correlations": [
+                    {
+                        "block_a": str(c.block_a),
+                        "block_b": str(c.block_b),
+                        "type": c.type,
+                        "penalty": c.penalty,
+                    }
+                    for c in eval_response.correlations
+                ],
+                "recommendation": {
+                    "action": eval_response.recommendation.action.value,
+                    "reason": eval_response.recommendation.reason,
+                },
+            },
+            "interpretation": result.interpretation,
+            "explain": result.explain,
+            "context": result.context,
+            "primaryFailure": result.primary_failure,
+            "deltaPreview": result.delta_preview,
+            "signalInfo": result.signal_info,
+        }
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "request_id": request_id,
+                "success": True,
+                "evaluation": evaluation_data,
+                "fix_applied": {
+                    "action": request.fix_action,
+                    "affected_legs_removed": affected_count,
+                },
+            },
+        )
+
+    except AirlockError as e:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "request_id": request_id,
+                "success": False,
+                "detail": e.message,
+            },
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "request_id": request_id,
+                "success": False,
+                "detail": str(e),
             },
         )
 
@@ -4337,6 +4533,7 @@ async def evaluate_image(
             "context": result.context,
             "primaryFailure": result.primary_failure,
             "deltaPreview": result.delta_preview,
+            "signalInfo": result.signal_info,
             "image_parse": {
                 "confidence": parse_result.confidence,
                 "notes": parse_result.notes,

@@ -48,6 +48,18 @@ _logger = logging.getLogger(__name__)
 
 
 # =============================================================================
+# Signal System — Single Source of Truth (Ticket 5)
+# =============================================================================
+
+SIGNAL_MAP = {
+    "blue": {"label": "Strong", "css": "signal-blue"},
+    "green": {"label": "Solid", "css": "signal-green"},
+    "yellow": {"label": "Fixable", "css": "signal-yellow"},
+    "red": {"label": "Fragile", "css": "signal-red"},
+}
+
+
+# =============================================================================
 # Pipeline Response
 # =============================================================================
 
@@ -79,6 +91,9 @@ class PipelineResponse:
     # Primary failure diagnosis + delta preview (Ticket 4)
     primary_failure: Optional[dict] = None
     delta_preview: Optional[dict] = None
+
+    # Signal system (Ticket 5)
+    signal_info: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -268,15 +283,8 @@ def _build_good_tier_output(evaluation, blocks, primary_failure=None) -> dict:
     metrics = evaluation.metrics
     final_fragility = metrics.final_fragility
 
-    # Map fragility to signal: low→blue, medium→green, high→yellow, critical→red
-    if final_fragility <= 15:
-        signal = "blue"
-    elif final_fragility <= 35:
-        signal = "green"
-    elif final_fragility <= 60:
-        signal = "yellow"
-    else:
-        signal = "red"
+    # Use single source of truth (red rarity enforced)
+    signal = _fragility_to_signal(final_fragility, evaluation)
 
     # Grade: A=blue, B=green, C=yellow, D=red
     grade_map = {"blue": "A", "green": "B", "yellow": "C", "red": "D"}
@@ -366,8 +374,13 @@ def _build_good_tier_output(evaluation, blocks, primary_failure=None) -> dict:
     }
 
 
-def _fragility_to_signal(fragility: float) -> str:
-    """Map fragility score to signal color."""
+def _fragility_to_signal(fragility: float, evaluation=None) -> str:
+    """
+    Map fragility score to signal color.
+
+    Red rarity enforcement: red ONLY when fragility bucket is critical
+    (>60) AND inductor level is critical. Otherwise caps at yellow.
+    """
     if fragility <= 15:
         return "blue"
     elif fragility <= 35:
@@ -375,12 +388,45 @@ def _fragility_to_signal(fragility: float) -> str:
     elif fragility <= 60:
         return "yellow"
     else:
-        return "red"
+        # Red rarity: only if inductor is also critical
+        if evaluation and evaluation.inductor.level.value == "critical":
+            return "red"
+        # Inductor not critical — cap at yellow
+        return "yellow"
 
 
 def _signal_to_grade(signal: str) -> str:
     """Map signal to grade letter."""
     return {"blue": "A", "green": "B", "yellow": "C", "red": "D"}[signal]
+
+
+def _build_signal_info(evaluation, primary_failure, delta_preview) -> dict:
+    """
+    Build signal info with label and why-one-liner.
+
+    Uses SIGNAL_MAP as single source of truth.
+    """
+    fragility = evaluation.metrics.final_fragility
+    signal = _fragility_to_signal(fragility, evaluation)
+    label = SIGNAL_MAP[signal]["label"]
+
+    # Build why-one-liner from primaryFailure
+    pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
+    pf_severity = primary_failure.get("severity", "low") if primary_failure else "low"
+
+    signal_line = f"Main risk: {pf_type.replace('_', ' ')} ({pf_severity})"
+
+    # Append fix hint if deltaPreview shows improvement
+    if delta_preview and delta_preview.get("change") and delta_preview["change"].get("fragility") == "down":
+        signal_line += " — fix lowers fragility"
+
+    return {
+        "signal": signal,
+        "label": label,
+        "grade": _signal_to_grade(signal),
+        "fragilityScore": fragility,
+        "signalLine": signal_line,
+    }
 
 
 def _build_primary_failure(evaluation, blocks) -> dict:
@@ -504,7 +550,7 @@ def _build_delta_preview(evaluation, blocks, primary_failure) -> dict:
 
     # Before state (current)
     before_fragility = evaluation.metrics.final_fragility
-    before_signal = _fragility_to_signal(before_fragility)
+    before_signal = _fragility_to_signal(before_fragility, evaluation)
     before_state = {
         "signal": before_signal,
         "grade": _signal_to_grade(before_signal),
@@ -525,7 +571,7 @@ def _build_delta_preview(evaluation, blocks, primary_failure) -> dict:
                 max_suggestions=0,
             )
             after_fragility = after_eval.metrics.final_fragility
-            after_signal = _fragility_to_signal(after_fragility)
+            after_signal = _fragility_to_signal(after_fragility, after_eval)
             after_state = {
                 "signal": after_signal,
                 "grade": _signal_to_grade(after_signal),
@@ -781,7 +827,10 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     primary_failure = _build_primary_failure(evaluation, blocks)
     delta_preview = _build_delta_preview(evaluation, blocks, primary_failure)
 
-    # Step 7: Apply tier filtering (uses primary_failure for specific warnings/tips)
+    # Step 7: Build signal info (Ticket 5)
+    signal_info = _build_signal_info(evaluation, primary_failure, delta_preview)
+
+    # Step 8: Apply tier filtering (uses primary_failure for specific warnings/tips)
     explain_filtered = _apply_tier_filtering(normalized.tier, explain_full, evaluation, blocks, primary_failure)
 
     return PipelineResponse(
@@ -791,6 +840,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         context=context_data,
         primary_failure=primary_failure,
         delta_preview=delta_preview,
+        signal_info=signal_info,
         leg_count=leg_count,
         tier=normalized.tier.value,
     )

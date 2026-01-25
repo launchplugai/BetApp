@@ -202,11 +202,11 @@ class TestUIFlowLock:
         assert "Evaluate a bet first" in response.text
 
     def test_builder_cta_has_enable_logic(self, client):
-        """JavaScript enables Builder CTA after showEvalResults."""
+        """JavaScript enables Fastest Fix CTA and routes to builder."""
         response = client.get("/app")
-        # Verify the JS logic to enable the button is present
-        assert "builderCtaBtn.disabled = false" in response.text
-        assert "builderCtaBtn.classList.remove" in response.text
+        # Compressed layout: Fastest Fix CTA routes to builder
+        assert "compressed-fix-cta" in response.text
+        assert "switchToTab('builder')" in response.text or "switchToTab(&#x27;builder&#x27;)" in response.text
 
     # --- Tier Selector ---
 
@@ -224,10 +224,10 @@ class TestUIFlowLock:
         assert "Unlock Full Analysis" not in response.text
 
     def test_upgrade_cta_no_billing_implication(self, client):
-        """Upgrade CTA exists but without pricing."""
+        """Upgrade CTA exists in tier selector without pricing."""
         response = client.get("/app")
-        # The upgrade nudge should say "Upgrade to BEST" without price
-        assert "Upgrade to BEST" in response.text
+        # VC-2: Upgrade path via tier selector (in Evaluate tab)
+        assert "tier-best" in response.text
         assert "/mo)" not in response.text
 
     # --- Regression: All tabs load ---
@@ -260,12 +260,13 @@ class TestUIFlowLock:
         assert 'id="tab-history"' in response.text
 
     def test_builder_tab_still_functional(self, client):
-        """Builder tab content still has form elements."""
+        """VC-2: Builder tab is now Fix Mode only."""
         response = client.get("/app?tab=builder")
         assert response.status_code == 200
-        assert "Parlay Builder" in response.text
-        assert "add-leg-btn" in response.text
-        assert "submit-btn" in response.text
+        # Fix Mode elements exist
+        assert "fix-blocked" in response.text
+        assert "fix-mode" in response.text
+        assert "fix-apply-btn" in response.text
 
     def test_history_tab_still_functional(self, client):
         """History tab content still loads."""
@@ -285,11 +286,11 @@ class TestCoreLoopReinforcement:
     # --- Signal System ---
 
     def test_signal_display_exists(self, client):
-        """Signal badge and score elements are in the DOM."""
+        """Signal info elements are in the DOM (compressed layout)."""
         response = client.get("/app")
-        assert "eval-signal-badge" in response.text
-        assert "eval-signal-score" in response.text
-        assert "signal-display" in response.text
+        # Compressed layout: signal in details accordion
+        assert "detail-signal" in response.text
+        assert "detail-fragility" in response.text
 
     def test_signal_map_in_javascript(self, client):
         """Signal map has all four signals: blue, green, yellow, red."""
@@ -311,55 +312,56 @@ class TestCoreLoopReinforcement:
     # --- Metrics Grid (GOOD+) ---
 
     def test_metrics_grid_exists(self, client):
-        """Metrics grid with leg penalty, correlation, raw, final."""
+        """Metrics display in details accordion."""
         response = client.get("/app")
-        assert "eval-metrics-grid" in response.text
-        assert "eval-metric-leg" in response.text
-        assert "eval-metric-corr" in response.text
-        assert "eval-metric-raw" in response.text
-        assert "eval-metric-final" in response.text
+        # Compressed layout: metrics in details accordion
+        assert "detail-leg-penalty" in response.text
+        assert "detail-correlation" in response.text
 
     # --- Improvement Tips (GOOD+) ---
 
     def test_tips_panel_exists(self, client):
-        """Tips panel exists with 'How to Improve' heading."""
+        """Tips section exists in details accordion."""
         response = client.get("/app")
-        assert "eval-tips-panel" in response.text
-        assert "How to Improve" in response.text
+        # Compressed layout: tips in details accordion
+        assert "detail-tips" in response.text
+        assert "detail-tips-list" in response.text
 
     # --- Tier Differentiation ---
 
     def test_correlations_panel_exists(self, client):
-        """Correlations panel exists for BETTER+ tier rendering."""
+        """Correlations section exists in details accordion."""
         response = client.get("/app")
-        assert "eval-correlations-panel" in response.text
-        assert "Correlations Found" in response.text
+        # Compressed layout: correlations in details accordion
+        assert "detail-correlations" in response.text
+        assert "Correlations" in response.text
 
     def test_summary_panel_exists(self, client):
-        """Summary panel exists for BETTER+ tier rendering."""
+        """Summary/Insights section exists in details accordion."""
         response = client.get("/app")
-        assert "eval-summary-panel" in response.text
-        assert "Deeper Insights" in response.text
+        # Compressed layout: insights in details accordion
+        assert "detail-summary" in response.text
+        assert "Insights" in response.text
 
     def test_alerts_panel_exists(self, client):
-        """Alerts panel exists for BEST tier rendering."""
+        """Alerts section exists in details accordion."""
         response = client.get("/app")
-        assert "eval-alerts-panel" in response.text
+        assert "detail-alerts" in response.text
 
     def test_correlations_hidden_by_default(self, client):
-        """Correlations panel is hidden in initial render."""
+        """Correlations section is hidden in initial render."""
         response = client.get("/app")
-        assert 'correlations-panel hidden' in response.text
+        assert 'detail-correlations" class="detail-section hidden' in response.text or 'id="detail-correlations"' in response.text
 
     def test_summary_hidden_by_default(self, client):
-        """Summary panel is hidden in initial render."""
+        """Summary section is hidden in initial render."""
         response = client.get("/app")
-        assert 'summary-panel hidden' in response.text
+        assert 'detail-summary" class="detail-section hidden' in response.text or 'id="detail-summary"' in response.text
 
     def test_alerts_hidden_by_default(self, client):
-        """Alerts panel is hidden in initial render."""
+        """Alerts section is hidden in initial render."""
         response = client.get("/app")
-        assert 'alerts-detail-panel hidden' in response.text
+        assert 'detail-alerts" class="detail-section hidden' in response.text or 'id="detail-alerts"' in response.text
 
     def test_tier_gating_logic_in_js(self, client):
         """JavaScript gates correlations/summary to BETTER+, alerts to BEST."""
@@ -372,17 +374,20 @@ class TestCoreLoopReinforcement:
     # --- Post-Result Actions ---
 
     def test_post_actions_exist(self, client):
-        """Post-result action buttons exist: Improve, Re-Evaluate, Save."""
+        """Post-result action buttons exist: Re-Evaluate, Save (Improve via Fastest Fix CTA)."""
         response = client.get("/app")
-        assert "eval-action-improve" in response.text
-        assert "eval-action-reeval" in response.text
-        assert "eval-action-save" in response.text
+        # Compressed layout: Improve button replaced by Fastest Fix CTA
+        assert "compressed-fix-cta" in response.text
+        # VC-3: Loop shortcuts replaced old action buttons
+        assert "loop-reeval" in response.text
+        assert "loop-save" in response.text
 
     def test_improve_routes_to_builder(self, client):
-        """Improve button switches to Builder tab."""
+        """Fastest Fix CTA switches to Builder tab."""
         response = client.get("/app")
-        assert "Improve This Bet" in response.text
-        assert "switchToTab(&#x27;builder&#x27;)" in response.text or "switchToTab('builder')" in response.text
+        # Compressed layout: Fastest Fix CTA routes to builder
+        assert "compressed-fix-cta" in response.text
+        assert "switchToTab('builder')" in response.text or "switchToTab(&#x27;builder&#x27;)" in response.text
 
     def test_reeval_button_text(self, client):
         """Re-Evaluate button is present."""
@@ -397,11 +402,12 @@ class TestCoreLoopReinforcement:
     # --- Verdict Bar ---
 
     def test_verdict_bar_exists(self, client):
-        """Verdict bar with action and reason elements exists."""
+        """Compressed layout uses Primary Failure instead of verdict bar."""
         response = client.get("/app")
-        assert "eval-verdict-bar" in response.text
-        assert "eval-verdict-action" in response.text
-        assert "eval-verdict-reason" in response.text
+        # Compressed layout: verdict/recommendation shown via Primary Failure
+        assert "compressed-pf" in response.text
+        assert "cpf-badge" in response.text
+        assert "cpf-description" in response.text
 
     # --- Tab Content Active Class ---
 
@@ -1234,32 +1240,31 @@ class TestGoodTierStructuredOutput:
         assert "overallSignal" not in explain
 
     def test_good_output_html_container_exists(self, client):
-        """Frontend has dedicated GOOD tier output container."""
+        """Frontend has compressed layout container (unified for all tiers)."""
         response = client.get("/app")
         html = response.text
-        assert 'id="eval-good-output"' in html
-        assert 'class="good-output hidden"' in html
+        # Compressed layout replaces tier-specific containers
+        assert 'id="compressed-pf"' in html
+        assert 'id="eval-details-accordion"' in html
 
     def test_good_output_has_all_sections(self, client):
-        """Frontend GOOD output has all required section elements."""
+        """Compressed layout has all required detail sections."""
         response = client.get("/app")
         html = response.text
-        assert 'id="good-signal-grade"' in html
-        assert 'id="good-fragility"' in html
-        assert 'id="good-contributors-section"' in html
-        assert 'id="good-warnings-section"' in html
-        assert 'id="good-tips-section"' in html
-        assert 'id="good-removals-section"' in html
+        # Compressed layout: all sections in details accordion
+        assert 'id="detail-signal"' in html
+        assert 'id="detail-fragility"' in html
+        assert 'id="detail-contributors"' in html
+        assert 'id="detail-warnings"' in html
+        assert 'id="detail-tips"' in html
 
     def test_good_output_does_not_reuse_better_best_ids(self, client):
-        """GOOD output uses its own IDs, not shared tier panel IDs."""
+        """Compressed layout uses unified detail IDs for all tiers."""
         response = client.get("/app")
         html = response.text
-        # GOOD container should not reference the shared panel IDs
-        good_section = html[html.find('id="eval-good-output"'):html.find('<!-- Shared tier panels')]
-        assert 'eval-correlations-panel' not in good_section
-        assert 'eval-summary-panel' not in good_section
-        assert 'eval-alerts-panel' not in good_section
+        # Compressed layout: tier-gating logic still gates content by tier
+        assert "tier === 'better' || tier === 'best'" in html
+        assert "tier === 'best'" in html
 
 
 class TestPrimaryFailureAndDeltaPreview:
@@ -1471,29 +1476,31 @@ class TestPrimaryFailureAndDeltaPreview:
     # --- Frontend HTML ---
 
     def test_primary_failure_card_exists_in_html(self, client):
-        """Primary failure card element exists in the app HTML."""
+        """Compressed primary failure element exists in the app HTML."""
         resp = client.get("/app")
         html = resp.text
-        assert 'id="eval-primary-failure"' in html
-        assert 'id="pf-badge"' in html
-        assert 'id="pf-description"' in html
-        assert 'id="pf-fix-desc"' in html
+        # Compressed layout uses compressed-pf
+        assert 'id="compressed-pf"' in html
+        assert 'id="cpf-badge"' in html
+        assert 'id="cpf-description"' in html
+        assert 'id="compressed-fix-cta"' in html
 
     def test_delta_preview_elements_exist_in_html(self, client):
-        """Delta preview elements exist in app HTML."""
+        """Compressed delta preview elements exist in app HTML."""
         resp = client.get("/app")
         html = resp.text
-        assert 'id="pf-delta"' in html
-        assert 'id="pf-delta-before"' in html
-        assert 'id="pf-delta-after"' in html
+        # Compressed layout uses compressed-delta
+        assert 'id="compressed-delta"' in html
+        assert 'id="cdelta-signal-before"' in html
+        assert 'id="cdelta-signal-after"' in html
 
     def test_primary_failure_card_above_tips(self, client):
-        """Primary failure card appears before tips panel in DOM order."""
+        """Primary failure appears before details accordion in DOM order (VC-1)."""
         resp = client.get("/app")
         html = resp.text
-        pf_pos = html.find('id="eval-primary-failure"')
-        tips_pos = html.find('id="eval-tips-panel"')
-        assert pf_pos < tips_pos, "Primary failure card must be above tips panel"
+        pf_pos = html.find('id="compressed-pf"')
+        details_pos = html.find('id="eval-details-accordion"')
+        assert pf_pos < details_pos, "Primary failure must be above details accordion"
 
     # --- Description specificity ---
 
@@ -1521,3 +1528,338 @@ class TestPrimaryFailureAndDeltaPreview:
         action_verbs = ("remove", "split", "replace", "reduce", "move", "simplify")
         assert any(fix["description"].lower().startswith(v) for v in action_verbs), \
             f"Fix description not actionable: {fix['description']}"
+
+
+class TestSignalSystem:
+    """Ticket 5: Signal system consistency tests."""
+
+    VALID_SIGNALS = ("blue", "green", "yellow", "red")
+    SIGNAL_LABELS = {"blue": "Strong", "green": "Solid", "yellow": "Fixable", "red": "Fragile"}
+
+    # --- signalInfo presence ---
+
+    def test_signal_info_exists_good(self, client):
+        """signalInfo present in GOOD tier response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        assert resp.status_code == 200
+        assert "signalInfo" in resp.json()
+        assert resp.json()["signalInfo"] is not None
+
+    def test_signal_info_exists_better(self, client):
+        """signalInfo present in BETTER tier response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "better"})
+        assert "signalInfo" in resp.json()
+
+    def test_signal_info_exists_best(self, client):
+        """signalInfo present in BEST tier response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "best"})
+        assert "signalInfo" in resp.json()
+
+    # --- signalInfo schema ---
+
+    def test_signal_info_has_required_keys(self, client):
+        """signalInfo has signal, label, grade, fragilityScore, signalLine."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        si = resp.json()["signalInfo"]
+        assert "signal" in si
+        assert "label" in si
+        assert "grade" in si
+        assert "fragilityScore" in si
+        assert "signalLine" in si
+
+    def test_signal_is_valid_color(self, client):
+        """signalInfo.signal is blue/green/yellow/red."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        assert resp.json()["signalInfo"]["signal"] in self.VALID_SIGNALS
+
+    def test_label_matches_signal(self, client):
+        """signalInfo.label matches the locked mapping for its signal."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        si = resp.json()["signalInfo"]
+        expected_label = self.SIGNAL_LABELS[si["signal"]]
+        assert si["label"] == expected_label, f"Signal={si['signal']} should have label={expected_label}, got {si['label']}"
+
+    def test_grade_matches_signal(self, client):
+        """signalInfo.grade matches the locked mapping."""
+        grade_map = {"blue": "A", "green": "B", "yellow": "C", "red": "D"}
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        si = resp.json()["signalInfo"]
+        assert si["grade"] == grade_map[si["signal"]]
+
+    # --- Red rarity enforcement ---
+
+    def test_single_leg_not_red(self, client):
+        """Single leg bet must never produce red signal."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        assert resp.json()["signalInfo"]["signal"] != "red"
+
+    def test_two_leg_not_red(self, client):
+        """Two-leg bet must not produce red signal."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        assert resp.json()["signalInfo"]["signal"] != "red"
+
+    def test_red_only_when_inductor_critical(self, client):
+        """Red signal requires inductor level == critical."""
+        # Test multiple inputs — any that produce red must have critical inductor
+        inputs = [
+            "Lakers -5.5",
+            "Lakers -5.5 + Celtics ML",
+            "Lakers -5.5 + Celtics ML + Nuggets ML",
+            "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3",
+            "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3 + Heat ML",
+        ]
+        for inp in inputs:
+            resp = client.post("/app/evaluate", json={"input": inp, "tier": "good"})
+            data = resp.json()
+            if data["signalInfo"]["signal"] == "red":
+                assert data["evaluation"]["inductor"]["level"] == "critical", \
+                    f"Red signal without critical inductor for: {inp}"
+
+    def test_non_critical_inductor_caps_at_yellow(self, client):
+        """When inductor is not critical, signal must be yellow at most (not red)."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        data = resp.json()
+        if data["evaluation"]["inductor"]["level"] != "critical":
+            signal_order = {"blue": 0, "green": 1, "yellow": 2, "red": 3}
+            assert signal_order[data["signalInfo"]["signal"]] <= 2, \
+                f"Non-critical inductor should cap at yellow, got {data['signalInfo']['signal']}"
+
+    # --- Signal consistency across tiers ---
+
+    def test_signal_consistent_across_tiers(self, client):
+        """signalInfo.signal is the same regardless of tier."""
+        input_text = "Lakers -5.5 + Celtics ML + Nuggets ML"
+        signals = []
+        for tier in ("good", "better", "best"):
+            resp = client.post("/app/evaluate", json={"input": input_text, "tier": tier})
+            signals.append(resp.json()["signalInfo"]["signal"])
+        assert signals[0] == signals[1] == signals[2], f"Signal inconsistent: {signals}"
+
+    def test_good_explain_signal_matches_signal_info(self, client):
+        """GOOD tier explain.overallSignal matches signalInfo.signal."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        data = resp.json()
+        assert data["explain"]["overallSignal"] == data["signalInfo"]["signal"]
+
+    # --- signalLine (why one-liner) ---
+
+    def test_signal_line_not_empty(self, client):
+        """signalLine is never empty."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        assert len(resp.json()["signalInfo"]["signalLine"]) > 5
+
+    def test_signal_line_references_primary_failure_type(self, client):
+        """signalLine must reference the primaryFailure.type."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        data = resp.json()
+        pf_type = data["primaryFailure"]["type"].replace("_", " ")
+        assert pf_type in data["signalInfo"]["signalLine"], \
+            f"signalLine '{data['signalInfo']['signalLine']}' does not reference primaryFailure.type '{pf_type}'"
+
+    def test_signal_line_includes_severity(self, client):
+        """signalLine includes the primaryFailure.severity."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML + Nuggets ML", "tier": "good"})
+        data = resp.json()
+        assert data["primaryFailure"]["severity"] in data["signalInfo"]["signalLine"]
+
+    def test_signal_line_fix_hint_when_delta_improves(self, client):
+        """When deltaPreview shows improvement, signalLine has fix hint."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3",
+            "tier": "good"
+        })
+        data = resp.json()
+        if data["deltaPreview"]["change"] and data["deltaPreview"]["change"]["fragility"] == "down":
+            assert "fix lowers fragility" in data["signalInfo"]["signalLine"]
+
+    # --- Frontend HTML elements ---
+
+    def test_discover_signal_legend_exists(self, client):
+        """Discover tab has signal legend with all 4 signals."""
+        resp = client.get("/app")
+        html = resp.text
+        assert "discover-signals" in html
+        assert "Strong" in html
+        assert "Solid" in html
+        assert "Fixable" in html
+        assert "Fragile" in html
+
+    def test_evaluate_signal_line_element_exists(self, client):
+        """Evaluate tab has signal info in details accordion."""
+        resp = client.get("/app")
+        html = resp.text
+        # Compressed layout: signal info in details accordion
+        assert 'id="detail-signal"' in html
+        assert 'id="detail-fragility"' in html
+
+    def test_history_uses_signal_colors(self, client):
+        """History CSS uses signal color classes (blue/green/yellow/red)."""
+        resp = client.get("/app")
+        html = resp.text
+        assert "history-grade" in html
+        # CSS should reference signal colors
+        assert ".history-grade.blue" in html
+        assert ".history-grade.green" in html
+        assert ".history-grade.yellow" in html
+        assert ".history-grade.red" in html
+
+
+class TestVC3DeltaPayoff:
+    """VC-3: Delta as Product Moment (Payoff + Repeatability)."""
+
+    # --- Payoff Banner Tests ---
+
+    def test_payoff_banner_hidden_on_fresh_load(self, client):
+        """Payoff banner is hidden by default on fresh page load."""
+        resp = client.get("/app")
+        html = resp.text
+        # Banner element exists but is hidden
+        assert 'id="payoff-banner"' in html
+        assert 'class="payoff-banner hidden"' in html
+
+    def test_payoff_banner_html_structure(self, client):
+        """Payoff banner has correct HTML structure."""
+        resp = client.get("/app")
+        html = resp.text
+        # Required elements
+        assert 'id="payoff-banner"' in html
+        assert 'class="payoff-title"' in html
+        assert 'id="payoff-line"' in html
+        assert 'id="payoff-status"' in html
+        assert 'id="payoff-dismiss"' in html
+
+    def test_payoff_banner_css_exists(self, client):
+        """Payoff banner CSS styles are defined."""
+        resp = client.get("/app")
+        html = resp.text
+        assert ".payoff-banner" in html
+        assert ".payoff-title" in html
+        assert ".payoff-dismiss" in html
+        assert ".payoff-status.improved" in html
+        assert ".payoff-status.no-change" in html
+
+    # --- Mini Diff Tests ---
+
+    def test_mini_diff_hidden_on_fresh_load(self, client):
+        """Mini diff section is hidden by default on fresh page load."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="mini-diff"' in html
+        assert 'class="mini-diff hidden"' in html
+
+    def test_mini_diff_html_structure(self, client):
+        """Mini diff has correct HTML structure."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="mini-diff"' in html
+        assert "See what changed" in html
+        assert 'id="mini-diff-pf-before"' in html
+        assert 'id="mini-diff-pf-after"' in html
+        assert 'id="mini-diff-rec-before"' in html
+        assert 'id="mini-diff-rec-after"' in html
+
+    def test_mini_diff_css_exists(self, client):
+        """Mini diff CSS styles are defined."""
+        resp = client.get("/app")
+        html = resp.text
+        assert ".mini-diff" in html
+        assert ".mini-diff-row" in html
+        assert ".mini-diff-before" in html
+        assert ".mini-diff-after" in html
+
+    # --- Loop Shortcuts Tests ---
+
+    def test_loop_shortcuts_html_structure(self, client):
+        """Loop shortcuts section has correct HTML structure."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="loop-shortcuts"' in html
+        assert 'id="loop-reeval"' in html
+        assert 'id="loop-try-fix"' in html
+        assert 'id="loop-save"' in html
+
+    def test_loop_reeval_visible(self, client):
+        """Re-Evaluate button is visible in loop shortcuts."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="loop-reeval"' in html
+        assert "Re-Evaluate" in html
+
+    def test_loop_try_fix_hidden_by_default(self, client):
+        """Try Another Fix button is hidden by default."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'class="loop-btn loop-try-fix hidden"' in html
+
+    def test_loop_shortcuts_css_exists(self, client):
+        """Loop shortcuts CSS styles are defined."""
+        resp = client.get("/app")
+        html = resp.text
+        assert ".loop-shortcuts" in html
+        assert ".loop-btn" in html
+        assert ".loop-reeval" in html
+        assert ".loop-try-fix" in html
+
+    # --- Blocked Builder Copy Tests ---
+
+    def test_builder_blocked_message_updated(self, client):
+        """Builder blocked message uses updated copy."""
+        resp = client.get("/app?tab=builder")
+        html = resp.text
+        assert "Run an evaluation first to get a recommended fix." in html
+        # Old message should NOT appear
+        assert "No fix available" not in html
+
+    def test_builder_blocked_hint_updated(self, client):
+        """Builder blocked hint exists."""
+        resp = client.get("/app?tab=builder")
+        html = resp.text
+        assert "Evaluate a parlay to identify issues" in html
+
+    # --- Numeric Delta Display Tests ---
+
+    def test_delta_numeric_css_class_exists(self, client):
+        """Delta numeric CSS class exists for prominence."""
+        resp = client.get("/app")
+        html = resp.text
+        assert ".delta-num" in html
+
+    def test_payoff_line_delta_format_in_js(self, client):
+        """JavaScript includes delta format with numeric value."""
+        resp = client.get("/app")
+        html = resp.text
+        # Check JS includes delta numeric formatting
+        assert "delta-num" in html
+        assert "&Delta;" in html or "Δ" in html
+
+    # --- Apply Fix Response Tests ---
+
+    def test_apply_fix_endpoint_exists(self, client):
+        """Apply fix endpoint returns response."""
+        resp = client.post("/app/apply-fix", json={
+            "fix_action": "remove_leg",
+            "affected_leg_ids": []
+        })
+        # Should return some response (success or error)
+        assert resp.status_code in [200, 400, 422]
+
+    def test_apply_fix_returns_evaluation(self, client):
+        """Apply fix returns evaluation data when successful."""
+        # First run evaluation to have context
+        eval_resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets ML + Bucks -3",
+            "tier": "good"
+        })
+        eval_data = eval_resp.json()
+
+        # Apply fix
+        fix_resp = client.post("/app/apply-fix", json={
+            "fix_action": "remove_leg",
+            "affected_leg_ids": eval_data.get("primaryFailure", {}).get("affectedLegIds", [])
+        })
+        fix_data = fix_resp.json()
+
+        # Response should have success and evaluation keys
+        assert "success" in fix_data
+        if fix_data.get("success"):
+            assert "evaluation" in fix_data

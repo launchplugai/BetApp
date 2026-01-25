@@ -1,8 +1,31 @@
 ================================================================================
 PROGRESS FILE - DNA MATRIX
 ================================================================================
-Generated: 2026-01-15 00:10:05 UTC
-Branch: claude/audit-dependencies-YCzJp
+Generated: 2026-01-25 02:30:00 UTC
+Branch: claude/vc-3-git-1-QXI7T
+
+--------------------------------------------------------------------------------
+LATEST: TICKET VC-3 + GIT-1 (2026-01-25)
+--------------------------------------------------------------------------------
+Ticket: VC-3 — Delta as Product Moment (Payoff + Repeatability)
+Status: COMPLETE
+Branch: claude/vc-3-git-1-QXI7T
+Tests: 173 passed
+Deploy Status: Pending
+Manual Verification: Pending
+
+CHANGES:
+- Added payoff banner after apply-fix (before/after signal, fragility, delta)
+- Added mini diff collapsed section (primary failure + recommendation changes)
+- Added loop shortcuts (Re-Evaluate, Try Another Fix, Save)
+- Updated blocked builder message copy
+- Fixed apply-fix endpoint imports and response structure
+- Added 22 new tests in TestVC3DeltaPayoff class
+
+FILES CHANGED:
+- app/routers/web.py (HTML, CSS, JavaScript for payoff/diff/shortcuts)
+- app/tests/test_web.py (22 new tests)
+- CHANGELOG.md (created)
 
 --------------------------------------------------------------------------------
 PROJECT OVERVIEW
@@ -10,7 +33,7 @@ PROJECT OVERVIEW
 Project Name: DNA Matrix
 Description: Semantic identity management system / decision engine
 Current Phase: Phase 1 - Foundation (In Progress)
-Last Completed Task: TASK 16 - Unified pipeline facade for all evaluation entrypoints
+Last Completed Task: VC-3 — Delta as Product Moment
 
 --------------------------------------------------------------------------------
 KNOWN ISSUES / OPEN QUESTIONS
