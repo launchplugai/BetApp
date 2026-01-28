@@ -6,9 +6,9 @@
 
 ---
 
-## SPRINT 1: PARLAY BUILDER + EVALUATION FLOW (CURRENT)
+## SPRINT 1: PARLAY BUILDER + EVALUATION FLOW (LOCKED)
 
-**Status:** IN PROGRESS
+**Status:** LOCKED
 
 ### Sprint Goal
 A regular user can:
@@ -97,6 +97,16 @@ Sprint 1 is complete only if:
 - [ ] No engine changes
 
 If even one fails, Sprint 1 is not done.
+
+---
+
+### Sprint 1 — Locked
+
+**Date Locked:** 2026-01-27
+**Lock Commit:** `a95d8f66351722edf729fef9c66dcf626f79a54f`
+**Lock Artifact:** [docs/SPRINT_1_LOCK.md](SPRINT_1_LOCK.md)
+
+Sprint 1 is formally closed. All Definition of Done criteria have been met. No further changes are permitted under Sprint 1 scope. See the lock artifact for full details including in-scope features, out-of-scope acknowledgments, and known technical debt.
 
 ---
 

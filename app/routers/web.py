@@ -614,6 +614,245 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             cursor: not-allowed;
         }}
 
+        /* Parlay Builder (Sprint 2) */
+        .parlay-builder {{
+            padding: var(--sp-4);
+        }}
+        .builder-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--sp-4);
+        }}
+        .builder-title {{
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: var(--fg-primary);
+        }}
+        .builder-leg-count {{
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+        }}
+        .builder-sport-selector {{
+            margin-bottom: var(--sp-4);
+        }}
+        .builder-select {{
+            width: 100%;
+            padding: var(--sp-3);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--fg-primary);
+            font-size: var(--text-base);
+        }}
+        .builder-legs {{
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-4);
+            margin-bottom: var(--sp-4);
+        }}
+        .builder-leg {{
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--sp-3);
+        }}
+        .leg-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--sp-3);
+        }}
+        .leg-label {{
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--accent);
+        }}
+        .leg-remove-btn {{
+            background: transparent;
+            border: none;
+            color: var(--fg-muted);
+            font-size: var(--text-lg);
+            cursor: pointer;
+            padding: var(--sp-1);
+            line-height: 1;
+        }}
+        .leg-remove-btn:hover {{
+            color: var(--signal-red);
+        }}
+        .leg-field {{
+            margin-bottom: var(--sp-3);
+        }}
+        .leg-field-label {{
+            display: block;
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-1);
+        }}
+        .leg-input, .leg-select {{
+            width: 100%;
+            padding: var(--sp-2) var(--sp-3);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            color: var(--fg-primary);
+            font-size: var(--text-base);
+        }}
+        .leg-input:focus, .leg-select:focus {{
+            outline: none;
+            border-color: var(--accent);
+        }}
+        .leg-row {{
+            display: flex;
+            gap: var(--sp-3);
+        }}
+        .leg-field-half {{
+            flex: 1;
+        }}
+
+        /* Auto-suggest Dropdown (Sprint 2) */
+        .autosuggest-wrapper {{
+            position: relative;
+        }}
+        .autosuggest-dropdown {{
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+        }}
+        .autosuggest-item {{
+            padding: var(--sp-2) var(--sp-3);
+            cursor: pointer;
+            font-size: var(--text-base);
+            color: var(--fg-primary);
+            border-bottom: 1px solid var(--border-subtle);
+        }}
+        .autosuggest-item:last-child {{
+            border-bottom: none;
+        }}
+        .autosuggest-item:hover, .autosuggest-item.selected {{
+            background: var(--accent);
+            color: white;
+        }}
+        .autosuggest-item .item-type {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            margin-left: var(--sp-2);
+        }}
+        .autosuggest-item:hover .item-type, .autosuggest-item.selected .item-type {{
+            color: rgba(255, 255, 255, 0.7);
+        }}
+
+        /* Leg Explanation (Sprint 2) */
+        .leg-explanation {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            padding: var(--sp-2);
+            background: rgba(99, 102, 241, 0.08);
+            border-radius: var(--radius-sm);
+            margin-top: var(--sp-2);
+        }}
+
+        /* Builder Tier Selector */
+        .builder-tier-section {{
+            margin-bottom: var(--sp-4);
+        }}
+        .builder-tier-label {{
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--sp-2);
+        }}
+        .builder-tier-selector {{
+            display: flex;
+            gap: var(--sp-2);
+        }}
+        .builder-tier-option {{
+            flex: 1;
+            padding: var(--sp-2) var(--sp-3);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }}
+        .builder-tier-option:hover {{
+            border-color: var(--accent);
+        }}
+        .builder-tier-option.selected {{
+            background: var(--accent);
+            border-color: var(--accent);
+        }}
+        .builder-tier-option .tier-name {{
+            display: block;
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: var(--fg-primary);
+        }}
+        .builder-tier-option.selected .tier-name {{
+            color: white;
+        }}
+        .builder-tier-option .tier-desc {{
+            display: block;
+            font-size: var(--text-xs);
+            color: var(--fg-muted);
+        }}
+        .builder-tier-option.selected .tier-desc {{
+            color: rgba(255, 255, 255, 0.7);
+        }}
+
+        /* Builder Evaluate Button */
+        .builder-evaluate-btn {{
+            width: 100%;
+            padding: var(--sp-3);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: var(--fg-secondary);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            margin-bottom: var(--sp-4);
+        }}
+        .builder-evaluate-btn:hover {{
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }}
+        .builder-evaluate-btn:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }}
+
+        /* Builder Results */
+        .builder-results {{
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--sp-3);
+        }}
+        .builder-results-placeholder {{
+            text-align: center;
+            padding: var(--sp-4);
+            color: var(--fg-muted);
+        }}
+        .builder-results-hint {{
+            font-size: var(--text-sm);
+            color: var(--fg-faint);
+            margin-top: var(--sp-2);
+        }}
+
         /* Tier Selector */
         .tier-selector-wrapper {{
             margin-bottom: var(--sp-4);
@@ -1220,6 +1459,106 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             font-size: var(--text-sm);
             color: var(--fg-secondary);
             margin-top: var(--sp-2);
+        }}
+
+        /* Context Echo (Ticket 14) */
+        .context-echo {{
+            font-size: var(--text-sm);
+            color: var(--fg-secondary);
+            padding: var(--sp-2) var(--sp-3);
+            background: rgba(99, 102, 241, 0.06);
+            border-left: 2px solid rgba(99, 102, 241, 0.3);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--sp-3);
+        }}
+
+        /* Human Summary (Sprint 2) */
+        .human-summary {{
+            font-size: var(--text-base);
+            color: var(--fg-primary);
+            padding: var(--sp-3);
+            background: rgba(34, 197, 94, 0.06);
+            border-left: 3px solid rgba(34, 197, 94, 0.4);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--sp-3);
+            line-height: 1.5;
+        }}
+
+        /* Secondary Factors (Sprint 2) */
+        .detail-secondary-factor {{
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--sp-2);
+            padding: var(--sp-2);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--sp-2);
+        }}
+        .sf-type {{
+            font-weight: 500;
+            color: var(--fg-secondary);
+            text-transform: capitalize;
+        }}
+        .sf-impact {{
+            font-size: var(--text-xs);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            text-transform: uppercase;
+        }}
+        .sf-impact.impact-low {{
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--signal-green);
+        }}
+        .sf-impact.impact-medium {{
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--signal-yellow);
+        }}
+        .sf-impact.impact-high {{
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--signal-red);
+        }}
+        .sf-explanation {{
+            width: 100%;
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+            margin-top: var(--sp-1);
+        }}
+
+        /* Staged Analysis Progress (Ticket 14) */
+        .analysis-progress {{
+            padding: var(--sp-3);
+            margin-bottom: var(--sp-3);
+        }}
+        .ap-step {{
+            font-size: var(--text-sm);
+            color: var(--fg-muted);
+            padding: var(--sp-1) 0;
+            opacity: 0.4;
+            transition: opacity 0.2s, color 0.2s;
+        }}
+        .ap-step.active {{
+            color: var(--fg-secondary);
+            opacity: 1.0;
+        }}
+        .ap-step.done {{
+            color: var(--signal-green);
+            opacity: 0.7;
+        }}
+        .ap-dot {{
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--fg-muted);
+            margin-right: var(--sp-2);
+            vertical-align: middle;
+        }}
+        .ap-step.active .ap-dot {{
+            background: var(--signal-blue);
+        }}
+        .ap-step.done .ap-dot {{
+            background: var(--signal-green);
         }}
 
         /* Alerts Feed Styles (Sprint 4) */
@@ -2783,17 +3122,137 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             </div>
         </div> <!-- End tab-discover -->
 
-        <!-- Builder Tab Content (VC-2: Fix Mode Only) -->
+        <!-- Builder Tab Content (Sprint 2: Freeform Builder + Fix Mode) -->
         <div class="tab-content {builder_active}" id="tab-builder">
-            <!-- BLOCKED STATE: No fix context -->
-            <div class="fix-blocked" id="fix-blocked">
-                <div class="fix-blocked-icon">&#128683;</div>
-                <div class="fix-blocked-message">Run an evaluation first to get a recommended fix.</div>
-                <div class="fix-blocked-hint">Evaluate a parlay to identify issues and get a fix recommendation</div>
-                <button type="button" class="fix-blocked-cta" onclick="switchToTab('evaluate')">Go to Evaluate</button>
+            <!-- PARLAY BUILDER (Sprint 2) -->
+            <div class="parlay-builder" id="parlay-builder">
+                <div class="builder-header">
+                    <span class="builder-title">Parlay Builder</span>
+                    <span class="builder-leg-count" id="builder-leg-count">2 legs</span>
+                </div>
+
+                <!-- Sport Selector -->
+                <div class="builder-sport-selector">
+                    <select id="builder-sport" class="builder-select">
+                        <option value="nba">Basketball (NBA)</option>
+                        <option value="nfl">Football (NFL)</option>
+                        <option value="mlb">Baseball (MLB)</option>
+                        <option value="nhl">Hockey (NHL)</option>
+                    </select>
+                </div>
+
+                <!-- Legs Container -->
+                <div class="builder-legs" id="builder-legs">
+                    <!-- Leg 1 -->
+                    <div class="builder-leg" data-leg-index="0">
+                        <div class="leg-header">
+                            <span class="leg-label">Leg 1</span>
+                            <button type="button" class="leg-remove-btn" onclick="removeBuilderLeg(0)" title="Remove leg">&times;</button>
+                        </div>
+                        <div class="leg-field">
+                            <label class="leg-field-label">TEAM / PLAYER</label>
+                            <div class="autosuggest-wrapper">
+                                <input type="text" class="leg-input team-player-input" data-leg="0" placeholder="e.g., Lakers or LeBron James" autocomplete="off">
+                                <div class="autosuggest-dropdown hidden" data-leg="0"></div>
+                            </div>
+                            <div class="leg-explanation hidden" data-leg="0"></div>
+                        </div>
+                        <div class="leg-row">
+                            <div class="leg-field leg-field-half">
+                                <label class="leg-field-label">MARKET</label>
+                                <select class="leg-select market-select" data-leg="0">
+                                    <option value="spread">Spread</option>
+                                    <option value="ml">Moneyline</option>
+                                    <option value="total">Total (O/U)</option>
+                                    <option value="prop">Player Prop</option>
+                                </select>
+                            </div>
+                            <div class="leg-field leg-field-half">
+                                <label class="leg-field-label">LINE / CONDITION</label>
+                                <input type="text" class="leg-input line-input" data-leg="0" placeholder="e.g., -5.5 or O 220.5">
+                            </div>
+                        </div>
+                        <div class="leg-field">
+                            <label class="leg-field-label">ODDS</label>
+                            <input type="text" class="leg-input odds-input" data-leg="0" placeholder="e.g., -110">
+                        </div>
+                    </div>
+
+                    <!-- Leg 2 -->
+                    <div class="builder-leg" data-leg-index="1">
+                        <div class="leg-header">
+                            <span class="leg-label">Leg 2</span>
+                            <button type="button" class="leg-remove-btn" onclick="removeBuilderLeg(1)" title="Remove leg">&times;</button>
+                        </div>
+                        <div class="leg-field">
+                            <label class="leg-field-label">TEAM / PLAYER</label>
+                            <div class="autosuggest-wrapper">
+                                <input type="text" class="leg-input team-player-input" data-leg="1" placeholder="e.g., Lakers or LeBron James" autocomplete="off">
+                                <div class="autosuggest-dropdown hidden" data-leg="1"></div>
+                            </div>
+                            <div class="leg-explanation hidden" data-leg="1"></div>
+                        </div>
+                        <div class="leg-row">
+                            <div class="leg-field leg-field-half">
+                                <label class="leg-field-label">MARKET</label>
+                                <select class="leg-select market-select" data-leg="1">
+                                    <option value="spread">Spread</option>
+                                    <option value="ml">Moneyline</option>
+                                    <option value="total">Total (O/U)</option>
+                                    <option value="prop">Player Prop</option>
+                                </select>
+                            </div>
+                            <div class="leg-field leg-field-half">
+                                <label class="leg-field-label">LINE / CONDITION</label>
+                                <input type="text" class="leg-input line-input" data-leg="1" placeholder="e.g., -5.5 or O 220.5">
+                            </div>
+                        </div>
+                        <div class="leg-field">
+                            <label class="leg-field-label">ODDS</label>
+                            <input type="text" class="leg-input odds-input" data-leg="1" placeholder="e.g., -110">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Leg Button -->
+                <button type="button" class="add-leg-btn" id="add-leg-btn" onclick="addBuilderLeg()">+ Add Leg</button>
+
+                <!-- Tier Selector -->
+                <div class="builder-tier-section">
+                    <label class="builder-tier-label">ANALYSIS DETAIL LEVEL</label>
+                    <div class="builder-tier-selector">
+                        <div class="builder-tier-option selected" data-tier="good">
+                            <span class="tier-name">GOOD</span>
+                            <span class="tier-desc">Grade + Verdict</span>
+                        </div>
+                        <div class="builder-tier-option" data-tier="better">
+                            <span class="tier-name">BETTER</span>
+                            <span class="tier-desc">+ Insights</span>
+                        </div>
+                        <div class="builder-tier-option" data-tier="best">
+                            <span class="tier-name">BEST</span>
+                            <span class="tier-desc">+ Full Analysis</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Evaluate Button -->
+                <button type="button" class="builder-evaluate-btn" id="builder-evaluate-btn" onclick="evaluateBuilderParlay()">Evaluate Parlay</button>
+
+                <!-- Builder Results -->
+                <div class="builder-results" id="builder-results">
+                    <div class="section-header">
+                        <span class="section-title">Results</span>
+                    </div>
+                    <div class="builder-results-placeholder" id="builder-results-placeholder">
+                        <p>Build your parlay and click Evaluate</p>
+                        <p class="builder-results-hint">Minimum 2 legs required</p>
+                    </div>
+                    <div class="builder-results-content hidden" id="builder-results-content"></div>
+                </div>
             </div>
 
-            <!-- FIX MODE: Active when fix context exists -->
+            <!-- FIX MODE: Active when fix context exists (shown as overlay) -->
             <div class="fix-mode hidden" id="fix-mode">
                 <!-- A. PROBLEM DISPLAY -->
                 <div class="fix-problem" id="fix-problem">
@@ -2949,6 +3408,15 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                         <p>Enter or upload your bet and click Evaluate</p>
                     </div>
 
+                    <!-- STAGED ANALYSIS PROGRESS (Ticket 14) -->
+                    <div id="analysis-progress" class="analysis-progress hidden">
+                        <div class="ap-step" id="ap-step-1"><span class="ap-dot"></span> Parsing slip</div>
+                        <div class="ap-step" id="ap-step-2"><span class="ap-dot"></span> Identifying markets</div>
+                        <div class="ap-step" id="ap-step-3"><span class="ap-dot"></span> Checking constraints</div>
+                        <div class="ap-step" id="ap-step-4"><span class="ap-dot"></span> Computing fragility</div>
+                        <div class="ap-step" id="ap-step-5"><span class="ap-dot"></span> Recommending action</div>
+                    </div>
+
                     <div id="eval-results-content" class="hidden">
                         <!-- VC-3: PAYOFF BANNER (shows after apply-fix) -->
                         <div class="payoff-banner hidden" id="payoff-banner">
@@ -2978,6 +3446,12 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                                 </div>
                             </div>
                         </details>
+
+                        <!-- CONTEXT ECHO (Ticket 14) -->
+                        <div class="context-echo hidden" id="context-echo"></div>
+
+                        <!-- HUMAN SUMMARY (Sprint 2) -->
+                        <div class="human-summary hidden" id="human-summary"></div>
 
                         <!-- A. PRIMARY FAILURE (full width, dominant) -->
                         <div class="compressed-primary-failure" id="compressed-pf">
@@ -3029,6 +3503,11 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                                 <div class="detail-section hidden" id="detail-contributors">
                                     <span class="detail-section-label">Contributors</span>
                                     <div class="detail-section-content" id="detail-contributors-list"></div>
+                                </div>
+                                <!-- Secondary Factors (Sprint 2) -->
+                                <div class="detail-section hidden" id="detail-secondary-factors">
+                                    <span class="detail-section-label">Secondary Factors</span>
+                                    <div class="detail-section-content" id="detail-secondary-factors-list"></div>
                                 </div>
                                 <!-- Warnings -->
                                 <div class="detail-section hidden" id="detail-warnings">
@@ -3524,6 +4003,54 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 }}
 
                 // ========================================
+                // CONTEXT ECHO (Ticket 14 + Sprint 2)
+                // ========================================
+                const contextEcho = document.getElementById('context-echo');
+                const ent = data.entities || {{}};
+                const echoParts = [];
+                if (ent.sport_guess && ent.sport_guess !== 'unknown') {{
+                    echoParts.push(ent.sport_guess.toUpperCase());
+                }}
+                if (ent.teams_mentioned && ent.teams_mentioned.length > 0) {{
+                    echoParts.push(ent.teams_mentioned.join(', '));
+                }}
+                if (ent.players_mentioned && ent.players_mentioned.length > 0) {{
+                    echoParts.push(ent.players_mentioned.join(', '));
+                }}
+                if (ent.markets_detected && ent.markets_detected.length > 0) {{
+                    const marketLabels = ent.markets_detected.filter(function(m) {{ return m !== 'spread' || !ent.markets_detected.includes('ml'); }});
+                    if (marketLabels.length > 0) {{
+                        echoParts.push(marketLabels.join(', ') + (marketLabels.length > 1 ? ' markets' : ' market'));
+                    }}
+                }}
+                // Sprint 2: Add volatility flag
+                if (ent.volatility_flag) {{
+                    echoParts.push('Volatility: ' + ent.volatility_flag);
+                }}
+                // Sprint 2: Add same-game indicator
+                const sgi = ent.same_game_indicator || {{}};
+                if (sgi.has_same_game) {{
+                    echoParts.push('Same-game: ' + sgi.same_game_count + ' legs');
+                }}
+                if (echoParts.length > 0) {{
+                    contextEcho.textContent = 'Recognized: ' + echoParts.join(' | ');
+                    contextEcho.classList.remove('hidden');
+                }} else {{
+                    contextEcho.classList.add('hidden');
+                }}
+
+                // ========================================
+                // HUMAN SUMMARY (Sprint 2 — always shown)
+                // ========================================
+                const humanSummaryEl = document.getElementById('human-summary');
+                if (humanSummaryEl && data.humanSummary) {{
+                    humanSummaryEl.textContent = data.humanSummary;
+                    humanSummaryEl.classList.remove('hidden');
+                }} else if (humanSummaryEl) {{
+                    humanSummaryEl.classList.add('hidden');
+                }}
+
+                // ========================================
                 // COMPRESSED LAYOUT: VC-1 Visual Hierarchy
                 // A. PRIMARY FAILURE (top, dominant)
                 // B. FASTEST FIX (single CTA)
@@ -3611,6 +4138,25 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     detailContributors.classList.remove('hidden');
                 }} else {{
                     detailContributors.classList.add('hidden');
+                }}
+
+                // Secondary Factors (Sprint 2)
+                const detailSecondaryFactors = document.getElementById('detail-secondary-factors');
+                const detailSecondaryFactorsList = document.getElementById('detail-secondary-factors-list');
+                const secondaryFactors = data.secondaryFactors || [];
+                if (secondaryFactors.length > 0) {{
+                    let sfHtml = '';
+                    secondaryFactors.forEach(function(sf) {{
+                        sfHtml += '<div class="detail-secondary-factor">';
+                        sfHtml += '<span class="sf-type">' + sf.type.replace(/_/g, ' ') + '</span>';
+                        sfHtml += '<span class="sf-impact impact-' + sf.impact + '">' + sf.impact + '</span>';
+                        sfHtml += '<div class="sf-explanation">' + sf.explanation + '</div>';
+                        sfHtml += '</div>';
+                    }});
+                    detailSecondaryFactorsList.innerHTML = sfHtml;
+                    detailSecondaryFactors.classList.remove('hidden');
+                }} else {{
+                    detailSecondaryFactors.classList.add('hidden');
                 }}
 
                 // Warnings
@@ -3727,6 +4273,48 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 window._lastEvalData = data;
             }}
 
+            // Staged analysis progress (Ticket 14)
+            const analysisProgress = document.getElementById('analysis-progress');
+            const apSteps = [
+                document.getElementById('ap-step-1'),
+                document.getElementById('ap-step-2'),
+                document.getElementById('ap-step-3'),
+                document.getElementById('ap-step-4'),
+                document.getElementById('ap-step-5'),
+            ];
+
+            function showAnalysisProgress() {{
+                evalResultsPlaceholder.classList.add('hidden');
+                evalResultsContent.classList.add('hidden');
+                evalErrorPanel.classList.add('hidden');
+                analysisProgress.classList.remove('hidden');
+                apSteps.forEach(function(s) {{ s.className = 'ap-step'; }});
+            }}
+
+            function hideAnalysisProgress() {{
+                analysisProgress.classList.add('hidden');
+            }}
+
+            async function runProgressSteps() {{
+                // Step through each stage with short visible intervals
+                for (let i = 0; i < apSteps.length; i++) {{
+                    if (i > 0) apSteps[i-1].classList.remove('active');
+                    if (i > 0) apSteps[i-1].classList.add('done');
+                    apSteps[i].classList.add('active');
+                    await new Promise(function(r) {{ setTimeout(r, 120); }});
+                }}
+            }}
+
+            async function finishProgressSteps() {{
+                // Mark all done
+                apSteps.forEach(function(s) {{
+                    s.classList.remove('active');
+                    s.classList.add('done');
+                }});
+                await new Promise(function(r) {{ setTimeout(r, 100); }});
+                hideAnalysisProgress();
+            }}
+
             // Submit evaluation
             evalSubmitBtn.addEventListener('click', async function() {{
                 const tier = getEvalTier();
@@ -3745,6 +4333,10 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                             return;
                         }}
 
+                        // Show staged progress
+                        showAnalysisProgress();
+                        const progressPromise = runProgressSteps();
+
                         response = await fetch('/app/evaluate', {{
                             method: 'POST',
                             headers: {{ 'Content-Type': 'application/json' }},
@@ -3752,6 +4344,10 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                         }});
 
                         data = await response.json();
+
+                        // Wait for progress animation to reach end, then hide
+                        await progressPromise;
+                        await finishProgressSteps();
 
                         if (!response.ok) {{
                             showEvalError(data.detail || 'Evaluation failed');
@@ -3977,6 +4573,354 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             if (activeTab === 'history') {{
                 loadHistory();
             }}
+        }})();
+
+        // ============================================================
+        // PARLAY BUILDER (Sprint 2)
+        // ============================================================
+        (function() {{
+            // Team/Player dictionaries for auto-suggest
+            const NBA_TEAMS = {{
+                'lakers': 'LAL', 'celtics': 'BOS', 'nuggets': 'DEN', 'bucks': 'MIL',
+                'warriors': 'GSW', 'suns': 'PHX', '76ers': 'PHI', 'mavericks': 'DAL',
+                'heat': 'MIA', 'nets': 'BKN', 'knicks': 'NYK', 'bulls': 'CHI',
+                'clippers': 'LAC', 'thunder': 'OKC', 'timberwolves': 'MIN', 'kings': 'SAC',
+                'pelicans': 'NOP', 'grizzlies': 'MEM', 'cavaliers': 'CLE', 'hawks': 'ATL',
+                'raptors': 'TOR', 'pacers': 'IND', 'hornets': 'CHA', 'wizards': 'WAS',
+                'magic': 'ORL', 'pistons': 'DET', 'jazz': 'UTA', 'rockets': 'HOU',
+                'spurs': 'SAS', 'trail blazers': 'POR'
+            }};
+            const NFL_TEAMS = {{
+                'chiefs': 'KC', 'eagles': 'PHI', 'bills': 'BUF', 'cowboys': 'DAL',
+                '49ers': 'SF', 'ravens': 'BAL', 'bengals': 'CIN', 'dolphins': 'MIA',
+                'lions': 'DET', 'packers': 'GB', 'steelers': 'PIT', 'chargers': 'LAC',
+                'rams': 'LAR', 'seahawks': 'SEA', 'jaguars': 'JAX', 'patriots': 'NE',
+                'giants': 'NYG', 'jets': 'NYJ', 'broncos': 'DEN', 'texans': 'HOU',
+                'titans': 'TEN', 'colts': 'IND', 'raiders': 'LV', 'saints': 'NO',
+                'panthers': 'CAR', 'bears': 'CHI', 'commanders': 'WAS', 'falcons': 'ATL',
+                'cardinals': 'ARI', 'buccaneers': 'TB', 'vikings': 'MIN'
+            }};
+            const NBA_PLAYERS = [
+                'LeBron James', 'Anthony Davis', 'Jayson Tatum', 'Jaylen Brown',
+                'Nikola Jokic', 'Jamal Murray', 'Giannis Antetokounmpo', 'Damian Lillard',
+                'Stephen Curry', 'Klay Thompson', 'Kevin Durant', 'Devin Booker',
+                'Joel Embiid', 'Tyrese Maxey', 'Luka Doncic', 'Kyrie Irving',
+                'Jimmy Butler', 'Bam Adebayo', 'Shai Gilgeous-Alexander', 'Donovan Mitchell',
+                'Trae Young', 'LaMelo Ball', 'Paolo Banchero', 'Victor Wembanyama',
+                'Ja Morant', 'Anthony Edwards', 'De\'Aaron Fox'
+            ];
+            const NFL_PLAYERS = [
+                'Patrick Mahomes', 'Josh Allen', 'Jalen Hurts', 'Lamar Jackson',
+                'Joe Burrow', 'Travis Kelce', 'Tyreek Hill', 'Derrick Henry',
+                'CeeDee Lamb', 'Justin Jefferson', 'Davante Adams', 'Ja\'Marr Chase',
+                'Saquon Barkley', 'Christian McCaffrey', 'Dak Prescott', 'Stefon Diggs'
+            ];
+
+            let currentLegCount = 2;
+            let selectedTier = 'good';
+            let activeDropdownLeg = null;
+
+            // Get suggestions based on sport and query
+            function getSuggestions(query, sport) {{
+                if (!query || query.length < 2) return [];
+                const q = query.toLowerCase();
+                const suggestions = [];
+
+                // Teams
+                const teams = sport === 'nfl' ? NFL_TEAMS : NBA_TEAMS;
+                Object.keys(teams).forEach(function(name) {{
+                    if (name.includes(q)) {{
+                        suggestions.push({{ name: name.charAt(0).toUpperCase() + name.slice(1), type: 'team', abbr: teams[name] }});
+                    }}
+                }});
+
+                // Players
+                const players = sport === 'nfl' ? NFL_PLAYERS : NBA_PLAYERS;
+                players.forEach(function(name) {{
+                    if (name.toLowerCase().includes(q)) {{
+                        suggestions.push({{ name: name, type: 'player' }});
+                    }}
+                }});
+
+                return suggestions.slice(0, 8);
+            }}
+
+            // Show auto-suggest dropdown
+            function showDropdown(legIndex, suggestions) {{
+                const dropdown = document.querySelector('.autosuggest-dropdown[data-leg="' + legIndex + '"]');
+                if (!dropdown) return;
+
+                if (suggestions.length === 0) {{
+                    dropdown.classList.add('hidden');
+                    return;
+                }}
+
+                let html = '';
+                suggestions.forEach(function(s, i) {{
+                    html += '<div class="autosuggest-item' + (i === 0 ? ' selected' : '') + '" data-value="' + s.name + '" data-type="' + s.type + '">';
+                    html += s.name;
+                    html += '<span class="item-type">' + s.type + '</span>';
+                    html += '</div>';
+                }});
+                dropdown.innerHTML = html;
+                dropdown.classList.remove('hidden');
+                activeDropdownLeg = legIndex;
+
+                // Click handlers
+                dropdown.querySelectorAll('.autosuggest-item').forEach(function(item) {{
+                    item.addEventListener('click', function() {{
+                        selectSuggestion(legIndex, item.dataset.value, item.dataset.type);
+                    }});
+                }});
+            }}
+
+            // Select a suggestion
+            function selectSuggestion(legIndex, value, type) {{
+                const input = document.querySelector('.team-player-input[data-leg="' + legIndex + '"]');
+                if (input) {{
+                    input.value = value;
+                }}
+                hideDropdown(legIndex);
+                updateLegExplanation(legIndex, value, type);
+            }}
+
+            // Hide dropdown
+            function hideDropdown(legIndex) {{
+                const dropdown = document.querySelector('.autosuggest-dropdown[data-leg="' + legIndex + '"]');
+                if (dropdown) {{
+                    dropdown.classList.add('hidden');
+                }}
+                activeDropdownLeg = null;
+            }}
+
+            // Update leg explanation (why this leg matters)
+            function updateLegExplanation(legIndex, value, type) {{
+                const explanation = document.querySelector('.leg-explanation[data-leg="' + legIndex + '"]');
+                if (!explanation) return;
+
+                const market = document.querySelector('.market-select[data-leg="' + legIndex + '"]');
+                const marketValue = market ? market.value : 'spread';
+
+                let text = '';
+                if (type === 'player') {{
+                    if (marketValue === 'prop') {{
+                        text = 'Player props add variance — performance depends on game flow, minutes, and matchup.';
+                    }} else {{
+                        text = 'Player selections correlate with team outcomes — consider how ' + value + '\'s game affects the team line.';
+                    }}
+                }} else if (type === 'team') {{
+                    if (marketValue === 'spread') {{
+                        text = 'Spreads balance risk — ' + value + ' must win by the margin for this to hit.';
+                    }} else if (marketValue === 'ml') {{
+                        text = 'Moneyline is straightforward — ' + value + ' just needs to win outright.';
+                    }} else if (marketValue === 'total') {{
+                        text = 'Game totals depend on pace and defense — both teams contribute to this outcome.';
+                    }} else {{
+                        text = 'Player props on team games add correlation — consider same-game dependency.';
+                    }}
+                }}
+
+                if (text) {{
+                    explanation.textContent = text;
+                    explanation.classList.remove('hidden');
+                }} else {{
+                    explanation.classList.add('hidden');
+                }}
+            }}
+
+            // Setup input listeners
+            function setupInputListeners() {{
+                document.querySelectorAll('.team-player-input').forEach(function(input) {{
+                    const legIndex = input.dataset.leg;
+
+                    input.addEventListener('input', function() {{
+                        const sport = document.getElementById('builder-sport').value;
+                        const suggestions = getSuggestions(input.value, sport);
+                        showDropdown(legIndex, suggestions);
+                    }});
+
+                    input.addEventListener('blur', function() {{
+                        // Delay to allow click on dropdown
+                        setTimeout(function() {{ hideDropdown(legIndex); }}, 200);
+                    }});
+
+                    input.addEventListener('keydown', function(e) {{
+                        const dropdown = document.querySelector('.autosuggest-dropdown[data-leg="' + legIndex + '"]');
+                        if (dropdown.classList.contains('hidden')) return;
+
+                        const items = dropdown.querySelectorAll('.autosuggest-item');
+                        const selected = dropdown.querySelector('.autosuggest-item.selected');
+                        let selectedIndex = Array.from(items).indexOf(selected);
+
+                        if (e.key === 'ArrowDown') {{
+                            e.preventDefault();
+                            if (selectedIndex < items.length - 1) {{
+                                if (selected) selected.classList.remove('selected');
+                                items[selectedIndex + 1].classList.add('selected');
+                            }}
+                        }} else if (e.key === 'ArrowUp') {{
+                            e.preventDefault();
+                            if (selectedIndex > 0) {{
+                                if (selected) selected.classList.remove('selected');
+                                items[selectedIndex - 1].classList.add('selected');
+                            }}
+                        }} else if (e.key === 'Enter') {{
+                            e.preventDefault();
+                            if (selected) {{
+                                selectSuggestion(legIndex, selected.dataset.value, selected.dataset.type);
+                            }}
+                        }} else if (e.key === 'Escape') {{
+                            hideDropdown(legIndex);
+                        }}
+                    }});
+                }});
+
+                // Market change updates explanation
+                document.querySelectorAll('.market-select').forEach(function(select) {{
+                    select.addEventListener('change', function() {{
+                        const legIndex = select.dataset.leg;
+                        const input = document.querySelector('.team-player-input[data-leg="' + legIndex + '"]');
+                        if (input && input.value) {{
+                            // Re-evaluate explanation
+                            const teams = Object.keys(NBA_TEAMS).concat(Object.keys(NFL_TEAMS));
+                            const isTeam = teams.some(function(t) {{ return input.value.toLowerCase().includes(t); }});
+                            updateLegExplanation(legIndex, input.value, isTeam ? 'team' : 'player');
+                        }}
+                    }});
+                }});
+            }}
+
+            // Tier selection
+            document.querySelectorAll('.builder-tier-option').forEach(function(option) {{
+                option.addEventListener('click', function() {{
+                    document.querySelectorAll('.builder-tier-option').forEach(function(o) {{ o.classList.remove('selected'); }});
+                    option.classList.add('selected');
+                    selectedTier = option.dataset.tier;
+                }});
+            }});
+
+            // Update leg count display
+            function updateLegCountDisplay() {{
+                const countEl = document.getElementById('builder-leg-count');
+                if (countEl) {{
+                    countEl.textContent = currentLegCount + ' leg' + (currentLegCount !== 1 ? 's' : '');
+                }}
+            }}
+
+            // Add leg
+            window.addBuilderLeg = function() {{
+                if (currentLegCount >= 6) return;
+                currentLegCount++;
+                const legsContainer = document.getElementById('builder-legs');
+                const legHtml = `
+                    <div class="builder-leg" data-leg-index="${{currentLegCount - 1}}">
+                        <div class="leg-header">
+                            <span class="leg-label">Leg ${{currentLegCount}}</span>
+                            <button type="button" class="leg-remove-btn" onclick="removeBuilderLeg(${{currentLegCount - 1}})" title="Remove leg">&times;</button>
+                        </div>
+                        <div class="leg-field">
+                            <label class="leg-field-label">TEAM / PLAYER</label>
+                            <div class="autosuggest-wrapper">
+                                <input type="text" class="leg-input team-player-input" data-leg="${{currentLegCount - 1}}" placeholder="e.g., Lakers or LeBron James" autocomplete="off">
+                                <div class="autosuggest-dropdown hidden" data-leg="${{currentLegCount - 1}}"></div>
+                            </div>
+                            <div class="leg-explanation hidden" data-leg="${{currentLegCount - 1}}"></div>
+                        </div>
+                        <div class="leg-row">
+                            <div class="leg-field leg-field-half">
+                                <label class="leg-field-label">MARKET</label>
+                                <select class="leg-select market-select" data-leg="${{currentLegCount - 1}}">
+                                    <option value="spread">Spread</option>
+                                    <option value="ml">Moneyline</option>
+                                    <option value="total">Total (O/U)</option>
+                                    <option value="prop">Player Prop</option>
+                                </select>
+                            </div>
+                            <div class="leg-field leg-field-half">
+                                <label class="leg-field-label">LINE / CONDITION</label>
+                                <input type="text" class="leg-input line-input" data-leg="${{currentLegCount - 1}}" placeholder="e.g., -5.5 or O 220.5">
+                            </div>
+                        </div>
+                        <div class="leg-field">
+                            <label class="leg-field-label">ODDS</label>
+                            <input type="text" class="leg-input odds-input" data-leg="${{currentLegCount - 1}}" placeholder="e.g., -110">
+                        </div>
+                    </div>
+                `;
+                legsContainer.insertAdjacentHTML('beforeend', legHtml);
+                updateLegCountDisplay();
+                setupInputListeners();
+
+                if (currentLegCount >= 6) {{
+                    document.getElementById('add-leg-btn').disabled = true;
+                }}
+            }};
+
+            // Remove leg
+            window.removeBuilderLeg = function(index) {{
+                if (currentLegCount <= 2) return;
+                const leg = document.querySelector('.builder-leg[data-leg-index="' + index + '"]');
+                if (leg) {{
+                    leg.remove();
+                    currentLegCount--;
+                    // Re-number remaining legs
+                    document.querySelectorAll('.builder-leg').forEach(function(leg, i) {{
+                        leg.dataset.legIndex = i;
+                        leg.querySelector('.leg-label').textContent = 'Leg ' + (i + 1);
+                        leg.querySelector('.leg-remove-btn').setAttribute('onclick', 'removeBuilderLeg(' + i + ')');
+                        leg.querySelectorAll('[data-leg]').forEach(function(el) {{
+                            el.dataset.leg = i;
+                        }});
+                    }});
+                    updateLegCountDisplay();
+                    document.getElementById('add-leg-btn').disabled = false;
+                }}
+            }};
+
+            // Evaluate parlay
+            window.evaluateBuilderParlay = function() {{
+                const legs = [];
+                document.querySelectorAll('.builder-leg').forEach(function(leg) {{
+                    const teamPlayer = leg.querySelector('.team-player-input').value.trim();
+                    const market = leg.querySelector('.market-select').value;
+                    const line = leg.querySelector('.line-input').value.trim();
+
+                    if (teamPlayer) {{
+                        let legText = teamPlayer;
+                        if (market === 'spread' && line) legText += ' ' + line;
+                        else if (market === 'ml') legText += ' ML';
+                        else if (market === 'total' && line) legText += ' ' + line;
+                        else if (market === 'prop' && line) legText += ' ' + line;
+                        legs.push(legText);
+                    }}
+                }});
+
+                if (legs.length < 2) {{
+                    alert('Please fill in at least 2 legs');
+                    return;
+                }}
+
+                // Build bet text and evaluate
+                const betText = legs.join(' + ');
+                const evaluateInput = document.getElementById('eval-text-input');
+                if (evaluateInput) {{
+                    evaluateInput.value = betText;
+                }}
+
+                // Set tier
+                const tierRadio = document.getElementById('eval-tier-' + selectedTier);
+                if (tierRadio) tierRadio.checked = true;
+
+                // Switch to evaluate tab and submit
+                switchToTab('evaluate');
+                setTimeout(function() {{
+                    document.getElementById('eval-submit-btn').click();
+                }}, 100);
+            }};
+
+            // Initialize
+            setupInputListeners();
+            updateLegCountDisplay();
         }})();
     </script>
 </body>
@@ -4212,6 +5156,9 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "primaryFailure": result.primary_failure,
             "deltaPreview": result.delta_preview,
             "signalInfo": result.signal_info,
+            "entities": result.entities,
+            "secondaryFactors": result.secondary_factors,
+            "humanSummary": result.human_summary,
         }
 
         # Sprint 5: Persist evaluation for sharing
@@ -4402,6 +5349,9 @@ async def apply_fix(request: ApplyFixRequest, raw_request: Request):
             "primaryFailure": result.primary_failure,
             "deltaPreview": result.delta_preview,
             "signalInfo": result.signal_info,
+            "entities": result.entities,
+            "secondaryFactors": result.secondary_factors,
+            "humanSummary": result.human_summary,
         }
 
         return JSONResponse(
@@ -4663,6 +5613,9 @@ async def evaluate_image(
             "primaryFailure": result.primary_failure,
             "deltaPreview": result.delta_preview,
             "signalInfo": result.signal_info,
+            "entities": result.entities,
+            "secondaryFactors": result.secondary_factors,
+            "humanSummary": result.human_summary,
             "image_parse": {
                 "confidence": parse_result.confidence,
                 "notes": parse_result.notes,

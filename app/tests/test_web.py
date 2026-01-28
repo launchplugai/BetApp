@@ -1315,7 +1315,10 @@ class TestPrimaryFailureAndDeltaPreview:
         """primaryFailure.type is one of the allowed types."""
         resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
         pf = resp.json()["primaryFailure"]
-        assert pf["type"] in ("correlation", "leg_count", "dependency", "volatility")
+        assert pf["type"] in (
+            "correlation", "leg_count", "dependency", "volatility",
+            "prop_density", "same_game_dependency", "market_conflict", "weak_clarity",
+        )
 
     def test_primary_failure_severity_is_valid_enum(self, client):
         """primaryFailure.severity is low/medium/high."""
@@ -1341,7 +1344,7 @@ class TestPrimaryFailureAndDeltaPreview:
         """fastestFix.action is one of the allowed actions."""
         resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
         fix = resp.json()["primaryFailure"]["fastestFix"]
-        valid_actions = ("remove_leg", "swap_leg", "split_parlay", "reduce_same_game", "reduce_props")
+        valid_actions = ("remove_leg", "swap_leg", "split_parlay", "reduce_same_game", "reduce_props", "clarify_input")
         assert fix["action"] in valid_actions
 
     # --- No banned phrases ---
@@ -1800,21 +1803,21 @@ class TestVC3DeltaPayoff:
         assert ".loop-reeval" in html
         assert ".loop-try-fix" in html
 
-    # --- Blocked Builder Copy Tests ---
+    # --- Builder UI Tests (Sprint 2: Freeform Builder) ---
 
-    def test_builder_blocked_message_updated(self, client):
-        """Builder blocked message uses updated copy."""
+    def test_builder_parlay_builder_exists(self, client):
+        """Builder tab shows Parlay Builder UI."""
         resp = client.get("/app?tab=builder")
         html = resp.text
-        assert "Run an evaluation first to get a recommended fix." in html
-        # Old message should NOT appear
-        assert "No fix available" not in html
+        assert "Parlay Builder" in html
+        assert "builder-legs" in html
 
-    def test_builder_blocked_hint_updated(self, client):
-        """Builder blocked hint exists."""
+    def test_builder_has_autosuggest(self, client):
+        """Builder has auto-suggest dropdown for teams/players."""
         resp = client.get("/app?tab=builder")
         html = resp.text
-        assert "Evaluate a parlay to identify issues" in html
+        assert "autosuggest-dropdown" in html
+        assert "team-player-input" in html
 
     # --- Numeric Delta Display Tests ---
 
@@ -2229,3 +2232,453 @@ class TestHistoryCanonicalEndpoints:
         # If sport is set, it should be a known league
         if item["sport"]:
             assert item["sport"] in ["NBA", "NFL", "MLB", "NHL"]
+
+
+class TestEntityRecognition:
+    """Ticket 14: Entity recognition + context-lite differentiation."""
+
+    VALID_TYPES = (
+        "correlation", "leg_count", "dependency", "volatility",
+        "prop_density", "same_game_dependency", "market_conflict", "weak_clarity",
+    )
+    VALID_ACTIONS = (
+        "remove_leg", "swap_leg", "split_parlay",
+        "reduce_same_game", "reduce_props", "clarify_input",
+    )
+
+    # --- Entity recognition presence ---
+
+    def test_entities_present_in_response(self, client):
+        """entities dict is present in evaluate response."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "entities" in data
+        assert data["entities"] is not None
+
+    def test_entities_has_required_keys(self, client):
+        """entities has sport_guess, teams_mentioned, players_mentioned, markets_detected."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        ent = resp.json()["entities"]
+        assert "sport_guess" in ent
+        assert "teams_mentioned" in ent
+        assert "players_mentioned" in ent
+        assert "markets_detected" in ent
+
+    # --- Sport guess ---
+
+    def test_nba_sport_detected(self, client):
+        """NBA teams trigger nba sport guess."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        assert resp.json()["entities"]["sport_guess"] == "nba"
+
+    def test_nfl_sport_detected(self, client):
+        """NFL keywords trigger nfl sport guess."""
+        resp = client.post("/app/evaluate", json={"input": "Chiefs -3.5 + Mahomes 2+ touchdowns", "tier": "good"})
+        assert resp.json()["entities"]["sport_guess"] == "nfl"
+
+    def test_unknown_sport_for_vague_input(self, client):
+        """Vague text with no recognizable entities returns unknown."""
+        resp = client.post("/app/evaluate", json={"input": "team A wins + team B covers", "tier": "good"})
+        assert resp.json()["entities"]["sport_guess"] == "unknown"
+
+    # --- Teams ---
+
+    def test_nba_teams_recognized(self, client):
+        """NBA team names are extracted."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5 + Celtics ML", "tier": "good"})
+        teams = resp.json()["entities"]["teams_mentioned"]
+        assert "LAL" in teams
+        assert "BOS" in teams
+
+    def test_nfl_teams_recognized(self, client):
+        """NFL team names are extracted."""
+        resp = client.post("/app/evaluate", json={"input": "Chiefs -3 + Bills ML", "tier": "good"})
+        teams = resp.json()["entities"]["teams_mentioned"]
+        assert "KC" in teams
+        assert "BUF" in teams
+
+    # --- Players ---
+
+    def test_nba_players_recognized(self, client):
+        """NBA player names are extracted."""
+        resp = client.post("/app/evaluate", json={
+            "input": "LeBron James over 25.5 points + Jayson Tatum over 7.5 rebounds",
+            "tier": "good"
+        })
+        players = resp.json()["entities"]["players_mentioned"]
+        assert "LeBron James" in players
+        assert "Jayson Tatum" in players
+
+    def test_nfl_players_recognized(self, client):
+        """NFL player names are extracted."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Mahomes 300+ passing yards + Kelce anytime td",
+            "tier": "good"
+        })
+        players = resp.json()["entities"]["players_mentioned"]
+        assert "Patrick Mahomes" in players
+        assert "Travis Kelce" in players
+
+    # --- Markets ---
+
+    def test_spread_market_detected(self, client):
+        """Spread market is detected."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        markets = resp.json()["entities"]["markets_detected"]
+        assert "spread" in markets
+
+    def test_prop_markets_detected(self, client):
+        """Prop markets (points, rebounds) are detected."""
+        resp = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds",
+            "tier": "good"
+        })
+        markets = resp.json()["entities"]["markets_detected"]
+        assert "points" in markets
+        assert "rebounds" in markets
+
+    def test_td_market_detected(self, client):
+        """Touchdown market is detected for NFL."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Kelce anytime td + Mahomes 2 touchdowns",
+            "tier": "good"
+        })
+        markets = resp.json()["entities"]["markets_detected"]
+        assert "td" in markets
+
+    # --- Differentiation: 6 representative bets ---
+
+    def test_differentiation_single_spread(self, client):
+        """(1) Single spread — entities show team + spread market."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        data = resp.json()
+        ent = data["entities"]
+        assert "LAL" in ent["teams_mentioned"]
+        assert "spread" in ent["markets_detected"]
+        assert ent["sport_guess"] == "nba"
+
+    def test_differentiation_total(self, client):
+        """(2) Total bet — entities show total market."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers vs Celtics over 215.5", "tier": "good"})
+        data = resp.json()
+        ent = data["entities"]
+        assert "total" in ent["markets_detected"]
+        assert len(ent["teams_mentioned"]) >= 2
+
+    def test_differentiation_ml_parlay(self, client):
+        """(3) ML parlay — entities show multiple teams, ml market."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics ML + Nuggets ML",
+            "tier": "good"
+        })
+        data = resp.json()
+        ent = data["entities"]
+        assert len(ent["teams_mentioned"]) >= 3
+        assert "ml" in ent["markets_detected"]
+
+    def test_differentiation_prop_heavy(self, client):
+        """(4) Prop-heavy slip — entities show players + prop markets, failure references props."""
+        resp = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds + Jokic over 10.5 assists",
+            "tier": "good"
+        })
+        data = resp.json()
+        ent = data["entities"]
+        pf = data["primaryFailure"]
+        assert len(ent["players_mentioned"]) >= 3
+        assert any(m in ent["markets_detected"] for m in ["points", "rebounds", "assists"])
+        # Prop-heavy should trigger prop_density or volatility
+        assert pf["type"] in ("prop_density", "volatility")
+
+    def test_differentiation_same_game_style(self, client):
+        """(5) Same-game style slip — legs from same team, same_game_dependency expected."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Lakers over 220.5",
+            "tier": "good"
+        })
+        data = resp.json()
+        ent = data["entities"]
+        pf = data["primaryFailure"]
+        assert "LAL" in ent["teams_mentioned"]
+        # Two legs from same team → same_game_dependency
+        assert pf["type"] == "same_game_dependency"
+
+    def test_differentiation_vague_text(self, client):
+        """(6) Vague/ambiguous text — entities sparse, weak_clarity expected."""
+        resp = client.post("/app/evaluate", json={
+            "input": "team A wins + team B covers spread",
+            "tier": "good"
+        })
+        data = resp.json()
+        ent = data["entities"]
+        pf = data["primaryFailure"]
+        assert len(ent["teams_mentioned"]) == 0
+        assert len(ent["players_mentioned"]) == 0
+        # Should get weak_clarity failure type
+        assert pf["type"] == "weak_clarity"
+
+    # --- Two different inputs produce different outputs ---
+
+    def test_different_inputs_different_entities(self, client):
+        """Two structurally different inputs produce different entity outputs."""
+        resp1 = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        resp2 = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds + Jokic over 10.5 assists",
+            "tier": "good"
+        })
+        ent1 = resp1.json()["entities"]
+        ent2 = resp2.json()["entities"]
+        # Different teams vs players
+        assert ent1["teams_mentioned"] != ent2["teams_mentioned"] or ent1["players_mentioned"] != ent2["players_mentioned"]
+        # Different markets
+        assert ent1["markets_detected"] != ent2["markets_detected"]
+
+    def test_different_inputs_different_failure_types(self, client):
+        """A prop-heavy slip and a vague slip yield different primaryFailure types."""
+        resp_prop = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds + Jokic over 10.5 assists",
+            "tier": "good"
+        })
+        resp_vague = client.post("/app/evaluate", json={
+            "input": "team A wins + team B covers spread",
+            "tier": "good"
+        })
+        pf_prop = resp_prop.json()["primaryFailure"]
+        pf_vague = resp_vague.json()["primaryFailure"]
+        assert pf_prop["type"] != pf_vague["type"], \
+            f"Expected different failure types, got {pf_prop['type']} for both"
+
+    def test_different_inputs_different_warnings(self, client):
+        """Different failure types produce different warnings in GOOD tier explain."""
+        resp_prop = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds + Jokic over 10.5 assists",
+            "tier": "good"
+        })
+        resp_spread = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics -3 + Nuggets -4 + Bucks -2.5",
+            "tier": "good"
+        })
+        w_prop = resp_prop.json()["explain"].get("warnings", [])
+        w_spread = resp_spread.json()["explain"].get("warnings", [])
+        assert w_prop != w_spread, "Different bet types should produce different warnings"
+
+    # --- Tier separation still holds with new types ---
+
+    def test_entities_present_all_tiers(self, client):
+        """entities is returned for all tiers."""
+        for tier in ("good", "better", "best"):
+            resp = client.post("/app/evaluate", json={
+                "input": "Lakers -5.5 + Celtics ML", "tier": tier
+            })
+            assert "entities" in resp.json(), f"entities missing for tier={tier}"
+
+    def test_tier_separation_good_vs_better(self, client):
+        """GOOD tier has structured output, BETTER has summary — unchanged by Ticket 14."""
+        good = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML", "tier": "good"
+        }).json()
+        better = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML", "tier": "better"
+        }).json()
+        # GOOD has contributors, BETTER has summary
+        assert "contributors" in good["explain"]
+        assert "summary" in better["explain"]
+        # Both have same primaryFailure type (core truth)
+        assert good["primaryFailure"]["type"] == better["primaryFailure"]["type"]
+
+    def test_extended_type_enum_coverage(self, client):
+        """primaryFailure type is always in the extended valid set."""
+        inputs = [
+            "Lakers -5.5",
+            "Lakers -5.5 + Celtics ML",
+            "LeBron over 25.5 points + Tatum over 7.5 rebounds + Jokic over 10.5 assists",
+            "team A wins + team B covers",
+            "Lakers vs Celtics over 215.5 + Nuggets vs Bucks over 220",
+        ]
+        for inp in inputs:
+            resp = client.post("/app/evaluate", json={"input": inp, "tier": "good"})
+            pf = resp.json()["primaryFailure"]
+            assert pf["type"] in self.VALID_TYPES, f"Invalid type {pf['type']} for input: {inp}"
+            assert pf["fastestFix"]["action"] in self.VALID_ACTIONS, \
+                f"Invalid action {pf['fastestFix']['action']} for input: {inp}"
+
+    # --- Context echo HTML ---
+
+    def test_context_echo_element_exists_in_html(self, client):
+        """Context echo element exists in app HTML."""
+        resp = client.get("/app")
+        assert 'id="context-echo"' in resp.text
+
+    # --- Staged analysis progress HTML ---
+
+    def test_analysis_progress_exists_in_html(self, client):
+        """Analysis progress element exists in app HTML."""
+        resp = client.get("/app")
+        html = resp.text
+        assert 'id="analysis-progress"' in html
+        assert 'id="ap-step-1"' in html
+        assert 'id="ap-step-5"' in html
+
+    def test_context_echo_above_primary_failure(self, client):
+        """Context echo appears before primary failure in DOM order."""
+        resp = client.get("/app")
+        html = resp.text
+        echo_pos = html.find('id="context-echo"')
+        pf_pos = html.find('id="compressed-pf"')
+        assert echo_pos < pf_pos, "Context echo must be above primary failure"
+
+
+class TestSprint2Features:
+    """Tests for Sprint 2: Recognition, Explainability, and Trust."""
+
+    # --- Volatility Flag Tests ---
+
+    def test_volatility_flag_present_in_entities(self, client):
+        """Entities include volatility_flag."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        entities = resp.json()["entities"]
+        assert "volatility_flag" in entities
+        assert entities["volatility_flag"] in ("low", "medium", "med-high", "high")
+
+    def test_volatility_flag_props_is_high(self, client):
+        """Props-heavy slip has high volatility."""
+        resp = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds",
+            "tier": "good"
+        })
+        entities = resp.json()["entities"]
+        assert entities["volatility_flag"] in ("high", "med-high")
+
+    def test_volatility_flag_ml_is_lower(self, client):
+        """ML parlay has lower volatility."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics ML",
+            "tier": "good"
+        })
+        entities = resp.json()["entities"]
+        assert entities["volatility_flag"] in ("low", "medium")
+
+    # --- Same-Game Indicator Tests ---
+
+    def test_same_game_indicator_present(self, client):
+        """Entities include same_game_indicator."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        entities = resp.json()["entities"]
+        assert "same_game_indicator" in entities
+        assert "has_same_game" in entities["same_game_indicator"]
+
+    def test_same_game_indicator_detects_same_team(self, client):
+        """Same-game indicator detects multiple legs from same team."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Lakers over 220.5",
+            "tier": "good"
+        })
+        sgi = resp.json()["entities"]["same_game_indicator"]
+        assert sgi["has_same_game"] == True
+        assert sgi["same_game_count"] >= 2
+
+    def test_same_game_indicator_no_same_game(self, client):
+        """Different teams show no same-game."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        sgi = resp.json()["entities"]["same_game_indicator"]
+        assert sgi["has_same_game"] == False
+
+    # --- Secondary Factors Tests ---
+
+    def test_secondary_factors_present(self, client):
+        """Response includes secondaryFactors."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets -3",
+            "tier": "good"
+        })
+        data = resp.json()
+        assert "secondaryFactors" in data
+
+    def test_secondary_factors_has_structure(self, client):
+        """Secondary factors have type, impact, explanation."""
+        resp = client.post("/app/evaluate", json={
+            "input": "LeBron over 25.5 points + Tatum over 7.5 rebounds + Jokic over 10 assists",
+            "tier": "good"
+        })
+        data = resp.json()
+        sf = data.get("secondaryFactors", [])
+        if sf:  # May be empty for some inputs
+            factor = sf[0]
+            assert "type" in factor
+            assert "impact" in factor
+            assert "explanation" in factor
+            assert factor["impact"] in ("low", "medium", "high")
+
+    # --- Human Summary Tests ---
+
+    def test_human_summary_present(self, client):
+        """Response includes humanSummary."""
+        resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": "good"})
+        data = resp.json()
+        assert "humanSummary" in data
+        assert isinstance(data["humanSummary"], str)
+        assert len(data["humanSummary"]) > 0
+
+    def test_human_summary_references_entities(self, client):
+        """Human summary references recognized entities or structural info."""
+        resp = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        summary = resp.json()["humanSummary"]
+        # Summary should reference at least one recognized team/entity or structural info
+        assert any(x in summary for x in ["LAL", "BOS", "Lakers", "Celtics", "parlay", "leg"])
+
+    def test_human_summary_always_included(self, client):
+        """Human summary included for all tiers (not tier-gated)."""
+        for tier in ["good", "better", "best"]:
+            resp = client.post("/app/evaluate", json={"input": "Lakers -5.5", "tier": tier})
+            assert resp.json()["humanSummary"], f"No summary for tier {tier}"
+
+    # --- HTML Element Tests ---
+
+    def test_human_summary_element_exists(self, client):
+        """Human summary element exists in HTML."""
+        resp = client.get("/app")
+        assert 'id="human-summary"' in resp.text
+
+    def test_secondary_factors_element_exists(self, client):
+        """Secondary factors element exists in HTML."""
+        resp = client.get("/app")
+        assert 'id="detail-secondary-factors"' in resp.text
+
+    # --- Builder UI Tests ---
+
+    def test_builder_has_sport_selector(self, client):
+        """Builder has sport selector dropdown."""
+        resp = client.get("/app?tab=builder")
+        html = resp.text
+        assert 'id="builder-sport"' in html
+        assert "Basketball (NBA)" in html
+
+    def test_builder_has_leg_inputs(self, client):
+        """Builder has leg input fields."""
+        resp = client.get("/app?tab=builder")
+        html = resp.text
+        assert 'class="builder-leg"' in html
+        assert 'class="leg-input' in html
+
+    def test_builder_has_tier_selector(self, client):
+        """Builder has tier selector."""
+        resp = client.get("/app?tab=builder")
+        html = resp.text
+        assert 'builder-tier-selector' in html
+        assert 'data-tier="good"' in html
+
+    def test_builder_leg_explanation_element_exists(self, client):
+        """Builder has leg explanation elements."""
+        resp = client.get("/app?tab=builder")
+        html = resp.text
+        assert 'class="leg-explanation' in html
