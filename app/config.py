@@ -64,6 +64,10 @@ class AppConfig:
     leading_light_enabled: bool = False
     voice_enabled: bool = False
 
+    # Sherlock + DNA integration flags (Ticket 17 - default disabled)
+    sherlock_enabled: bool = False
+    dna_recording_enabled: bool = False
+
     # API keys (OPTIONAL - features disabled without them)
     openai_api_key_present: bool = False
 
@@ -158,6 +162,10 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     leading_light_enabled = _parse_bool_env("LEADING_LIGHT_ENABLED", False)
     voice_enabled = _parse_bool_env("VOICE_ENABLED", False)
 
+    # Sherlock + DNA integration flags (Ticket 17 - disabled by default)
+    sherlock_enabled = _parse_bool_env("SHERLOCK_ENABLED", False)
+    dna_recording_enabled = _parse_bool_env("DNA_RECORDING_ENABLED", False)
+
     # API key presence (OPTIONAL - check presence, don't store value)
     openai_key = os.environ.get("OPENAI_API_KEY")
     openai_api_key_present = bool(openai_key and len(openai_key) > 0)
@@ -180,6 +188,8 @@ def load_config(fail_fast: bool = True) -> AppConfig:
         max_request_size_bytes=max_request_size,
         leading_light_enabled=leading_light_enabled,
         voice_enabled=voice_enabled,
+        sherlock_enabled=sherlock_enabled,
+        dna_recording_enabled=dna_recording_enabled,
         openai_api_key_present=openai_api_key_present,
         warnings=warnings,
     )
@@ -201,6 +211,8 @@ def log_config_snapshot(config: AppConfig) -> str:
         f"max_request_size_bytes={config.max_request_size_bytes} "
         f"leading_light_enabled={config.leading_light_enabled} "
         f"voice_enabled={config.voice_enabled} "
+        f"sherlock_enabled={config.sherlock_enabled} "
+        f"dna_recording_enabled={config.dna_recording_enabled} "
         f"openai_api_key_present={config.openai_api_key_present}"
     )
     logger.info(snapshot)

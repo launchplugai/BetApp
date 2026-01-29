@@ -105,3 +105,52 @@ async def health():
         "build_time_utc": _config.build_time_utc,
         "started_at": _SERVICE_START_TIME.isoformat(),
     }
+
+
+@app.get("/debug/contracts")
+async def debug_contracts():
+    """
+    Debug endpoint for contract verification (Ticket 17).
+
+    Returns current contract versions, feature flags, and build info.
+    BEST-tier or internal use only.
+
+    Contracts referenced:
+    - docs/contracts/SYSTEM_CONTRACT_SDS.md
+    - docs/contracts/SCH_SDK_CONTRACT.md
+    - docs/contracts/DNA_PRIMITIVES_CONTRACT.md
+    """
+    # Contract versions (from docs)
+    contract_versions = {
+        "SYSTEM_CONTRACT_SDS": "1.0.0",
+        "SCH_SDK_CONTRACT": "1.0.0",
+        "DNA_PRIMITIVES_CONTRACT": "1.0.0",
+        "MAP_SHERLOCK_TO_DNA": "1.0.0",
+    }
+
+    # Sherlock module version
+    try:
+        from sherlock import __version__ as sherlock_version
+    except ImportError:
+        sherlock_version = "not_installed"
+
+    return {
+        "contracts": contract_versions,
+        "sherlock_version": sherlock_version,
+        "flags": {
+            "sherlock_enabled": _config.sherlock_enabled,
+            "dna_recording_enabled": _config.dna_recording_enabled,
+            "leading_light_enabled": _config.leading_light_enabled,
+            "voice_enabled": _config.voice_enabled,
+        },
+        "build": {
+            "git_sha": _config.git_sha,
+            "build_time_utc": _config.build_time_utc,
+            "environment": _config.environment,
+        },
+        "service": {
+            "name": _config.service_name,
+            "version": _config.service_version,
+            "started_at": _SERVICE_START_TIME.isoformat(),
+        },
+    }

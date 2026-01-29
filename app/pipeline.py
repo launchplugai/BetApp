@@ -44,7 +44,14 @@ from context.apply import apply_context, ContextImpact
 # Alerts (Sprint 4)
 from alerts.service import check_for_alerts
 
+# Sherlock integration (Ticket 17)
+from app.sherlock_hook import run_sherlock_hook
+from app.config import load_config
+
 _logger = logging.getLogger(__name__)
+
+# Load config for feature flags (Ticket 17)
+_config = load_config(fail_fast=False)
 
 
 # =============================================================================
@@ -103,6 +110,9 @@ class PipelineResponse:
 
     # Sprint 2: Human summary (2-3 sentences, always included)
     human_summary: Optional[str] = None
+
+    # Ticket 17: Sherlock integration result (None if disabled)
+    sherlock_result: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -1547,6 +1557,24 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Step 12: Sprint 2 — Build human summary (always included)
     human_summary = _build_human_summary(evaluation, blocks, entities, primary_failure)
 
+    # Step 13: Ticket 17 — Run Sherlock hook (if enabled)
+    sherlock_result = None
+    if _config.sherlock_enabled:
+        hook_result = run_sherlock_hook(
+            sherlock_enabled=_config.sherlock_enabled,
+            dna_recording_enabled=_config.dna_recording_enabled,
+            evaluation_metrics={
+                "final_fragility": evaluation.metrics.final_fragility,
+                "correlation_penalty": evaluation.metrics.correlation_penalty,
+                "leg_penalty": evaluation.metrics.leg_penalty,
+            },
+            signal=signal_info.get("signal", "yellow") if signal_info else "yellow",
+            primary_failure_type=primary_type,
+            leg_count=leg_count,
+        )
+        if hook_result:
+            sherlock_result = hook_result.to_dict()
+
     # Build public entity output (strip internal _raw_text, add Sprint 2 fields)
     entities_public = {k: v for k, v in entities.items() if not k.startswith("_")}
     entities_public["volatility_flag"] = volatility_flag
@@ -1563,6 +1591,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         entities=entities_public,
         secondary_factors=secondary_factors,
         human_summary=human_summary,
+        sherlock_result=sherlock_result,
         leg_count=leg_count,
         tier=normalized.tier.value,
     )
