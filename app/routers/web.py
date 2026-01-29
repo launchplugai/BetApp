@@ -329,7 +329,7 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
             font-family: var(--font-sans);
-            background: var(--surface-base);
+            background: red !important;
             color: var(--fg-primary);
             min-height: 100vh;
             padding: var(--sp-6);
