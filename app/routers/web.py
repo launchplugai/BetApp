@@ -3051,16 +3051,22 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             {user_section}
         </header>
 
+        <!-- DEPRECATION BANNER - Remove after UI v2 verified -->
+        <div style="background:#4a3a1a;border:1px solid #8a7a3a;padding:8px 12px;margin-bottom:12px;border-radius:4px;font-size:13px;">
+            ⚠️ Legacy UI. For verification, use <a href="/ui2" style="color:#f59e0b;font-weight:bold;">/ui2</a>
+        </div>
+
         <!-- Orientation Banner -->
         {orientation_banner}
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <a class="nav-tab {discover_active}" href="#discover" data-tab="discover" onclick="event.preventDefault(); switchToTab('discover');">Discover</a>
-            <a class="nav-tab {evaluate_active}" href="#evaluate" data-tab="evaluate" onclick="event.preventDefault(); switchToTab('evaluate');">Evaluate</a>
-            <a class="nav-tab {builder_active}" href="#builder" data-tab="builder" onclick="event.preventDefault(); switchToTab('builder');">Builder</a>
-            <a class="nav-tab {history_active}" href="#history" data-tab="history" onclick="event.preventDefault(); switchToTab('history');">History</a>
+            <a class="nav-tab {discover_active}" href="/app?tab=discover">Discover</a>
+            <a class="nav-tab {evaluate_active}" href="/app?tab=evaluate">Evaluate</a>
+            <a class="nav-tab {builder_active}" href="/app?tab=builder">Builder</a>
+            <a class="nav-tab {history_active}" href="/app?tab=history">History</a>
         </nav>
+        <div style="font-size:12px;opacity:.7;margin:6px 0;">tab={active_tab}</div>
 
         <!-- Discover Tab Content -->
         <div class="tab-content {discover_active}" id="tab-discover">
@@ -3762,16 +3768,8 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             }}
         }};
 
-        (function() {{
-            const navTabs = document.querySelectorAll('.nav-tab');
-
-            navTabs.forEach(tab => {{
-                tab.addEventListener('click', function(e) {{
-                    e.preventDefault();
-                    switchToTab(this.dataset.tab);
-                }});
-            }});
-        }})();
+        // NOTE: Nav tab click handlers REMOVED - using real href links now
+        // The old IIFE was blocking navigation with e.preventDefault()
 
         // ============================================================
         // EVALUATE TAB FUNCTIONALITY
@@ -7318,3 +7316,231 @@ def _get_account_page_html(user) -> str:
     </script>
 </body>
 </html>"""
+
+
+# =============================================================================
+# UI V2 - MINIMAL DEBUG CONSOLE
+# =============================================================================
+# Zero-dependency, server-rendered UI for verification and debugging.
+# No JS routing, no external CSS, no Safari quirks.
+# =============================================================================
+
+def _get_ui2_html(view: str = "evaluate", result: str = "", status_code: int = 0) -> str:
+    """Generate minimal UI v2 HTML.
+
+    Args:
+        view: Current view (evaluate, builder, demo)
+        result: JSON result to display (if any)
+        status_code: HTTP status code from last request (if any)
+    """
+    from datetime import datetime, timezone
+    render_id = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    # View-specific content
+    evaluate_content = ""
+    builder_content = ""
+    demo_content = ""
+
+    if view == "evaluate":
+        evaluate_content = '''
+            <h2>Evaluate Bet</h2>
+            <form method="POST" action="/ui2/evaluate">
+                <div style="margin-bottom:12px;">
+                    <label>Bet Slip:</label><br>
+                    <textarea name="input" rows="4" cols="50" style="width:100%;max-width:400px;background:#222;color:#eee;border:1px solid #444;padding:8px;" placeholder="Lakers -3.5, Celtics ML, LeBron 25+ pts"></textarea>
+                </div>
+                <div style="margin-bottom:12px;">
+                    <label>Tier:</label>
+                    <select name="tier" style="background:#222;color:#eee;border:1px solid #444;padding:4px;">
+                        <option value="GOOD">GOOD</option>
+                        <option value="BETTER">BETTER</option>
+                        <option value="BEST">BEST</option>
+                    </select>
+                </div>
+                <button type="submit" style="background:#2563eb;color:#fff;border:none;padding:8px 16px;cursor:pointer;">Submit</button>
+            </form>
+        '''
+    elif view == "builder":
+        builder_content = '''
+            <h2>Builder (Placeholder)</h2>
+            <p>Builder view - server confirms view=builder works.</p>
+            <p>Use Evaluate to test the actual endpoint.</p>
+        '''
+    elif view == "demo":
+        demo_content = '''
+            <h2>Demo Runner</h2>
+            <form method="POST" action="/ui2/demo">
+                <div style="margin-bottom:12px;">
+                    <label>Demo Case:</label>
+                    <select name="case_name" style="background:#222;color:#eee;border:1px solid #444;padding:4px;">
+                        <option value="stable">stable</option>
+                        <option value="loaded">loaded</option>
+                        <option value="tense">tense</option>
+                        <option value="critical">critical</option>
+                    </select>
+                </div>
+                <button type="submit" style="background:#2563eb;color:#fff;border:none;padding:8px 16px;cursor:pointer;">Run Demo</button>
+            </form>
+        '''
+
+    # Result display
+    result_html = ""
+    if result:
+        result_html = f'''
+            <div style="margin-top:20px;padding:12px;background:#1a2a1a;border:1px solid #2d4a2d;border-radius:4px;">
+                <strong>Response (status: {status_code}):</strong>
+                <pre style="margin-top:8px;overflow-x:auto;white-space:pre-wrap;font-size:12px;">{result}</pre>
+            </div>
+        '''
+
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA UI v2 - Debug Console</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: system-ui, sans-serif; background: #111; color: #eee; padding: 16px; }}
+        nav {{ margin-bottom: 20px; padding: 12px; background: #1a1a1a; border-radius: 4px; }}
+        nav a {{ color: #4a9eff; text-decoration: none; margin-right: 16px; padding: 8px 12px; }}
+        nav a:hover {{ background: #222; border-radius: 4px; }}
+        nav a.active {{ background: #2563eb; color: #fff; border-radius: 4px; }}
+        .help-points {{ margin-bottom: 20px; padding: 12px; background: #2a2a1a; border: 1px solid #4a4a2a; border-radius: 4px; font-family: monospace; font-size: 12px; }}
+        .help-points div {{ margin: 4px 0; }}
+        .content {{ padding: 16px; background: #1a1a1a; border-radius: 4px; }}
+        h2 {{ margin-bottom: 16px; font-size: 18px; }}
+        label {{ color: #aaa; }}
+    </style>
+</head>
+<body>
+    <h1 style="margin-bottom:16px;font-size:20px;">🔧 DNA UI v2 - Debug Console</h1>
+
+    <!-- HARD NAVIGATION - No JS Required -->
+    <nav>
+        <a href="/ui2?view=evaluate" class="{"active" if view == "evaluate" else ""}">Evaluate</a>
+        <a href="/ui2?view=builder" class="{"active" if view == "builder" else ""}">Builder</a>
+        <a href="/ui2?view=demo" class="{"active" if view == "demo" else ""}">Demo</a>
+        <a href="/app" style="float:right;color:#f59e0b;">← Back to Legacy UI</a>
+    </nav>
+
+    <!-- HELP POINTS - Visible Debug Info -->
+    <div class="help-points">
+        <div><strong>server_view:</strong> {view}</div>
+        <div><strong>client_url:</strong> <script>document.write(window.location.href)</script></div>
+        <div><strong>render_id:</strong> {render_id}</div>
+        <div><strong>last_status:</strong> {status_code if status_code else "none"}</div>
+    </div>
+
+    <!-- VIEW CONTENT -->
+    <div class="content">
+        {evaluate_content}
+        {builder_content}
+        {demo_content}
+        {result_html}
+    </div>
+</body>
+</html>'''
+
+
+@router.get("/ui2", response_class=HTMLResponse)
+async def ui2_page(view: str = "evaluate"):
+    """UI v2 - Minimal debug console with server-side rendering."""
+    return HTMLResponse(content=_get_ui2_html(view=view))
+
+
+@router.post("/ui2/evaluate", response_class=HTMLResponse)
+async def ui2_evaluate(raw_request: Request):
+    """UI v2 - Evaluate form submission."""
+    import json
+    from app.pipeline import run_evaluation
+    from app.airlock import airlock_ingest, AirlockError
+
+    form = await raw_request.form()
+    input_text = form.get("input", "")
+    tier = form.get("tier", "GOOD")
+
+    if not input_text or not input_text.strip():
+        return HTMLResponse(content=_get_ui2_html(
+            view="evaluate",
+            result="Error: Input is required",
+            status_code=400
+        ))
+
+    try:
+        # Pass through Airlock for normalization
+        normalized = airlock_ingest(
+            input_text=input_text.strip(),
+            tier=tier,
+        )
+        # Run evaluation through pipeline
+        evaluation_result = run_evaluation(normalized)
+        result_json = json.dumps(evaluation_result, indent=2, default=str)
+        return HTMLResponse(content=_get_ui2_html(
+            view="evaluate",
+            result=result_json,
+            status_code=200
+        ))
+    except AirlockError as e:
+        return HTMLResponse(content=_get_ui2_html(
+            view="evaluate",
+            result=f"Validation Error: {e.message}",
+            status_code=400
+        ))
+    except Exception as e:
+        return HTMLResponse(content=_get_ui2_html(
+            view="evaluate",
+            result=f"Error: {str(e)}",
+            status_code=500
+        ))
+
+
+@router.post("/ui2/demo", response_class=HTMLResponse)
+async def ui2_demo(raw_request: Request):
+    """UI v2 - Demo runner form submission."""
+    import json
+    from app.demo.leading_light_demo_cases import DEMO_CASES
+    from app.pipeline import run_evaluation
+    from app.airlock import airlock_ingest, AirlockError
+
+    form = await raw_request.form()
+    case_name = form.get("case_name", "stable")
+
+    if case_name not in DEMO_CASES:
+        return HTMLResponse(content=_get_ui2_html(
+            view="demo",
+            result=f"Error: Unknown demo case '{case_name}'. Valid: stable, loaded, tense, critical",
+            status_code=404
+        ))
+
+    try:
+        demo_case = DEMO_CASES[case_name]
+        bet_text = demo_case.get("bet_text", "")
+        # Pass through Airlock for normalization
+        normalized = airlock_ingest(
+            input_text=bet_text,
+            tier="BEST",
+        )
+        evaluation_result = run_evaluation(normalized)
+        result_json = json.dumps({
+            "case_name": case_name,
+            "bet_text": bet_text,
+            "evaluation": evaluation_result
+        }, indent=2, default=str)
+        return HTMLResponse(content=_get_ui2_html(
+            view="demo",
+            result=result_json,
+            status_code=200
+        ))
+    except AirlockError as e:
+        return HTMLResponse(content=_get_ui2_html(
+            view="demo",
+            result=f"Validation Error: {e.message}",
+            status_code=400
+        ))
+    except Exception as e:
+        return HTMLResponse(content=_get_ui2_html(
+            view="demo",
+            result=f"Error: {str(e)}",
+            status_code=500
+        ))

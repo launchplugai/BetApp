@@ -142,24 +142,24 @@ class TestUIFlowLock:
     def test_cold_load_evaluate_is_active_tab(self, client):
         """Evaluate nav tab has active class by default."""
         response = client.get("/app")
-        # Check that evaluate tab has both active class and data-tab attribute
+        # Check that evaluate tab link has active class
         assert 'nav-tab' in response.text
         assert 'class="nav-tab active"' in response.text
-        assert 'data-tab="evaluate"' in response.text
-        # Verify the active tab is evaluate (not another tab)
+        assert 'href="/app?tab=evaluate"' in response.text
+        # Verify the active tab is evaluate (active class and evaluate href close together)
         text = response.text
         eval_active_start = text.find('class="nav-tab active"')
-        eval_data_tab = text.find('data-tab="evaluate"', eval_active_start)
+        eval_href = text.find('href="/app?tab=evaluate"', eval_active_start)
         # They should be close together (same element)
-        assert eval_data_tab - eval_active_start < 100
+        assert eval_href - eval_active_start < 100
 
     def test_cold_load_builder_not_active(self, client):
         """Builder tab is NOT active on cold load."""
         response = client.get("/app")
         text = response.text
-        # Find the builder tab and verify it doesn't have active class
-        builder_pos = text.find('data-tab="builder"')
-        # Check the class attribute before data-tab="builder"
+        # Find the builder tab link and verify it doesn't have active class
+        builder_pos = text.find('href="/app?tab=builder"')
+        # Check the class attribute before href
         preceding_text = text[max(0, builder_pos - 100):builder_pos]
         assert 'nav-tab active' not in preceding_text or 'nav-tab' in preceding_text
 
@@ -250,19 +250,19 @@ class TestUIFlowLock:
         """All four tabs render in correct order."""
         response = client.get("/app")
         text = response.text
-        assert 'data-tab="discover"' in text
-        assert 'data-tab="evaluate"' in text
-        assert 'data-tab="builder"' in text
-        assert 'data-tab="history"' in text
+        assert 'href="/app?tab=discover"' in text
+        assert 'href="/app?tab=evaluate"' in text
+        assert 'href="/app?tab=builder"' in text
+        assert 'href="/app?tab=history"' in text
 
     def test_navigation_order_locked(self, client):
         """Tabs appear in order: Discover, Evaluate, Builder, History."""
         response = client.get("/app")
         text = response.text
-        discover_pos = text.find('data-tab="discover"')
-        evaluate_pos = text.find('data-tab="evaluate"')
-        builder_pos = text.find('data-tab="builder"')
-        history_pos = text.find('data-tab="history"')
+        discover_pos = text.find('href="/app?tab=discover"')
+        evaluate_pos = text.find('href="/app?tab=evaluate"')
+        builder_pos = text.find('href="/app?tab=builder"')
+        history_pos = text.find('href="/app?tab=history"')
         assert discover_pos < evaluate_pos < builder_pos < history_pos
 
     def test_tab_content_containers_exist(self, client):
@@ -298,14 +298,14 @@ class TestMobileSafariCompatibility:
     """Tests for iOS Safari click handling and JS function exposure."""
 
     def test_nav_tabs_have_href_attributes(self, client):
-        """Nav tabs must have href for iOS Safari click events."""
+        """Nav tabs must have real href links for reliable navigation."""
         response = client.get("/app")
         text = response.text
-        # All nav tabs should have href attributes
-        assert 'href="#discover"' in text
-        assert 'href="#evaluate"' in text
-        assert 'href="#builder"' in text
-        assert 'href="#history"' in text
+        # All nav tabs should have full href links (no JS required)
+        assert 'href="/app?tab=discover"' in text
+        assert 'href="/app?tab=evaluate"' in text
+        assert 'href="/app?tab=builder"' in text
+        assert 'href="/app?tab=history"' in text
 
     def test_switchToTab_exposed_on_window(self, client):
         """switchToTab function must be exposed globally for inline handlers."""
@@ -321,11 +321,17 @@ class TestMobileSafariCompatibility:
         assert "window.removeBuilderLeg" in text
         assert "window.evaluateBuilderParlay" in text
 
-    def test_nav_tab_click_handlers_prevent_default(self, client):
-        """Nav tab click handlers must prevent default anchor behavior."""
+    def test_nav_tabs_use_real_links(self, client):
+        """Nav tabs use real links for server-side navigation (no JS required)."""
         response = client.get("/app")
-        # Check for e.preventDefault() in the nav tab click handler
-        assert "e.preventDefault()" in response.text
+        text = response.text
+        # Nav tabs should use real hrefs, not JS-based navigation
+        # This ensures reliable navigation on all browsers including iOS Safari
+        assert 'href="/app?tab=' in text
+        # Verify no onclick handlers on nav tabs (we want normal link behavior)
+        # The nav-tabs section should not have onclick with switchToTab
+        nav_section = text[text.find('<nav class="nav-tabs">'):text.find('</nav>') + 6]
+        assert 'onclick' not in nav_section
 
 
 class TestBuilderEvaluateWiring:
@@ -2771,3 +2777,82 @@ class TestSprint2Features:
         resp = client.get("/app?tab=builder")
         html = resp.text
         assert 'class="leg-explanation' in html
+
+
+class TestUIv2DebugConsole:
+    """Tests for UI v2 - minimal debug console."""
+
+    def test_ui2_returns_200(self, client):
+        """GET /ui2 returns 200."""
+        response = client.get("/ui2")
+        assert response.status_code == 200
+
+    def test_ui2_has_navigation_links(self, client):
+        """UI v2 has hard navigation links."""
+        response = client.get("/ui2")
+        text = response.text
+        assert 'href="/ui2?view=evaluate"' in text
+        assert 'href="/ui2?view=builder"' in text
+        assert 'href="/ui2?view=demo"' in text
+
+    def test_ui2_has_help_points(self, client):
+        """UI v2 displays help points."""
+        response = client.get("/ui2?view=evaluate")
+        text = response.text
+        assert 'server_view' in text
+        assert 'render_id' in text
+        assert 'client_url' in text
+
+    def test_ui2_view_parameter_works(self, client):
+        """UI v2 respects view parameter."""
+        # Evaluate view
+        resp = client.get("/ui2?view=evaluate")
+        assert 'Evaluate Bet' in resp.text
+
+        # Builder view
+        resp = client.get("/ui2?view=builder")
+        assert 'Builder' in resp.text
+
+        # Demo view
+        resp = client.get("/ui2?view=demo")
+        assert 'Demo Runner' in resp.text
+
+    def test_ui2_evaluate_form_exists(self, client):
+        """UI v2 evaluate view has form."""
+        response = client.get("/ui2?view=evaluate")
+        text = response.text
+        assert 'action="/ui2/evaluate"' in text
+        assert 'name="input"' in text
+        assert 'name="tier"' in text
+
+    def test_ui2_demo_form_exists(self, client):
+        """UI v2 demo view has form."""
+        response = client.get("/ui2?view=demo")
+        text = response.text
+        assert 'action="/ui2/demo"' in text
+        assert 'name="case_name"' in text
+        assert 'stable' in text
+        assert 'critical' in text
+
+    def test_ui2_evaluate_post_works(self, client):
+        """UI v2 evaluate POST returns result."""
+        response = client.post("/ui2/evaluate", data={
+            "input": "Lakers -3.5",
+            "tier": "GOOD"
+        })
+        assert response.status_code == 200
+        assert 'status: 200' in response.text or 'fragilityScore' in response.text
+
+    def test_ui2_demo_post_works(self, client):
+        """UI v2 demo POST returns result."""
+        response = client.post("/ui2/demo", data={
+            "case_name": "stable"
+        })
+        assert response.status_code == 200
+        assert 'stable' in response.text
+
+    def test_legacy_ui_has_deprecation_banner(self, client):
+        """Legacy /app UI has deprecation banner."""
+        response = client.get("/app")
+        assert '/ui2' in response.text
+        assert 'Legacy UI' in response.text
