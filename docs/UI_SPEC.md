@@ -123,6 +123,45 @@ The following **MUST** work with JavaScript disabled:
 
 ---
 
+## 4.1 State Mechanism (LOCKED)
+
+**Choice: Hidden Field Round-Trip (Option A)**
+
+Parlay state is managed via serialized JSON in hidden form fields and URL query parameters.
+
+### How It Works
+1. Builder page receives `legs` query param (JSON array, URL-encoded)
+2. Builder renders current legs and includes `<input type="hidden" name="legs" value='[...]'>`
+3. On "Add Leg" POST, server parses legs, appends new leg, redirects with updated `?legs=...`
+4. On "Evaluate" POST, server parses legs from hidden field, runs evaluation
+
+### Why This Approach
+- **Deterministic**: No server-side session state required
+- **Testable**: State is visible in URL/form data
+- **No cookies**: Works in private browsing
+- **Stateless server**: Scales horizontally without session affinity
+
+### Constraints
+- Maximum URL length ~2000 chars (limits to ~20-30 legs, acceptable for parlays)
+- JSON must be URL-encoded for query params
+- Hidden field uses single quotes to avoid escaping issues with JSON double quotes
+
+### Data Format
+```json
+[
+  {
+    "league": "NBA",
+    "team": "LAL",
+    "bet_type": "spread",
+    "line": "5.5",
+    "direction": "minus",
+    "display": "LA Lakers -5.5"
+  }
+]
+```
+
+---
+
 ## 5. Mobile Constraints
 
 | Constraint | Requirement |

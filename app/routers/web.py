@@ -4958,15 +4958,13 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
 @router.get("/", response_class=HTMLResponse)
 async def landing_page():
     """
-    Landing page with service info and navigation.
+    Landing page - redirects to v1 UI.
 
-    Returns HTML with:
-    - Service name
-    - Link to /app
-    - Link to /health
-    - Current git_sha
+    The v1 UI is the canonical, production-ready interface.
+    Legacy /app is deprecated.
     """
-    return _get_landing_page_html()
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/v1", status_code=302)
 
 
 @router.get("/login", response_class=HTMLResponse)

@@ -8,12 +8,15 @@ JavaScript is optional enhancement only.
 
 Reference: docs/UI_SPEC.md
 """
+import logging
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from typing import Optional, List
 import json
 
 from app.data.leagues import LEAGUES, BET_TYPES, get_team_name, format_leg
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", tags=["v1-ui"])
 
@@ -519,6 +522,17 @@ def _build_clear_button() -> str:
     '''
 
 
+def _build_needs_more_legs_message() -> str:
+    """Build the message shown when parlay has only 1 leg."""
+    return '''
+        <div class="card" style="background: #fefce8; border: 1px solid #fef08a;">
+            <p style="color: #854d0e; margin: 0; text-align: center;">
+                Add at least one more leg to evaluate your parlay.
+            </p>
+        </div>
+    '''
+
+
 def _build_parlay_legs_html(legs: List[dict]) -> str:
     """Build HTML for current parlay legs."""
     if not legs:
@@ -585,7 +599,8 @@ async def v1_build(legs: str = ""):
     team_options = _build_team_options()
 
     leg_count = len(current_legs)
-    can_evaluate = leg_count >= 1
+    can_evaluate = leg_count >= 2
+    needs_more_legs = leg_count == 1
 
     content = f'''
         <div class="card">
@@ -650,6 +665,8 @@ async def v1_build(legs: str = ""):
 
         {_build_evaluate_section(legs_json) if can_evaluate else ""}
 
+        {_build_needs_more_legs_message() if needs_more_legs else ""}
+
         {_build_clear_button() if leg_count > 0 else ""}
     '''
 
@@ -713,6 +730,9 @@ async def v1_build_add(
     }
     current_legs.append(new_leg)
 
+    # Debug logging (no secrets, no PII)
+    _logger.info(f"v1_build_add: legs_count={len(current_legs)}")
+
     # Redirect back to builder with updated legs
     legs_param = urllib.parse.quote(json.dumps(current_legs))
     return RedirectResponse(url=f"/v1/build?legs={legs_param}", status_code=303)
@@ -772,11 +792,22 @@ async def v1_evaluate(
     except:
         leg_list = []
 
+    # Debug logging (no secrets, no PII)
+    _logger.info(f"v1_evaluate: legs_count={len(leg_list)}, tier={tier}")
+
     if not leg_list:
         return _render_debrief_error(
             legs=[],
             tier=tier,
-            error="No legs in parlay. Please add at least one leg."
+            error="No legs in parlay. Please add at least two legs."
+        )
+
+    # Enforce minimum 2 legs
+    if len(leg_list) < 2:
+        return _render_debrief_error(
+            legs=leg_list,
+            tier=tier,
+            error="Parlay requires at least 2 legs. Please add another leg."
         )
 
     # Convert structured legs to text format for engine
