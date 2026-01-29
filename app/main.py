@@ -94,14 +94,12 @@ app.include_router(history.router)
 @app.get("/health")
 async def health():
     """Health check for Railway with service observability."""
-    response = {
+    return {
         "status": "healthy",
         "service": _config.service_name,
         "version": _config.service_version,
         "environment": _config.environment,
+        "git_sha": _config.git_sha,
+        "build_time_utc": _config.build_time_utc,
         "started_at": _SERVICE_START_TIME.isoformat(),
     }
-    # Include git_sha only if available (for deploy verification)
-    if _config.git_sha:
-        response["git_sha"] = _config.git_sha
-    return response

@@ -54,7 +54,8 @@ class AppConfig:
     environment: str = "development"
 
     # Deploy identification (for unambiguous production verification)
-    git_sha: Optional[str] = None
+    git_sha: str = "unknown"
+    build_time_utc: str = ""  # ISO8601 format, set at startup
 
     # Security settings
     max_request_size_bytes: int = DEFAULT_MAX_REQUEST_SIZE_BYTES
@@ -135,8 +136,14 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     git_sha = (
         os.environ.get("RAILWAY_GIT_COMMIT_SHA")
         or os.environ.get("GIT_SHA")
-        or None
+        or "unknown"
     )
+
+    # Build time for deploy verification (fallback to current time at startup)
+    from datetime import datetime, timezone
+    build_time_utc = os.environ.get("BUILD_TIME_UTC")
+    if not build_time_utc:
+        build_time_utc = datetime.now(timezone.utc).isoformat()
 
     # Security settings with validation
     max_request_size, size_warning = _parse_int_env(
@@ -169,6 +176,7 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     return AppConfig(
         environment=environment,
         git_sha=git_sha,
+        build_time_utc=build_time_utc,
         max_request_size_bytes=max_request_size,
         leading_light_enabled=leading_light_enabled,
         voice_enabled=voice_enabled,
@@ -188,7 +196,8 @@ def log_config_snapshot(config: AppConfig) -> str:
         f"[STARTUP] service={config.service_name} "
         f"version={config.service_version} "
         f"environment={config.environment} "
-        f"git_sha={config.git_sha or 'unknown'} "
+        f"git_sha={config.git_sha} "
+        f"build_time_utc={config.build_time_utc} "
         f"max_request_size_bytes={config.max_request_size_bytes} "
         f"leading_light_enabled={config.leading_light_enabled} "
         f"voice_enabled={config.voice_enabled} "

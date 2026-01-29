@@ -174,12 +174,12 @@ class TestConfigSnapshotSafety:
 class TestGitShaConfig:
     """Tests for git_sha deploy identification."""
 
-    def test_git_sha_none_by_default(self):
-        """git_sha is None when no env var set."""
+    def test_git_sha_unknown_by_default(self):
+        """git_sha is 'unknown' when no env var set."""
         with patch.dict(os.environ, {}, clear=True):
             config = load_config()
 
-        assert config.git_sha is None
+        assert config.git_sha == "unknown"
 
     def test_git_sha_from_railway_env(self):
         """git_sha is loaded from RAILWAY_GIT_COMMIT_SHA."""
