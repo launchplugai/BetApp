@@ -4878,8 +4878,8 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                 }}
             }};
 
-            // Evaluate parlay
-            window.evaluateBuilderParlay = function() {{
+            // Evaluate parlay - direct POST to backend
+            window.evaluateBuilderParlay = async function() {{
                 const legs = [];
                 document.querySelectorAll('.builder-leg').forEach(function(leg) {{
                     const teamPlayer = leg.querySelector('.team-player-input').value.trim();
@@ -4901,22 +4901,46 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                     return;
                 }}
 
-                // Build bet text and evaluate
+                // Build bet text
                 const betText = legs.join(' + ');
-                const evaluateInput = document.getElementById('eval-text-input');
-                if (evaluateInput) {{
-                    evaluateInput.value = betText;
+
+                // Get UI elements
+                const btn = document.getElementById('builder-evaluate-btn');
+                const placeholder = document.getElementById('builder-results-placeholder');
+                const content = document.getElementById('builder-results-content');
+
+                // Disable button, show loading
+                btn.disabled = true;
+                btn.textContent = 'Evaluating...';
+                placeholder.classList.add('hidden');
+                content.classList.remove('hidden');
+                content.innerHTML = '<pre style="color: var(--fg-muted);">Loading...</pre>';
+
+                try {{
+                    const response = await fetch('/app/evaluate', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            input: betText,
+                            tier: selectedTier.toUpperCase()
+                        }})
+                    }});
+
+                    const data = await response.json();
+
+                    // Display raw JSON result
+                    content.innerHTML = '<pre style="white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--fg-primary); background: var(--surface-overlay); padding: 12px; border-radius: 6px; overflow-x: auto;">' +
+                        JSON.stringify(data, null, 2) +
+                        '</pre>';
+
+                }} catch (err) {{
+                    content.innerHTML = '<pre style="color: var(--signal-red);">' +
+                        JSON.stringify({{ error: err.message, type: 'network_error' }}, null, 2) +
+                        '</pre>';
+                }} finally {{
+                    btn.disabled = false;
+                    btn.textContent = 'Evaluate Parlay';
                 }}
-
-                // Set tier
-                const tierRadio = document.getElementById('eval-tier-' + selectedTier);
-                if (tierRadio) tierRadio.checked = true;
-
-                // Switch to evaluate tab and submit
-                switchToTab('evaluate');
-                setTimeout(function() {{
-                    document.getElementById('eval-submit-btn').click();
-                }}, 100);
             }};
 
             // Initialize

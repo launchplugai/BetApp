@@ -328,6 +328,47 @@ class TestMobileSafariCompatibility:
         assert "e.preventDefault()" in response.text
 
 
+class TestBuilderEvaluateWiring:
+    """Tests for Builder → Evaluate endpoint wiring."""
+
+    def test_builder_evaluate_button_exists(self, client):
+        """Builder has Evaluate Parlay button."""
+        response = client.get("/app?tab=builder")
+        assert 'id="builder-evaluate-btn"' in response.text
+        assert 'onclick="evaluateBuilderParlay()"' in response.text
+
+    def test_evaluateBuilderParlay_exposed_on_window(self, client):
+        """evaluateBuilderParlay function exposed on window object."""
+        response = client.get("/app")
+        assert "window.evaluateBuilderParlay" in response.text
+
+    def test_builder_results_container_exists(self, client):
+        """Builder has results container for displaying response."""
+        response = client.get("/app?tab=builder")
+        text = response.text
+        assert 'id="builder-results"' in text
+        assert 'id="builder-results-content"' in text
+        assert 'id="builder-results-placeholder"' in text
+
+    def test_evaluateBuilderParlay_posts_to_app_evaluate(self, client):
+        """evaluateBuilderParlay POSTs to /app/evaluate endpoint."""
+        response = client.get("/app")
+        # Check JS contains fetch to correct endpoint
+        assert "fetch('/app/evaluate'" in response.text
+
+    def test_evaluateBuilderParlay_is_async(self, client):
+        """evaluateBuilderParlay is async for proper fetch handling."""
+        response = client.get("/app")
+        assert "window.evaluateBuilderParlay = async function()" in response.text
+
+    def test_evaluateBuilderParlay_sends_json(self, client):
+        """evaluateBuilderParlay sends JSON with input and tier."""
+        response = client.get("/app")
+        text = response.text
+        assert "'Content-Type': 'application/json'" in text
+        assert "JSON.stringify" in text
+
+
 class TestCoreLoopReinforcement:
     """Ticket 2: Core Loop Reinforcement tests."""
 
