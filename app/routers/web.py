@@ -3056,10 +3056,10 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <a class="nav-tab {discover_active}" href="#discover" data-tab="discover">Discover</a>
-            <a class="nav-tab {evaluate_active}" href="#evaluate" data-tab="evaluate">Evaluate</a>
-            <a class="nav-tab {builder_active}" href="#builder" data-tab="builder">Builder</a>
-            <a class="nav-tab {history_active}" href="#history" data-tab="history">History</a>
+            <a class="nav-tab {discover_active}" href="#discover" data-tab="discover" onclick="event.preventDefault(); switchToTab('discover');">Discover</a>
+            <a class="nav-tab {evaluate_active}" href="#evaluate" data-tab="evaluate" onclick="event.preventDefault(); switchToTab('evaluate');">Evaluate</a>
+            <a class="nav-tab {builder_active}" href="#builder" data-tab="builder" onclick="event.preventDefault(); switchToTab('builder');">Builder</a>
+            <a class="nav-tab {history_active}" href="#history" data-tab="history" onclick="event.preventDefault(); switchToTab('history');">History</a>
         </nav>
 
         <!-- Discover Tab Content -->
