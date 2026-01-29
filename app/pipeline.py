@@ -48,6 +48,12 @@ from alerts.service import check_for_alerts
 from app.sherlock_hook import run_sherlock_hook
 from app.config import load_config
 
+# Explainability adapter (Ticket 18)
+from app.explainability_adapter import transform_sherlock_to_explainability
+
+# Proof summary (Ticket 18B)
+from app.proof_summary import derive_proof_summary
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -113,6 +119,12 @@ class PipelineResponse:
 
     # Ticket 17: Sherlock integration result (None if disabled)
     sherlock_result: Optional[dict] = None
+
+    # Ticket 18: Explainability blocks (None if Sherlock disabled)
+    debug_explainability: Optional[dict] = None
+
+    # Ticket 18B: Proof summary (always present, shows flag status)
+    proof_summary: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -1575,6 +1587,19 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         if hook_result:
             sherlock_result = hook_result.to_dict()
 
+    # Step 14: Ticket 18 — Transform Sherlock output to explainability blocks
+    debug_explainability = None
+    explainability_output = transform_sherlock_to_explainability(sherlock_result)
+    if explainability_output:
+        debug_explainability = explainability_output.to_dict()
+
+    # Step 15: Ticket 18B — Derive proof summary for UI display
+    proof_summary = derive_proof_summary(
+        sherlock_enabled=_config.sherlock_enabled,
+        dna_recording_enabled=_config.dna_recording_enabled,
+        explainability_output=debug_explainability,
+    ).to_dict()
+
     # Build public entity output (strip internal _raw_text, add Sprint 2 fields)
     entities_public = {k: v for k, v in entities.items() if not k.startswith("_")}
     entities_public["volatility_flag"] = volatility_flag
@@ -1592,6 +1617,8 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         secondary_factors=secondary_factors,
         human_summary=human_summary,
         sherlock_result=sherlock_result,
+        debug_explainability=debug_explainability,
+        proof_summary=proof_summary,
         leg_count=leg_count,
         tier=normalized.tier.value,
     )

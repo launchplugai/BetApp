@@ -321,3 +321,123 @@ def test_sherlock_hook_deterministic():
             assert result1.sherlock_result["verdict"] == result2.sherlock_result["verdict"]
             assert result1.sherlock_result["confidence"] == result2.sherlock_result["confidence"]
             assert result1.sherlock_result["audit_passed"] == result2.sherlock_result["audit_passed"]
+
+
+# =============================================================================
+# Test: Explainability Adapter (Ticket 18)
+# =============================================================================
+
+
+def test_debug_explainability_when_sherlock_enabled():
+    """With SHERLOCK_ENABLED=true, debug_explainability should contain blocks."""
+    with patch.dict(os.environ, {
+        "SHERLOCK_ENABLED": "true",
+        "DNA_RECORDING_ENABLED": "false",
+    }):
+        import importlib
+        import app.config
+        importlib.reload(app.config)
+
+        import app.pipeline
+        importlib.reload(app.pipeline)
+
+        from app.pipeline import run_evaluation
+        from app.airlock import NormalizedInput, Tier
+
+        test_input = NormalizedInput(
+            input_text="Lakers -5.5 + LeBron over 25.5 points",
+            tier=Tier.GOOD,
+        )
+
+        result = run_evaluation(test_input)
+
+        # Explainability should be present when Sherlock runs
+        assert result.debug_explainability is not None
+        assert result.debug_explainability["enabled"] is True
+
+        # Should have blocks
+        assert "blocks" in result.debug_explainability
+        blocks = result.debug_explainability["blocks"]
+        assert len(blocks) >= 4  # At minimum: summary, claim, verdict, audit
+
+        # Verify block types
+        block_types = [b["block_type"] for b in blocks]
+        assert "investigation_summary" in block_types
+        assert "claim" in block_types
+        assert "verdict" in block_types
+        assert "audit" in block_types
+
+        # Should have summary
+        assert "summary" in result.debug_explainability
+        summary = result.debug_explainability["summary"]
+        assert "verdict" in summary
+        assert "confidence" in summary
+        assert "audit_passed" in summary
+
+
+def test_debug_explainability_none_when_sherlock_disabled():
+    """With SHERLOCK_ENABLED=false, debug_explainability should be None."""
+    with patch.dict(os.environ, {
+        "SHERLOCK_ENABLED": "false",
+        "DNA_RECORDING_ENABLED": "false",
+    }):
+        import importlib
+        import app.config
+        importlib.reload(app.config)
+
+        import app.pipeline
+        importlib.reload(app.pipeline)
+
+        from app.pipeline import run_evaluation
+        from app.airlock import NormalizedInput, Tier
+
+        test_input = NormalizedInput(
+            input_text="Celtics ML",
+            tier=Tier.GOOD,
+        )
+
+        result = run_evaluation(test_input)
+
+        # Explainability should be None when Sherlock is disabled
+        assert result.debug_explainability is None
+
+
+def test_debug_explainability_includes_dna_preview_when_enabled():
+    """With both flags enabled, debug_explainability should include DNA preview block."""
+    with patch.dict(os.environ, {
+        "SHERLOCK_ENABLED": "true",
+        "DNA_RECORDING_ENABLED": "true",
+    }):
+        import importlib
+        import app.config
+        importlib.reload(app.config)
+
+        import app.pipeline
+        importlib.reload(app.pipeline)
+
+        from app.pipeline import run_evaluation
+        from app.airlock import NormalizedInput, Tier
+
+        test_input = NormalizedInput(
+            input_text="Nuggets -3.5 + Jokic over 25 points",
+            tier=Tier.GOOD,
+        )
+
+        result = run_evaluation(test_input)
+
+        # Explainability should be present
+        assert result.debug_explainability is not None
+        assert result.debug_explainability["enabled"] is True
+
+        # Should have 5 blocks including DNA preview
+        blocks = result.debug_explainability["blocks"]
+        assert len(blocks) == 5
+
+        # Verify DNA preview block is present
+        block_types = [b["block_type"] for b in blocks]
+        assert "dna_preview" in block_types
+
+        # Find and verify DNA preview block
+        dna_block = next(b for b in blocks if b["block_type"] == "dna_preview")
+        assert "quarantined" in dna_block["content"]
+        assert "primitive_counts" in dna_block["content"]

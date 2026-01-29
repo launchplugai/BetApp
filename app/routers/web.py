@@ -3040,6 +3040,83 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             background: var(--signal-green, #22c55e);
             color: var(--surface-base);
         }}
+
+        /* TICKET 18B: System Proof Panel */
+        .system-proof-panel {{
+            margin-top: var(--sp-4);
+            border: 1px dashed var(--border-default);
+            border-radius: var(--radius-md);
+            background: var(--surface-raised);
+            font-family: var(--font-mono);
+            font-size: var(--text-xs);
+        }}
+        .system-proof-panel summary {{
+            cursor: pointer;
+            padding: var(--sp-2) var(--sp-3);
+            color: var(--fg-muted);
+            font-weight: 500;
+            user-select: none;
+        }}
+        .system-proof-panel summary:hover {{
+            color: var(--fg-secondary);
+        }}
+        .proof-content {{
+            padding: var(--sp-3);
+            border-top: 1px dashed var(--border-default);
+        }}
+        .proof-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: var(--sp-1) 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }}
+        .proof-label {{
+            color: var(--fg-muted);
+        }}
+        .proof-value {{
+            color: var(--fg-secondary);
+            font-weight: 500;
+        }}
+        .proof-value.proof-true {{
+            color: var(--signal-green);
+        }}
+        .proof-value.proof-false {{
+            color: var(--fg-muted);
+        }}
+        .proof-value.proof-pass {{
+            color: var(--signal-green);
+        }}
+        .proof-value.proof-fail {{
+            color: var(--signal-red);
+        }}
+        .proof-counts {{
+            font-size: var(--text-xs);
+        }}
+        .proof-artifacts {{
+            margin-top: var(--sp-2);
+            padding-top: var(--sp-2);
+        }}
+        .proof-artifacts-list {{
+            list-style: none;
+            margin-top: var(--sp-1);
+            padding-left: var(--sp-3);
+        }}
+        .proof-artifacts-list li {{
+            color: var(--fg-muted);
+            padding: var(--sp-1) 0;
+            font-size: 10px;
+        }}
+        .proof-meta {{
+            display: flex;
+            gap: var(--sp-4);
+            margin-top: var(--sp-3);
+            padding-top: var(--sp-2);
+            border-top: 1px dashed var(--border-subtle);
+        }}
+        .proof-derived, .proof-persisted {{
+            color: var(--fg-faint);
+            font-size: 10px;
+        }}
     </style>
 </head>
 <body>
@@ -3549,6 +3626,42 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                             <button type="button" class="loop-btn loop-try-fix hidden" id="loop-try-fix">Try Another Fix</button>
                             <button type="button" class="loop-btn loop-save" id="loop-save">Save</button>
                         </div>
+
+                        <!-- TICKET 18B: SYSTEM PROOF PANEL -->
+                        <!-- Visible when: tier==BEST OR debug=1 query param -->
+                        <details class="system-proof-panel hidden" id="system-proof-panel">
+                            <summary>System Proof</summary>
+                            <div class="proof-content">
+                                <div class="proof-row">
+                                    <span class="proof-label">SHERLOCK_ENABLED</span>
+                                    <span class="proof-value" id="proof-sherlock-enabled">—</span>
+                                </div>
+                                <div class="proof-row">
+                                    <span class="proof-label">DNA_RECORDING_ENABLED</span>
+                                    <span class="proof-value" id="proof-dna-enabled">—</span>
+                                </div>
+                                <div class="proof-row">
+                                    <span class="proof-label">sherlock_ran</span>
+                                    <span class="proof-value" id="proof-sherlock-ran">—</span>
+                                </div>
+                                <div class="proof-row">
+                                    <span class="proof-label">audit_status</span>
+                                    <span class="proof-value" id="proof-audit-status">—</span>
+                                </div>
+                                <div class="proof-row">
+                                    <span class="proof-label">dna_artifact_counts</span>
+                                    <span class="proof-value proof-counts" id="proof-dna-counts">—</span>
+                                </div>
+                                <div class="proof-artifacts" id="proof-artifacts">
+                                    <span class="proof-label">sample_artifacts</span>
+                                    <ul class="proof-artifacts-list" id="proof-artifacts-list"></ul>
+                                </div>
+                                <div class="proof-meta">
+                                    <span class="proof-derived">derived=true</span>
+                                    <span class="proof-persisted">persisted=false</span>
+                                </div>
+                            </div>
+                        </details>
                     </div>
 
                     <div id="eval-error-panel" class="error-panel hidden">
@@ -4242,6 +4355,63 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
                         }});
                         detailWarnings.classList.remove('hidden');
                     }}
+                }}
+
+                // === TICKET 18B: SYSTEM PROOF PANEL ===
+                // Visible when: tier==BEST OR debug=1 query param
+                const proofPanel = document.getElementById('system-proof-panel');
+                const urlParams = new URLSearchParams(window.location.search);
+                const debugParam = urlParams.get('debug') === '1';
+                const showProof = tier === 'best' || debugParam;
+
+                if (proofPanel && data.proofSummary) {{
+                    const ps = data.proofSummary;
+
+                    // Populate values
+                    const sherlockEl = document.getElementById('proof-sherlock-enabled');
+                    sherlockEl.textContent = ps.sherlock_enabled ? 'true' : 'false';
+                    sherlockEl.className = 'proof-value ' + (ps.sherlock_enabled ? 'proof-true' : 'proof-false');
+
+                    const dnaEl = document.getElementById('proof-dna-enabled');
+                    dnaEl.textContent = ps.dna_recording_enabled ? 'true' : 'false';
+                    dnaEl.className = 'proof-value ' + (ps.dna_recording_enabled ? 'proof-true' : 'proof-false');
+
+                    const ranEl = document.getElementById('proof-sherlock-ran');
+                    ranEl.textContent = ps.sherlock_ran ? 'true' : 'false';
+                    ranEl.className = 'proof-value ' + (ps.sherlock_ran ? 'proof-true' : 'proof-false');
+
+                    const auditEl = document.getElementById('proof-audit-status');
+                    auditEl.textContent = ps.audit_status;
+                    auditEl.className = 'proof-value ' + (ps.audit_status === 'PASS' ? 'proof-pass' : (ps.audit_status === 'FAIL' ? 'proof-fail' : ''));
+
+                    // DNA artifact counts
+                    const countsEl = document.getElementById('proof-dna-counts');
+                    const counts = ps.dna_artifact_counts || {{}};
+                    if (Object.keys(counts).length > 0) {{
+                        countsEl.textContent = Object.entries(counts).map(function(e) {{ return e[0] + ':' + e[1]; }}).join(', ');
+                    }} else {{
+                        countsEl.textContent = '(none)';
+                    }}
+
+                    // Sample artifacts
+                    const artifactsList = document.getElementById('proof-artifacts-list');
+                    const artifacts = ps.sample_artifacts || [];
+                    if (artifacts.length > 0) {{
+                        artifactsList.innerHTML = artifacts.slice(0, 5).map(function(a) {{
+                            return '<li>' + (a.type || 'unknown') + (a.count ? ' (' + a.count + ')' : '') + ' | derived=true, persisted=false</li>';
+                        }}).join('');
+                    }} else {{
+                        artifactsList.innerHTML = '<li>(no artifacts)</li>';
+                    }}
+
+                    // Show/hide panel based on tier or debug
+                    if (showProof) {{
+                        proofPanel.classList.remove('hidden');
+                    }} else {{
+                        proofPanel.classList.add('hidden');
+                    }}
+                }} else if (proofPanel) {{
+                    proofPanel.classList.add('hidden');
                 }}
 
                 // === IMAGE PARSE INFO ===
@@ -5180,6 +5350,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "entities": result.entities,
             "secondaryFactors": result.secondary_factors,
             "humanSummary": result.human_summary,
+            "proofSummary": result.proof_summary,
         }
 
         # Sprint 5: Persist evaluation for sharing
