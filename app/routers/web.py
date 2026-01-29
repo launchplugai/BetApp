@@ -3056,10 +3056,10 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
 
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <a class="nav-tab {discover_active}" data-tab="discover">Discover</a>
-            <a class="nav-tab {evaluate_active}" data-tab="evaluate">Evaluate</a>
-            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
-            <a class="nav-tab {history_active}" data-tab="history">History</a>
+            <a class="nav-tab {discover_active}" href="#discover" data-tab="discover">Discover</a>
+            <a class="nav-tab {evaluate_active}" href="#evaluate" data-tab="evaluate">Evaluate</a>
+            <a class="nav-tab {builder_active}" href="#builder" data-tab="builder">Builder</a>
+            <a class="nav-tab {history_active}" href="#history" data-tab="history">History</a>
         </nav>
 
         <!-- Discover Tab Content -->
@@ -3732,8 +3732,8 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
         // ============================================================
         // TAB SWITCHING
         // ============================================================
-        // Global function for programmatic tab switching
-        function switchToTab(tabName) {{
+        // Global function for programmatic tab switching (exposed on window for inline handlers)
+        window.switchToTab = function switchToTab(tabName) {{
             const navTabs = document.querySelectorAll('.nav-tab');
             const tabContents = document.querySelectorAll('.tab-content');
 
@@ -3760,13 +3760,14 @@ def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
             if (tabName === 'builder' && typeof window._checkFixContext === 'function') {{
                 window._checkFixContext();
             }}
-        }}
+        }};
 
         (function() {{
             const navTabs = document.querySelectorAll('.nav-tab');
 
             navTabs.forEach(tab => {{
-                tab.addEventListener('click', function() {{
+                tab.addEventListener('click', function(e) {{
+                    e.preventDefault();
                     switchToTab(this.dataset.tab);
                 }});
             }});

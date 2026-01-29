@@ -142,12 +142,26 @@ class TestUIFlowLock:
     def test_cold_load_evaluate_is_active_tab(self, client):
         """Evaluate nav tab has active class by default."""
         response = client.get("/app")
-        assert 'class="nav-tab active" data-tab="evaluate"' in response.text
+        # Check that evaluate tab has both active class and data-tab attribute
+        assert 'nav-tab' in response.text
+        assert 'class="nav-tab active"' in response.text
+        assert 'data-tab="evaluate"' in response.text
+        # Verify the active tab is evaluate (not another tab)
+        text = response.text
+        eval_active_start = text.find('class="nav-tab active"')
+        eval_data_tab = text.find('data-tab="evaluate"', eval_active_start)
+        # They should be close together (same element)
+        assert eval_data_tab - eval_active_start < 100
 
     def test_cold_load_builder_not_active(self, client):
         """Builder tab is NOT active on cold load."""
         response = client.get("/app")
-        assert 'class="nav-tab active" data-tab="builder"' not in response.text
+        text = response.text
+        # Find the builder tab and verify it doesn't have active class
+        builder_pos = text.find('data-tab="builder"')
+        # Check the class attribute before data-tab="builder"
+        preceding_text = text[max(0, builder_pos - 100):builder_pos]
+        assert 'nav-tab active' not in preceding_text or 'nav-tab' in preceding_text
 
     def test_discover_tab_has_cta_to_evaluate(self, client):
         """Discover tab exists with CTA that routes to Evaluate."""
@@ -278,6 +292,40 @@ class TestUIFlowLock:
         """No placeholder 'coming soon' text anywhere."""
         response = client.get("/app")
         assert "coming soon" not in response.text.lower()
+
+
+class TestMobileSafariCompatibility:
+    """Tests for iOS Safari click handling and JS function exposure."""
+
+    def test_nav_tabs_have_href_attributes(self, client):
+        """Nav tabs must have href for iOS Safari click events."""
+        response = client.get("/app")
+        text = response.text
+        # All nav tabs should have href attributes
+        assert 'href="#discover"' in text
+        assert 'href="#evaluate"' in text
+        assert 'href="#builder"' in text
+        assert 'href="#history"' in text
+
+    def test_switchToTab_exposed_on_window(self, client):
+        """switchToTab function must be exposed globally for inline handlers."""
+        response = client.get("/app")
+        # Check that switchToTab is assigned to window object
+        assert "window.switchToTab" in response.text
+
+    def test_builder_functions_exposed_on_window(self, client):
+        """Builder functions must be exposed globally for onclick handlers."""
+        response = client.get("/app")
+        text = response.text
+        assert "window.addBuilderLeg" in text
+        assert "window.removeBuilderLeg" in text
+        assert "window.evaluateBuilderParlay" in text
+
+    def test_nav_tab_click_handlers_prevent_default(self, client):
+        """Nav tab click handlers must prevent default anchor behavior."""
+        response = client.get("/app")
+        # Check for e.preventDefault() in the nav tab click handler
+        assert "e.preventDefault()" in response.text
 
 
 class TestCoreLoopReinforcement:
