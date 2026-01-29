@@ -273,28 +273,41 @@ class TestStructuredLogging:
 
     def test_rate_limited_request_logged(self, client):
         """Verify rate-limited requests are logged with rate_limited=True."""
-        # Use strict limiter
-        from app.rate_limiter import set_rate_limiter, RateLimiter
-        set_rate_limiter(RateLimiter(requests_per_minute=60, burst_size=1))
-        from app.main import app
-        from fastapi.testclient import TestClient
-        client_strict = TestClient(app)
+        import os
+        # Disable rate limit bypass for this test
+        old_mode = os.environ.get("DNA_RATE_LIMIT_MODE")
+        os.environ["DNA_RATE_LIMIT_MODE"] = "prod"
+        try:
+            # Use strict limiter
+            from app.rate_limiter import set_rate_limiter, RateLimiter
+            import app.rate_limiter
+            app.rate_limiter._bypass_warning_logged = False  # Reset for next test
+            set_rate_limiter(RateLimiter(requests_per_minute=60, burst_size=1))
+            from app.main import app
+            from fastapi.testclient import TestClient
+            client_strict = TestClient(app)
 
-        # First request succeeds
-        client_strict.post(
-            "/app/evaluate",
-            json={"input": "Lakers -5.5", "tier": "good"},
-        )
-
-        # Second request should be rate limited
-        with patch("app.routers.web._logger") as mock_logger:
-            response = client_strict.post(
+            # First request succeeds
+            client_strict.post(
                 "/app/evaluate",
                 json={"input": "Lakers -5.5", "tier": "good"},
             )
-            assert response.status_code == 429
 
-            call_args = mock_logger.info.call_args
-            log_dict = call_args[0][1] if len(call_args[0]) > 1 else call_args[1]
-            assert log_dict["rate_limited"] is True
-            assert log_dict["status_code"] == 429
+            # Second request should be rate limited
+            with patch("app.routers.web._logger") as mock_logger:
+                response = client_strict.post(
+                    "/app/evaluate",
+                    json={"input": "Lakers -5.5", "tier": "good"},
+                )
+                assert response.status_code == 429
+
+                call_args = mock_logger.info.call_args
+                log_dict = call_args[0][1] if len(call_args[0]) > 1 else call_args[1]
+                assert log_dict["rate_limited"] is True
+                assert log_dict["status_code"] == 429
+        finally:
+            # Restore original mode
+            if old_mode is None:
+                os.environ.pop("DNA_RATE_LIMIT_MODE", None)
+            else:
+                os.environ["DNA_RATE_LIMIT_MODE"] = old_mode

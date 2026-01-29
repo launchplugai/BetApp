@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Bet Engine</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>DNA Bet Engine</h1>
+            </div>
+            {user_section}
+        </header>
+
+        <!-- Orientation Banner -->
+        {orientation_banner}
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <a class="nav-tab {discover_active}" data-tab="discover">Discover</a>
+            <a class="nav-tab {evaluate_active}" data-tab="evaluate">Evaluate</a>
+            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
+            <a class="nav-tab {history_active}" data-tab="history">History</a>
+        </nav>
+
+        <!-- Discover Tab Content -->
+        <div class="tab-content {discover_active}" id="tab-discover">
+            <div class="discover-section">
+                <div class="discover-hero">
+                    <h2>Know Your Bet Before You Place It</h2>
+                    <p class="discover-tagline">We analyze risk, correlation, and fragility so you can make informed decisions.</p>
+                </div>
+
+                <div class="discover-steps">
+                    <div class="discover-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Submit Your Bet</h3>
+                            <p>Paste text, upload an image, or build a parlay from scratch.</p>
+                        </div>
+                    </div>
+                    <div class="discover-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Get Your Analysis</h3>
+                            <p>See fragility score, correlation risks, and actionable recommendations.</p>
+                        </div>
+                    </div>
+                    <div class="discover-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>See What's Weak</h3>
+                            <p>Know which legs add risk and what to change before you commit.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="discover-signals">
+                    <h3>Signal Guide</h3>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-blue">Strong</span>
+                        <span class="discover-signal-desc">Top risk: minimal</span>
+                    </div>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-green">Solid</span>
+                        <span class="discover-signal-desc">Top risk: moderate</span>
+                    </div>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-yellow">Fixable</span>
+                        <span class="discover-signal-desc">Top risk: addressable</span>
+                    </div>
+                    <div class="discover-signal-row">
+                        <span class="discover-signal-badge signal-red">Fragile</span>
+                        <span class="discover-signal-desc">Top risk: critical</span>
+                    </div>
+                </div>
+
+                <div class="discover-cta">
+                    <button type="button" class="submit-btn discover-start-btn" onclick="switchToTab('evaluate')">
+                        Start Evaluating
+                    </button>
+                </div>
+
+                <!-- Example Bundles for Quick Evaluation -->
+                <div class="discover-bundles">
+                    <h3>Try an Example</h3>
+                    <div class="bundle-grid">
+                        <div class="bundle-card" onclick="evaluateBundle('Lakers -5.5 + Celtics ML + LeBron O27.5 pts')">
+                            <div class="bundle-card-label">NBA Multi-Leg</div>
+                            <div class="bundle-card-preview">Lakers -5.5 + Celtics ML...</div>
+                        </div>
+                        <div class="bundle-card" onclick="evaluateBundle('Chiefs -3.5 + Mahomes O280 yds + Kelce TD')">
+                            <div class="bundle-card-label">NFL Parlay</div>
+                            <div class="bundle-card-preview">Chiefs -3.5 + Mahomes...</div>
+                        </div>
+                        <div class="bundle-card" onclick="evaluateBundle('Over 220.5 Lakers vs Nuggets')">
+                            <div class="bundle-card-label">Single Total</div>
+                            <div class="bundle-card-preview">Over 220.5 Lakers vs...</div>
+                        </div>
+                        <div class="bundle-card" onclick="evaluateBundle('Giannis O30 pts + Bucks ML + Jokic O25 pts + Nuggets -4.5')">
+                            <div class="bundle-card-label">4-Leg Parlay</div>
+                            <div class="bundle-card-preview">Giannis O30 + Bucks...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End tab-discover -->
+
+        <!-- Builder Tab Content (Ticket 9: Builder Improvement Workbench) -->
+        <div class="tab-content {builder_active}" id="tab-builder">
+            <!-- BLOCKED STATE: No evaluation context -->
+            <div class="fix-blocked" id="fix-blocked">
+                <div class="fix-blocked-icon">&#128683;</div>
+                <div class="fix-blocked-message">Builder requires an evaluation. Go to Evaluate.</div>
+                <div class="fix-blocked-hint">Evaluate a parlay to see your slip and get fix recommendations</div>
+                <button type="button" class="fix-blocked-cta" onclick="switchToTab('evaluate')">Go to Evaluate</button>
+            </div>
+
+            <!-- WORKBENCH MODE: Active when evaluation context exists -->
+            <div class="builder-workbench hidden" id="builder-workbench">
+                <!-- Header with updating indicator -->
+                <div class="builder-header">
+                    <div class="builder-title">Improve Your Slip</div>
+                    <div class="builder-updating hidden" id="builder-updating">
+                        <div class="builder-updating-dot"></div>
+                        <span>Updating...</span>
+                    </div>
+                </div>
+
+                <!-- A. FASTEST FIX CARD (at top) -->
+                <div class="fastest-fix-card" id="fastest-fix-card">
+                    <div class="fastest-fix-header">
+                        <span class="fastest-fix-label">Fastest Fix</span>
+                        <span class="fastest-fix-action" id="fastest-fix-action"></span>
+                    </div>
+                    <div class="fastest-fix-description" id="fastest-fix-description"></div>
+                    <div class="fastest-fix-reason" id="fastest-fix-reason"></div>
+                    <button type="button" class="fastest-fix-button" id="fastest-fix-button">
+                        Apply Fix
+                    </button>
+                    <div class="fastest-fix-disabled-reason hidden" id="fastest-fix-disabled-reason"></div>
+                </div>
+
+                <!-- B. SLIP LEG LIST -->
+                <div class="slip-leg-list" id="slip-leg-list">
+                    <div class="slip-leg-list-header">
+                        <span class="slip-leg-list-title">Your Slip</span>
+                        <span class="slip-leg-count" id="slip-leg-count">0 legs</span>
+                    </div>
+                    <div id="slip-leg-rows">
+                        <!-- Legs populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- C. LIVE DELTA PANEL -->
+                <div class="delta-panel" id="delta-panel">
+                    <div class="delta-panel-header">Before vs After</div>
+                    <div class="delta-panel-grid">
+                        <div class="delta-panel-state before">
+                            <div class="delta-panel-label">Before</div>
+                            <div class="delta-panel-signal" id="delta-before-signal-wb"></div>
+                            <div class="delta-panel-score" id="delta-before-score-wb"></div>
+                        </div>
+                        <div class="delta-panel-arrow" id="delta-arrow">&rarr;</div>
+                        <div class="delta-panel-state after">
+                            <div class="delta-panel-label">After</div>
+                            <div class="delta-panel-signal" id="delta-after-signal-wb"></div>
+                            <div class="delta-panel-score" id="delta-after-score-wb"></div>
+                        </div>
+                    </div>
+                    <div class="delta-change-indicators" id="delta-change-indicators">
+                        <div class="delta-change-item">
+                            <span>Signal:</span>
+                            <span id="delta-signal-arrow" class="arrow-same">&mdash;</span>
+                        </div>
+                        <div class="delta-change-item">
+                            <span>Fragility:</span>
+                            <span id="delta-fragility-arrow" class="arrow-same">&mdash;</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- D. ACTION BAR -->
+                <div class="builder-action-bar">
+                    <button type="button" class="builder-save-btn" id="builder-save-btn" disabled>
+                        Save to History
+                    </button>
+                    <button type="button" class="builder-back-btn" id="builder-back-btn">
+                        Back
+                    </button>
+                </div>
+            </div>
+        </div> <!-- End tab-builder -->
+
+        <!-- Toast notification -->
+        <div class="toast" id="toast"></div>
+
+        <!-- Evaluate Tab Content -->
+        <div class="tab-content {evaluate_active}" id="tab-evaluate">
+            <div class="main-grid">
+                <div class="evaluate-section">
+                    <!-- Bet Slip Intake Card -->
+                    <div class="bet-slip-card" id="bet-slip-card">
+                        <div class="bet-slip-card-header">
+                            <span class="bet-slip-icon">&#128179;</span>
+                            <div>
+                                <div class="bet-slip-title">Bet Slip</div>
+                                <div class="bet-slip-subtitle">Upload an image or paste your bet text</div>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: Provide bet -->
+                        <div class="eval-step-indicator">
+                            <span class="eval-step-number">1</span>
+                            <span class="eval-step-label">Provide bet</span>
+                        </div>
+
+                        <!-- Input Type Tabs -->
+                        <div class="input-tabs">
+                            <div class="input-tab active" data-input="text">Paste Text</div>
+                            <div class="input-tab" data-input="image">Upload Image</div>
+                            <div class="input-tab" data-input="bundle">Build</div>
+                        </div>
+
+                        <!-- Text Input Panel -->
+                        <div class="input-panel active" id="text-input-panel">
+                            <textarea class="text-input" id="eval-text-input" placeholder="Paste your bet slip text here...&#10;&#10;Example:&#10;Lakers -5.5 + Celtics ML + LeBron O27.5 pts parlay"></textarea>
+                        </div>
+
+                        <!-- Image Input Panel -->
+                        <div class="input-panel" id="image-input-panel">
+                            <div class="file-upload-area" id="file-upload-area">
+                                <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp" capture="environment">
+                                <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
+                                <div class="file-upload-text" id="file-upload-text">
+                                    Click to upload or take a photo<br>
+                                    <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                                </div>
+                                <div class="file-selected hidden" id="file-selected">
+                                    <div class="file-selected-icon">&#9989;</div>
+                                    <div class="file-selected-name" id="file-name"></div>
+                                    <button type="button" class="clear-file-btn" id="clear-file">Remove</button>
+                                </div>
+                            </div>
+                            <!-- Image Preview with Thumbnail -->
+                            <div class="image-preview-container hidden" id="image-preview-container">
+                                <div class="image-preview-row">
+                                    <img id="image-preview-thumb" class="image-preview-thumb" src="" alt="Preview">
+                                    <div class="image-preview-info">
+                                        <div class="image-preview-name" id="image-preview-name"></div>
+                                        <div class="image-preview-status" id="image-preview-status">Ready to extract</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="image-error hidden" id="image-error"></div>
+                            <!-- Extracted Text Display -->
+                            <div class="extracted-text-container hidden" id="extracted-text-container">
+                                <div class="extracted-text-header">
+                                    <span class="extracted-text-label">Extracted Slip Text</span>
+                                    <span class="extracted-text-confidence" id="extracted-confidence"></span>
+                                </div>
+                                <textarea class="extracted-text-content" id="extracted-text-content" placeholder="Extracted bet text will appear here..."></textarea>
+                                <button type="button" class="use-extracted-btn" id="use-extracted-btn">Use This Text</button>
+                            </div>
+                        </div>
+
+                        <!-- Bundle Input Panel -->
+                        <div class="input-panel" id="bundle-input-panel">
+                            <div class="bundle-prompt">
+                                <p>Build a custom parlay using the Builder.</p>
+                                <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Go to Builder</button>
+                            </div>
+                        </div>
+
+                        <!-- Tier Selection: Choose depth -->
+                        <div class="eval-step-indicator" style="margin-top: var(--sp-4); margin-bottom: var(--sp-2);">
+                            <span class="eval-step-number">2</span>
+                            <span class="eval-step-label">Choose depth</span>
+                        </div>
+                        <div class="tier-selector">
+                            <div class="tier-option">
+                                <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
+                                <label for="eval-tier-good">
+                                    <div class="tier-name">GOOD</div>
+                                    <div class="tier-desc">Signal + Verdict</div>
+                                </label>
+                            </div>
+                            <div class="tier-option">
+                                <input type="radio" name="eval-tier" id="eval-tier-better" value="better">
+                                <label for="eval-tier-better">
+                                    <div class="tier-name">BETTER</div>
+                                    <div class="tier-desc">+ Correlations</div>
+                                </label>
+                            </div>
+                            <div class="tier-option">
+                                <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
+                                <label for="eval-tier-best">
+                                    <div class="tier-name">BEST</div>
+                                    <div class="tier-desc">+ Alerts</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Analyze -->
+                        <div class="eval-step-indicator" style="margin-top: var(--sp-4); margin-bottom: var(--sp-2);">
+                            <span class="eval-step-number">3</span>
+                            <span class="eval-step-label">Analyze</span>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="button" class="submit-btn eval-submit" id="eval-submit-btn" disabled>
+                            Evaluate
+                        </button>
+
+                        <!-- Builder CTA: response to evaluation, not destination -->
+                        <button type="button" class="secondary-btn builder-cta disabled" id="builder-cta-btn" disabled title="Evaluate a bet first" style="margin-top: var(--sp-3); width: 100%;">
+                            Improve This Bet
+                        </button>
+
+                        <!-- Working Overlay -->
+                        <div class="working-overlay hidden" id="working-overlay">
+                            <div class="working-spinner"></div>
+                            <div class="working-text" id="working-text">Working...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section - Structured Output Cards -->
+                <div class="results-section">
+                    <div class="section-header">
+                        <span class="section-title">Analysis Results</span>
+                        <span class="tier-indicator hidden" id="tier-indicator"></span>
+                    </div>
+
+                    <div id="eval-results-placeholder" class="results-placeholder">
+                        <p>Enter or upload your bet slip and click Evaluate</p>
+                    </div>
+
+                    <div id="eval-results-content" class="hidden">
+                        <!-- VC-3: PAYOFF BANNER (shows after apply-fix) -->
+                        <div class="payoff-banner hidden" id="payoff-banner">
+                            <div class="payoff-header">
+                                <span class="payoff-title">Fix Applied</span>
+                                <button type="button" class="payoff-dismiss" id="payoff-dismiss">&times;</button>
+                            </div>
+                            <div class="payoff-line" id="payoff-line"></div>
+                            <div class="payoff-status" id="payoff-status"></div>
+                        </div>
+
+                        <!-- VC-3: MINI DIFF (collapsed, shows after apply-fix) -->
+                        <details class="mini-diff hidden" id="mini-diff">
+                            <summary>See what changed</summary>
+                            <div class="mini-diff-content">
+                                <div class="mini-diff-row">
+                                    <span class="mini-diff-label">Primary Failure</span>
+                                    <span class="mini-diff-before" id="mini-diff-pf-before"></span>
+                                    <span class="mini-diff-arrow">&rarr;</span>
+                                    <span class="mini-diff-after" id="mini-diff-pf-after"></span>
+                                </div>
+                                <div class="mini-diff-row">
+                                    <span class="mini-diff-label">Recommendation</span>
+                                    <span class="mini-diff-before" id="mini-diff-rec-before"></span>
+                                    <span class="mini-diff-arrow">&rarr;</span>
+                                    <span class="mini-diff-after" id="mini-diff-rec-after"></span>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Card 1: SIGNAL BAR (always shown) -->
+                        <div class="result-card signal-bar-card" id="signal-bar-card">
+                            <div class="signal-bar-left">
+                                <span class="signal-bar-badge" id="signal-bar-badge"></span>
+                                <span class="signal-bar-label" id="signal-bar-label"></span>
+                            </div>
+                            <div class="signal-bar-right">
+                                <div class="signal-bar-grade" id="signal-bar-grade"></div>
+                                <div class="signal-bar-score" id="signal-bar-score"></div>
+                            </div>
+                        </div>
+
+                        <!-- Legacy elements for test compatibility -->
+                        <div id="compressed-pf" class="hidden">
+                            <span id="cpf-badge"></span>
+                            <div id="cpf-description"></div>
+                        </div>
+                        <button id="compressed-fix-cta" class="hidden"></button>
+                        <div id="compressed-delta" class="hidden">
+                            <span id="cdelta-signal-before"></span>
+                            <span id="cdelta-score-before"></span>
+                            <span id="cdelta-signal-after"></span>
+                            <span id="cdelta-score-after"></span>
+                        </div>
+
+                        <!-- Card 2: PRIMARY FAILURE (always shown) -->
+                        <div class="result-card pf-card" id="pf-card">
+                            <div class="result-card-header">Primary Risk</div>
+                            <span class="pf-card-badge" id="pf-card-badge"></span>
+                            <div class="pf-card-description" id="pf-card-description"></div>
+                        </div>
+
+                        <!-- Card 3: FASTEST FIX (always shown if available) -->
+                        <div class="result-card fix-card hidden" id="fix-card">
+                            <div class="result-card-header">Recommended Fix <span class="fix-card-arrow">&rarr;</span></div>
+                            <div class="fix-card-action" id="fix-card-action"></div>
+                            <div class="fix-card-description" id="fix-card-description"></div>
+                        </div>
+
+                        <!-- Card 4: DELTA PREVIEW (shown if fix available) -->
+                        <div class="result-card delta-card hidden" id="delta-card">
+                            <div class="delta-state">
+                                <div class="delta-state-label">Before</div>
+                                <div class="delta-state-signal" id="delta-before-signal"></div>
+                                <div class="delta-state-score" id="delta-before-score"></div>
+                            </div>
+                            <div class="delta-arrow-big">&rarr;</div>
+                            <div class="delta-state">
+                                <div class="delta-state-label">After Fix</div>
+                                <div class="delta-state-signal" id="delta-after-signal"></div>
+                                <div class="delta-state-score" id="delta-after-score"></div>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: WARNINGS (always shown if any) -->
+                        <div class="result-card warnings-card hidden" id="warnings-card">
+                            <div class="result-card-header">Warnings</div>
+                            <ul class="warnings-list" id="warnings-list"></ul>
+                        </div>
+
+                        <!-- Card 6: TIPS (always shown if any) -->
+                        <div class="result-card tips-card hidden" id="tips-card">
+                            <div class="result-card-header">Tips</div>
+                            <ul class="tips-list" id="tips-list"></ul>
+                        </div>
+
+                        <!-- BETTER+ Card: CORRELATIONS (tier-gated) -->
+                        <div class="result-card hidden" id="correlations-card">
+                            <div class="result-card-header">Correlations <span class="tier-indicator better">BETTER+</span></div>
+                            <div id="correlations-list"></div>
+                        </div>
+
+                        <!-- BETTER+ Card: INSIGHTS (tier-gated) -->
+                        <div class="result-card hidden" id="insights-card">
+                            <div class="result-card-header">Insights <span class="tier-indicator better">BETTER+</span></div>
+                            <div id="insights-list"></div>
+                        </div>
+
+                        <!-- BEST Card: ALERTS (tier-gated) -->
+                        <div class="result-card hidden" id="alerts-card" style="border-left: 4px solid var(--signal-red); background: rgba(239, 68, 68, 0.03);">
+                            <div class="result-card-header">Live Alerts <span class="tier-indicator best">BEST</span></div>
+                            <div id="alerts-list"></div>
+                        </div>
+
+                        <!-- BEST Card: RECOMMENDED NEXT STEP (tier-gated) -->
+                        <div class="result-card hidden" id="next-step-card" style="border-left: 4px solid var(--accent); background: rgba(74, 158, 255, 0.03);">
+                            <div class="result-card-header">Recommended Next Step <span class="tier-indicator best">BEST</span></div>
+                            <div id="next-step-content"></div>
+                        </div>
+
+                        <!-- IMPROVE IN BUILDER Button -->
+                        <button type="button" class="improve-btn" id="improve-btn" disabled>
+                            Improve in Builder
+                        </button>
+
+                        <!-- Expandable Details (raw data) -->
+                        <details class="eval-details-accordion" id="eval-details-accordion" style="margin-top: var(--sp-3);">
+                            <summary>View Raw Details</summary>
+                            <div class="details-content">
+                                <!-- Signal + Grade (for test compatibility) -->
+                                <div class="detail-row" id="detail-signal-row">
+                                    <span class="detail-label">Signal</span>
+                                    <span class="detail-value" id="detail-signal"></span>
+                                </div>
+                                <div class="detail-row" id="detail-fragility-row">
+                                    <span class="detail-label">Fragility</span>
+                                    <span class="detail-value" id="detail-fragility"></span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Leg Penalty</span>
+                                    <span class="detail-value" id="detail-leg-penalty"></span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Correlation Penalty</span>
+                                    <span class="detail-value" id="detail-correlation"></span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Correlation Multiplier</span>
+                                    <span class="detail-value" id="detail-corr-mult"></span>
+                                </div>
+                                <div class="detail-section" id="detail-contributors">
+                                    <span class="detail-section-label">Contributors</span>
+                                    <div class="detail-section-content" id="detail-contributors-list"></div>
+                                </div>
+                                <!-- Warnings (for test compatibility) -->
+                                <div class="detail-section hidden" id="detail-warnings">
+                                    <span class="detail-section-label">Warnings</span>
+                                    <ul class="detail-section-content" id="detail-warnings-list"></ul>
+                                </div>
+                                <!-- Tips (for test compatibility) -->
+                                <div class="detail-section hidden" id="detail-tips">
+                                    <span class="detail-section-label">Tips</span>
+                                    <ul class="detail-section-content" id="detail-tips-list"></ul>
+                                </div>
+                                <!-- Correlations (for test compatibility) -->
+                                <div class="detail-section hidden" id="detail-correlations">
+                                    <span class="detail-section-label">Correlations</span>
+                                    <div class="detail-section-content" id="detail-correlations-list"></div>
+                                </div>
+                                <!-- Summary (for test compatibility) -->
+                                <div class="detail-section hidden" id="detail-summary">
+                                    <span class="detail-section-label">Insights</span>
+                                    <div class="detail-section-content" id="detail-summary-list"></div>
+                                </div>
+                                <!-- Alerts (for test compatibility) -->
+                                <div class="detail-section hidden" id="detail-alerts">
+                                    <span class="detail-section-label">Alerts</span>
+                                    <div class="detail-section-content" id="detail-alerts-list"></div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- System Proof Panel (Ticket 18: visible for BEST tier or ?debug=1) -->
+                        <details class="system-proof-panel hidden" id="system-proof-panel">
+                            <summary>System Proof</summary>
+                            <div class="system-proof-content">
+                                <div class="proof-status-row">
+                                    <span class="proof-label">Sherlock Enabled</span>
+                                    <span class="proof-value" id="proof-sherlock-enabled">--</span>
+                                </div>
+                                <div class="proof-status-row">
+                                    <span class="proof-label">DNA Recording Enabled</span>
+                                    <span class="proof-value" id="proof-dna-enabled">--</span>
+                                </div>
+                                <div class="proof-status-row">
+                                    <span class="proof-label">Sherlock Ran</span>
+                                    <span class="proof-value" id="proof-sherlock-ran">--</span>
+                                </div>
+                                <div class="proof-status-row">
+                                    <span class="proof-label">Audit Status</span>
+                                    <span class="proof-value" id="proof-audit-status">--</span>
+                                </div>
+                                <div class="proof-status-row" id="proof-audit-notes-row">
+                                    <span class="proof-label">Audit Notes</span>
+                                    <span class="proof-value" id="proof-audit-notes">--</span>
+                                </div>
+                                <div class="proof-artifacts-section" id="proof-artifacts-section">
+                                    <div class="proof-artifacts-header">DNA Artifacts</div>
+                                    <div class="proof-artifacts-grid">
+                                        <div class="proof-artifact-item">
+                                            <span class="proof-artifact-label">Correlations</span>
+                                            <span class="proof-artifact-value" id="proof-artifact-correlations">0</span>
+                                        </div>
+                                        <div class="proof-artifact-item">
+                                            <span class="proof-artifact-label">Fragility</span>
+                                            <span class="proof-artifact-value" id="proof-artifact-fragility">--</span>
+                                        </div>
+                                        <div class="proof-artifact-item">
+                                            <span class="proof-artifact-label">Inductor</span>
+                                            <span class="proof-artifact-value" id="proof-artifact-inductor">--</span>
+                                        </div>
+                                        <div class="proof-artifact-item">
+                                            <span class="proof-artifact-label">Recommendation</span>
+                                            <span class="proof-artifact-value" id="proof-artifact-recommendation">--</span>
+                                        </div>
+                                        <div class="proof-artifact-item">
+                                            <span class="proof-artifact-label">Suggestions</span>
+                                            <span class="proof-artifact-value" id="proof-artifact-suggestions">0</span>
+                                        </div>
+                                        <div class="proof-artifact-item proof-artifact-total">
+                                            <span class="proof-artifact-label">Total Artifacts</span>
+                                            <span class="proof-artifact-value" id="proof-artifact-total">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="proof-metadata">
+                                    <div class="proof-metadata-row">
+                                        <span class="proof-label">Proof ID</span>
+                                        <span class="proof-value proof-id" id="proof-id">--</span>
+                                    </div>
+                                    <div class="proof-metadata-row">
+                                        <span class="proof-label">Timestamp</span>
+                                        <span class="proof-value" id="proof-timestamp">--</span>
+                                    </div>
+                                    <div class="proof-metadata-row">
+                                        <span class="proof-label">Derived</span>
+                                        <span class="proof-value" id="proof-derived">true</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Loop Shortcuts -->
+                        <div class="loop-shortcuts" id="loop-shortcuts">
+                            <button type="button" class="loop-btn loop-reeval" id="loop-reeval">Re-Evaluate</button>
+                            <button type="button" class="loop-btn loop-try-fix hidden" id="loop-try-fix">Try Another Fix</button>
+                            <button type="button" class="loop-btn loop-save" id="loop-save">Save</button>
+                        </div>
+                    </div>
+
+                    <div id="eval-error-panel" class="error-panel hidden">
+                        <h3>Error</h3>
+                        <div class="error-text" id="eval-error-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- End tab-evaluate -->
+
+        <!-- History Tab Content (Ticket 6) -->
+        <div class="tab-content {history_active}" id="tab-history">
+            <div class="history-section">
+                <div class="section-header">
+                    <span class="section-title">Evaluation History</span>
+                </div>
+
+                <div id="history-content">
+                    <div class="history-loading">Loading history...</div>
+                </div>
+
+                <!-- Empty state (shown when no items) -->
+                <div id="history-empty" class="history-empty-state hidden">
+                    <p>No evaluations yet.</p>
+                    <button type="button" class="history-start-btn" onclick="switchToTab('evaluate')">Start Evaluating</button>
+                </div>
+            </div>
+        </div> <!-- End tab-history -->
+
+    </div>
+
+
+    <script src="/static/app.js"></script>
+
+    <!-- Build Footer Stamp -->
+    <div class="build-footer{build_footer_class}">
+        <a href="/build" target="_blank">
+            {build_footer_text}
+        </a>
+    </div>
+</body>
+</html>

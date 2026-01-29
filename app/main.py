@@ -3,9 +3,12 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import load_config, log_config_snapshot
@@ -83,6 +86,10 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 
+# Mount static files for extracted web assets (CSS, JS)
+_STATIC_DIR = Path(__file__).resolve().parent / "web_assets" / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
 # Include routers
 # Web router first (handles / and /app)
 app.include_router(web.router)
@@ -105,6 +112,18 @@ async def health():
         "build_time_utc": _config.build_time_utc,
         "started_at": _SERVICE_START_TIME.isoformat(),
     }
+
+
+@app.get("/build")
+async def build_info():
+    """
+    Build info endpoint (Ticket 10).
+
+    Returns deployment visibility information.
+    """
+    from dataclasses import asdict
+    from app.build_info import get_build_info
+    return asdict(get_build_info())
 
 
 @app.get("/debug/contracts")

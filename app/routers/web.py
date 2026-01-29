@@ -207,7 +207,7 @@ def _get_landing_page_html() -> str:
 </html>"""
 
 
-def _get_app_page_html(user=None, active_tab: str = "evaluate") -> str:
+def _get_app_page_html(user=None, active_tab: str = "discover") -> str:
     """Generate app page HTML with tabbed interface.
 
     Args:

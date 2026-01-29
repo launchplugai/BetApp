@@ -7,12 +7,22 @@ Provides a guided core-loop experience with image import for testing Leading Lig
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
+from app.build_info import get_short_commit_sha, get_environment, get_build_time_utc, is_commit_unknown
+
 router = APIRouter(tags=["Panel"])
 
 
 @router.get("/panel", response_class=HTMLResponse)
 async def dev_panel():
     """Render developer testing panel UI with image import and glassmorphism."""
+    # Build info for footer stamp
+    build_commit = get_short_commit_sha()
+    build_env = get_environment()
+    build_time = get_build_time_utc()
+    build_unknown = is_commit_unknown()
+    stale_class = " stale" if build_unknown else ""
+    footer_text = "Build unknown. Hard refresh (Ctrl+Shift+R)." if build_unknown else f"Build: {build_commit} &bull; {build_env} &bull; {build_time}"
+
     html_content = """
 <!DOCTYPE html>
 <html lang="en">
@@ -759,6 +769,35 @@ async def dev_panel():
             margin-top: 8px;
             font-size: 12px;
         }
+
+        /* Build Footer Stamp */
+        .build-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(10, 10, 10, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            z-index: 200;
+        }
+        .build-footer a {
+            color: #666;
+            text-decoration: none;
+        }
+        .build-footer a:hover {
+            color: #888;
+        }
+        .build-footer.stale {
+            color: #fbbf24;
+        }
+        .build-footer.stale a {
+            color: #fbbf24;
+        }
     </style>
 </head>
 <body>
@@ -770,7 +809,7 @@ async def dev_panel():
             <div class="status-pills">
                 <span id="voice-status" class="status-pill">Voice: Loading...</span>
                 <span id="leading-light-status" class="status-pill">Leading Light: Loading...</span>
-                <span class="status-pill" style="background: rgba(100, 100, 100, 0.2); border-color: rgba(150, 150, 150, 0.3); cursor: default;">Build: 37040b9</span>
+                <span class="status-pill" style="background: rgba(100, 100, 100, 0.2); border-color: rgba(150, 150, 150, 0.3); cursor: default;">Build: {{BUILD_COMMIT}}</span>
             </div>
         </div>
 
@@ -1564,7 +1603,16 @@ async def dev_panel():
             }
         }
     </script>
+
+    <!-- Build Footer Stamp -->
+    <div class="build-footer{{STALE_CLASS}}">
+        <a href="/build" target="_blank">{{FOOTER_TEXT}}</a>
+    </div>
 </body>
 </html>
     """
+    # Replace placeholders with dynamic values
+    html_content = html_content.replace("{{BUILD_COMMIT}}", build_commit)
+    html_content = html_content.replace("{{STALE_CLASS}}", stale_class)
+    html_content = html_content.replace("{{FOOTER_TEXT}}", footer_text)
     return HTMLResponse(content=html_content)

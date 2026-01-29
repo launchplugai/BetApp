@@ -30,32 +30,24 @@ def client_disabled():
 
 
 class TestLandingPage:
-    """Tests for GET / endpoint."""
+    """Tests for GET / endpoint (redirects to /v1)."""
 
     def test_returns_200(self, client):
-        """Landing page returns 200 status."""
+        """Landing page returns 200 status (after redirect)."""
         response = client.get("/")
         assert response.status_code == 200
 
     def test_contains_service_name(self, client):
         """Landing page contains service name marker."""
         response = client.get("/")
-        assert "DNA Matrix" in response.text
+        # v1 UI uses "DNA Bet Engine" branding
+        assert "DNA Bet Engine" in response.text
 
-    def test_contains_leading_light(self, client):
-        """Landing page contains Leading Light marker."""
+    def test_contains_navigation(self, client):
+        """Landing page contains navigation elements."""
         response = client.get("/")
-        assert "Leading Light" in response.text
-
-    def test_contains_app_link(self, client):
-        """Landing page contains link to /app."""
-        response = client.get("/")
-        assert "/app" in response.text
-
-    def test_contains_health_link(self, client):
-        """Landing page contains link to /health."""
-        response = client.get("/")
-        assert "/health" in response.text
+        # v1 UI has /v1/build and /v1/history navigation
+        assert "/v1" in response.text
 
     def test_returns_html_content_type(self, client):
         """Landing page returns HTML content type."""

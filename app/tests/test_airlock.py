@@ -179,6 +179,7 @@ class TestIntegrationWithRoutes:
     def client(self):
         """Create test client with Leading Light enabled."""
         os.environ["LEADING_LIGHT_ENABLED"] = "true"
+        os.environ["OPENAI_API_KEY"] = "test-key-for-ci"  # Mock key for tests
         from app.rate_limiter import set_rate_limiter, RateLimiter
         set_rate_limiter(RateLimiter(requests_per_minute=100, burst_size=100))
         from app.main import app
