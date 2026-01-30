@@ -1,6 +1,6 @@
 # app/proof_summary.py
 """
-Proof Summary Helper (Ticket 18B, updated Ticket 19)
+Proof Summary Helper (Ticket 18B, updated Ticket 19, Ticket 21)
 
 Derives a compact proof summary from explainability blocks for UI display.
 This is a read-only view - no persistence, no external calls.
@@ -10,9 +10,15 @@ Ticket 19 additions:
 - Contract version tracking
 - Quarantine status for invalid artifacts
 
+Ticket 21 additions:
+- UI contract validation status
+- UI contract version tracking
+- Normalized artifacts safe for UI display
+
 Contracts referenced:
 - docs/contracts/SCH_SDK_CONTRACT.md#section-4-finalreport-schema
 - contracts/dna_contract_v1.json
+- app/dna/ui_contract_v1.py
 """
 from __future__ import annotations
 
@@ -56,6 +62,10 @@ class ProofSummary:
     dna_quarantined: bool = False
     dna_contract_errors: List[str] = field(default_factory=list)
 
+    # Ticket 21: UI contract validation status
+    ui_contract_status: str = "PASS"  # "PASS", "FAIL"
+    ui_contract_version: str = "unknown"
+
     # Metadata
     derived: bool = True
     persisted: bool = False
@@ -74,6 +84,9 @@ class ProofSummary:
             "dna_contract_version": self.dna_contract_version,
             "dna_quarantined": self.dna_quarantined,
             "dna_contract_errors": self.dna_contract_errors,
+            # Ticket 21 fields
+            "ui_contract_status": self.ui_contract_status,
+            "ui_contract_version": self.ui_contract_version,
             # Metadata
             "derived": self.derived,
             "persisted": self.persisted,
@@ -139,15 +152,23 @@ def derive_proof_summary(
     dna_recording_enabled: bool,
     explainability_output: Optional[Dict[str, Any]],
     contract_validation: Optional[Dict[str, Any]] = None,
+    dna_artifacts: Optional[List[Dict[str, Any]]] = None,
+    dna_artifact_counts: Optional[Dict[str, int]] = None,
+    ui_contract_status: str = "PASS",
+    ui_contract_version: str = "unknown",
 ) -> ProofSummary:
     """
-    Derive proof summary from explainability output.
+    Derive proof summary from explainability output and real DNA artifacts.
 
     Args:
         sherlock_enabled: Whether SHERLOCK_ENABLED flag is true
         dna_recording_enabled: Whether DNA_RECORDING_ENABLED flag is true
         explainability_output: Dict from transform_sherlock_to_explainability().to_dict()
         contract_validation: Optional dict from ValidationResult.to_dict() (Ticket 19)
+        dna_artifacts: Optional list of real emitted DNA artifacts (Ticket 20)
+        dna_artifact_counts: Optional dict of artifact counts by type (Ticket 20)
+        ui_contract_status: UI contract validation status (Ticket 21)
+        ui_contract_version: UI contract version (Ticket 21)
 
     Returns:
         ProofSummary with all derived fields
@@ -183,6 +204,8 @@ def derive_proof_summary(
             dna_contract_version=dna_contract_version,
             dna_quarantined=dna_quarantined,
             dna_contract_errors=dna_contract_errors,
+            ui_contract_status=ui_contract_status,
+            ui_contract_version=ui_contract_version,
         )
 
     if not explainability_output.get("enabled", False):
@@ -203,6 +226,8 @@ def derive_proof_summary(
             dna_contract_version=dna_contract_version,
             dna_quarantined=dna_quarantined,
             dna_contract_errors=dna_contract_errors,
+            ui_contract_status=ui_contract_status,
+            ui_contract_version=ui_contract_version,
         )
 
     # Sherlock ran - extract summary
@@ -211,30 +236,41 @@ def derive_proof_summary(
     audit_passed = summary.get("audit_passed", False)
     audit_status = "PASS" if audit_passed else "FAIL"
 
-    # Extract DNA counts from blocks
-    blocks = explainability_output.get("blocks", [])
-    dna_preview_block = None
-    for block in blocks:
-        if block.get("block_type") == "dna_preview":
-            dna_preview_block = block
-            break
+    # Ticket 20: Use real artifacts if provided, otherwise fall back to extraction
+    if dna_artifact_counts is not None:
+        # Use real artifact counts from emitter
+        final_artifact_counts = dna_artifact_counts
+    else:
+        # Fall back to extracting from explainability blocks
+        blocks = explainability_output.get("blocks", [])
+        dna_preview_block = None
+        for block in blocks:
+            if block.get("block_type") == "dna_preview":
+                dna_preview_block = block
+                break
+        final_artifact_counts = _extract_dna_counts(dna_preview_block)
 
-    dna_artifact_counts = _extract_dna_counts(dna_preview_block)
-
-    # Build sample artifacts
-    sample_artifacts = _build_sample_artifacts(dna_artifact_counts, audit_status)
+    # Ticket 20: Use real artifacts if provided, otherwise build synthetic samples
+    if dna_artifacts is not None and len(dna_artifacts) > 0:
+        # Use real artifacts (limit to 5 for display)
+        sample_artifacts = dna_artifacts[:5]
+    else:
+        # Build synthetic sample artifacts
+        sample_artifacts = _build_sample_artifacts(final_artifact_counts, audit_status)
 
     return ProofSummary(
         sherlock_enabled=sherlock_enabled,
         dna_recording_enabled=dna_recording_enabled,
         sherlock_ran=sherlock_ran,
         audit_status=audit_status,
-        dna_artifact_counts=dna_artifact_counts,
+        dna_artifact_counts=final_artifact_counts,
         sample_artifacts=sample_artifacts,
         dna_contract_status=dna_contract_status,
         dna_contract_version=dna_contract_version,
         dna_quarantined=dna_quarantined,
         dna_contract_errors=dna_contract_errors,
+        ui_contract_status=ui_contract_status,
+        ui_contract_version=ui_contract_version,
     )
 
 

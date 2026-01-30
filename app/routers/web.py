@@ -3117,6 +3117,36 @@ def _get_app_page_html(user=None, active_tab: str = "discover") -> str:
             color: var(--fg-faint);
             font-size: 10px;
         }}
+        /* Ticket 21: Artifact rendering hardening */
+        .proof-artifact-normal {{
+            color: var(--fg-muted);
+        }}
+        .proof-artifact-fallback {{
+            color: var(--signal-yellow);
+            font-style: italic;
+        }}
+        .proof-artifact-unknown {{
+            color: var(--fg-faint);
+            font-style: italic;
+        }}
+        .proof-artifact-unsafe {{
+            color: var(--signal-red);
+        }}
+        .proof-artifact-empty {{
+            color: var(--fg-faint);
+            font-style: italic;
+        }}
+        .proof-artifact-error {{
+            color: var(--signal-red);
+            font-style: italic;
+        }}
+        .proof-ui-contract-fail {{
+            color: var(--signal-yellow);
+            font-size: 10px;
+            margin-top: var(--sp-1);
+            padding-top: var(--sp-1);
+            border-top: 1px dashed var(--border-subtle);
+        }}
     </style>
 </head>
 <body>
@@ -4384,24 +4414,69 @@ def _get_app_page_html(user=None, active_tab: str = "discover") -> str:
                     auditEl.textContent = ps.audit_status;
                     auditEl.className = 'proof-value ' + (ps.audit_status === 'PASS' ? 'proof-pass' : (ps.audit_status === 'FAIL' ? 'proof-fail' : ''));
 
-                    // DNA artifact counts
+                    // DNA artifact counts (Ticket 21: handle empty gracefully)
                     const countsEl = document.getElementById('proof-dna-counts');
                     const counts = ps.dna_artifact_counts || {{}};
-                    if (Object.keys(counts).length > 0) {{
-                        countsEl.textContent = Object.entries(counts).map(function(e) {{ return e[0] + ':' + e[1]; }}).join(', ');
-                    }} else {{
-                        countsEl.textContent = '(none)';
+                    try {{
+                        if (counts && typeof counts === 'object' && Object.keys(counts).length > 0) {{
+                            countsEl.textContent = Object.entries(counts).map(function(e) {{ return e[0] + ':' + e[1]; }}).join(', ');
+                        }} else {{
+                            countsEl.textContent = '(none)';
+                        }}
+                    }} catch (e) {{
+                        countsEl.textContent = '(error reading counts)';
                     }}
 
-                    // Sample artifacts
+                    // Sample artifacts (Ticket 21: harden rendering for unknown types and malformed artifacts)
                     const artifactsList = document.getElementById('proof-artifacts-list');
                     const artifacts = ps.sample_artifacts || [];
-                    if (artifacts.length > 0) {{
-                        artifactsList.innerHTML = artifacts.slice(0, 5).map(function(a) {{
-                            return '<li>' + (a.type || 'unknown') + (a.count ? ' (' + a.count + ')' : '') + ' | derived=true, persisted=false</li>';
-                        }}).join('');
-                    }} else {{
-                        artifactsList.innerHTML = '<li>(no artifacts)</li>';
+                    try {{
+                        if (Array.isArray(artifacts) && artifacts.length > 0) {{
+                            artifactsList.innerHTML = artifacts.slice(0, 5).map(function(a) {{
+                                // Safe field extraction with defaults
+                                if (!a || typeof a !== 'object') {{
+                                    return '<li class="proof-artifact-unknown">[malformed artifact] | ui_safe=false</li>';
+                                }}
+                                var artType = a.artifact_type || a.type || 'unknown';
+                                var displayLabel = a.display_label || artType;
+                                var displayText = a.display_text || '';
+                                var isFallback = a.is_fallback === true;
+                                var isUnknown = a.unknown_type === true;
+                                var uiSafe = a.ui_safe !== false;
+
+                                // Build display string
+                                var displayStr = displayLabel;
+                                if (displayText && displayText.length > 0 && displayText.length < 80) {{
+                                    displayStr += ': ' + displayText;
+                                }}
+
+                                // Add status indicator
+                                var statusClass = 'proof-artifact-normal';
+                                if (isFallback) {{
+                                    statusClass = 'proof-artifact-fallback';
+                                    displayStr += ' [FALLBACK]';
+                                }} else if (isUnknown) {{
+                                    statusClass = 'proof-artifact-unknown';
+                                    displayStr += ' [unknown type]';
+                                }} else if (!uiSafe) {{
+                                    statusClass = 'proof-artifact-unsafe';
+                                }}
+
+                                return '<li class="' + statusClass + '">' + displayStr + '</li>';
+                            }}).join('');
+                        }} else {{
+                            artifactsList.innerHTML = '<li class="proof-artifact-empty">(no artifacts)</li>';
+                        }}
+                    }} catch (e) {{
+                        artifactsList.innerHTML = '<li class="proof-artifact-error">(error rendering artifacts)</li>';
+                    }}
+
+                    // UI contract status (Ticket 21)
+                    if (ps.ui_contract_status && ps.ui_contract_status !== 'PASS') {{
+                        const uiStatusNote = document.createElement('div');
+                        uiStatusNote.className = 'proof-ui-contract-fail';
+                        uiStatusNote.textContent = 'UI Contract: ' + ps.ui_contract_status;
+                        artifactsList.parentNode.appendChild(uiStatusNote);
                     }}
 
                     // Show/hide panel based on tier or debug

@@ -57,6 +57,12 @@ from app.proof_summary import derive_proof_summary
 # DNA Contract Validator (Ticket 19)
 from app.dna.contract_validator import validate_dna_artifacts, get_contract_version
 
+# DNA Artifact Emitter (Ticket 20)
+from app.dna.artifact_emitter import emit_artifacts_from_evaluation, get_artifact_counts
+
+# UI Artifact Contract (Ticket 21)
+from app.dna.ui_contract_v1 import validate_for_ui, get_ui_contract_version
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -1596,22 +1602,25 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     if explainability_output:
         debug_explainability = explainability_output.to_dict()
 
-    # Step 15: Ticket 19 — Validate DNA artifacts against contract
-    # Extract sample artifacts from explainability for validation
-    dna_artifacts_to_validate = []
-    if debug_explainability:
-        blocks = debug_explainability.get("blocks", [])
-        for block in blocks:
-            if block.get("block_type") == "dna_preview":
-                # Extract sample artifacts from DNA preview
-                content = block.get("content", {})
-                samples = content.get("sample_artifacts", [])
-                dna_artifacts_to_validate.extend(samples)
+    # Step 15: Ticket 20 — Emit real DNA artifacts from evaluation data
+    # Artifacts are deterministic, derived, and never persisted.
+    dna_artifacts = emit_artifacts_from_evaluation(
+        evaluation_metrics={
+            "final_fragility": evaluation.metrics.final_fragility,
+            "correlation_penalty": evaluation.metrics.correlation_penalty,
+            "leg_penalty": evaluation.metrics.leg_penalty,
+        },
+        signal=signal_info.get("signal", "yellow") if signal_info else "yellow",
+        leg_count=leg_count,
+        primary_failure_type=primary_type,
+        request_id=str(evaluation.parlay_id),
+    )
+    dna_artifact_counts = get_artifact_counts(dna_artifacts)
 
-    # Run contract validation
+    # Step 16: Ticket 19 — Validate DNA artifacts against contract
     contract_validation = None
-    if dna_artifacts_to_validate:
-        validation_result = validate_dna_artifacts(dna_artifacts_to_validate)
+    if dna_artifacts:
+        validation_result = validate_dna_artifacts(dna_artifacts)
         contract_validation = validation_result.to_dict()
         if not validation_result.ok:
             _logger.warning(
@@ -1628,12 +1637,29 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
             "quarantined": False,
         }
 
-    # Step 16: Ticket 18B — Derive proof summary for UI display (with Ticket 19 validation)
+    # Step 17: Ticket 21 — Validate and normalize artifacts for UI via UI contract
+    # This is the final safety layer before artifacts reach the proof panel.
+    ui_validation = validate_for_ui(dna_artifacts)
+    ui_artifacts = ui_validation.normalized_artifacts  # Safe for UI
+    ui_contract_status = ui_validation.ui_contract_status
+    ui_contract_version = ui_validation.ui_contract_version
+
+    if not ui_validation.ok:
+        _logger.warning(
+            f"UI contract validation FAILED: {len(ui_validation.errors)} errors. "
+            f"Using fallback artifact for display."
+        )
+
+    # Step 18: Ticket 18B — Derive proof summary for UI display (with UI-safe artifacts)
     proof_summary = derive_proof_summary(
         sherlock_enabled=_config.sherlock_enabled,
         dna_recording_enabled=_config.dna_recording_enabled,
         explainability_output=debug_explainability,
         contract_validation=contract_validation,
+        dna_artifacts=ui_artifacts,  # Use UI-validated artifacts
+        dna_artifact_counts=dna_artifact_counts,
+        ui_contract_status=ui_contract_status,
+        ui_contract_version=ui_contract_version,
     ).to_dict()
 
     # Build public entity output (strip internal _raw_text, add Sprint 2 fields)
