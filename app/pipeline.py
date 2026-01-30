@@ -54,6 +54,9 @@ from app.explainability_adapter import transform_sherlock_to_explainability
 # Proof summary (Ticket 18B)
 from app.proof_summary import derive_proof_summary
 
+# DNA Contract Validator (Ticket 19)
+from app.dna.contract_validator import validate_dna_artifacts, get_contract_version
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -1593,11 +1596,44 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     if explainability_output:
         debug_explainability = explainability_output.to_dict()
 
-    # Step 15: Ticket 18B — Derive proof summary for UI display
+    # Step 15: Ticket 19 — Validate DNA artifacts against contract
+    # Extract sample artifacts from explainability for validation
+    dna_artifacts_to_validate = []
+    if debug_explainability:
+        blocks = debug_explainability.get("blocks", [])
+        for block in blocks:
+            if block.get("block_type") == "dna_preview":
+                # Extract sample artifacts from DNA preview
+                content = block.get("content", {})
+                samples = content.get("sample_artifacts", [])
+                dna_artifacts_to_validate.extend(samples)
+
+    # Run contract validation
+    contract_validation = None
+    if dna_artifacts_to_validate:
+        validation_result = validate_dna_artifacts(dna_artifacts_to_validate)
+        contract_validation = validation_result.to_dict()
+        if not validation_result.ok:
+            _logger.warning(
+                f"DNA contract validation FAILED: {len(validation_result.errors)} errors. "
+                f"Artifacts quarantined."
+            )
+    else:
+        # No artifacts to validate - still get contract version for proof summary
+        contract_validation = {
+            "ok": True,
+            "errors": [],
+            "contract_version": get_contract_version(),
+            "artifact_count": 0,
+            "quarantined": False,
+        }
+
+    # Step 16: Ticket 18B — Derive proof summary for UI display (with Ticket 19 validation)
     proof_summary = derive_proof_summary(
         sherlock_enabled=_config.sherlock_enabled,
         dna_recording_enabled=_config.dna_recording_enabled,
         explainability_output=debug_explainability,
+        contract_validation=contract_validation,
     ).to_dict()
 
     # Build public entity output (strip internal _raw_text, add Sprint 2 fields)

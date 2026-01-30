@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DNA Artifact Contract v1",
+  "description": "Canonical contract for DNA artifacts emitted by Sherlock mapping. This is the LAW.",
+  "contract_version": "dna_contract_v1",
+  "contract_effective_date": "2026-01-30",
+
+  "allowed_artifact_types": [
+    "weight",
+    "constraint",
+    "lineage",
+    "evidence",
+    "audit_note"
+  ],
+
+  "required_common_fields": {
+    "artifact_type": {
+      "type": "string",
+      "description": "Must be one of allowed_artifact_types"
+    },
+    "derived": {
+      "type": "boolean",
+      "required_value": true,
+      "description": "MUST be true - all artifacts are derived, not persisted"
+    },
+    "persisted": {
+      "type": "boolean",
+      "required_value": false,
+      "description": "MUST be false - no persistence allowed"
+    },
+    "source": {
+      "type": "string",
+      "required_value": "sherlock",
+      "description": "MUST be 'sherlock' - all artifacts come from Sherlock mapping"
+    },
+    "created_utc": {
+      "type": "string",
+      "format": "iso8601",
+      "description": "ISO 8601 timestamp of artifact creation"
+    },
+    "lineage": {
+      "type": "object",
+      "required_keys": ["request_id", "run_id", "claim_id"],
+      "description": "Provenance tracking for audit trail"
+    }
+  },
+
+  "per_type_required_fields": {
+    "weight": {
+      "key": {
+        "type": "string",
+        "description": "Weight identifier (e.g., 'correlation_penalty', 'leg_count_factor')"
+      },
+      "value": {
+        "type": "number",
+        "description": "Numeric weight value"
+      },
+      "unit": {
+        "type": "string",
+        "optional": true,
+        "description": "Optional unit (e.g., 'percent', 'multiplier')"
+      },
+      "rationale": {
+        "type": "string",
+        "optional": true,
+        "description": "Optional explanation for the weight"
+      }
+    },
+    "constraint": {
+      "key": {
+        "type": "string",
+        "description": "Constraint identifier"
+      },
+      "rule": {
+        "type": "string",
+        "description": "Human-readable rule description"
+      },
+      "severity": {
+        "type": "string",
+        "allowed_values": ["info", "warning", "error", "critical"],
+        "description": "Severity level of constraint violation"
+      }
+    },
+    "lineage": {
+      "parent_ids": {
+        "type": "array",
+        "items": "string",
+        "description": "List of parent artifact IDs"
+      },
+      "note": {
+        "type": "string",
+        "optional": true,
+        "description": "Optional note about lineage"
+      }
+    },
+    "evidence": {
+      "summary": {
+        "type": "string",
+        "description": "Human-readable evidence summary"
+      },
+      "confidence": {
+        "type": "number",
+        "min": 0,
+        "max": 1,
+        "description": "Confidence score between 0 and 1"
+      },
+      "internal_only": {
+        "type": "boolean",
+        "required_value": true,
+        "description": "MUST be true - evidence is internal only"
+      }
+    },
+    "audit_note": {
+      "status": {
+        "type": "string",
+        "allowed_values": ["PASS", "FAIL"],
+        "description": "Audit status"
+      },
+      "notes": {
+        "type": "array",
+        "items": "string",
+        "description": "List of audit notes"
+      }
+    }
+  },
+
+  "forbidden_fields": [
+    "pii",
+    "user_email",
+    "ip_address",
+    "raw_prompt",
+    "raw_model_output",
+    "api_key",
+    "password",
+    "secret",
+    "token",
+    "credential",
+    "ssn",
+    "credit_card",
+    "phone_number"
+  ],
+
+  "invariants": {
+    "no_mutation": "Validator MUST NOT mutate artifacts",
+    "no_persistence": "Validator MUST NOT persist anything",
+    "no_network": "Validator MUST NOT make network calls",
+    "deterministic": "Same input MUST produce same output"
+  }
+}

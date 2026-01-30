@@ -1,12 +1,18 @@
 # app/proof_summary.py
 """
-Proof Summary Helper (Ticket 18B)
+Proof Summary Helper (Ticket 18B, updated Ticket 19)
 
 Derives a compact proof summary from explainability blocks for UI display.
 This is a read-only view - no persistence, no external calls.
 
+Ticket 19 additions:
+- DNA contract validation status
+- Contract version tracking
+- Quarantine status for invalid artifacts
+
 Contracts referenced:
 - docs/contracts/SCH_SDK_CONTRACT.md#section-4-finalreport-schema
+- contracts/dna_contract_v1.json
 """
 from __future__ import annotations
 
@@ -44,6 +50,12 @@ class ProofSummary:
     # Sample artifacts (tiny list, 3-5 max)
     sample_artifacts: List[Dict[str, Any]]
 
+    # Ticket 19: Contract validation status
+    dna_contract_status: str = "NOT_VALIDATED"  # "PASS", "FAIL", "NOT_VALIDATED"
+    dna_contract_version: str = "unknown"
+    dna_quarantined: bool = False
+    dna_contract_errors: List[str] = field(default_factory=list)
+
     # Metadata
     derived: bool = True
     persisted: bool = False
@@ -57,6 +69,12 @@ class ProofSummary:
             "audit_status": self.audit_status,
             "dna_artifact_counts": self.dna_artifact_counts,
             "sample_artifacts": self.sample_artifacts,
+            # Ticket 19 fields
+            "dna_contract_status": self.dna_contract_status,
+            "dna_contract_version": self.dna_contract_version,
+            "dna_quarantined": self.dna_quarantined,
+            "dna_contract_errors": self.dna_contract_errors,
+            # Metadata
             "derived": self.derived,
             "persisted": self.persisted,
         }
@@ -120,6 +138,7 @@ def derive_proof_summary(
     sherlock_enabled: bool,
     dna_recording_enabled: bool,
     explainability_output: Optional[Dict[str, Any]],
+    contract_validation: Optional[Dict[str, Any]] = None,
 ) -> ProofSummary:
     """
     Derive proof summary from explainability output.
@@ -128,10 +147,23 @@ def derive_proof_summary(
         sherlock_enabled: Whether SHERLOCK_ENABLED flag is true
         dna_recording_enabled: Whether DNA_RECORDING_ENABLED flag is true
         explainability_output: Dict from transform_sherlock_to_explainability().to_dict()
+        contract_validation: Optional dict from ValidationResult.to_dict() (Ticket 19)
 
     Returns:
         ProofSummary with all derived fields
     """
+    # Ticket 19: Extract contract validation status
+    dna_contract_status = "NOT_VALIDATED"
+    dna_contract_version = "unknown"
+    dna_quarantined = False
+    dna_contract_errors: List[str] = []
+
+    if contract_validation:
+        dna_contract_status = "PASS" if contract_validation.get("ok", False) else "FAIL"
+        dna_contract_version = contract_validation.get("contract_version", "unknown")
+        dna_quarantined = contract_validation.get("quarantined", False)
+        dna_contract_errors = contract_validation.get("errors", [])[:10]  # Limit to 10
+
     # Determine execution status
     if not explainability_output:
         # Explainability not generated (Sherlock disabled)
@@ -147,6 +179,10 @@ def derive_proof_summary(
                 "derived": True,
                 "persisted": False,
             }],
+            dna_contract_status=dna_contract_status,
+            dna_contract_version=dna_contract_version,
+            dna_quarantined=dna_quarantined,
+            dna_contract_errors=dna_contract_errors,
         )
 
     if not explainability_output.get("enabled", False):
@@ -163,6 +199,10 @@ def derive_proof_summary(
                 "derived": True,
                 "persisted": False,
             }],
+            dna_contract_status=dna_contract_status,
+            dna_contract_version=dna_contract_version,
+            dna_quarantined=dna_quarantined,
+            dna_contract_errors=dna_contract_errors,
         )
 
     # Sherlock ran - extract summary
@@ -191,6 +231,10 @@ def derive_proof_summary(
         audit_status=audit_status,
         dna_artifact_counts=dna_artifact_counts,
         sample_artifacts=sample_artifacts,
+        dna_contract_status=dna_contract_status,
+        dna_contract_version=dna_contract_version,
+        dna_quarantined=dna_quarantined,
+        dna_contract_errors=dna_contract_errors,
     )
 
 
