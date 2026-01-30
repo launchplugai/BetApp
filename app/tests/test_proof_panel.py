@@ -393,3 +393,126 @@ class TestWebRouteProofResponse:
             assert "derived" in proof
             assert proof["derived"] is True
             assert proof["persisted"] is False
+
+
+# =============================================================================
+# Tests: Ticket 24 - Artifacts shown when Sherlock disabled
+# =============================================================================
+
+
+class TestTicket24ArtifactsWhenSherlockDisabled:
+    """Tests for Ticket 24 fix: artifacts should be shown even when Sherlock is disabled."""
+
+    def test_derive_proof_summary_uses_real_artifacts_when_sherlock_disabled(self):
+        """Ticket 24: Real artifacts should be used even when explainability_output is None."""
+        # Simulate real artifacts from artifact emitter
+        real_artifacts = [
+            {
+                "artifact_type": "audit_note",
+                "display_label": "Audit: PASS",
+                "display_text": "Analyzed 3-leg parlay structure. No significant correlation detected.",
+                "status": "PASS",
+                "notes": ["Structure verified", "Correlation check passed"],
+                "ui_safe": True,
+            },
+            {
+                "artifact_type": "weight",
+                "display_label": "Weight: correlation_penalty",
+                "display_text": "Correlation penalty applied to 3-leg parlay",
+                "key": "correlation_penalty",
+                "value": 0.5,
+                "ui_safe": True,
+            },
+        ]
+        real_counts = {"audit_note": 1, "weight": 1}
+
+        # Call with explainability_output=None (Sherlock disabled)
+        # but with real artifacts
+        result = derive_proof_summary(
+            sherlock_enabled=False,
+            dna_recording_enabled=False,
+            explainability_output=None,  # Sherlock disabled
+            dna_artifacts=real_artifacts,  # But we have real artifacts
+            dna_artifact_counts=real_counts,
+            ui_contract_status="PASS",
+            ui_contract_version="ui_contract_v1",
+        )
+
+        # Should use real artifacts, not the synthetic "status" fallback
+        assert len(result.sample_artifacts) == 2
+        assert result.sample_artifacts[0]["artifact_type"] == "audit_note"
+        assert result.sample_artifacts[0]["display_label"] == "Audit: PASS"
+        # Should NOT be the synthetic "type": "status" fallback
+        assert result.sample_artifacts[0].get("type") != "status"
+        assert result.sample_artifacts[0].get("message") != "sherlock_disabled"
+        # Counts should be preserved
+        assert result.dna_artifact_counts == {"audit_note": 1, "weight": 1}
+
+    def test_pipeline_shows_artifacts_when_sherlock_disabled(self):
+        """Ticket 24: Pipeline should show real artifacts even when Sherlock is disabled."""
+        with patch.dict(os.environ, {
+            "SHERLOCK_ENABLED": "false",  # Sherlock disabled
+            "DNA_RECORDING_ENABLED": "false",
+        }):
+            import importlib
+            import app.config
+            importlib.reload(app.config)
+
+            import app.pipeline
+            importlib.reload(app.pipeline)
+
+            from app.pipeline import run_evaluation
+            from app.airlock import NormalizedInput, Tier
+
+            # 3-leg parlay for meaningful evaluation
+            test_input = NormalizedInput(
+                input_text="Lakers -5.5 + Celtics ML + Nuggets over 220",
+                tier=Tier.GOOD,
+            )
+
+            result = run_evaluation(test_input)
+
+            # proof_summary should have real artifacts, not just "status"
+            assert result.proof_summary is not None
+            artifacts = result.proof_summary.get("sample_artifacts", [])
+            assert len(artifacts) >= 1
+
+            # Should have audit_note with meaningful content (Sherlock advisory)
+            audit_note = next(
+                (a for a in artifacts if a.get("artifact_type") == "audit_note"),
+                None
+            )
+            assert audit_note is not None, "Should have audit_note artifact"
+            # Should have display_label (normalized by UI contract)
+            assert "display_label" in audit_note
+            # Should NOT be the synthetic "status" fallback
+            assert audit_note.get("type") != "status"
+            assert audit_note.get("message") != "sherlock_disabled"
+
+    def test_dna_artifact_counts_present_when_sherlock_disabled(self):
+        """Ticket 24: dna_artifact_counts should be present when Sherlock disabled."""
+        with patch.dict(os.environ, {
+            "SHERLOCK_ENABLED": "false",
+            "DNA_RECORDING_ENABLED": "false",
+        }):
+            import importlib
+            import app.config
+            importlib.reload(app.config)
+
+            import app.pipeline
+            importlib.reload(app.pipeline)
+
+            from app.pipeline import run_evaluation
+            from app.airlock import NormalizedInput, Tier
+
+            test_input = NormalizedInput(
+                input_text="Lakers -5.5",
+                tier=Tier.GOOD,
+            )
+
+            result = run_evaluation(test_input)
+
+            # Should have artifact counts even when Sherlock disabled
+            counts = result.proof_summary.get("dna_artifact_counts", {})
+            # Should have at least audit_note and weight from artifact emitter
+            assert "audit_note" in counts or "weight" in counts

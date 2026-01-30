@@ -186,20 +186,31 @@ def derive_proof_summary(
         dna_contract_errors = contract_validation.get("errors", [])[:10]  # Limit to 10
 
     # Determine execution status
+    # Ticket 24 fix: Even when Sherlock/explainability is disabled, we should
+    # still use real DNA artifacts if they were provided. The artifact emitter
+    # runs unconditionally and produces meaningful audit_notes.
     if not explainability_output:
         # Explainability not generated (Sherlock disabled)
+        # But we may still have real artifacts from the emitter
+        final_artifact_counts = dna_artifact_counts if dna_artifact_counts is not None else {}
+        if dna_artifacts is not None and len(dna_artifacts) > 0:
+            # Use real artifacts (Ticket 24: artifacts are emitted unconditionally)
+            sample_artifacts = dna_artifacts[:5]
+        else:
+            # Fall back to synthetic status artifact
+            sample_artifacts = [{
+                "type": "status",
+                "message": "sherlock_disabled",
+                "derived": True,
+                "persisted": False,
+            }]
         return ProofSummary(
             sherlock_enabled=sherlock_enabled,
             dna_recording_enabled=dna_recording_enabled,
             sherlock_ran=False,
             audit_status="NOT_RUN",
-            dna_artifact_counts={},
-            sample_artifacts=[{
-                "type": "status",
-                "message": "sherlock_disabled",
-                "derived": True,
-                "persisted": False,
-            }],
+            dna_artifact_counts=final_artifact_counts,
+            sample_artifacts=sample_artifacts,
             dna_contract_status=dna_contract_status,
             dna_contract_version=dna_contract_version,
             dna_quarantined=dna_quarantined,
@@ -210,18 +221,26 @@ def derive_proof_summary(
 
     if not explainability_output.get("enabled", False):
         # Sherlock was disabled at runtime
+        # But we may still have real artifacts from the emitter
+        final_artifact_counts = dna_artifact_counts if dna_artifact_counts is not None else {}
+        if dna_artifacts is not None and len(dna_artifacts) > 0:
+            # Use real artifacts (Ticket 24: artifacts are emitted unconditionally)
+            sample_artifacts = dna_artifacts[:5]
+        else:
+            # Fall back to synthetic status artifact
+            sample_artifacts = [{
+                "type": "status",
+                "message": "sherlock_disabled_at_runtime",
+                "derived": True,
+                "persisted": False,
+            }]
         return ProofSummary(
             sherlock_enabled=sherlock_enabled,
             dna_recording_enabled=dna_recording_enabled,
             sherlock_ran=False,
             audit_status="NOT_RUN",
-            dna_artifact_counts={},
-            sample_artifacts=[{
-                "type": "status",
-                "message": "sherlock_disabled_at_runtime",
-                "derived": True,
-                "persisted": False,
-            }],
+            dna_artifact_counts=final_artifact_counts,
+            sample_artifacts=sample_artifacts,
             dna_contract_status=dna_contract_status,
             dna_contract_version=dna_contract_version,
             dna_quarantined=dna_quarantined,
