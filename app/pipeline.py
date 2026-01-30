@@ -1281,16 +1281,18 @@ def _build_secondary_factors(evaluation, blocks, entities, primary_type: str) ->
     return result
 
 
-def _build_human_summary(evaluation, blocks, entities, primary_failure) -> str:
+def _build_human_summary(evaluation, blocks, entities, primary_failure, canonical_leg_count: Optional[int] = None) -> str:
     """
     Generate a 2-3 sentence human-readable summary.
 
     Sprint 2: Always included, references recognized entities.
+    Ticket 27B: Accept canonical_leg_count for consistency with builder mode.
     No generic warnings. Opinionated and specific.
     """
     metrics = evaluation.metrics
     fragility = metrics.final_fragility
-    leg_count = len(blocks) if blocks else 0
+    # Ticket 27B: Use canonical leg count if provided, else fall back to blocks
+    leg_count = canonical_leg_count if canonical_leg_count is not None else (len(blocks) if blocks else 0)
     entities = entities or {}
 
     # Extract recognized entities for reference
@@ -1556,12 +1558,13 @@ def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list
     return notable
 
 
-def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info) -> dict:
+def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, canonical_leg_count: Optional[int] = None) -> dict:
     """
     Build the final verdict block: 2-4 sentence conclusive summary.
 
     Ticket 25 Part C: Ties together grade, risks, artifacts, and context.
     Ticket 27 Part E: Language consistency - "bet" for single, "parlay" for multiple.
+    Ticket 27B: Accept canonical_leg_count for consistency with builder mode.
     Tone: calm, direct, plain English, no jargon, no hedging.
 
     Returns dict with verdict_text, tone, and grade reference.
@@ -1575,7 +1578,8 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
 
     metrics = evaluation.metrics
     fragility = metrics.final_fragility
-    leg_count = len(blocks) if blocks else 0
+    # Ticket 27B: Use canonical leg count if provided, else fall back to blocks
+    leg_count = canonical_leg_count if canonical_leg_count is not None else (len(blocks) if blocks else 0)
     signal = signal_info.get("signal", "yellow") if signal_info else "yellow"
     grade = signal_info.get("grade", "C") if signal_info else "C"
 
@@ -1724,22 +1728,138 @@ def _build_grounding_warnings(
     """
     warnings = []
 
-    # Known NBA teams (lowercase for matching)
+    # All major sport teams (NBA, NFL, MLB, NHL) - lowercase for matching
     known_teams = {
-        "lakers", "lal", "celtics", "bos", "nuggets", "den", "bucks", "mil",
-        "warriors", "gsw", "suns", "phx", "76ers", "phi", "sixers", "mavericks",
-        "dal", "mavs", "heat", "mia", "nets", "bkn", "knicks", "nyk", "bulls",
-        "chi", "clippers", "lac", "thunder", "okc", "timberwolves", "min",
-        "wolves", "kings", "sac", "pelicans", "nop", "raptors", "tor", "jazz",
-        "uta", "grizzlies", "mem", "hawks", "atl", "hornets", "cha", "magic",
-        "orl", "pacers", "ind", "pistons", "det", "spurs", "sas", "wizards",
-        "was", "cavaliers", "cle", "cavs", "blazers", "por", "rockets", "hou",
-        # Common abbreviations
-        "boston", "denver", "milwaukee", "golden state", "phoenix", "philadelphia",
-        "dallas", "miami", "brooklyn", "new york", "chicago", "oklahoma",
-        "minnesota", "sacramento", "new orleans", "toronto", "utah", "memphis",
-        "atlanta", "charlotte", "orlando", "indiana", "detroit", "san antonio",
-        "washington", "cleveland", "portland", "houston",
+        # === NBA (30 teams) ===
+        "lakers", "lal", "los angeles lakers",
+        "celtics", "bos", "boston celtics", "boston",
+        "nuggets", "den", "denver nuggets", "denver",
+        "bucks", "mil", "milwaukee bucks", "milwaukee",
+        "warriors", "gsw", "golden state warriors", "golden state",
+        "suns", "phx", "phoenix suns", "phoenix",
+        "76ers", "phi", "sixers", "philadelphia 76ers", "philadelphia",
+        "mavericks", "dal", "mavs", "dallas mavericks", "dallas",
+        "heat", "mia", "miami heat", "miami",
+        "nets", "bkn", "brooklyn nets", "brooklyn",
+        "knicks", "nyk", "new york knicks",
+        "bulls", "chi", "chicago bulls", "chicago",
+        "clippers", "lac", "la clippers",
+        "thunder", "okc", "oklahoma city thunder", "oklahoma city", "oklahoma",
+        "timberwolves", "min", "wolves", "minnesota timberwolves", "minnesota",
+        "kings", "sac", "sacramento kings", "sacramento",
+        "pelicans", "nop", "new orleans pelicans", "new orleans",
+        "raptors", "tor", "toronto raptors", "toronto",
+        "jazz", "uta", "utah jazz", "utah",
+        "grizzlies", "mem", "memphis grizzlies", "memphis",
+        "hawks", "atl", "atlanta hawks", "atlanta",
+        "hornets", "cha", "charlotte hornets", "charlotte",
+        "magic", "orl", "orlando magic", "orlando",
+        "pacers", "ind", "indiana pacers", "indiana",
+        "pistons", "det", "detroit pistons", "detroit",
+        "spurs", "sas", "san antonio spurs", "san antonio",
+        "wizards", "was", "wsh", "washington wizards", "washington",
+        "cavaliers", "cle", "cavs", "cleveland cavaliers", "cleveland",
+        "blazers", "por", "trail blazers", "portland trail blazers", "portland",
+        "rockets", "hou", "houston rockets", "houston",
+
+        # === NFL (32 teams) ===
+        "chiefs", "kc", "kansas city chiefs", "kansas city",
+        "eagles", "phi", "philadelphia eagles",
+        "bills", "buf", "buffalo bills", "buffalo",
+        "cowboys", "dal", "dallas cowboys",
+        "49ers", "sf", "niners", "san francisco 49ers", "san francisco",
+        "ravens", "bal", "baltimore ravens", "baltimore",
+        "bengals", "cin", "cincinnati bengals", "cincinnati",
+        "lions", "det", "detroit lions",
+        "packers", "gb", "green bay packers", "green bay",
+        "dolphins", "mia", "miami dolphins",
+        "jets", "nyj", "new york jets",
+        "giants", "nyg", "new york giants",
+        "raiders", "lv", "las vegas raiders", "las vegas",
+        "chargers", "lac", "la chargers", "los angeles chargers",
+        "rams", "lar", "la rams", "los angeles rams",
+        "patriots", "ne", "new england patriots", "new england",
+        "steelers", "pit", "pittsburgh steelers", "pittsburgh",
+        "browns", "cle", "cleveland browns",
+        "broncos", "den", "denver broncos",
+        "texans", "hou", "houston texans",
+        "colts", "ind", "indianapolis colts", "indianapolis",
+        "jaguars", "jax", "jags", "jacksonville jaguars", "jacksonville",
+        "titans", "ten", "tennessee titans", "tennessee",
+        "commanders", "was", "wsh", "washington commanders",
+        "bears", "chi", "chicago bears",
+        "vikings", "min", "minnesota vikings",
+        "saints", "no", "new orleans saints",
+        "falcons", "atl", "atlanta falcons",
+        "panthers", "car", "carolina panthers", "carolina",
+        "buccaneers", "tb", "bucs", "tampa bay buccaneers", "tampa bay", "tampa",
+        "cardinals", "ari", "arizona cardinals", "arizona",
+        "seahawks", "sea", "seattle seahawks", "seattle",
+
+        # === MLB (30 teams) ===
+        "yankees", "nyy", "new york yankees",
+        "dodgers", "lad", "los angeles dodgers",
+        "red sox", "bos", "boston red sox",
+        "cubs", "chc", "chicago cubs",
+        "astros", "hou", "houston astros",
+        "braves", "atl", "atlanta braves",
+        "mets", "nym", "new york mets",
+        "phillies", "phi", "philadelphia phillies",
+        "padres", "sd", "san diego padres", "san diego",
+        "blue jays", "tor", "toronto blue jays",
+        "mariners", "sea", "seattle mariners",
+        "guardians", "cle", "cleveland guardians",
+        "twins", "min", "minnesota twins",
+        "orioles", "bal", "baltimore orioles",
+        "rays", "tb", "tampa bay rays",
+        "brewers", "mil", "milwaukee brewers",
+        "reds", "cin", "cincinnati reds",
+        "pirates", "pit", "pittsburgh pirates",
+        "white sox", "chw", "chicago white sox",
+        "royals", "kc", "kansas city royals",
+        "tigers", "det", "detroit tigers",
+        "angels", "laa", "los angeles angels", "anaheim",
+        "athletics", "oak", "a's", "oakland athletics", "oakland",
+        "rangers", "tex", "texas rangers", "texas",
+        "giants", "sf", "san francisco giants",
+        "rockies", "col", "colorado rockies", "colorado",
+        "diamondbacks", "ari", "dbacks", "arizona diamondbacks",
+        "marlins", "mia", "miami marlins",
+        "nationals", "was", "wsh", "washington nationals",
+
+        # === NHL (32 teams) ===
+        "bruins", "bos", "boston bruins",
+        "sabres", "buf", "buffalo sabres",
+        "red wings", "det", "detroit red wings",
+        "panthers", "fla", "florida panthers", "florida",
+        "canadiens", "mtl", "habs", "montreal canadiens", "montreal",
+        "senators", "ott", "ottawa senators", "ottawa",
+        "lightning", "tb", "tampa bay lightning",
+        "maple leafs", "tor", "leafs", "toronto maple leafs",
+        "hurricanes", "car", "carolina hurricanes",
+        "blue jackets", "cbj", "columbus blue jackets", "columbus",
+        "devils", "njd", "new jersey devils", "new jersey",
+        "islanders", "nyi", "new york islanders",
+        "rangers", "nyr", "new york rangers",
+        "flyers", "phi", "philadelphia flyers",
+        "penguins", "pit", "pens", "pittsburgh penguins",
+        "capitals", "was", "wsh", "caps", "washington capitals",
+        "blackhawks", "chi", "chicago blackhawks",
+        "avalanche", "col", "avs", "colorado avalanche",
+        "stars", "dal", "dallas stars",
+        "wild", "min", "minnesota wild",
+        "predators", "nsh", "preds", "nashville predators", "nashville",
+        "blues", "stl", "st louis blues", "st. louis blues", "st louis",
+        "jets", "wpg", "winnipeg jets", "winnipeg",
+        "ducks", "ana", "anaheim ducks",
+        "coyotes", "ari", "utah hockey club", "arizona coyotes",
+        "flames", "cgy", "calgary flames", "calgary",
+        "oilers", "edm", "edmonton oilers", "edmonton",
+        "kings", "lak", "la kings", "los angeles kings",
+        "sharks", "sj", "san jose sharks", "san jose",
+        "kraken", "sea", "seattle kraken",
+        "canucks", "van", "vancouver canucks", "vancouver",
+        "golden knights", "vgk", "vegas golden knights", "vegas",
     }
 
     # Extract entities from canonical legs or evaluated parlay
@@ -1977,6 +2097,13 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     blocks = _parse_bet_text(normalized.input_text)
     leg_count = len(blocks)
 
+    # Ticket 27B HOTFIX: Use canonical leg count when present (builder mode)
+    # This ensures ALL downstream outputs use the same leg_count
+    canonical_leg_count = None
+    if hasattr(normalized, 'canonical_legs') and normalized.canonical_legs:
+        canonical_leg_count = len(normalized.canonical_legs)
+        leg_count = canonical_leg_count  # Override with canonical count
+
     # Step 3: Call canonical evaluation engine
     evaluation = evaluate_parlay(
         blocks=blocks,
@@ -2028,7 +2155,8 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     secondary_factors = _build_secondary_factors(evaluation, blocks, entities, primary_type)
 
     # Step 12: Sprint 2 — Build human summary (always included)
-    human_summary = _build_human_summary(evaluation, blocks, entities, primary_failure)
+    # Ticket 27B: Pass canonical leg_count for consistency
+    human_summary = _build_human_summary(evaluation, blocks, entities, primary_failure, canonical_leg_count=leg_count)
 
     # Step 13: Ticket 17 — Run Sherlock hook (if enabled)
     sherlock_result = None
@@ -2131,7 +2259,8 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     notable_legs = _build_notable_legs(blocks, evaluation, primary_failure)
 
     # Step 21: Ticket 25 — Build final verdict (conclusive summary)
-    final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info)
+    # Ticket 27B: Pass canonical leg_count for consistency
+    final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, canonical_leg_count=leg_count)
 
     # Step 22: Ticket 26 — Build gentle guidance (optional adjustment hints)
     gentle_guidance = _build_gentle_guidance(primary_failure, signal_info)

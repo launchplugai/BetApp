@@ -643,6 +643,21 @@ def _get_canonical_ui_html() -> str:
         .builder-input::placeholder {{
             color: var(--text-muted);
         }}
+        .builder-sign {{
+            width: 60px;
+            flex-shrink: 0;
+            text-align: center;
+            font-weight: 600;
+        }}
+        .builder-line-value {{
+            flex: 1;
+        }}
+        #line-row {{
+            display: none;
+        }}
+        #line-row.active {{
+            display: flex;
+        }}
         .add-leg-btn {{
             width: 100%;
             padding: 10px;
@@ -777,7 +792,69 @@ def _get_canonical_ui_html() -> str:
 
                 <div class="builder-row">
                     <input type="text" id="builder-team" class="builder-input" placeholder="Team or Player" aria-label="Team or Player">
-                    <input type="text" id="builder-line" class="builder-input" placeholder="Line (e.g. -5.5)" aria-label="Line or Value">
+                </div>
+
+                <div class="builder-row" id="line-row">
+                    <select id="builder-sign" class="builder-select builder-sign" aria-label="Line Sign">
+                        <option value="-">-</option>
+                        <option value="+">+</option>
+                    </select>
+                    <select id="builder-line" class="builder-select builder-line-value" aria-label="Line Value">
+                        <option value="">Value</option>
+                        <option value="0.5">0.5</option>
+                        <option value="1">1</option>
+                        <option value="1.5">1.5</option>
+                        <option value="2">2</option>
+                        <option value="2.5">2.5</option>
+                        <option value="3">3</option>
+                        <option value="3.5">3.5</option>
+                        <option value="4">4</option>
+                        <option value="4.5">4.5</option>
+                        <option value="5">5</option>
+                        <option value="5.5">5.5</option>
+                        <option value="6">6</option>
+                        <option value="6.5">6.5</option>
+                        <option value="7">7</option>
+                        <option value="7.5">7.5</option>
+                        <option value="8">8</option>
+                        <option value="8.5">8.5</option>
+                        <option value="9">9</option>
+                        <option value="9.5">9.5</option>
+                        <option value="10">10</option>
+                        <option value="10.5">10.5</option>
+                        <option value="11">11</option>
+                        <option value="11.5">11.5</option>
+                        <option value="12">12</option>
+                        <option value="12.5">12.5</option>
+                        <option value="13">13</option>
+                        <option value="13.5">13.5</option>
+                        <option value="14">14</option>
+                        <option value="14.5">14.5</option>
+                        <option value="15">15</option>
+                        <option value="16">16</option>
+                        <option value="17">17</option>
+                        <option value="17.5">17.5</option>
+                        <option value="18">18</option>
+                        <option value="19">19</option>
+                        <option value="20">20</option>
+                        <option value="20.5">20.5</option>
+                        <option value="21">21</option>
+                        <option value="22">22</option>
+                        <option value="23">23</option>
+                        <option value="24">24</option>
+                        <option value="25">25</option>
+                        <option value="25.5">25.5</option>
+                        <option value="26">26</option>
+                        <option value="27">27</option>
+                        <option value="28">28</option>
+                        <option value="29">29</option>
+                        <option value="30">30</option>
+                        <option value="35">35</option>
+                        <option value="40">40</option>
+                        <option value="45">45</option>
+                        <option value="50">50</option>
+                        <option value="50.5">50.5</option>
+                    </select>
                 </div>
 
                 <div id="builder-warning" class="builder-warning"></div>
@@ -925,9 +1002,26 @@ def _get_canonical_ui_html() -> str:
         // Ticket 23: Quick Add Chips
         document.querySelectorAll('.quick-chip').forEach(chip => {{
             chip.addEventListener('click', () => {{
-                document.getElementById('builder-market').value = chip.dataset.market;
+                const selectedMarket = chip.dataset.market;
+                document.getElementById('builder-market').value = selectedMarket;
+                updateLineRowVisibility(selectedMarket);
                 document.getElementById('builder-team').focus();
             }});
+        }});
+
+        // Show/hide line row based on market type
+        function updateLineRowVisibility(market) {{
+            const lineRow = document.getElementById('line-row');
+            if (market === 'Spread' || market === 'Total' || market === 'Player Prop') {{
+                lineRow.classList.add('active');
+            }} else {{
+                lineRow.classList.remove('active');
+            }}
+        }}
+
+        // Market dropdown change handler
+        document.getElementById('builder-market').addEventListener('change', (e) => {{
+            updateLineRowVisibility(e.target.value);
         }});
 
         // Ticket 23: Add Leg
@@ -936,8 +1030,15 @@ def _get_canonical_ui_html() -> str:
         function addLeg() {{
             const market = document.getElementById('builder-market').value;
             const team = document.getElementById('builder-team').value.trim();
-            const line = document.getElementById('builder-line').value.trim();
+            const sign = document.getElementById('builder-sign').value;
+            const lineValue = document.getElementById('builder-line').value;
             const sport = document.getElementById('builder-sport').value;
+
+            // Build the full line (sign + value)
+            let line = '';
+            if (lineValue) {{
+                line = sign + lineValue;
+            }}
 
             // Validation
             if (!market) {{
@@ -949,7 +1050,7 @@ def _get_canonical_ui_html() -> str:
                 return;
             }}
             // Line is encouraged for Spread/Total/Prop but not strictly required
-            if ((market === 'Spread' || market === 'Total' || market === 'Player Prop') && !line) {{
+            if ((market === 'Spread' || market === 'Total' || market === 'Player Prop') && !lineValue) {{
                 showBuilderWarning('Line/value recommended for this market type');
                 // Don't return - allow adding without line
             }}
@@ -974,12 +1075,17 @@ def _get_canonical_ui_html() -> str:
                 legText += ' ' + (line || '');
                 legValue = line || null;
             }} else if (market === 'Total') {{
-                const totalText = line.toLowerCase().includes('over') || line.toLowerCase().includes('under') ? line : 'over ' + line;
+                // For totals, use "over" or "under" based on sign
+                const overUnder = sign === '+' ? 'over' : 'under';
+                const totalText = lineValue ? overUnder + ' ' + lineValue : '';
                 legText += ' ' + totalText;
-                legValue = totalText;
+                legValue = totalText || null;
             }} else if (market === 'Player Prop') {{
-                legText += ' ' + (line || 'prop');
-                legValue = line || null;
+                // For props, use "over" or "under" based on sign
+                const overUnder = sign === '+' ? 'over' : 'under';
+                const propText = lineValue ? overUnder + ' ' + lineValue : 'prop';
+                legText += ' ' + propText;
+                legValue = propText || null;
             }}
             legText = legText.trim();
 
@@ -1034,8 +1140,10 @@ def _get_canonical_ui_html() -> str:
         function clearBuilderInputs() {{
             document.getElementById('builder-market').value = '';
             document.getElementById('builder-team').value = '';
+            document.getElementById('builder-sign').value = '-';
             document.getElementById('builder-line').value = '';
             // Keep sport selected
+            updateLineRowVisibility('');  // Hide line row when cleared
         }}
 
         function showBuilderWarning(msg) {{

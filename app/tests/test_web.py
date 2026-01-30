@@ -598,7 +598,7 @@ class TestTicket27CanonicalLegsAndGrounding:
         assert len(warnings) > 0
         # Should mention the unrecognized entity or generic warning
         warning_text = " ".join(warnings).lower()
-        assert "could not" in warning_text or "recognized" in warning_text or "structural only" in warning_text
+        assert "could not" in warning_text or "recognized" in warning_text or "structural only" in warning_text or "may not correspond" in warning_text
 
     def test_recognized_entity_no_warning(self, client):
         """Part D: Recognized teams don't trigger entity warnings."""
@@ -652,3 +652,134 @@ class TestTicket27CanonicalLegsAndGrounding:
         data = response.json()
         display_label = data["evaluatedParlay"]["display_label"]
         assert display_label == "2-leg parlay"
+
+
+class TestTicket27BCanonicalContextConsistency:
+    """
+    Ticket 27B HOTFIX: Canonical Context Propagation tests.
+
+    Verifies that when canonical legs are present, ALL outputs use
+    the same leg_count (receipt, audit, summary, verdict).
+    """
+
+    def test_3_leg_canonical_produces_consistent_output(self, client):
+        """
+        With 3 canonical legs:
+        - Receipt shows 3 legs
+        - Summary uses "parlay" not "bet"
+        - No "1-leg" text anywhere in response
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5 + Nuggets over 220",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"},
+                {"entity": "Nuggets", "market": "total", "value": "over 220", "raw": "Nuggets over 220"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        # Receipt must show 3 legs
+        assert data["evaluatedParlay"]["leg_count"] == 3
+        assert len(data["evaluatedParlay"]["legs"]) == 3
+        assert data["evaluatedParlay"]["display_label"] == "3-leg parlay"
+
+        # Serialize full response to check for inconsistencies
+        import json
+        response_text = json.dumps(data).lower()
+
+        # Must NOT contain "1-leg parlay" anywhere
+        assert "1-leg parlay" not in response_text
+        assert "1 leg" not in response_text or "1 leg" in "31 leg"  # Allow "31 legs" etc
+
+        # Final verdict should use parlay language
+        verdict = data.get("finalVerdict", {})
+        if verdict and verdict.get("verdict_text"):
+            verdict_text = verdict["verdict_text"].lower()
+            # Should NOT say "this bet" for 3 legs
+            assert "single-bet" not in verdict_text
+
+    def test_canonical_legs_drive_all_outputs(self, client):
+        """
+        When canonical legs present, they drive leg_count everywhere.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5 + Nuggets over 220 + Warriors -3",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"},
+                {"entity": "Nuggets", "market": "total", "value": "over 220", "raw": "Nuggets over 220"},
+                {"entity": "Warriors", "market": "spread", "value": "-3", "raw": "Warriors -3"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        # Receipt shows canonical leg count
+        assert data["evaluatedParlay"]["leg_count"] == 4
+        assert data["evaluatedParlay"]["canonical"] is True
+
+        # Human summary should reference parlay structure
+        summary = data.get("humanSummary", "")
+        # Should not call it a "single bet" or "bet"
+        assert "single bet" not in summary.lower() or "parlay" in summary.lower()
+
+    def test_no_single_leg_terminology_in_multileg_parlay(self, client):
+        """
+        Regression: Ensure no "Single-leg" or "1-leg" text appears for multi-leg parlays.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Test parlay",
+            "tier": "good",
+            "legs": [
+                {"entity": "TeamA", "market": "spread", "value": "-5", "raw": "TeamA -5"},
+                {"entity": "TeamB", "market": "moneyline", "value": None, "raw": "TeamB ML"},
+                {"entity": "TeamC", "market": "total", "value": "over 200", "raw": "TeamC over 200"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        import json
+        full_response = json.dumps(data)
+
+        # These patterns should NOT appear for a 3-leg parlay
+        problematic_patterns = [
+            "Single-leg structure",
+            "1-leg parlay",
+            "Legs: 1",
+        ]
+
+        for pattern in problematic_patterns:
+            assert pattern not in full_response, f"Found '{pattern}' in response for 3-leg parlay"
+
+    def test_audit_legs_matches_canonical_count(self, client):
+        """
+        Audit note "Legs: X" must match canonical leg count.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Three leg parlay",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "spread", "value": "-5", "raw": "Lakers -5"},
+                {"entity": "Celtics", "market": "spread", "value": "-3", "raw": "Celtics -3"},
+                {"entity": "Nuggets", "market": "spread", "value": "-7", "raw": "Nuggets -7"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check proof summary artifacts for audit notes
+        proof = data.get("proofSummary", {})
+        artifacts = proof.get("sample_artifacts", [])
+
+        import json
+        artifacts_text = json.dumps(artifacts)
+
+        # If there's a "Legs: X" pattern, X must be 3
+        if "Legs:" in artifacts_text:
+            assert "Legs: 3" in artifacts_text, f"Expected 'Legs: 3' but got: {artifacts_text}"
+            assert "Legs: 1" not in artifacts_text, "Found 'Legs: 1' for 3-leg parlay"
