@@ -436,6 +436,14 @@ def _get_canonical_ui_html() -> str:
             margin-left: 8px;
             text-transform: uppercase;
         }}
+        /* Ticket 26 Part A: Leg Interpretation */
+        .leg-interpretation {{
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-style: italic;
+            padding-left: 0;
+        }}
         /* Ticket 25: Notable Legs */
         .notable-legs-list {{
             list-style: none;
@@ -478,6 +486,34 @@ def _get_canonical_ui_html() -> str:
         }}
         .verdict-section.tone-cautious {{
             border-left-color: var(--red);
+        }}
+        /* Ticket 26 Part C: Gentle Guidance */
+        .guidance-section {{
+            margin-top: 12px;
+            padding: 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }}
+        .guidance-header {{
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }}
+        .guidance-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .guidance-list li {{
+            padding: 6px 0;
+            font-size: 13px;
+            color: var(--text);
+            border-bottom: 1px dashed var(--border);
+        }}
+        .guidance-list li:last-child {{
+            border-bottom: none;
         }}
         /* Ticket 25: Action Buttons */
         .action-buttons {{
@@ -781,6 +817,12 @@ def _get_canonical_ui_html() -> str:
                 <p id="verdict-text" class="verdict-text"></p>
             </div>
 
+            <!-- Ticket 26 Part C: Gentle Guidance -->
+            <div id="guidance-section" class="card guidance-section" style="display: none;">
+                <div id="guidance-header" class="guidance-header"></div>
+                <ul id="guidance-list" class="guidance-list"></ul>
+            </div>
+
             <div id="debug-section" class="debug-section">
                 <div class="card">
                     <div class="debug-header" onclick="toggleDebug()">
@@ -1019,6 +1061,7 @@ def _get_canonical_ui_html() -> str:
             document.getElementById('action-buttons').classList.add('active');
 
             // Ticket 25: Evaluated Parlay Receipt
+            // Ticket 26 Part A: Leg interpretation display
             const parlay = data.evaluatedParlay;
             if (parlay) {{
                 document.getElementById('parlay-label').textContent = parlay.display_label || 'Parlay';
@@ -1026,8 +1069,13 @@ def _get_canonical_ui_html() -> str:
                 parlayLegs.innerHTML = '';
                 (parlay.legs || []).forEach(leg => {{
                     const li = document.createElement('li');
-                    li.innerHTML = escapeHtml(leg.text) +
+                    let html = escapeHtml(leg.text) +
                         '<span class="leg-type">' + (leg.bet_type || '').replace('_', ' ') + '</span>';
+                    // Ticket 26: Add interpretation if present
+                    if (leg.interpretation) {{
+                        html += '<div class="leg-interpretation">' + escapeHtml(leg.interpretation) + '</div>';
+                    }}
+                    li.innerHTML = html;
                     parlayLegs.appendChild(li);
                 }});
             }}
@@ -1124,6 +1172,23 @@ def _get_canonical_ui_html() -> str:
                 }}
             }} else {{
                 verdictSection.style.display = 'none';
+            }}
+
+            // Ticket 26 Part C: Gentle Guidance
+            const guidance = data.gentleGuidance;
+            const guidanceSection = document.getElementById('guidance-section');
+            if (guidance && guidance.suggestions && guidance.suggestions.length > 0) {{
+                guidanceSection.style.display = 'block';
+                document.getElementById('guidance-header').textContent = guidance.header || 'If you wanted to adjust this:';
+                const guidanceList = document.getElementById('guidance-list');
+                guidanceList.innerHTML = '';
+                guidance.suggestions.forEach(suggestion => {{
+                    const li = document.createElement('li');
+                    li.textContent = suggestion;
+                    guidanceList.appendChild(li);
+                }});
+            }} else {{
+                guidanceSection.style.display = 'none';
             }}
 
             // Debug section
@@ -1386,6 +1451,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "evaluatedParlay": result.evaluated_parlay,
             "notableLegs": result.notable_legs,
             "finalVerdict": result.final_verdict,
+            "gentleGuidance": result.gentle_guidance,
             "proofSummary": result.proof_summary,
         }
 

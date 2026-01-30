@@ -60,3 +60,6 @@ Thumbs.db
 *.pyc
 *.pyo
 
+
+# uv package manager
+uv.lock

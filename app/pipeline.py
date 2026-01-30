@@ -135,6 +135,9 @@ class PipelineResponse:
     # Ticket 25: Final Verdict (conclusive 2-4 sentence summary)
     final_verdict: Optional[dict] = None
 
+    # Ticket 26: Gentle Guidance (optional adjustment hints)
+    gentle_guidance: Optional[dict] = None
+
     # Ticket 17: Sherlock integration result (None if disabled)
     sherlock_result: Optional[dict] = None
 
@@ -1348,11 +1351,31 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure) -> str:
 # =============================================================================
 
 
+def _get_leg_interpretation(bet_type: str) -> str:
+    """
+    Return a short interpretation template for a given bet type.
+
+    Ticket 26 Part A: Muted sentence explaining what kind of risk a leg introduces.
+    """
+    interpretations = {
+        "spread": "Spread bet — outcome depends on final margin.",
+        "moneyline": "Moneyline bet — lower variance than spreads or totals.",
+        "total": "Total depends on game pace and scoring environment.",
+        "player_prop": "Player props tend to add variance relative to team outcomes.",
+        "unknown": "",
+    }
+    # Handle pick'em spreads (typically -1, +1, or similar)
+    if bet_type == "spread":
+        return interpretations["spread"]
+    return interpretations.get(bet_type, "")
+
+
 def _build_evaluated_parlay(blocks: list, input_text: str) -> dict:
     """
     Build the evaluated parlay receipt showing exactly what was evaluated.
 
     Ticket 25 Part A: User should never wonder what was evaluated.
+    Ticket 26 Part A: Adds interpretation field with micro-context per leg.
     Returns structured dict with leg_count and ordered leg list.
     """
     if not blocks:
@@ -1368,11 +1391,15 @@ def _build_evaluated_parlay(blocks: list, input_text: str) -> dict:
         leg_text = block.selection if hasattr(block, 'selection') else f"Leg {i+1}"
         bet_type = block.bet_type.value if hasattr(block, 'bet_type') else "unknown"
 
+        # Ticket 26 Part A: Add interpretation based on bet type
+        interpretation = _get_leg_interpretation(bet_type)
+
         legs.append({
             "position": i + 1,
             "text": leg_text,
             "bet_type": bet_type,
             "base_fragility": block.base_fragility if hasattr(block, 'base_fragility') else 0.0,
+            "interpretation": interpretation,
         })
 
     leg_count = len(legs)
@@ -1391,6 +1418,8 @@ def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list
     Build notable legs section with leg-aware context.
 
     Ticket 25 Part B: Select 1-3 legs that matter most with plain-English why.
+    Ticket 26 Part B: Expanded to 2-3 sentence cadence.
+
     Selection criteria (deterministic):
     - Player props (high variance)
     - Totals (dependency on game pace)
@@ -1411,41 +1440,68 @@ def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list
         corr_block_ids.add(str(corr.block_a))
         corr_block_ids.add(str(corr.block_b))
 
+    # Ticket 26 Part B: Expanded explanation templates (2-3 sentences)
+    # Cadence: [What it is]. [Why it matters]. [What you might see.]
+    expanded_reasons = {
+        "player_prop": (
+            "Props depend on individual performance. "
+            "A player might rest late, exit early, or simply miss shots. "
+            "That makes it harder to predict outcomes cleanly."
+        ),
+        "total": (
+            "Totals depend on combined scoring. "
+            "Game pace, foul trouble, and late-game situations all affect this. "
+            "A slow-paced blowout can easily miss a total."
+        ),
+        "correlation": (
+            "These legs share the same underlying game or outcome. "
+            "If one fails due to game flow, the other is more likely to fail too. "
+            "Consider whether you want both riding on the same conditions."
+        ),
+        "fragility": (
+            "This leg carries higher base volatility than others. "
+            "Small swings in the game could tip this outcome either way. "
+            "It contributes disproportionately to overall parlay risk."
+        ),
+    }
+
     # Score each leg for notability
     leg_scores = []
     for i, block in enumerate(blocks):
         score = 0
-        reasons = []
+        reason_key = None
         bet_type = block.bet_type.value if hasattr(block, 'bet_type') else "unknown"
         leg_text = block.selection if hasattr(block, 'selection') else f"Leg {i+1}"
 
-        # Player props add variance
+        # Player props add variance (highest priority)
         if bet_type == "player_prop":
             score += 3
-            reasons.append("Player props tend to add variance compared to sides.")
+            reason_key = "player_prop"
 
         # Totals depend on game pace
         if bet_type == "total":
             score += 2
-            reasons.append("Totals introduce dependency on game pace and scoring environment.")
-
-        # High base fragility
-        if hasattr(block, 'base_fragility') and block.base_fragility >= 0.15:
-            score += 2
-            if "variance" not in " ".join(reasons):
-                reasons.append("This leg contributes more to overall fragility than others.")
+            if reason_key is None:
+                reason_key = "total"
 
         # Involved in correlations
         block_id_str = str(block.block_id) if hasattr(block, 'block_id') else ""
         if block_id_str in corr_block_ids:
             score += 2
-            reasons.append("This leg shares outcome dependency with another leg.")
+            if reason_key is None:
+                reason_key = "correlation"
 
-        if score > 0 and reasons:
+        # High base fragility
+        if hasattr(block, 'base_fragility') and block.base_fragility >= 0.15:
+            score += 2
+            if reason_key is None:
+                reason_key = "fragility"
+
+        if score > 0 and reason_key:
             leg_scores.append({
                 "position": i + 1,
                 "leg": leg_text,
-                "reason": reasons[0],  # Take primary reason
+                "reason": expanded_reasons[reason_key],
                 "score": score,
             })
 
@@ -1525,6 +1581,75 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
         "tone": tone,
         "grade": grade,
         "signal": signal,
+    }
+
+
+def _build_gentle_guidance(primary_failure: dict, signal_info: dict) -> Optional[dict]:
+    """
+    Build optional gentle guidance section with neutral adjustment hints.
+
+    Ticket 26 Part C: "If you wanted to adjust this:" section.
+    Rules:
+    - Only show when signal is yellow or red
+    - Based on primary failure type, offer 1-2 neutral suggestions
+    - Never say "you should" — say "you could" or "one option would be"
+
+    Returns dict with suggestions list, or None if not applicable.
+    """
+    if not signal_info:
+        return None
+
+    signal = signal_info.get("signal", "yellow")
+
+    # Only show guidance for yellow/red signals
+    if signal in ("blue", "green"):
+        return None
+
+    pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
+
+    # Guidance templates mapped to primary failure types
+    guidance_map = {
+        "prop_density": [
+            "If you wanted to tighten this up, you could remove the prop legs.",
+            "One option would be to replace a prop with a side or total.",
+        ],
+        "volatility": [
+            "You could reduce volatility by swapping high-variance legs for sides.",
+            "One option would be to split this into two smaller parlays.",
+        ],
+        "correlation": [
+            "You could split correlated legs into separate tickets.",
+            "One option would be to keep just one leg from each correlated pair.",
+        ],
+        "dependency": [
+            "You could split dependent legs into separate tickets.",
+            "One option would be to remove same-game parlays that share outcomes.",
+        ],
+        "same_game_dependency": [
+            "Same-game legs often move together. You could move one to a separate ticket.",
+            "One option would be to pair the same-game legs with independent legs instead.",
+        ],
+        "leg_count": [
+            "Reducing by one or two legs would shift the math more in your favor.",
+            "You could trim the legs you feel least confident about.",
+        ],
+        "fragility": [
+            "You could replace the highest-fragility leg with a lower-variance pick.",
+            "One option would be to reduce overall leg count to offset the fragile pick.",
+        ],
+    }
+
+    # Default guidance if primary failure type not mapped
+    default_guidance = [
+        "You could simplify the structure by removing one or two legs.",
+        "One option would be to split this into smaller parlays.",
+    ]
+
+    suggestions = guidance_map.get(pf_type, default_guidance)
+
+    return {
+        "header": "If you wanted to adjust this:",
+        "suggestions": suggestions,
     }
 
 
@@ -1870,6 +1995,9 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Step 21: Ticket 25 — Build final verdict (conclusive summary)
     final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info)
 
+    # Step 22: Ticket 26 — Build gentle guidance (optional adjustment hints)
+    gentle_guidance = _build_gentle_guidance(primary_failure, signal_info)
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -1884,6 +2012,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         evaluated_parlay=evaluated_parlay,
         notable_legs=notable_legs,
         final_verdict=final_verdict,
+        gentle_guidance=gentle_guidance,
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,
         proof_summary=proof_summary,

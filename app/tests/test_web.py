@@ -392,3 +392,112 @@ class TestTicket25EvaluationReceipt:
             assert "position" in leg
             assert "text" in leg
             assert "bet_type" in leg
+
+
+class TestTicket26LegInterpretationAndGuidance:
+    """
+    Ticket 26: Leg Interpretation + Gentle Guidance tests.
+
+    Part A: Leg interpretation field under each leg
+    Part B: Expanded explanation cadence (2-3 sentences)
+    Part C: Gentle guidance for yellow/red signals
+    """
+
+    def test_leg_has_interpretation_field(self, client):
+        """Part A: Each leg has an interpretation field."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets over 220",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        legs = data["evaluatedParlay"]["legs"]
+        for leg in legs:
+            assert "interpretation" in leg
+
+    def test_spread_leg_has_spread_interpretation(self, client):
+        """Part A: Spread bet has correct interpretation text."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        legs = data["evaluatedParlay"]["legs"]
+        # At least one leg should have spread interpretation
+        spread_legs = [l for l in legs if l.get("bet_type") == "spread"]
+        if spread_legs:
+            assert "final margin" in spread_legs[0]["interpretation"].lower()
+
+    def test_notable_legs_have_expanded_reasons(self, client):
+        """Part B: Notable legs reasons are 2-3 sentences (contain multiple periods)."""
+        response = client.post("/app/evaluate", json={
+            "input": "LeBron over 25 pts + Lakers -5.5 + Celtics ML + Nuggets over 220",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        notable = data.get("notableLegs", [])
+        if notable:
+            for item in notable:
+                reason = item.get("reason", "")
+                # Expanded reasons should have at least 2 sentences (multiple periods)
+                period_count = reason.count(".")
+                assert period_count >= 2, f"Expected 2+ sentences, got: {reason}"
+
+    def test_ui_contains_leg_interpretation_class(self, client):
+        """Part A: UI HTML contains leg-interpretation CSS class."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        assert "leg-interpretation" in response.text
+
+    def test_ui_contains_guidance_section(self, client):
+        """Part C: UI HTML contains guidance section."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        assert "guidance-section" in response.text
+        assert "guidance-header" in response.text
+        assert "guidance-list" in response.text
+
+    def test_response_includes_gentle_guidance(self, client):
+        """Part C: Response includes gentleGuidance field."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets over 220",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        # gentleGuidance may be None for green/blue signals
+        assert "gentleGuidance" in data
+
+    def test_guidance_not_shown_for_strong_signals(self, client):
+        """Part C: Gentle guidance is None for blue/green signals."""
+        # Single simple bet should typically be a strong signal
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        signal = data.get("signalInfo", {}).get("signal", "yellow")
+        if signal in ("blue", "green"):
+            assert data.get("gentleGuidance") is None
+
+    def test_guidance_structure_when_present(self, client):
+        """Part C: When guidance is present, it has correct structure."""
+        # High leg count parlay more likely to trigger guidance
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets over 220 + Warriors -3 + Suns ML",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        guidance = data.get("gentleGuidance")
+        if guidance is not None:
+            assert "header" in guidance
+            assert "suggestions" in guidance
+            assert isinstance(guidance["suggestions"], list)
+            assert len(guidance["suggestions"]) > 0
+            # Suggestions should use "you could" language, not "you should"
+            for suggestion in guidance["suggestions"]:
+                assert "should" not in suggestion.lower() or "you should" not in suggestion.lower()
