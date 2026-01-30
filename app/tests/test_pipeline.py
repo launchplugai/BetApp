@@ -270,7 +270,7 @@ class TestRouteIntegration:
             assert mock_pipeline.called
 
     def test_pipeline_failure_propagates(self):
-        """Verify pipeline errors propagate correctly."""
+        """Verify pipeline errors propagate correctly as 500 internal error."""
         with patch("app.pipeline.run_evaluation") as mock_pipeline:
             mock_pipeline.side_effect = ValueError("Pipeline error")
 
@@ -286,8 +286,9 @@ class TestRouteIntegration:
                 json={"input": "Lakers -5.5", "tier": "good"},
             )
 
-            assert response.status_code == 400
-            assert "VALIDATION_ERROR" in response.json().get("code", "")
+            # Pipeline errors are internal errors (500), not validation errors (400)
+            assert response.status_code == 500
+            assert "INTERNAL_ERROR" in response.json().get("error", "")
 
     def test_consistent_tier_filtering_via_pipeline(self):
         """Verify tier filtering works the same way through pipeline."""

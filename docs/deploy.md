@@ -2,12 +2,12 @@
 
 ## Production
 
-**URL:** https://dna-production-b681.up.railway.app
+**URL:** https://dna-production-cb47.up.railway.app
 
 ## Health Check
 
 ```bash
-curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+curl -sS https://dna-production-cb47.up.railway.app/health | python -m json.tool
 ```
 
 ## Expected Response Fields
@@ -30,7 +30,7 @@ curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
 
 2. Hit the health endpoint and check `git_sha` matches:
    ```bash
-   curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool | grep git_sha
+   curl -sS https://dna-production-cb47.up.railway.app/health | python -m json.tool | grep git_sha
    ```
 
 3. If `git_sha` is missing, check Railway environment variables:

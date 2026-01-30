@@ -9,7 +9,7 @@
 You are Claude acting as a focused **frontend / integration engineer** on a sports parlay evaluation product called **DNA Matrix** (aka the DNA Bet Engine).
 
 **Repo:** `launchplugai/DNA`
-**Production:** `https://dna-production-b681.up.railway.app`
+**Production:** `https://dna-production-cb47.up.railway.app`
 **Runtime:** Python 3.12 | FastAPI | Uvicorn
 **Deployment:** Railway (Nixpacks auto-build on push to `main`)
 
@@ -367,10 +367,10 @@ Railway auto-deploys on push. Nixpacks auto-detects Python and installs from `re
 ### Verify Deployment
 ```bash
 # Health check
-curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+curl -sS https://dna-production-cb47.up.railway.app/health | python -m json.tool
 
 # Verify deployed commit matches
-curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool | grep git_sha
+curl -sS https://dna-production-cb47.up.railway.app/health | python -m json.tool | grep git_sha
 git rev-parse HEAD
 ```
 
@@ -412,13 +412,13 @@ uvicorn app.main:app --reload
 PYTHONPATH=dna-matrix:$PYTHONPATH uvicorn app.main:app --reload
 
 # Health check (production)
-curl https://dna-production-b681.up.railway.app/health
+curl https://dna-production-cb47.up.railway.app/health
 
 # Health check (local)
 curl http://localhost:8000/health
 
 # Build info
-curl https://dna-production-b681.up.railway.app/build
+curl https://dna-production-cb47.up.railway.app/build
 
 # Lint
 ruff check .

@@ -47,7 +47,7 @@ KNOWN ISSUES / OPEN QUESTIONS
 ENVIRONMENT
 --------------------------------------------------------------------------------
 Deployment Target: Railway (configured via railway.json)
-Production URL: https://dna-production-b681.up.railway.app
+Production URL: https://dna-production-cb47.up.railway.app
 Runtime: Python (see runtime.txt)
 Build: Nixpacks
 Current Context: Cloud code / Claude Code session
@@ -56,7 +56,7 @@ Current Context: Cloud code / Claude Code session
 DEPLOY VERIFICATION (Quick Reference)
 --------------------------------------------------------------------------------
 Command:
-  curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+  curl -sS https://dna-production-cb47.up.railway.app/health | python -m json.tool
 
 Expected response fields:
   - status: "healthy"
@@ -151,7 +151,7 @@ RAILWAY CONFIGURATION:
 - railway.json: Present
 - Start command: PYTHONPATH=/app/dna-matrix:$PYTHONPATH uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 - Health check path: /health
-- Production URL: https://dna-production-b681.up.railway.app
+- Production URL: https://dna-production-cb47.up.railway.app
 
 DEPLOYMENT VERIFICATION (FOR HUMAN):
 1. Check Railway dashboard for repo: launchplugai/DNA
@@ -359,14 +359,14 @@ VERIFICATION DETAILS:
 - Result: MATCH
 
 COMMAND USED:
-  curl -sS https://dna-production-b681.up.railway.app/health | python -m json.tool
+  curl -sS https://dna-production-cb47.up.railway.app/health | python -m json.tool
 
 EVIDENCE:
 - Production /health response includes: "git_sha":"c1423c8c8807540ca9968c6354bcaf3bd0a6ac3f"
 - Railway is deploying the correct branch/commit
 
 PRODUCTION URL (NOW KNOWN):
-- https://dna-production-b681.up.railway.app
+- https://dna-production-cb47.up.railway.app
 
 NO CODE CHANGES IN THIS TASK (verification only)
 
@@ -421,8 +421,8 @@ FILES CHANGED:
 - app/tests/test_web.py: New - web UI tests
 
 PRODUCTION USAGE:
-- Landing: https://dna-production-b681.up.railway.app/
-- App: https://dna-production-b681.up.railway.app/app
+- Landing: https://dna-production-cb47.up.railway.app/
+- App: https://dna-production-cb47.up.railway.app/app
 
 VERIFY TIER BEHAVIOR:
 1. Go to /app

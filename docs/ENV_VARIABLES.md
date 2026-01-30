@@ -178,5 +178,5 @@ Check current config at startup in logs:
 
 Check deployed config via API:
 ```bash
-curl https://dna-production-b681.up.railway.app/health
+curl https://dna-production-cb47.up.railway.app/health
 ```

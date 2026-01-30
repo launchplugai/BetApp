@@ -10,7 +10,7 @@
 
 ```powershell
 # Fetch health endpoint and extract git_sha
-$response = Invoke-RestMethod -Uri "https://dna-production-b681.up.railway.app/health"
+$response = Invoke-RestMethod -Uri "https://dna-production-cb47.up.railway.app/health"
 $response.git_sha
 ```
 
@@ -20,7 +20,7 @@ $response.git_sha
 
 ```powershell
 # View all deployment metadata
-Invoke-RestMethod -Uri "https://dna-production-b681.up.railway.app/health" | ConvertTo-Json
+Invoke-RestMethod -Uri "https://dna-production-cb47.up.railway.app/health" | ConvertTo-Json
 ```
 
 **Expected output:**
@@ -40,7 +40,7 @@ Invoke-RestMethod -Uri "https://dna-production-b681.up.railway.app/health" | Con
 
 ```powershell
 # Store deployed SHA
-$deployed = (Invoke-RestMethod -Uri "https://dna-production-b681.up.railway.app/health").git_sha
+$deployed = (Invoke-RestMethod -Uri "https://dna-production-cb47.up.railway.app/health").git_sha
 
 # Display for manual comparison with GitHub
 Write-Host "Deployed SHA: $deployed"
@@ -94,13 +94,13 @@ The app also accepts:
 
 ```bash
 # Get deployed SHA
-curl -s https://dna-production-b681.up.railway.app/health | jq -r '.git_sha'
+curl -s https://dna-production-cb47.up.railway.app/health | jq -r '.git_sha'
 
 # Full health response
-curl -s https://dna-production-b681.up.railway.app/health | jq
+curl -s https://dna-production-cb47.up.railway.app/health | jq
 
 # Compare with local main
-DEPLOYED=$(curl -s https://dna-production-b681.up.railway.app/health | jq -r '.git_sha')
+DEPLOYED=$(curl -s https://dna-production-cb47.up.railway.app/health | jq -r '.git_sha')
 LOCAL=$(git rev-parse main)
 echo "Deployed: $DEPLOYED"
 echo "Local main: $LOCAL"
