@@ -294,3 +294,101 @@ class TestParlayBuilderUI:
         response = client.get("/ui2", follow_redirects=False)
         assert response.status_code == 302
         assert response.headers.get("location") == "/app"
+
+
+# =============================================================================
+# Tests: Ticket 25 - Evaluation Receipt + Human Summary
+# =============================================================================
+
+
+class TestTicket25EvaluationReceipt:
+    """Tests for Ticket 25 - Evaluation Receipt + Notable Legs + Final Verdict."""
+
+    def test_ui_contains_parlay_receipt_section(self, client):
+        """App page contains Evaluated Parlay section."""
+        response = client.get("/app")
+        assert 'id="parlay-receipt"' in response.text
+        assert 'id="parlay-legs"' in response.text
+        assert "Evaluated Parlay" in response.text
+
+    def test_ui_contains_notable_legs_section(self, client):
+        """App page contains Notable Legs section."""
+        response = client.get("/app")
+        assert 'id="notable-legs-section"' in response.text
+        assert 'id="notable-legs-list"' in response.text
+        assert "Notable Legs" in response.text
+
+    def test_ui_contains_verdict_section(self, client):
+        """App page contains Summary/Verdict section."""
+        response = client.get("/app")
+        assert 'id="verdict-section"' in response.text
+        assert 'id="verdict-text"' in response.text
+
+    def test_ui_contains_refine_button(self, client):
+        """App page contains Refine Parlay button."""
+        response = client.get("/app")
+        assert 'id="refine-btn"' in response.text
+        assert "Refine Parlay" in response.text
+        assert "refineParlay()" in response.text
+
+    def test_evaluation_includes_evaluated_parlay(self, client):
+        """Evaluation response includes evaluatedParlay field."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets over 220",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert "evaluatedParlay" in data
+        parlay = data["evaluatedParlay"]
+        assert "leg_count" in parlay
+        assert parlay["leg_count"] == 3
+        assert "legs" in parlay
+        assert len(parlay["legs"]) == 3
+
+    def test_evaluation_includes_notable_legs(self, client):
+        """Evaluation response includes notableLegs field."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + LeBron over 25 points + Celtics ML",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert "notableLegs" in data
+        # Should have notable legs (at least the player prop)
+        notable = data["notableLegs"]
+        assert isinstance(notable, list)
+        # Each notable leg should have "leg" and "reason"
+        if len(notable) > 0:
+            assert "leg" in notable[0]
+            assert "reason" in notable[0]
+
+    def test_evaluation_includes_final_verdict(self, client):
+        """Evaluation response includes finalVerdict field."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert "finalVerdict" in data
+        verdict = data["finalVerdict"]
+        assert "verdict_text" in verdict
+        assert "tone" in verdict
+        assert verdict["tone"] in ["positive", "mixed", "cautious"]
+        assert "grade" in verdict
+        assert verdict["grade"] in ["A", "B", "C", "D"]
+
+    def test_evaluated_parlay_legs_have_required_fields(self, client):
+        """Each leg in evaluatedParlay has required fields."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Nuggets over 220",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        legs = data["evaluatedParlay"]["legs"]
+        for leg in legs:
+            assert "position" in leg
+            assert "text" in leg
+            assert "bet_type" in leg

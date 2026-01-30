@@ -406,6 +406,108 @@ def _get_canonical_ui_html() -> str:
         .reset-btn.active {{
             display: block;
         }}
+        /* Ticket 25: Evaluated Parlay Receipt */
+        .parlay-receipt {{
+            background: var(--surface);
+        }}
+        .parlay-label {{
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 8px;
+        }}
+        .parlay-legs {{
+            list-style: decimal inside;
+            padding: 0;
+            margin: 0;
+        }}
+        .parlay-legs li {{
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text);
+        }}
+        .parlay-legs li:last-child {{
+            border-bottom: none;
+        }}
+        .parlay-legs .leg-type {{
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: 8px;
+            text-transform: uppercase;
+        }}
+        /* Ticket 25: Notable Legs */
+        .notable-legs-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .notable-leg {{
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+        }}
+        .notable-leg-text {{
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 4px;
+        }}
+        .notable-leg-reason {{
+            font-size: 12px;
+            color: var(--text-muted);
+        }}
+        /* Ticket 25: Final Verdict */
+        .verdict-section {{
+            background: var(--surface);
+            border-left: 3px solid var(--accent);
+        }}
+        .verdict-text {{
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text);
+            margin: 0;
+        }}
+        .verdict-section.tone-positive {{
+            border-left-color: var(--green);
+        }}
+        .verdict-section.tone-mixed {{
+            border-left-color: var(--yellow);
+        }}
+        .verdict-section.tone-cautious {{
+            border-left-color: var(--red);
+        }}
+        /* Ticket 25: Action Buttons */
+        .action-buttons {{
+            display: none;
+            gap: 8px;
+            margin-top: 16px;
+        }}
+        .action-buttons.active {{
+            display: flex;
+        }}
+        .refine-btn {{
+            flex: 1;
+            padding: 12px;
+            background: var(--accent);
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }}
+        .refine-btn:hover {{
+            background: var(--accent-hover);
+        }}
+        .action-buttons .reset-btn {{
+            flex: 1;
+            display: block;
+            margin-top: 0;
+        }}
         /* Ticket 23: Parlay Builder Styles */
         .mode-toggle {{
             display: flex;
@@ -639,6 +741,13 @@ def _get_canonical_ui_html() -> str:
         <div id="error-panel" class="error-panel"></div>
 
         <div id="results" class="results">
+            <!-- Ticket 25: Evaluated Parlay Receipt -->
+            <div id="parlay-receipt" class="card parlay-receipt">
+                <div class="section-title">Evaluated Parlay</div>
+                <div id="parlay-label" class="parlay-label"></div>
+                <ol id="parlay-legs" class="parlay-legs"></ol>
+            </div>
+
             <div id="grade-panel" class="grade">
                 <div id="grade-signal" class="grade-signal"></div>
                 <div class="grade-info">
@@ -652,12 +761,24 @@ def _get_canonical_ui_html() -> str:
                 <ul id="risks-list" class="risks-list"></ul>
             </div>
 
+            <!-- Ticket 25: Notable Legs -->
+            <div id="notable-legs-section" class="card">
+                <div class="section-title">Notable Legs</div>
+                <ul id="notable-legs-list" class="notable-legs-list"></ul>
+            </div>
+
             <div class="card">
                 <div class="artifacts-header">
                     <div class="section-title">Artifacts</div>
                     <span id="artifact-count" class="artifact-count"></span>
                 </div>
                 <ul id="artifacts-list" class="artifacts-list"></ul>
+            </div>
+
+            <!-- Ticket 25: Final Verdict -->
+            <div id="verdict-section" class="card verdict-section">
+                <div class="section-title">Summary</div>
+                <p id="verdict-text" class="verdict-text"></p>
             </div>
 
             <div id="debug-section" class="debug-section">
@@ -671,7 +792,11 @@ def _get_canonical_ui_html() -> str:
             </div>
         </div>
 
-        <button id="reset-btn" class="reset-btn" onclick="resetForm()">Evaluate Another</button>
+        <!-- Ticket 25: Loop Signaling -->
+        <div id="action-buttons" class="action-buttons">
+            <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Refine Parlay</button>
+            <button id="reset-btn" class="reset-btn" onclick="resetForm()">Evaluate Another</button>
+        </div>
     </div>
 
     <script>
@@ -875,7 +1000,7 @@ def _get_canonical_ui_html() -> str:
             loading.classList.add('active');
             errorPanel.classList.remove('active');
             results.classList.remove('active');
-            resetBtn.classList.remove('active');
+            document.getElementById('action-buttons').classList.remove('active');
         }}
 
         function showError(message) {{
@@ -884,14 +1009,28 @@ def _get_canonical_ui_html() -> str:
             errorPanel.textContent = message;
             errorPanel.classList.add('active');
             results.classList.remove('active');
-            resetBtn.classList.remove('active');
+            document.getElementById('action-buttons').classList.remove('active');
         }}
 
         function showResults(data) {{
             loading.classList.remove('active');
             errorPanel.classList.remove('active');
             results.classList.add('active');
-            resetBtn.classList.add('active');
+            document.getElementById('action-buttons').classList.add('active');
+
+            // Ticket 25: Evaluated Parlay Receipt
+            const parlay = data.evaluatedParlay;
+            if (parlay) {{
+                document.getElementById('parlay-label').textContent = parlay.display_label || 'Parlay';
+                const parlayLegs = document.getElementById('parlay-legs');
+                parlayLegs.innerHTML = '';
+                (parlay.legs || []).forEach(leg => {{
+                    const li = document.createElement('li');
+                    li.innerHTML = escapeHtml(leg.text) +
+                        '<span class="leg-type">' + (leg.bet_type || '').replace('_', ' ') + '</span>';
+                    parlayLegs.appendChild(li);
+                }});
+            }}
 
             // Grade/Signal
             const signal = data.signalInfo?.signal || 'yellow';
@@ -928,6 +1067,25 @@ def _get_canonical_ui_html() -> str:
                 risksList.appendChild(li);
             }});
 
+            // Ticket 25: Notable Legs
+            const notableSection = document.getElementById('notable-legs-section');
+            const notableList = document.getElementById('notable-legs-list');
+            notableList.innerHTML = '';
+            const notable = data.notableLegs || [];
+            if (notable.length === 0) {{
+                notableSection.style.display = 'none';
+            }} else {{
+                notableSection.style.display = 'block';
+                notable.forEach(item => {{
+                    const li = document.createElement('li');
+                    li.className = 'notable-leg';
+                    li.innerHTML =
+                        '<div class="notable-leg-text">' + escapeHtml(item.leg) + '</div>' +
+                        '<div class="notable-leg-reason">' + escapeHtml(item.reason) + '</div>';
+                    notableList.appendChild(li);
+                }});
+            }}
+
             // Artifacts
             const artifacts = data.proofSummary?.sample_artifacts || [];
             const counts = data.proofSummary?.dna_artifact_counts || {{}};
@@ -953,6 +1111,21 @@ def _get_canonical_ui_html() -> str:
                 }});
             }}
 
+            // Ticket 25: Final Verdict
+            const verdict = data.finalVerdict;
+            const verdictSection = document.getElementById('verdict-section');
+            if (verdict && verdict.verdict_text) {{
+                verdictSection.style.display = 'block';
+                document.getElementById('verdict-text').textContent = verdict.verdict_text;
+                // Apply tone class
+                verdictSection.className = 'card verdict-section';
+                if (verdict.tone) {{
+                    verdictSection.classList.add('tone-' + verdict.tone);
+                }}
+            }} else {{
+                verdictSection.style.display = 'none';
+            }}
+
             // Debug section
             if (debugMode) {{
                 document.getElementById('debug-section').classList.add('active');
@@ -973,7 +1146,7 @@ def _get_canonical_ui_html() -> str:
         function resetForm() {{
             inputSection.style.display = 'block';
             results.classList.remove('active');
-            resetBtn.classList.remove('active');
+            document.getElementById('action-buttons').classList.remove('active');
             betInput.value = '';
             // Ticket 23: Also reset builder state
             builderLegs = [];
@@ -986,6 +1159,42 @@ def _get_canonical_ui_html() -> str:
             }} else {{
                 betInput.focus();
             }}
+        }}
+
+        // Ticket 25: Refine Parlay - returns to builder with legs preloaded
+        function refineParlay() {{
+            if (!lastResponse || !lastResponse.evaluatedParlay) {{
+                resetForm();
+                return;
+            }}
+
+            // Preload legs from the evaluated parlay
+            builderLegs = (lastResponse.evaluatedParlay.legs || []).map(leg => ({{
+                text: leg.text,
+                sport: '',
+                market: leg.bet_type === 'player_prop' ? 'Player Prop' :
+                        leg.bet_type === 'total' ? 'Total' :
+                        leg.bet_type === 'spread' ? 'Spread' : 'ML',
+            }}));
+
+            // Switch to builder mode
+            currentMode = 'builder';
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-mode="builder"]').classList.add('active');
+            builderSection.classList.add('active');
+            pasteSection.classList.remove('active');
+
+            // Update UI
+            renderLegs();
+            syncTextarea();
+
+            // Hide results, show input
+            inputSection.style.display = 'block';
+            results.classList.remove('active');
+            document.getElementById('action-buttons').classList.remove('active');
+
+            // Focus on builder
+            document.getElementById('builder-team').focus();
         }}
 
         // Enter key submits
@@ -1174,6 +1383,9 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "entities": result.entities,
             "secondaryFactors": result.secondary_factors,
             "humanSummary": result.human_summary,
+            "evaluatedParlay": result.evaluated_parlay,
+            "notableLegs": result.notable_legs,
+            "finalVerdict": result.final_verdict,
             "proofSummary": result.proof_summary,
         }
 

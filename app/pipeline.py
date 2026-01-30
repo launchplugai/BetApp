@@ -126,6 +126,15 @@ class PipelineResponse:
     # Sprint 2: Human summary (2-3 sentences, always included)
     human_summary: Optional[str] = None
 
+    # Ticket 25: Evaluated Parlay Receipt (what was evaluated)
+    evaluated_parlay: Optional[dict] = None
+
+    # Ticket 25: Notable Legs (leg-aware context)
+    notable_legs: Optional[list] = None
+
+    # Ticket 25: Final Verdict (conclusive 2-4 sentence summary)
+    final_verdict: Optional[dict] = None
+
     # Ticket 17: Sherlock integration result (None if disabled)
     sherlock_result: Optional[dict] = None
 
@@ -1334,6 +1343,191 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure) -> str:
     return summary
 
 
+# =============================================================================
+# Ticket 25: Evaluated Parlay Receipt + Notable Legs + Final Verdict
+# =============================================================================
+
+
+def _build_evaluated_parlay(blocks: list, input_text: str) -> dict:
+    """
+    Build the evaluated parlay receipt showing exactly what was evaluated.
+
+    Ticket 25 Part A: User should never wonder what was evaluated.
+    Returns structured dict with leg_count and ordered leg list.
+    """
+    if not blocks:
+        return {
+            "leg_count": 0,
+            "legs": [],
+            "display_label": "No legs detected",
+        }
+
+    legs = []
+    for i, block in enumerate(blocks):
+        # Use the selection (parsed leg text) as the display
+        leg_text = block.selection if hasattr(block, 'selection') else f"Leg {i+1}"
+        bet_type = block.bet_type.value if hasattr(block, 'bet_type') else "unknown"
+
+        legs.append({
+            "position": i + 1,
+            "text": leg_text,
+            "bet_type": bet_type,
+            "base_fragility": block.base_fragility if hasattr(block, 'base_fragility') else 0.0,
+        })
+
+    leg_count = len(legs)
+    display_label = f"{leg_count}-leg parlay" if leg_count != 1 else "Single bet"
+
+    return {
+        "leg_count": leg_count,
+        "legs": legs,
+        "display_label": display_label,
+        "raw_input": input_text[:200],  # Truncate for safety
+    }
+
+
+def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list:
+    """
+    Build notable legs section with leg-aware context.
+
+    Ticket 25 Part B: Select 1-3 legs that matter most with plain-English why.
+    Selection criteria (deterministic):
+    - Player props (high variance)
+    - Totals (dependency on game pace)
+    - Legs with highest base_fragility
+    - Legs implicated in correlations
+
+    Returns list of dicts: [{"leg": str, "reason": str}, ...]
+    """
+    if not blocks:
+        return []
+
+    notable = []
+    correlations = evaluation.correlations if evaluation else ()
+
+    # Build correlation involvement map
+    corr_block_ids = set()
+    for corr in correlations:
+        corr_block_ids.add(str(corr.block_a))
+        corr_block_ids.add(str(corr.block_b))
+
+    # Score each leg for notability
+    leg_scores = []
+    for i, block in enumerate(blocks):
+        score = 0
+        reasons = []
+        bet_type = block.bet_type.value if hasattr(block, 'bet_type') else "unknown"
+        leg_text = block.selection if hasattr(block, 'selection') else f"Leg {i+1}"
+
+        # Player props add variance
+        if bet_type == "player_prop":
+            score += 3
+            reasons.append("Player props tend to add variance compared to sides.")
+
+        # Totals depend on game pace
+        if bet_type == "total":
+            score += 2
+            reasons.append("Totals introduce dependency on game pace and scoring environment.")
+
+        # High base fragility
+        if hasattr(block, 'base_fragility') and block.base_fragility >= 0.15:
+            score += 2
+            if "variance" not in " ".join(reasons):
+                reasons.append("This leg contributes more to overall fragility than others.")
+
+        # Involved in correlations
+        block_id_str = str(block.block_id) if hasattr(block, 'block_id') else ""
+        if block_id_str in corr_block_ids:
+            score += 2
+            reasons.append("This leg shares outcome dependency with another leg.")
+
+        if score > 0 and reasons:
+            leg_scores.append({
+                "position": i + 1,
+                "leg": leg_text,
+                "reason": reasons[0],  # Take primary reason
+                "score": score,
+            })
+
+    # Sort by score descending, take top 3
+    leg_scores.sort(key=lambda x: x["score"], reverse=True)
+    notable = [
+        {"leg": item["leg"], "reason": item["reason"]}
+        for item in leg_scores[:3]
+    ]
+
+    return notable
+
+
+def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info) -> dict:
+    """
+    Build the final verdict block: 2-4 sentence conclusive summary.
+
+    Ticket 25 Part C: Ties together grade, risks, artifacts, and context.
+    Tone: calm, direct, plain English, no jargon, no hedging.
+
+    Returns dict with verdict_text, tone, and grade reference.
+    """
+    if not evaluation:
+        return {
+            "verdict_text": "Unable to evaluate this parlay. Please check your input.",
+            "tone": "neutral",
+            "grade": "unknown",
+        }
+
+    metrics = evaluation.metrics
+    fragility = metrics.final_fragility
+    leg_count = len(blocks) if blocks else 0
+    signal = signal_info.get("signal", "yellow") if signal_info else "yellow"
+    grade = signal_info.get("grade", "C") if signal_info else "C"
+
+    pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
+    entities = entities or {}
+
+    # Determine tone and template based on signal
+    if signal in ("blue", "green"):
+        tone = "positive"
+        opener = "This parlay is structurally sound"
+        core = "with limited dependency between legs."
+        driver = "Risk is primarily driven by leg count rather than correlation or volatility."
+        closer = "No major red flags were detected, making this a reasonable structure if you're comfortable with the included legs."
+    elif signal == "yellow":
+        tone = "mixed"
+        opener = "This parlay has a workable structure"
+        # Tailor core based on primary failure
+        if pf_type in ("prop_density", "volatility"):
+            core = "but includes legs that increase variance, particularly player props or totals."
+            driver = "Reducing the number of high-variance legs would improve overall stability."
+            closer = "The structure is fixable without significantly reducing payout potential."
+        elif pf_type in ("correlation", "dependency", "same_game_dependency"):
+            core = "but has legs that share outcome dependencies."
+            driver = "Consider whether correlated legs are intentional."
+            closer = "Splitting dependent legs into separate tickets would reduce compounding risk."
+        elif pf_type == "leg_count":
+            core = f"but {leg_count} legs add meaningful structural penalty."
+            driver = "Fewer legs would lower the compounding failure rate."
+            closer = "Consider trimming 1-2 legs you feel least confident about."
+        else:
+            core = "but carries some elevated risk factors."
+            driver = "Review the key risks section for specific concerns."
+            closer = "Minor adjustments could improve your chances."
+    else:  # red
+        tone = "cautious"
+        opener = "This parlay relies on multiple high-variance legs"
+        core = "that compound failure risk."
+        driver = "Correlation and leg dependency significantly reduce reliability."
+        closer = "Simplifying the structure would materially improve hit rate."
+
+    verdict_text = f"{opener} {core} {driver} {closer}"
+
+    return {
+        "verdict_text": verdict_text,
+        "tone": tone,
+        "grade": grade,
+        "signal": signal,
+    }
+
+
 # Main Pipeline Function
 # =============================================================================
 
@@ -1667,6 +1861,15 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     entities_public["volatility_flag"] = volatility_flag
     entities_public["same_game_indicator"] = same_game_info
 
+    # Step 19: Ticket 25 — Build evaluated parlay receipt (what was evaluated)
+    evaluated_parlay = _build_evaluated_parlay(blocks, normalized.input_text)
+
+    # Step 20: Ticket 25 — Build notable legs (leg-aware context)
+    notable_legs = _build_notable_legs(blocks, evaluation, primary_failure)
+
+    # Step 21: Ticket 25 — Build final verdict (conclusive summary)
+    final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info)
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -1678,6 +1881,9 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         entities=entities_public,
         secondary_factors=secondary_factors,
         human_summary=human_summary,
+        evaluated_parlay=evaluated_parlay,
+        notable_legs=notable_legs,
+        final_verdict=final_verdict,
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,
         proof_summary=proof_summary,
