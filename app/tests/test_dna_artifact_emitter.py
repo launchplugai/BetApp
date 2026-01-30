@@ -524,3 +524,147 @@ class TestEmitterIntegration:
         assert audit is not None
         assert len(audit["notes"]) >= 1
         assert any("signal" in note.lower() for note in audit["notes"])
+
+
+# =============================================================================
+# Ticket 23: Sherlock Advisory Synthesis Tests
+# =============================================================================
+
+
+class TestSherlockAdvisorySynthesis:
+    """Tests for Ticket 23 - Sherlock advisory synthesis."""
+
+    def test_low_risk_2_leg_bet_has_nonempty_artifacts(self):
+        """For a low-risk 2-leg bet, artifacts list is NON-empty (Ticket 23 DoD)."""
+        artifacts = emit_artifacts_from_evaluation(
+            evaluation_metrics={
+                "final_fragility": 12.0,
+                "correlation_penalty": 0.0,
+                "leg_penalty": 3.0,
+            },
+            signal="blue",
+            leg_count=2,
+            primary_failure_type=None,
+            request_id="ticket23-2leg-test",
+        )
+
+        # Must have at least 1 artifact
+        assert len(artifacts) >= 1
+        # Must have audit_note with meaningful content
+        audit = next((a for a in artifacts if a["artifact_type"] == "audit_note"), None)
+        assert audit is not None
+        assert len(audit["notes"]) >= 1
+        # First note should be the Sherlock advisory (contains structure check)
+        assert "leg" in audit["notes"][0].lower()
+
+    def test_low_risk_3_leg_bet_has_nonempty_artifacts(self):
+        """For a normal 3-leg bet, UI shows at least 1 artifact (Ticket 23 DoD)."""
+        artifacts = emit_artifacts_from_evaluation(
+            evaluation_metrics={
+                "final_fragility": 25.0,
+                "correlation_penalty": 0.5,
+                "leg_penalty": 8.0,
+            },
+            signal="green",
+            leg_count=3,
+            primary_failure_type=None,
+            request_id="ticket23-3leg-test",
+        )
+
+        # Must have at least 1 artifact
+        assert len(artifacts) >= 1
+        # Must have audit_note
+        audit = next((a for a in artifacts if a["artifact_type"] == "audit_note"), None)
+        assert audit is not None
+
+    def test_audit_note_contains_sherlock_advisory(self):
+        """Audit note contains meaningful Sherlock advisory synthesis."""
+        artifacts = emit_artifacts_from_evaluation(
+            evaluation_metrics={
+                "final_fragility": 30.0,
+                "correlation_penalty": 1.0,
+                "leg_penalty": 10.0,
+            },
+            signal="green",
+            leg_count=3,
+            primary_failure_type=None,
+            request_id="sherlock-advisory-test",
+        )
+
+        audit = next((a for a in artifacts if a["artifact_type"] == "audit_note"), None)
+        assert audit is not None
+
+        # First note should be the Sherlock advisory
+        advisory = audit["notes"][0]
+
+        # Advisory should explain what was checked:
+        # 1. Structure check
+        assert "parlay" in advisory.lower() or "leg" in advisory.lower()
+        # 2. Correlation check
+        assert "correlation" in advisory.lower()
+        # 3. Fragility assessment
+        assert "fragility" in advisory.lower()
+        # 4. Verdict
+        assert "verdict" in advisory.lower()
+
+    def test_sherlock_advisory_includes_primary_failure_explanation(self):
+        """Sherlock advisory includes explanation when primary failure exists."""
+        artifacts = emit_artifacts_from_evaluation(
+            evaluation_metrics={
+                "final_fragility": 45.0,
+                "correlation_penalty": 2.0,
+                "leg_penalty": 12.0,
+            },
+            signal="yellow",
+            leg_count=4,
+            primary_failure_type="correlation",
+            request_id="primary-failure-advisory-test",
+        )
+
+        audit = next((a for a in artifacts if a["artifact_type"] == "audit_note"), None)
+        advisory = audit["notes"][0]
+
+        # Should mention primary concern for correlation
+        assert "primary concern" in advisory.lower()
+        assert "correlation" in advisory.lower() or "independence" in advisory.lower()
+
+    def test_sherlock_advisory_truthful_not_inflated(self):
+        """Sherlock advisory is truthful and does not inflate severity."""
+        # Low-risk bet
+        artifacts = emit_artifacts_from_evaluation(
+            evaluation_metrics={
+                "final_fragility": 10.0,
+                "correlation_penalty": 0.0,
+                "leg_penalty": 2.0,
+            },
+            signal="blue",
+            leg_count=2,
+            primary_failure_type=None,
+            request_id="truthful-advisory-test",
+        )
+
+        audit = next((a for a in artifacts if a["artifact_type"] == "audit_note"), None)
+        advisory = audit["notes"][0]
+
+        # Should NOT contain alarm words for low-risk bet
+        assert "high" not in advisory.lower() or "high — significant risk" not in advisory.lower()
+        assert "critical" not in advisory.lower()
+        # Should contain positive assessment
+        assert "low" in advisory.lower() or "strong" in advisory.lower() or "sound" in advisory.lower()
+
+    def test_all_artifacts_pass_contract_validation(self):
+        """All artifacts including enhanced audit_note pass contract validation."""
+        artifacts = emit_artifacts_from_evaluation(
+            evaluation_metrics={
+                "final_fragility": 35.0,
+                "correlation_penalty": 1.5,
+                "leg_penalty": 10.0,
+            },
+            signal="green",
+            leg_count=3,
+            primary_failure_type=None,
+            request_id="contract-validation-test",
+        )
+
+        result = validate_dna_artifacts(artifacts)
+        assert result.ok, f"Validation failed: {result.errors}"

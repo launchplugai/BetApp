@@ -94,7 +94,8 @@ class TestCanonicalAppPage:
         """App page contains bet input textarea."""
         response = client.get("/app")
         assert 'id="bet-input"' in response.text
-        assert "Enter your bet slip" in response.text
+        # Ticket 23: Changed label to "Paste or type" for paste mode
+        assert "Paste or type your bet slip" in response.text
 
     def test_contains_tier_selector(self, client):
         """App page contains tier selector buttons."""
@@ -219,3 +220,77 @@ class TestDebugMode:
         assert "DNA Bet Engine" in response.text
         # Debug mode is handled client-side via JavaScript
         assert "debugMode" in response.text
+
+
+# =============================================================================
+# Tests: Ticket 23 - Parlay Builder UI
+# =============================================================================
+
+
+class TestParlayBuilderUI:
+    """Tests for Ticket 23 - Simple Parlay Builder UI."""
+
+    def test_builder_contains_mode_toggle(self, client):
+        """App page contains Builder/Paste mode toggle."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        assert 'data-mode="builder"' in response.text
+        assert 'data-mode="paste"' in response.text
+        assert "Builder" in response.text
+        assert "Paste Mode" in response.text
+
+    def test_builder_contains_sport_dropdown(self, client):
+        """App page contains sport dropdown with expected options."""
+        response = client.get("/app")
+        assert 'id="builder-sport"' in response.text
+        assert "NBA" in response.text
+        assert "NFL" in response.text
+        assert "MLB" in response.text
+        assert "NCAA" in response.text
+
+    def test_builder_contains_market_dropdown(self, client):
+        """App page contains market type dropdown."""
+        response = client.get("/app")
+        assert 'id="builder-market"' in response.text
+        assert "Moneyline" in response.text
+        assert "Spread" in response.text
+        assert "Over/Under" in response.text
+        assert "Player Prop" in response.text
+
+    def test_builder_contains_team_input(self, client):
+        """App page contains team/player input."""
+        response = client.get("/app")
+        assert 'id="builder-team"' in response.text
+        assert 'placeholder="Team or Player"' in response.text
+
+    def test_builder_contains_add_leg_button(self, client):
+        """App page contains Add Leg button."""
+        response = client.get("/app")
+        assert 'id="add-leg-btn"' in response.text
+        assert "Add Leg" in response.text
+
+    def test_builder_contains_quick_add_chips(self, client):
+        """App page contains Quick Add chips."""
+        response = client.get("/app")
+        assert 'class="quick-chip"' in response.text
+        assert "+ Moneyline" in response.text
+        assert "+ Spread" in response.text
+        assert "+ Player Prop" in response.text
+
+    def test_builder_contains_legs_list(self, client):
+        """App page contains legs list container."""
+        response = client.get("/app")
+        assert 'id="legs-list"' in response.text
+        assert "No legs added yet" in response.text
+
+    def test_redirects_still_work_with_builder(self, client):
+        """Redirects to /app still work (no routing regressions)."""
+        # Root redirect
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 302
+        assert response.headers.get("location") == "/app"
+
+        # UI2 redirect
+        response = client.get("/ui2", follow_redirects=False)
+        assert response.status_code == 302
+        assert response.headers.get("location") == "/app"

@@ -406,6 +406,156 @@ def _get_canonical_ui_html() -> str:
         .reset-btn.active {{
             display: block;
         }}
+        /* Ticket 23: Parlay Builder Styles */
+        .mode-toggle {{
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+            background: var(--bg);
+            border-radius: var(--radius);
+            padding: 4px;
+        }}
+        .mode-btn {{
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }}
+        .mode-btn.active {{
+            background: var(--surface);
+            color: var(--text);
+        }}
+        .builder-section {{
+            display: none;
+        }}
+        .builder-section.active {{
+            display: block;
+        }}
+        .paste-section {{
+            display: none;
+        }}
+        .paste-section.active {{
+            display: block;
+        }}
+        .builder-row {{
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }}
+        .builder-row > * {{
+            flex: 1;
+        }}
+        .builder-select, .builder-input {{
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+        }}
+        .builder-select:focus, .builder-input:focus {{
+            outline: none;
+            border-color: var(--accent);
+        }}
+        .builder-input::placeholder {{
+            color: var(--text-muted);
+        }}
+        .add-leg-btn {{
+            width: 100%;
+            padding: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.15s;
+        }}
+        .add-leg-btn:hover {{
+            background: var(--surface-hover);
+            border-color: var(--accent);
+        }}
+        .legs-list {{
+            margin-top: 12px;
+        }}
+        .leg-item {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 6px;
+            font-size: 13px;
+        }}
+        .leg-item .leg-text {{
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        .leg-item .leg-num {{
+            color: var(--text-muted);
+            font-size: 11px;
+            min-width: 20px;
+        }}
+        .remove-leg-btn {{
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--red);
+            font-size: 11px;
+            cursor: pointer;
+        }}
+        .remove-leg-btn:hover {{
+            background: rgba(239, 68, 68, 0.1);
+        }}
+        .builder-empty {{
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }}
+        .quick-chips {{
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }}
+        .quick-chip {{
+            padding: 6px 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }}
+        .quick-chip:hover {{
+            border-color: var(--accent);
+            color: var(--text);
+        }}
+        .builder-warning {{
+            font-size: 12px;
+            color: var(--yellow);
+            margin-top: 4px;
+            display: none;
+        }}
+        .builder-warning.active {{
+            display: block;
+        }}
     </style>
 </head>
 <body>
@@ -416,11 +566,61 @@ def _get_canonical_ui_html() -> str:
         </header>
 
         <div id="input-section" class="card">
-            <label for="bet-input">Enter your bet slip</label>
-            <textarea
-                id="bet-input"
-                placeholder="Lakers -5.5&#10;Celtics ML&#10;LeBron over 25.5 points"
-            ></textarea>
+            <!-- Ticket 23: Mode Toggle -->
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="builder">Builder</button>
+                <button class="mode-btn" data-mode="paste">Paste Mode</button>
+            </div>
+
+            <!-- Ticket 23: Builder Section -->
+            <div id="builder-section" class="builder-section active">
+                <div class="quick-chips">
+                    <button class="quick-chip" data-market="ML">+ Moneyline</button>
+                    <button class="quick-chip" data-market="Spread">+ Spread</button>
+                    <button class="quick-chip" data-market="Total">+ Over/Under</button>
+                    <button class="quick-chip" data-market="Player Prop">+ Player Prop</button>
+                </div>
+
+                <div class="builder-row">
+                    <select id="builder-sport" class="builder-select" aria-label="Sport">
+                        <option value="">Sport</option>
+                        <option value="NBA">NBA</option>
+                        <option value="NFL">NFL</option>
+                        <option value="MLB">MLB</option>
+                        <option value="NCAA">NCAA</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <select id="builder-market" class="builder-select" aria-label="Market Type">
+                        <option value="">Market Type</option>
+                        <option value="ML">Moneyline</option>
+                        <option value="Spread">Spread</option>
+                        <option value="Total">Over/Under</option>
+                        <option value="Player Prop">Player Prop</option>
+                    </select>
+                </div>
+
+                <div class="builder-row">
+                    <input type="text" id="builder-team" class="builder-input" placeholder="Team or Player" aria-label="Team or Player">
+                    <input type="text" id="builder-line" class="builder-input" placeholder="Line (e.g. -5.5)" aria-label="Line or Value">
+                </div>
+
+                <div id="builder-warning" class="builder-warning"></div>
+
+                <button id="add-leg-btn" class="add-leg-btn">Add Leg</button>
+
+                <div id="legs-list" class="legs-list">
+                    <div id="legs-empty" class="builder-empty">No legs added yet. Build your parlay above.</div>
+                </div>
+            </div>
+
+            <!-- Ticket 23: Paste Section (Advanced Mode) -->
+            <div id="paste-section" class="paste-section">
+                <label for="bet-input">Paste or type your bet slip</label>
+                <textarea
+                    id="bet-input"
+                    placeholder="Lakers -5.5&#10;Celtics ML&#10;LeBron over 25.5 points"
+                ></textarea>
+            </div>
 
             <div class="tier-selector">
                 <button class="tier-btn active" data-tier="good">GOOD</button>
@@ -479,6 +679,8 @@ def _get_canonical_ui_html() -> str:
         let selectedTier = 'good';
         let debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
         let lastResponse = null;
+        let currentMode = 'builder';
+        let builderLegs = [];
 
         // Elements
         const betInput = document.getElementById('bet-input');
@@ -488,6 +690,140 @@ def _get_canonical_ui_html() -> str:
         const results = document.getElementById('results');
         const resetBtn = document.getElementById('reset-btn');
         const inputSection = document.getElementById('input-section');
+        const builderSection = document.getElementById('builder-section');
+        const pasteSection = document.getElementById('paste-section');
+        const legsList = document.getElementById('legs-list');
+        const legsEmpty = document.getElementById('legs-empty');
+        const builderWarning = document.getElementById('builder-warning');
+
+        // Ticket 23: Mode Toggle
+        document.querySelectorAll('.mode-btn').forEach(btn => {{
+            btn.addEventListener('click', () => {{
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMode = btn.dataset.mode;
+                if (currentMode === 'builder') {{
+                    builderSection.classList.add('active');
+                    pasteSection.classList.remove('active');
+                }} else {{
+                    builderSection.classList.remove('active');
+                    pasteSection.classList.add('active');
+                }}
+            }});
+        }});
+
+        // Ticket 23: Quick Add Chips
+        document.querySelectorAll('.quick-chip').forEach(chip => {{
+            chip.addEventListener('click', () => {{
+                document.getElementById('builder-market').value = chip.dataset.market;
+                document.getElementById('builder-team').focus();
+            }});
+        }});
+
+        // Ticket 23: Add Leg
+        document.getElementById('add-leg-btn').addEventListener('click', addLeg);
+
+        function addLeg() {{
+            const market = document.getElementById('builder-market').value;
+            const team = document.getElementById('builder-team').value.trim();
+            const line = document.getElementById('builder-line').value.trim();
+            const sport = document.getElementById('builder-sport').value;
+
+            // Validation
+            if (!market) {{
+                showBuilderWarning('Please select a market type');
+                return;
+            }}
+            if (!team) {{
+                showBuilderWarning('Please enter a team or player');
+                return;
+            }}
+            // Line is encouraged for Spread/Total/Prop but not strictly required
+            if ((market === 'Spread' || market === 'Total' || market === 'Player Prop') && !line) {{
+                showBuilderWarning('Line/value recommended for this market type');
+                // Don't return - allow adding without line
+            }}
+
+            hideBuilderWarning();
+
+            // Build leg text
+            let legText = team;
+            if (market === 'ML') {{
+                legText += ' ML';
+            }} else if (market === 'Spread') {{
+                legText += ' ' + (line || '');
+            }} else if (market === 'Total') {{
+                legText += ' ' + (line.toLowerCase().includes('over') || line.toLowerCase().includes('under') ? line : 'over ' + line);
+            }} else if (market === 'Player Prop') {{
+                legText += ' ' + (line || 'prop');
+            }}
+            legText = legText.trim();
+
+            // Add to legs array
+            builderLegs.push({{
+                text: legText,
+                sport: sport,
+                market: market,
+            }});
+
+            renderLegs();
+            syncTextarea();
+            clearBuilderInputs();
+        }}
+
+        function removeLeg(index) {{
+            builderLegs.splice(index, 1);
+            renderLegs();
+            syncTextarea();
+        }}
+
+        function renderLegs() {{
+            // Clear existing leg items (but keep empty message)
+            legsList.querySelectorAll('.leg-item').forEach(el => el.remove());
+
+            if (builderLegs.length === 0) {{
+                legsEmpty.style.display = 'block';
+            }} else {{
+                legsEmpty.style.display = 'none';
+                builderLegs.forEach((leg, i) => {{
+                    const item = document.createElement('div');
+                    item.className = 'leg-item';
+                    item.innerHTML = `
+                        <span class="leg-num">${{i + 1}}.</span>
+                        <span class="leg-text">${{escapeHtml(leg.text)}}</span>
+                        <button class="remove-leg-btn" onclick="removeLeg(${{i}})">Remove</button>
+                    `;
+                    legsList.appendChild(item);
+                }});
+            }}
+        }}
+
+        function syncTextarea() {{
+            // Update textarea with current legs (single source of truth)
+            betInput.value = builderLegs.map(l => l.text).join('\\n');
+        }}
+
+        function clearBuilderInputs() {{
+            document.getElementById('builder-market').value = '';
+            document.getElementById('builder-team').value = '';
+            document.getElementById('builder-line').value = '';
+            // Keep sport selected
+        }}
+
+        function showBuilderWarning(msg) {{
+            builderWarning.textContent = msg;
+            builderWarning.classList.add('active');
+        }}
+
+        function hideBuilderWarning() {{
+            builderWarning.classList.remove('active');
+        }}
+
+        function escapeHtml(text) {{
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }}
 
         // Tier selector
         document.querySelectorAll('.tier-btn').forEach(btn => {{
@@ -500,9 +836,14 @@ def _get_canonical_ui_html() -> str:
 
         // Submit handler
         submitBtn.addEventListener('click', async () => {{
+            // Always use textarea content as single source of truth
             const input = betInput.value.trim();
             if (!input) {{
-                showError('Please enter a bet slip');
+                if (currentMode === 'builder' && builderLegs.length === 0) {{
+                    showError('Please add at least one leg to your parlay');
+                }} else {{
+                    showError('Please enter a bet slip');
+                }}
                 return;
             }}
 
@@ -634,7 +975,17 @@ def _get_canonical_ui_html() -> str:
             results.classList.remove('active');
             resetBtn.classList.remove('active');
             betInput.value = '';
-            betInput.focus();
+            // Ticket 23: Also reset builder state
+            builderLegs = [];
+            renderLegs();
+            clearBuilderInputs();
+            hideBuilderWarning();
+            // Focus appropriate element based on mode
+            if (currentMode === 'builder') {{
+                document.getElementById('builder-team').focus();
+            }} else {{
+                betInput.focus();
+            }}
         }}
 
         // Enter key submits

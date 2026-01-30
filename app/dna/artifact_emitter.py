@@ -183,6 +183,83 @@ def emit_audit_note_artifact(
     return artifact
 
 
+def _build_sherlock_advisory(
+    evaluation_metrics: dict[str, Any],
+    signal: str,
+    leg_count: int,
+    primary_failure_type: Optional[str],
+) -> str:
+    """
+    Build a human-readable Sherlock advisory synthesis.
+
+    Explains what was checked in plain English:
+    - Structure analysis (leg count, complexity)
+    - Correlation/dependency heuristics
+    - Risk assessment verdict
+
+    Ticket 23: Always emit meaningful, truthful explanation.
+    """
+    final_fragility = evaluation_metrics.get("final_fragility", 0.0)
+    correlation_penalty = evaluation_metrics.get("correlation_penalty", 0.0)
+    leg_penalty = evaluation_metrics.get("leg_penalty", 0.0)
+
+    # Build checks summary
+    checks_performed = []
+
+    # 1. Structure check
+    if leg_count == 1:
+        checks_performed.append("Single-leg structure verified (no parlay complexity)")
+    elif leg_count <= 3:
+        checks_performed.append(f"Analyzed {leg_count}-leg parlay structure for complexity")
+    else:
+        checks_performed.append(f"Evaluated {leg_count}-leg parlay (elevated structural risk)")
+
+    # 2. Correlation check
+    if correlation_penalty > 0:
+        checks_performed.append(f"Detected correlation between legs (+{correlation_penalty:.1f}pt penalty)")
+    else:
+        checks_performed.append("No significant correlation detected between legs")
+
+    # 3. Fragility assessment
+    if final_fragility <= 15:
+        checks_performed.append(f"Fragility score {final_fragility:.0f}% is low — structure is sound")
+    elif final_fragility <= 35:
+        checks_performed.append(f"Fragility score {final_fragility:.0f}% is moderate — manageable risk")
+    elif final_fragility <= 60:
+        checks_performed.append(f"Fragility score {final_fragility:.0f}% is elevated — consider simplifying")
+    else:
+        checks_performed.append(f"Fragility score {final_fragility:.0f}% is high — significant risk")
+
+    # 4. Primary failure insight (if any)
+    if primary_failure_type:
+        failure_explanations = {
+            "correlation": "Primary concern: correlated outcomes reduce independence",
+            "leg_count": "Primary concern: too many legs compound failure probability",
+            "volatility": "Primary concern: high-variance selections increase unpredictability",
+            "dependency": "Primary concern: shared variables create hidden dependencies",
+            "prop_density": "Primary concern: heavy prop concentration elevates variance",
+            "same_game_dependency": "Primary concern: same-game legs share outcome drivers",
+            "market_conflict": "Primary concern: overlapping markets amplify correlation",
+            "weak_clarity": "Primary concern: limited input clarity affects analysis depth",
+        }
+        explanation = failure_explanations.get(
+            primary_failure_type,
+            f"Primary concern: {primary_failure_type.replace('_', ' ')}"
+        )
+        checks_performed.append(explanation)
+
+    # 5. Signal-based verdict
+    signal_verdicts = {
+        "blue": "Verdict: Strong structure with minimal risk factors",
+        "green": "Verdict: Solid structure with acceptable risk profile",
+        "yellow": "Verdict: Fixable issues identified — improvements possible",
+        "red": "Verdict: Fragile structure — significant changes recommended",
+    }
+    checks_performed.append(signal_verdicts.get(signal, "Verdict: Evaluation complete"))
+
+    return ". ".join(checks_performed) + "."
+
+
 def emit_artifacts_from_evaluation(
     evaluation_metrics: dict[str, Any],
     signal: str,
@@ -195,6 +272,9 @@ def emit_artifacts_from_evaluation(
 
     This is the main entry point for artifact emission.
     Emits deterministic, contract-compliant artifacts.
+
+    Ticket 23: Always emits at least one meaningful audit_note with
+    Sherlock advisory synthesis explaining what was checked.
 
     Args:
         evaluation_metrics: Dict with final_fragility, correlation_penalty, leg_penalty
@@ -255,7 +335,8 @@ def emit_artifacts_from_evaluation(
             )
         )
 
-    # 3. Audit note: Always emit evaluation status
+    # 3. Audit note: Always emit with Sherlock advisory synthesis (Ticket 23)
+    # This ensures the UI never shows "Artifacts: none" for normal inputs
     signal_map = {
         "blue": "PASS",
         "green": "PASS",
@@ -264,14 +345,19 @@ def emit_artifacts_from_evaluation(
     }
     audit_status = signal_map.get(signal, "FAIL")
 
-    audit_notes = [
-        f"Evaluation signal: {signal}",
-        f"Final fragility: {final_fragility:.1f}%",
-        f"Leg count: {leg_count}",
-    ]
+    # Build comprehensive Sherlock advisory (Ticket 23)
+    sherlock_advisory = _build_sherlock_advisory(
+        evaluation_metrics=evaluation_metrics,
+        signal=signal,
+        leg_count=leg_count,
+        primary_failure_type=primary_failure_type,
+    )
 
-    if primary_failure_type:
-        audit_notes.append(f"Primary failure: {primary_failure_type}")
+    # Audit notes include both structured data and advisory synthesis
+    audit_notes = [
+        sherlock_advisory,  # Human-readable synthesis first
+        f"Signal: {signal} | Fragility: {final_fragility:.0f}% | Legs: {leg_count}",
+    ]
 
     artifacts.append(
         emit_audit_note_artifact(
