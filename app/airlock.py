@@ -108,6 +108,19 @@ class InvalidTierError(AirlockError):
 
 
 @dataclass(frozen=True)
+class CanonicalLegData:
+    """
+    Ticket 27: Canonical leg representation (frozen dataclass).
+
+    This is the source of truth when legs come from the builder.
+    """
+    entity: str  # Team or player name
+    market: str  # Market type: moneyline, spread, total, player_prop
+    value: Optional[str]  # Line value (e.g., '-5.5', 'over 220')
+    raw: str  # Original text as entered
+
+
+@dataclass(frozen=True)
 class NormalizedInput:
     """
     Validated and normalized input from Airlock.
@@ -118,11 +131,18 @@ class NormalizedInput:
     input_text: str  # Trimmed, validated input text
     tier: Tier  # Canonical tier enum
     session_id: Optional[str] = None  # Optional session identifier
+    # Ticket 27: Canonical legs from builder (None means use text parsing)
+    canonical_legs: Optional[tuple] = None  # Tuple of CanonicalLegData
 
     @property
     def input_length(self) -> int:
         """Length of input text (safe to log)."""
         return len(self.input_text)
+
+    @property
+    def has_canonical_legs(self) -> bool:
+        """True if canonical legs are present (builder mode)."""
+        return self.canonical_legs is not None and len(self.canonical_legs) > 0
 
 
 # =============================================================================
@@ -198,6 +218,7 @@ def airlock_ingest(
     input_text: Optional[str],
     tier: Optional[str] = None,
     session_id: Optional[str] = None,
+    canonical_legs: Optional[list] = None,
 ) -> NormalizedInput:
     """
     Validate and normalize evaluation input.
@@ -209,6 +230,7 @@ def airlock_ingest(
         input_text: Raw input text (bet description)
         tier: Plan tier (good/better/best, case-insensitive, optional)
         session_id: Optional session identifier
+        canonical_legs: Ticket 27 - structured legs from builder (optional)
 
     Returns:
         NormalizedInput with validated, normalized values
@@ -234,11 +256,25 @@ def airlock_ingest(
     # Normalize tier
     normalized_tier = _normalize_tier(tier)
 
+    # Ticket 27: Convert canonical legs to frozen dataclass tuple
+    frozen_legs = None
+    if canonical_legs:
+        frozen_legs = tuple(
+            CanonicalLegData(
+                entity=leg.get("entity", ""),
+                market=leg.get("market", "unknown"),
+                value=leg.get("value"),
+                raw=leg.get("raw", ""),
+            )
+            for leg in canonical_legs
+        )
+
     # Build and return normalized input
     return NormalizedInput(
         input_text=validated_text,
         tier=normalized_tier,
         session_id=session_id,
+        canonical_legs=frozen_legs,
     )
 
 

@@ -40,10 +40,28 @@ router = APIRouter(tags=["Web UI"])
 # =============================================================================
 
 
+class CanonicalLeg(BaseModel):
+    """
+    Ticket 27 Part A: Canonical leg representation.
+
+    Each leg is represented exactly once with structured fields.
+    This is the source of truth when present.
+    """
+    entity: str = Field(..., description="Team or player name")
+    market: str = Field(..., description="Market type: moneyline, spread, total, player_prop")
+    value: Optional[str] = Field(default=None, description="Line value (e.g., '-5.5', 'over 220')")
+    raw: str = Field(..., description="Original text as entered")
+
+
 class WebEvaluateRequest(BaseModel):
     """Request schema for web evaluation."""
     input: str = Field(..., description="Bet text input")
     tier: Optional[str] = Field(default=None, description="Plan tier: GOOD, BETTER, or BEST")
+    # Ticket 27: Canonical legs array (optional for backwards compatibility)
+    legs: Optional[List[CanonicalLeg]] = Field(
+        default=None,
+        description="Structured leg data from builder. When present, this is source of truth."
+    )
 
 
 # =============================================================================
@@ -515,6 +533,26 @@ def _get_canonical_ui_html() -> str:
         .guidance-list li:last-child {{
             border-bottom: none;
         }}
+        /* Ticket 27 Part D: Grounding Warnings */
+        .grounding-warnings {{
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: var(--bg);
+            border: 1px solid var(--yellow);
+            border-left-width: 3px;
+            border-radius: var(--radius);
+        }}
+        .grounding-warnings-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .grounding-warnings-list li {{
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 3px 0;
+            font-style: italic;
+        }}
         /* Ticket 25: Action Buttons */
         .action-buttons {{
             display: none;
@@ -823,6 +861,11 @@ def _get_canonical_ui_html() -> str:
                 <ul id="guidance-list" class="guidance-list"></ul>
             </div>
 
+            <!-- Ticket 27 Part D: Grounding Warnings -->
+            <div id="grounding-warnings" class="grounding-warnings" style="display: none;">
+                <ul id="grounding-warnings-list" class="grounding-warnings-list"></ul>
+            </div>
+
             <div id="debug-section" class="debug-section">
                 <div class="card">
                     <div class="debug-header" onclick="toggleDebug()">
@@ -913,24 +956,42 @@ def _get_canonical_ui_html() -> str:
 
             hideBuilderWarning();
 
-            // Build leg text
+            // Ticket 27: Map UI market to canonical market type
+            const marketMap = {{
+                'ML': 'moneyline',
+                'Spread': 'spread',
+                'Total': 'total',
+                'Player Prop': 'player_prop'
+            }};
+            const canonicalMarket = marketMap[market] || 'unknown';
+
+            // Build leg text (for display and textarea)
             let legText = team;
+            let legValue = null;
             if (market === 'ML') {{
                 legText += ' ML';
             }} else if (market === 'Spread') {{
                 legText += ' ' + (line || '');
+                legValue = line || null;
             }} else if (market === 'Total') {{
-                legText += ' ' + (line.toLowerCase().includes('over') || line.toLowerCase().includes('under') ? line : 'over ' + line);
+                const totalText = line.toLowerCase().includes('over') || line.toLowerCase().includes('under') ? line : 'over ' + line;
+                legText += ' ' + totalText;
+                legValue = totalText;
             }} else if (market === 'Player Prop') {{
                 legText += ' ' + (line || 'prop');
+                legValue = line || null;
             }}
             legText = legText.trim();
 
-            // Add to legs array
+            // Ticket 27 Part B: Add to legs array with canonical schema
             builderLegs.push({{
+                entity: team,
+                market: canonicalMarket,
+                value: legValue,
+                raw: legText,
+                // Keep display fields for UI
                 text: legText,
                 sport: sport,
-                market: market,
             }});
 
             renderLegs();
@@ -1017,10 +1078,23 @@ def _get_canonical_ui_html() -> str:
             showLoading();
 
             try {{
+                // Ticket 27 Part B: Build request with canonical legs if from builder
+                const requestBody = {{ input, tier: selectedTier }};
+
+                // If we have builder legs, send canonical structure
+                if (currentMode === 'builder' && builderLegs.length > 0) {{
+                    requestBody.legs = builderLegs.map(leg => ({{
+                        entity: leg.entity,
+                        market: leg.market,
+                        value: leg.value,
+                        raw: leg.raw || leg.text
+                    }}));
+                }}
+
                 const response = await fetch('/app/evaluate', {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ input, tier: selectedTier }})
+                    body: JSON.stringify(requestBody)
                 }});
 
                 const data = await response.json();
@@ -1191,6 +1265,22 @@ def _get_canonical_ui_html() -> str:
                 guidanceSection.style.display = 'none';
             }}
 
+            // Ticket 27 Part D: Grounding Warnings
+            const groundingWarnings = data.groundingWarnings;
+            const groundingSection = document.getElementById('grounding-warnings');
+            if (groundingWarnings && groundingWarnings.length > 0) {{
+                groundingSection.style.display = 'block';
+                const warningsList = document.getElementById('grounding-warnings-list');
+                warningsList.innerHTML = '';
+                groundingWarnings.forEach(warning => {{
+                    const li = document.createElement('li');
+                    li.textContent = warning;
+                    warningsList.appendChild(li);
+                }});
+            }} else {{
+                groundingSection.style.display = 'none';
+            }}
+
             // Debug section
             if (debugMode) {{
                 document.getElementById('debug-section').classList.add('active');
@@ -1316,10 +1406,16 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     client_ip = get_client_ip(raw_request)
 
     # Airlock validation
+    # Ticket 27: Pass canonical legs if present
     try:
+        canonical_legs = None
+        if request.legs:
+            canonical_legs = [leg.model_dump() for leg in request.legs]
+
         normalized = airlock_ingest(
             input_text=request.input,
             tier=request.tier,
+            canonical_legs=canonical_legs,
         )
     except AirlockError as e:
         latency_ms = (time.perf_counter() - start_time) * 1000
@@ -1452,6 +1548,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "notableLegs": result.notable_legs,
             "finalVerdict": result.final_verdict,
             "gentleGuidance": result.gentle_guidance,
+            "groundingWarnings": result.grounding_warnings,
             "proofSummary": result.proof_summary,
         }
 

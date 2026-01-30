@@ -501,3 +501,154 @@ class TestTicket26LegInterpretationAndGuidance:
             # Suggestions should use "you could" language, not "you should"
             for suggestion in guidance["suggestions"]:
                 assert "should" not in suggestion.lower() or "you should" not in suggestion.lower()
+
+
+class TestTicket27CanonicalLegsAndGrounding:
+    """
+    Ticket 27: Canonical Leg Normalization + Grounding Guardrails tests.
+
+    Part A: Canonical leg schema
+    Part B: Builder serialization
+    Part C: Evaluator uses canonical legs
+    Part D: Grounding warnings
+    Part E: Language consistency
+    """
+
+    def test_request_accepts_canonical_legs(self, client):
+        """Part A/B: Request accepts legs array with canonical structure."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"}
+            ]
+        })
+        assert response.status_code == 200
+
+    def test_canonical_legs_have_source_field(self, client):
+        """Part C: Evaluated parlay legs indicate their source."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+        parlay = data["evaluatedParlay"]
+        assert parlay["canonical"] is True
+        for leg in parlay["legs"]:
+            assert leg["source"] == "builder"
+
+    def test_text_only_legs_have_parsed_source(self, client):
+        """Part C: Without canonical legs, source is 'parsed'."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        parlay = data["evaluatedParlay"]
+        # Without canonical legs, canonical should be False
+        assert parlay.get("canonical", False) is False
+        for leg in parlay["legs"]:
+            assert leg["source"] == "parsed"
+
+    def test_canonical_leg_count_matches_input(self, client):
+        """Part C: Leg count from canonical legs is accurate."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5 + Nuggets over 220",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"},
+                {"entity": "Nuggets", "market": "total", "value": "over 220", "raw": "Nuggets over 220"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["evaluatedParlay"]["leg_count"] == 3
+        assert len(data["evaluatedParlay"]["legs"]) == 3
+
+    def test_response_includes_grounding_warnings(self, client):
+        """Part D: Response includes groundingWarnings field."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert "groundingWarnings" in data
+
+    def test_unrecognized_entity_triggers_warning(self, client):
+        """Part D: Unrecognized entities generate grounding warnings."""
+        response = client.post("/app/evaluate", json={
+            "input": "MightyDucks -5.5",
+            "tier": "good",
+            "legs": [
+                {"entity": "MightyDucks", "market": "spread", "value": "-5.5", "raw": "MightyDucks -5.5"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+        warnings = data.get("groundingWarnings")
+        assert warnings is not None
+        assert len(warnings) > 0
+        # Should mention the unrecognized entity or generic warning
+        warning_text = " ".join(warnings).lower()
+        assert "could not" in warning_text or "recognized" in warning_text or "structural only" in warning_text
+
+    def test_recognized_entity_no_warning(self, client):
+        """Part D: Recognized teams don't trigger entity warnings."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "spread", "value": "-5.5", "raw": "Lakers -5.5"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+        warnings = data.get("groundingWarnings")
+        # Should be empty or None for recognized teams
+        if warnings:
+            warning_text = " ".join(warnings).lower()
+            assert "lakers" not in warning_text
+
+    def test_ui_contains_grounding_warnings_section(self, client):
+        """Part D: UI HTML contains grounding warnings elements."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        assert "grounding-warnings" in response.text
+        assert "grounding-warnings-list" in response.text
+
+    def test_single_bet_uses_bet_terminology(self, client):
+        """Part E: Single leg uses 'bet' not 'parlay'."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "spread", "value": "-5.5", "raw": "Lakers -5.5"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+        display_label = data["evaluatedParlay"]["display_label"]
+        assert display_label == "Single bet"
+
+    def test_multi_leg_uses_parlay_terminology(self, client):
+        """Part E: Multiple legs use 'X-leg parlay'."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+        display_label = data["evaluatedParlay"]["display_label"]
+        assert display_label == "2-leg parlay"

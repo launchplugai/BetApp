@@ -138,6 +138,9 @@ class PipelineResponse:
     # Ticket 26: Gentle Guidance (optional adjustment hints)
     gentle_guidance: Optional[dict] = None
 
+    # Ticket 27: Grounding Warnings (soft warnings for unrecognized entities)
+    grounding_warnings: Optional[list] = None
+
     # Ticket 17: Sherlock integration result (None if disabled)
     sherlock_result: Optional[dict] = None
 
@@ -1299,6 +1302,9 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure) -> str:
     pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
     pf_severity = primary_failure.get("severity", "low") if primary_failure else "low"
 
+    # Ticket 27 Part E: Language consistency
+    bet_term = "bet" if leg_count == 1 else f"{leg_count}-leg parlay"
+
     # Build first sentence: what we see
     if teams and players:
         subject = f"{teams[0]} with {players[0]}"
@@ -1307,9 +1313,10 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure) -> str:
     elif players:
         subject = players[0]
     elif sport != "unknown":
-        subject = f"This {sport.upper()} parlay"
+        sport_term = "bet" if leg_count == 1 else "parlay"
+        subject = f"This {sport.upper()} {sport_term}"
     else:
-        subject = f"This {leg_count}-leg parlay"
+        subject = f"This {bet_term}"
 
     # Build assessment based on fragility bucket
     if fragility <= 15:
@@ -1370,14 +1377,46 @@ def _get_leg_interpretation(bet_type: str) -> str:
     return interpretations.get(bet_type, "")
 
 
-def _build_evaluated_parlay(blocks: list, input_text: str) -> dict:
+def _build_evaluated_parlay(blocks: list, input_text: str, canonical_legs: Optional[tuple] = None) -> dict:
     """
     Build the evaluated parlay receipt showing exactly what was evaluated.
 
     Ticket 25 Part A: User should never wonder what was evaluated.
     Ticket 26 Part A: Adds interpretation field with micro-context per leg.
+    Ticket 27 Part C: Uses canonical legs as source of truth when present.
+
     Returns structured dict with leg_count and ordered leg list.
     """
+    # Ticket 27: If canonical legs are present, use them as source of truth
+    if canonical_legs and len(canonical_legs) > 0:
+        legs = []
+        for i, cleg in enumerate(canonical_legs):
+            bet_type = cleg.market if hasattr(cleg, 'market') else "unknown"
+            interpretation = _get_leg_interpretation(bet_type)
+
+            legs.append({
+                "position": i + 1,
+                "text": cleg.raw if hasattr(cleg, 'raw') else f"Leg {i+1}",
+                "bet_type": bet_type,
+                "entity": cleg.entity if hasattr(cleg, 'entity') else None,
+                "value": cleg.value if hasattr(cleg, 'value') else None,
+                "base_fragility": 0.0,  # Will be enriched by engine if available
+                "interpretation": interpretation,
+                "source": "builder",  # Indicates canonical source
+            })
+
+        leg_count = len(legs)
+        display_label = f"{leg_count}-leg parlay" if leg_count != 1 else "Single bet"
+
+        return {
+            "leg_count": leg_count,
+            "legs": legs,
+            "display_label": display_label,
+            "raw_input": input_text[:200],
+            "canonical": True,  # Indicates legs came from builder
+        }
+
+    # Fallback: Use parsed blocks (legacy/text mode)
     if not blocks:
         return {
             "leg_count": 0,
@@ -1400,6 +1439,7 @@ def _build_evaluated_parlay(blocks: list, input_text: str) -> dict:
             "bet_type": bet_type,
             "base_fragility": block.base_fragility if hasattr(block, 'base_fragility') else 0.0,
             "interpretation": interpretation,
+            "source": "parsed",  # Indicates text parsing source
         })
 
     leg_count = len(legs)
@@ -1410,6 +1450,7 @@ def _build_evaluated_parlay(blocks: list, input_text: str) -> dict:
         "legs": legs,
         "display_label": display_label,
         "raw_input": input_text[:200],  # Truncate for safety
+        "canonical": False,  # Indicates legs came from text parsing
     }
 
 
@@ -1520,13 +1561,14 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
     Build the final verdict block: 2-4 sentence conclusive summary.
 
     Ticket 25 Part C: Ties together grade, risks, artifacts, and context.
+    Ticket 27 Part E: Language consistency - "bet" for single, "parlay" for multiple.
     Tone: calm, direct, plain English, no jargon, no hedging.
 
     Returns dict with verdict_text, tone, and grade reference.
     """
     if not evaluation:
         return {
-            "verdict_text": "Unable to evaluate this parlay. Please check your input.",
+            "verdict_text": "Unable to evaluate this bet. Please check your input.",
             "tone": "neutral",
             "grade": "unknown",
         }
@@ -1540,25 +1582,32 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
     pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
     entities = entities or {}
 
+    # Ticket 27 Part E: Language consistency
+    bet_term = "bet" if leg_count == 1 else "parlay"
+
     # Determine tone and template based on signal
     if signal in ("blue", "green"):
         tone = "positive"
-        opener = "This parlay is structurally sound"
-        core = "with limited dependency between legs."
-        driver = "Risk is primarily driven by leg count rather than correlation or volatility."
-        closer = "No major red flags were detected, making this a reasonable structure if you're comfortable with the included legs."
+        opener = f"This {bet_term} is structurally sound"
+        if leg_count == 1:
+            core = "with straightforward risk profile."
+            driver = "Single-bet structures avoid compounding leg failures."
+        else:
+            core = "with limited dependency between legs."
+            driver = "Risk is primarily driven by leg count rather than correlation or volatility."
+        closer = "No major red flags were detected."
     elif signal == "yellow":
         tone = "mixed"
-        opener = "This parlay has a workable structure"
+        opener = f"This {bet_term} has a workable structure"
         # Tailor core based on primary failure
         if pf_type in ("prop_density", "volatility"):
-            core = "but includes legs that increase variance, particularly player props or totals."
-            driver = "Reducing the number of high-variance legs would improve overall stability."
+            core = "but includes elements that increase variance."
+            driver = "Reducing high-variance components would improve overall stability."
             closer = "The structure is fixable without significantly reducing payout potential."
         elif pf_type in ("correlation", "dependency", "same_game_dependency"):
-            core = "but has legs that share outcome dependencies."
-            driver = "Consider whether correlated legs are intentional."
-            closer = "Splitting dependent legs into separate tickets would reduce compounding risk."
+            core = "but has elements that share outcome dependencies."
+            driver = "Consider whether correlated selections are intentional."
+            closer = "Splitting dependent selections into separate tickets would reduce compounding risk."
         elif pf_type == "leg_count":
             core = f"but {leg_count} legs add meaningful structural penalty."
             driver = "Fewer legs would lower the compounding failure rate."
@@ -1569,9 +1618,13 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
             closer = "Minor adjustments could improve your chances."
     else:  # red
         tone = "cautious"
-        opener = "This parlay relies on multiple high-variance legs"
-        core = "that compound failure risk."
-        driver = "Correlation and leg dependency significantly reduce reliability."
+        if leg_count == 1:
+            opener = "This bet carries elevated risk"
+            core = "due to the nature of the selection."
+        else:
+            opener = f"This {bet_term} relies on multiple high-variance legs"
+            core = "that compound failure risk."
+        driver = "Correlation and dependency significantly reduce reliability."
         closer = "Simplifying the structure would materially improve hit rate."
 
     verdict_text = f"{opener} {core} {driver} {closer}"
@@ -1651,6 +1704,86 @@ def _build_gentle_guidance(primary_failure: dict, signal_info: dict) -> Optional
         "header": "If you wanted to adjust this:",
         "suggestions": suggestions,
     }
+
+
+def _build_grounding_warnings(
+    evaluated_parlay: dict,
+    entities: dict,
+    canonical_legs: Optional[tuple] = None
+) -> list:
+    """
+    Build soft warnings for unrecognized entities.
+
+    Ticket 27 Part D: Grounding guardrails that acknowledge uncertainty.
+    Rules:
+    - Never block evaluation
+    - Never guess corrections
+    - Display as muted info banners
+
+    Returns list of warning strings (empty if all entities recognized).
+    """
+    warnings = []
+
+    # Known NBA teams (lowercase for matching)
+    known_teams = {
+        "lakers", "lal", "celtics", "bos", "nuggets", "den", "bucks", "mil",
+        "warriors", "gsw", "suns", "phx", "76ers", "phi", "sixers", "mavericks",
+        "dal", "mavs", "heat", "mia", "nets", "bkn", "knicks", "nyk", "bulls",
+        "chi", "clippers", "lac", "thunder", "okc", "timberwolves", "min",
+        "wolves", "kings", "sac", "pelicans", "nop", "raptors", "tor", "jazz",
+        "uta", "grizzlies", "mem", "hawks", "atl", "hornets", "cha", "magic",
+        "orl", "pacers", "ind", "pistons", "det", "spurs", "sas", "wizards",
+        "was", "cavaliers", "cle", "cavs", "blazers", "por", "rockets", "hou",
+        # Common abbreviations
+        "boston", "denver", "milwaukee", "golden state", "phoenix", "philadelphia",
+        "dallas", "miami", "brooklyn", "new york", "chicago", "oklahoma",
+        "minnesota", "sacramento", "new orleans", "toronto", "utah", "memphis",
+        "atlanta", "charlotte", "orlando", "indiana", "detroit", "san antonio",
+        "washington", "cleveland", "portland", "houston",
+    }
+
+    # Extract entities from canonical legs or evaluated parlay
+    entities_to_check = []
+
+    if canonical_legs:
+        for cleg in canonical_legs:
+            if hasattr(cleg, 'entity') and cleg.entity:
+                entities_to_check.append(cleg.entity)
+    elif evaluated_parlay and evaluated_parlay.get("legs"):
+        for leg in evaluated_parlay["legs"]:
+            # Try to extract entity from leg text
+            leg_text = leg.get("text", "")
+            # Simple heuristic: first word before market keywords
+            words = leg_text.lower().split()
+            if words:
+                entities_to_check.append(words[0])
+
+    # Check for unrecognized entities
+    unrecognized = []
+    for entity in entities_to_check:
+        entity_lower = entity.lower().strip()
+        if entity_lower and entity_lower not in known_teams:
+            # Check if it's a partial match
+            matched = any(entity_lower in kt or kt in entity_lower for kt in known_teams)
+            if not matched:
+                unrecognized.append(entity)
+
+    # Generate appropriate warnings
+    if unrecognized:
+        if len(unrecognized) == 1:
+            warnings.append(f"'{unrecognized[0]}' could not be matched to a known team.")
+        else:
+            warnings.append("Some team names could not be recognized.")
+
+        warnings.append("Analysis is structural only without live team data.")
+
+    # Check if we're operating without context
+    recognized_teams = entities.get("teams", []) if entities else []
+    if not recognized_teams and evaluated_parlay and evaluated_parlay.get("leg_count", 0) > 0:
+        if not any("could not" in w for w in warnings):
+            warnings.append("This bet includes entities that may not correspond to real teams.")
+
+    return warnings
 
 
 # Main Pipeline Function
@@ -1987,7 +2120,12 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     entities_public["same_game_indicator"] = same_game_info
 
     # Step 19: Ticket 25 — Build evaluated parlay receipt (what was evaluated)
-    evaluated_parlay = _build_evaluated_parlay(blocks, normalized.input_text)
+    # Ticket 27: Pass canonical legs if present (builder mode)
+    evaluated_parlay = _build_evaluated_parlay(
+        blocks,
+        normalized.input_text,
+        canonical_legs=normalized.canonical_legs if hasattr(normalized, 'canonical_legs') else None
+    )
 
     # Step 20: Ticket 25 — Build notable legs (leg-aware context)
     notable_legs = _build_notable_legs(blocks, evaluation, primary_failure)
@@ -1997,6 +2135,13 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 22: Ticket 26 — Build gentle guidance (optional adjustment hints)
     gentle_guidance = _build_gentle_guidance(primary_failure, signal_info)
+
+    # Step 23: Ticket 27 — Build grounding warnings (soft warnings for unrecognized entities)
+    grounding_warnings = _build_grounding_warnings(
+        evaluated_parlay,
+        entities_public,
+        canonical_legs=normalized.canonical_legs if hasattr(normalized, 'canonical_legs') else None
+    )
 
     return PipelineResponse(
         evaluation=evaluation,
@@ -2013,6 +2158,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         notable_legs=notable_legs,
         final_verdict=final_verdict,
         gentle_guidance=gentle_guidance,
+        grounding_warnings=grounding_warnings if grounding_warnings else None,
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,
         proof_summary=proof_summary,
