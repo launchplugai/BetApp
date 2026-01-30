@@ -156,6 +156,57 @@ class PipelineResponse:
 
 
 # =============================================================================
+# Evaluation Context (Ticket 28 — Single Source of Truth)
+# =============================================================================
+
+
+@dataclass(frozen=True)
+class EvaluationContext:
+    """
+    Ticket 28: Single authoritative context for all evaluation outputs.
+
+    INVARIANT: No function may compute leg_count independently.
+    All output builders MUST use this context.
+
+    Fields:
+    - leg_count: Authoritative leg count (from canonical legs if present, else parsed)
+    - bet_term: "bet" for single leg, "parlay" for multiple
+    - is_canonical: True if leg_count came from canonical legs (builder mode)
+    - analysis_depth: "structural_only" (no live data) or "contextual" (with live data)
+    """
+    leg_count: int
+    bet_term: str  # "bet" or "parlay"
+    is_canonical: bool
+    analysis_depth: str = "structural_only"
+
+    @classmethod
+    def create(cls, blocks: list, canonical_legs: Optional[list] = None) -> "EvaluationContext":
+        """
+        Create evaluation context from available data.
+
+        Priority:
+        1. canonical_legs (from builder) if present
+        2. parsed blocks (from text input) as fallback
+        """
+        if canonical_legs:
+            leg_count = len(canonical_legs)
+            is_canonical = True
+        else:
+            leg_count = len(blocks) if blocks else 0
+            is_canonical = False
+
+        # Ticket 28: Language consistency - enforced at context creation
+        bet_term = "bet" if leg_count == 1 else "parlay"
+
+        return cls(
+            leg_count=leg_count,
+            bet_term=bet_term,
+            is_canonical=is_canonical,
+            analysis_depth="structural_only",  # Ticket 29: No live data yet
+        )
+
+
+# =============================================================================
 # Entity Recognition (Ticket 14 — Sprint 2)
 # =============================================================================
 
@@ -615,10 +666,17 @@ def _parse_bet_text(bet_text: str) -> list[BetBlock]:
 # =============================================================================
 
 
-def _generate_summary(response: EvaluationResponse, leg_count: int) -> list[str]:
-    """Generate plain-English summary bullets from evaluation response."""
+def _generate_summary(response: EvaluationResponse, eval_ctx: Optional[EvaluationContext] = None, leg_count: int = 0) -> list[str]:
+    """
+    Generate plain-English summary bullets from evaluation response.
+
+    Ticket 28: Uses EvaluationContext for authoritative leg_count.
+    """
+    # Ticket 28: Use eval_ctx for authoritative leg_count
+    lc = eval_ctx.leg_count if eval_ctx else leg_count
+    bet_term = eval_ctx.bet_term if eval_ctx else ("bet" if lc == 1 else "parlay")
     summary = [
-        f"Detected {leg_count} leg(s) in this bet",
+        f"Detected {lc} leg(s) in this {bet_term}",
         f"Risk level: {response.inductor.level.value.upper()}",
         f"Final fragility: {response.metrics.final_fragility:.2f}",
     ]
@@ -889,7 +947,7 @@ def _build_signal_info(evaluation, primary_failure, delta_preview) -> dict:
     }
 
 
-def _build_primary_failure(evaluation, blocks, entities=None) -> dict:
+def _build_primary_failure(evaluation, blocks, entities=None, eval_ctx: Optional[EvaluationContext] = None) -> dict:
     """
     Identify the single biggest cause of fragility.
 
@@ -902,10 +960,13 @@ def _build_primary_failure(evaluation, blocks, entities=None) -> dict:
     - market_conflict: correlated market types (e.g. total + multiple overs)
     - weak_clarity: input too vague / ambiguous
     - correlation, leg_count, volatility, dependency (original)
+
+    Ticket 28: Uses EvaluationContext for authoritative leg_count.
     """
     metrics = evaluation.metrics
     correlations = evaluation.correlations
-    leg_count = len(blocks) if blocks else 0
+    # Ticket 28: Use eval_ctx for authoritative leg_count
+    leg_count = eval_ctx.leg_count if eval_ctx else (len(blocks) if blocks else 0)
     entities = entities or {}
 
     # --- Compute extended failure scores ---
@@ -1180,16 +1241,19 @@ def _build_delta_preview(evaluation, blocks, primary_failure) -> dict:
     }
 
 
-def _build_secondary_factors(evaluation, blocks, entities, primary_type: str) -> list[dict]:
+def _build_secondary_factors(evaluation, blocks, entities, primary_type: str, eval_ctx: Optional[EvaluationContext] = None) -> list[dict]:
     """
     Build ranked secondary factors (runners-up from the same scoring logic).
 
     Sprint 2: Expose factors that contributed but weren't primary.
     Each factor has: type, impact (low/med/high), explanation.
+
+    Ticket 28: Uses EvaluationContext for authoritative leg_count.
     """
     metrics = evaluation.metrics
     correlations = evaluation.correlations
-    leg_count = len(blocks) if blocks else 0
+    # Ticket 28: Use eval_ctx for authoritative leg_count
+    leg_count = eval_ctx.leg_count if eval_ctx else (len(blocks) if blocks else 0)
     entities = entities or {}
 
     # Recompute all scores (same logic as _build_primary_failure)
@@ -1281,18 +1345,19 @@ def _build_secondary_factors(evaluation, blocks, entities, primary_type: str) ->
     return result
 
 
-def _build_human_summary(evaluation, blocks, entities, primary_failure, canonical_leg_count: Optional[int] = None) -> str:
+def _build_human_summary(evaluation, blocks, entities, primary_failure, eval_ctx: Optional[EvaluationContext] = None) -> str:
     """
     Generate a 2-3 sentence human-readable summary.
 
     Sprint 2: Always included, references recognized entities.
-    Ticket 27B: Accept canonical_leg_count for consistency with builder mode.
+    Ticket 28: Uses EvaluationContext for authoritative leg_count and bet_term.
     No generic warnings. Opinionated and specific.
     """
     metrics = evaluation.metrics
     fragility = metrics.final_fragility
-    # Ticket 27B: Use canonical leg count if provided, else fall back to blocks
-    leg_count = canonical_leg_count if canonical_leg_count is not None else (len(blocks) if blocks else 0)
+    # Ticket 28: Use eval_ctx for authoritative leg_count
+    leg_count = eval_ctx.leg_count if eval_ctx else (len(blocks) if blocks else 0)
+    bet_term = eval_ctx.bet_term if eval_ctx else ("bet" if leg_count == 1 else "parlay")
     entities = entities or {}
 
     # Extract recognized entities for reference
@@ -1304,8 +1369,12 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure, canonica
     pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
     pf_severity = primary_failure.get("severity", "low") if primary_failure else "low"
 
-    # Ticket 27 Part E: Language consistency
-    bet_term = "bet" if leg_count == 1 else f"{leg_count}-leg parlay"
+    # Ticket 28: Language consistency - use bet_term from eval_ctx
+    # Format as "bet" or "X-leg parlay"
+    if leg_count == 1:
+        bet_term_display = "bet"
+    else:
+        bet_term_display = f"{leg_count}-leg parlay"
 
     # Build first sentence: what we see
     if teams and players:
@@ -1315,35 +1384,59 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure, canonica
     elif players:
         subject = players[0]
     elif sport != "unknown":
-        sport_term = "bet" if leg_count == 1 else "parlay"
-        subject = f"This {sport.upper()} {sport_term}"
+        subject = f"This {sport.upper()} {bet_term}"
     else:
-        subject = f"This {bet_term}"
+        subject = f"This {bet_term_display}"
 
-    # Build assessment based on fragility bucket
+    # Ticket 29: Detect leg composition for varied summaries
+    ml_count = markets.count("ml") + markets.count("moneyline")
+    spread_count = markets.count("spread")
+    total_count = markets.count("total") + markets.count("over") + markets.count("under")
+    prop_count = markets.count("prop") + markets.count("player_prop")
+
+    # Ticket 29: Vary assessment based on composition + fragility
     if fragility <= 15:
         assessment = "looks structurally sound"
-        outlook = "Most paths lead to success here."
+        # Vary outlook based on what's in the slip
+        if ml_count > 0 and spread_count == 0 and prop_count == 0:
+            outlook = "Moneyline-only structure keeps variance low."
+        elif prop_count == 0:
+            outlook = "Most paths lead to success here."
+        else:
+            outlook = "Structure is solid despite prop inclusion."
     elif fragility <= 35:
         assessment = "has moderate complexity"
-        outlook = "A few things need to align, but it's workable."
+        if prop_count > ml_count:
+            outlook = "Props add variance but the structure is manageable."
+        elif spread_count > 0 and total_count > 0:
+            outlook = "Spreads and totals on the same slip can interact."
+        else:
+            outlook = "A few things need to align, but it's workable."
     elif fragility <= 60:
         assessment = "carries elevated risk"
-        outlook = "One miss could break the ticket."
+        if prop_count >= 2:
+            outlook = "Heavy prop concentration drives the fragility score."
+        elif spread_count >= 3:
+            outlook = "Multiple spreads multiply margin-of-error sensitivity."
+        else:
+            outlook = "One miss could break the ticket."
     else:
         assessment = "is highly fragile"
-        outlook = "Multiple failure points compound against you."
+        if prop_count >= 3:
+            outlook = "Prop-heavy structure is inherently volatile."
+        else:
+            outlook = "Multiple failure points compound against you."
 
-    # Build specific insight from primary failure
+    # Build specific insight from primary failure — Ticket 29: explain WHY
     pf_insights = {
-        "correlation": "Correlated legs inflate the penalty—consider splitting.",
-        "leg_count": f"{leg_count} legs add structural penalty; fewer is safer.",
-        "volatility": "High-variance props drive fragility.",
-        "dependency": "Shared outcomes create hidden dependencies.",
-        "prop_density": "Prop-heavy slips have elevated variance.",
-        "same_game_dependency": "Same-game legs aren't independent—risk compounds.",
-        "market_conflict": "Overlapping markets amplify correlation.",
-        "weak_clarity": "Better input yields better analysis.",
+        "correlation": "Correlated legs inflate the penalty—when one fails, linked legs often follow.",
+        "leg_count": f"{leg_count} legs add structural penalty; each additional leg multiplies failure risk.",
+        "volatility": "High-variance props drive fragility—player stats fluctuate more than team outcomes.",
+        "dependency": "Shared outcomes create hidden dependencies—teams appearing twice tie results together.",
+        "prop_density": "Prop-heavy slips have elevated variance—player performance depends on minutes and game flow.",
+        "same_game_dependency": "Same-game legs aren't independent—if the game script changes, multiple legs flip.",
+        "market_conflict": "Overlapping markets amplify correlation—totals and spreads in the same game aren't separate.",
+        "weak_clarity": "Better input yields better analysis—more specific selections improve confidence.",
     }
     insight = pf_insights.get(pf_type, "")
 
@@ -1416,6 +1509,7 @@ def _build_evaluated_parlay(blocks: list, input_text: str, canonical_legs: Optio
             "display_label": display_label,
             "raw_input": input_text[:200],
             "canonical": True,  # Indicates legs came from builder
+            "analysis_depth": "structural_only",  # Ticket 29: No live data integration yet
         }
 
     # Fallback: Use parsed blocks (legacy/text mode)
@@ -1424,6 +1518,7 @@ def _build_evaluated_parlay(blocks: list, input_text: str, canonical_legs: Optio
             "leg_count": 0,
             "legs": [],
             "display_label": "No legs detected",
+            "analysis_depth": "structural_only",  # Ticket 29
         }
 
     legs = []
@@ -1453,6 +1548,7 @@ def _build_evaluated_parlay(blocks: list, input_text: str, canonical_legs: Optio
         "display_label": display_label,
         "raw_input": input_text[:200],  # Truncate for safety
         "canonical": False,  # Indicates legs came from text parsing
+        "analysis_depth": "structural_only",  # Ticket 29: No live data integration yet
     }
 
 
@@ -1558,13 +1654,12 @@ def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list
     return notable
 
 
-def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, canonical_leg_count: Optional[int] = None) -> dict:
+def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, eval_ctx: Optional[EvaluationContext] = None) -> dict:
     """
     Build the final verdict block: 2-4 sentence conclusive summary.
 
     Ticket 25 Part C: Ties together grade, risks, artifacts, and context.
-    Ticket 27 Part E: Language consistency - "bet" for single, "parlay" for multiple.
-    Ticket 27B: Accept canonical_leg_count for consistency with builder mode.
+    Ticket 28: Uses EvaluationContext for authoritative leg_count and bet_term.
     Tone: calm, direct, plain English, no jargon, no hedging.
 
     Returns dict with verdict_text, tone, and grade reference.
@@ -1578,16 +1673,14 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
 
     metrics = evaluation.metrics
     fragility = metrics.final_fragility
-    # Ticket 27B: Use canonical leg count if provided, else fall back to blocks
-    leg_count = canonical_leg_count if canonical_leg_count is not None else (len(blocks) if blocks else 0)
+    # Ticket 28: Use eval_ctx for authoritative leg_count
+    leg_count = eval_ctx.leg_count if eval_ctx else (len(blocks) if blocks else 0)
+    bet_term = eval_ctx.bet_term if eval_ctx else ("bet" if leg_count == 1 else "parlay")
     signal = signal_info.get("signal", "yellow") if signal_info else "yellow"
     grade = signal_info.get("grade", "C") if signal_info else "C"
 
     pf_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
     entities = entities or {}
-
-    # Ticket 27 Part E: Language consistency
-    bet_term = "bet" if leg_count == 1 else "parlay"
 
     # Determine tone and template based on signal
     if signal in ("blue", "green"):
@@ -2095,7 +2188,15 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 2: Parse text into BetBlocks (now uses per-leg market detection)
     blocks = _parse_bet_text(normalized.input_text)
-    leg_count = len(blocks)
+
+    # Ticket 28: Create authoritative EvaluationContext ONCE
+    # This is the ONLY place leg_count should be determined
+    canonical_legs = None
+    if hasattr(normalized, 'canonical_legs') and normalized.canonical_legs:
+        canonical_legs = normalized.canonical_legs
+
+    eval_ctx = EvaluationContext.create(blocks=blocks, canonical_legs=canonical_legs)
+    leg_count = eval_ctx.leg_count  # For backwards compatibility with existing code
 
     # Ticket 27B HOTFIX: Use canonical leg count when present (builder mode)
     # This ensures ALL downstream outputs use the same leg_count
@@ -2126,14 +2227,16 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     }
 
     # Step 6: Build full explain wrapper
+    # Ticket 28: Pass eval_ctx for authoritative context
     explain_full = {
-        "summary": _generate_summary(evaluation, leg_count),
+        "summary": _generate_summary(evaluation, eval_ctx=eval_ctx),
         "alerts": _generate_alerts(evaluation),
         "recommended_next_step": evaluation.recommendation.reason,
     }
 
     # Step 7: Build primary failure + delta preview (Ticket 4 + Ticket 14)
-    primary_failure = _build_primary_failure(evaluation, blocks, entities)
+    # Ticket 28: Pass eval_ctx for authoritative leg_count
+    primary_failure = _build_primary_failure(evaluation, blocks, entities, eval_ctx=eval_ctx)
     delta_preview = _build_delta_preview(evaluation, blocks, primary_failure)
 
     # Step 8: Build signal info (Ticket 5)
@@ -2146,19 +2249,21 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     same_game_info = _detect_same_game_indicator(blocks)
     volatility_flag = _compute_volatility_flag(
         entities.get("markets_detected", []),
-        leg_count,
+        eval_ctx.leg_count,  # Ticket 28: Use eval_ctx
         same_game_info["same_game_count"]
     )
 
     # Step 11: Sprint 2 — Build secondary factors (runners-up from scoring logic)
+    # Ticket 28: Pass eval_ctx for authoritative leg_count
     primary_type = primary_failure.get("type", "unknown") if primary_failure else "unknown"
-    secondary_factors = _build_secondary_factors(evaluation, blocks, entities, primary_type)
+    secondary_factors = _build_secondary_factors(evaluation, blocks, entities, primary_type, eval_ctx=eval_ctx)
 
     # Step 12: Sprint 2 — Build human summary (always included)
-    # Ticket 27B: Pass canonical leg_count for consistency
-    human_summary = _build_human_summary(evaluation, blocks, entities, primary_failure, canonical_leg_count=leg_count)
+    # Ticket 28: Pass eval_ctx for authoritative context
+    human_summary = _build_human_summary(evaluation, blocks, entities, primary_failure, eval_ctx=eval_ctx)
 
     # Step 13: Ticket 17 — Run Sherlock hook (if enabled)
+    # Ticket 28: Use eval_ctx.leg_count for consistency
     sherlock_result = None
     if _config.sherlock_enabled:
         hook_result = run_sherlock_hook(
@@ -2171,7 +2276,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
             },
             signal=signal_info.get("signal", "yellow") if signal_info else "yellow",
             primary_failure_type=primary_type,
-            leg_count=leg_count,
+            leg_count=eval_ctx.leg_count,
         )
         if hook_result:
             sherlock_result = hook_result.to_dict()
@@ -2184,6 +2289,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 15: Ticket 20 — Emit real DNA artifacts from evaluation data
     # Artifacts are deterministic, derived, and never persisted.
+    # Ticket 28: Use eval_ctx.leg_count for consistency
     dna_artifacts = emit_artifacts_from_evaluation(
         evaluation_metrics={
             "final_fragility": evaluation.metrics.final_fragility,
@@ -2191,7 +2297,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
             "leg_penalty": evaluation.metrics.leg_penalty,
         },
         signal=signal_info.get("signal", "yellow") if signal_info else "yellow",
-        leg_count=leg_count,
+        leg_count=eval_ctx.leg_count,
         primary_failure_type=primary_type,
         request_id=str(evaluation.parlay_id),
     )
@@ -2259,8 +2365,8 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     notable_legs = _build_notable_legs(blocks, evaluation, primary_failure)
 
     # Step 21: Ticket 25 — Build final verdict (conclusive summary)
-    # Ticket 27B: Pass canonical leg_count for consistency
-    final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, canonical_leg_count=leg_count)
+    # Ticket 28: Pass eval_ctx for authoritative context
+    final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, eval_ctx=eval_ctx)
 
     # Step 22: Ticket 26 — Build gentle guidance (optional adjustment hints)
     gentle_guidance = _build_gentle_guidance(primary_failure, signal_info)
@@ -2291,6 +2397,6 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,
         proof_summary=proof_summary,
-        leg_count=leg_count,
+        leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
     )

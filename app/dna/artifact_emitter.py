@@ -230,17 +230,17 @@ def _build_sherlock_advisory(
     else:
         checks_performed.append(f"Fragility score {final_fragility:.0f}% is high — significant risk")
 
-    # 4. Primary failure insight (if any)
+    # 4. Primary failure insight (if any) — Ticket 29: explain WHY risk exists
     if primary_failure_type:
         failure_explanations = {
-            "correlation": "Primary concern: correlated outcomes reduce independence",
-            "leg_count": "Primary concern: too many legs compound failure probability",
-            "volatility": "Primary concern: high-variance selections increase unpredictability",
-            "dependency": "Primary concern: shared variables create hidden dependencies",
-            "prop_density": "Primary concern: heavy prop concentration elevates variance",
-            "same_game_dependency": "Primary concern: same-game legs share outcome drivers",
-            "market_conflict": "Primary concern: overlapping markets amplify correlation",
-            "weak_clarity": "Primary concern: limited input clarity affects analysis depth",
+            "correlation": "Primary concern: correlated outcomes reduce independence — when one leg fails, linked legs often fail too",
+            "leg_count": "Primary concern: too many legs compound failure probability — each leg multiplies the chance something goes wrong",
+            "volatility": "Primary concern: high-variance selections increase unpredictability — prop bets and totals swing more than spreads",
+            "dependency": "Primary concern: shared variables create hidden dependencies — teams/players appearing in multiple legs tie outcomes together",
+            "prop_density": "Primary concern: heavy prop concentration elevates variance — player props depend on game flow and minutes",
+            "same_game_dependency": "Primary concern: same-game legs share outcome drivers — if one team's game script changes, multiple legs are affected",
+            "market_conflict": "Primary concern: overlapping markets amplify correlation — totals and spreads on the same game aren't independent",
+            "weak_clarity": "Primary concern: limited input clarity affects analysis depth — more specific inputs yield more accurate assessment",
         }
         explanation = failure_explanations.get(
             primary_failure_type,
@@ -290,6 +290,8 @@ def emit_artifacts_from_evaluation(
     artifacts = []
 
     # 1. Weight artifact: Always emit correlation_penalty as key factor
+    # Ticket 28: Use correct terminology - "bet" for single leg, "parlay" for multiple
+    bet_term = "bet" if leg_count == 1 else f"{leg_count}-leg parlay"
     correlation_penalty = evaluation_metrics.get("correlation_penalty", 0.0)
     artifacts.append(
         emit_weight_artifact(
@@ -297,7 +299,7 @@ def emit_artifacts_from_evaluation(
             key="correlation_penalty",
             value=round(correlation_penalty, 4),
             unit="multiplier",
-            rationale=f"Correlation penalty applied to {leg_count}-leg parlay",
+            rationale=f"Correlation penalty applied to {bet_term}",
         )
     )
 

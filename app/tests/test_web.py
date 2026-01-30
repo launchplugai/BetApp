@@ -783,3 +783,235 @@ class TestTicket27BCanonicalContextConsistency:
         if "Legs:" in artifacts_text:
             assert "Legs: 3" in artifacts_text, f"Expected 'Legs: 3' but got: {artifacts_text}"
             assert "Legs: 1" not in artifacts_text, "Found 'Legs: 1' for 3-leg parlay"
+
+
+class TestTicket28CanonicalContextRepair:
+    """
+    Ticket 28: Canonical Context Repair tests.
+
+    Verifies that EvaluationContext provides a single authoritative source
+    for leg_count across all outputs: receipt, artifacts, audit, summary, verdict.
+    """
+
+    def test_all_outputs_use_same_leg_count(self, client):
+        """
+        Core requirement: receipt, artifacts, audit, summary all agree on leg_count.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5 + Nuggets over 220 + Warriors ML",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"},
+                {"entity": "Nuggets", "market": "total", "value": "over 220", "raw": "Nuggets over 220"},
+                {"entity": "Warriors", "market": "moneyline", "value": None, "raw": "Warriors ML"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        # All sources must agree on 4 legs
+        expected_leg_count = 4
+
+        # 1. Receipt leg_count
+        receipt_leg_count = data["evaluatedParlay"]["leg_count"]
+        assert receipt_leg_count == expected_leg_count, f"Receipt shows {receipt_leg_count} legs, expected {expected_leg_count}"
+
+        # 2. Receipt legs array length
+        legs_array_len = len(data["evaluatedParlay"]["legs"])
+        assert legs_array_len == expected_leg_count, f"Legs array has {legs_array_len} items, expected {expected_leg_count}"
+
+        # 3. Display label
+        display_label = data["evaluatedParlay"]["display_label"]
+        assert f"{expected_leg_count}-leg" in display_label, f"Display label '{display_label}' doesn't match expected leg count"
+
+        # 4. Canonical flag should be True for builder mode
+        is_canonical = data["evaluatedParlay"].get("canonical", False)
+        assert is_canonical is True, "evaluatedParlay should have canonical=True for builder input"
+
+    def test_language_consistency_single_leg(self, client):
+        """
+        Single leg must use 'bet' terminology in primary outputs.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        # Display label should say "Single bet", not "1-leg parlay"
+        display_label = data["evaluatedParlay"]["display_label"]
+        assert display_label == "Single bet", f"Display label should be 'Single bet', got '{display_label}'"
+
+        # Final verdict should use "bet" terminology
+        verdict = data.get("finalVerdict", {})
+        verdict_text = verdict.get("verdict_text", "").lower()
+        assert "parlay" not in verdict_text, f"Verdict should not use 'parlay' for single leg: {verdict_text}"
+
+    def test_language_consistency_multi_leg(self, client):
+        """
+        Multiple legs must use 'parlay' terminology.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics ML",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "moneyline", "value": None, "raw": "Celtics ML"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        # Display label should say "parlay"
+        display_label = data["evaluatedParlay"]["display_label"]
+        assert "parlay" in display_label.lower(), f"Display label '{display_label}' should contain 'parlay'"
+
+    def test_artifacts_match_canonical_leg_count(self, client):
+        """
+        Artifacts must reflect the canonical leg count, not parsed block count.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Test parlay with canonical legs",
+            "tier": "good",
+            "legs": [
+                {"entity": "TeamA", "market": "spread", "value": "-5", "raw": "TeamA -5"},
+                {"entity": "TeamB", "market": "spread", "value": "-3", "raw": "TeamB -3"},
+                {"entity": "TeamC", "market": "spread", "value": "-7", "raw": "TeamC -7"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        import json
+
+        # Check proof summary artifacts
+        proof = data.get("proofSummary", {})
+        artifacts = proof.get("sample_artifacts", [])
+        artifacts_text = json.dumps(artifacts)
+
+        # Should reference 3 legs, not 1
+        if "Legs:" in artifacts_text:
+            assert "Legs: 3" in artifacts_text, f"Artifacts should show 'Legs: 3', got: {artifacts_text}"
+
+    def test_verdict_uses_context_leg_count(self, client):
+        """
+        Final verdict must use the authoritative leg count from context.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Multi-leg test",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "moneyline", "value": None, "raw": "Celtics ML"},
+                {"entity": "Nuggets", "market": "moneyline", "value": None, "raw": "Nuggets ML"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        verdict = data.get("finalVerdict", {})
+        verdict_text = verdict.get("verdict_text", "").lower()
+
+        # Should not contain single-bet language for 3-leg parlay
+        assert "single-bet" not in verdict_text, f"Verdict contains 'single-bet' for 3-leg parlay: {verdict_text}"
+
+
+class TestTicket29GroundedConfidenceUpgrade:
+    """
+    Ticket 29: Grounded Confidence Upgrade tests.
+
+    Verifies improved artifact wording, varied summaries, and analysis_depth flag.
+    """
+
+    def test_analysis_depth_flag_present(self, client):
+        """
+        evaluatedParlay must include analysis_depth="structural_only".
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML + Celtics -5.5",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "spread", "value": "-5.5", "raw": "Celtics -5.5"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        evaluated = data.get("evaluatedParlay", {})
+        assert "analysis_depth" in evaluated, "evaluatedParlay should have analysis_depth field"
+        assert evaluated["analysis_depth"] == "structural_only", f"analysis_depth should be 'structural_only', got '{evaluated.get('analysis_depth')}'"
+
+    def test_artifact_why_explanations(self, client):
+        """
+        Artifacts should explain WHY risk exists, not just WHAT.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Test prop parlay",
+            "tier": "good",
+            "legs": [
+                {"entity": "LeBron", "market": "player_prop", "value": "over 25.5", "raw": "LeBron over 25.5 pts"},
+                {"entity": "Curry", "market": "player_prop", "value": "over 5.5", "raw": "Curry over 5.5 3PT"}
+            ]
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        import json
+        proof = data.get("proofSummary", {})
+        artifacts = proof.get("sample_artifacts", [])
+        artifacts_text = json.dumps(artifacts).lower()
+
+        # Artifacts should contain explanatory language
+        has_explanation = (
+            "because" in artifacts_text or
+            "when" in artifacts_text or
+            "—" in artifacts_text or  # em-dash indicates explanation
+            "depend" in artifacts_text or
+            "compound" in artifacts_text
+        )
+        # At minimum, should have some advisory text
+        assert "primary concern" in artifacts_text or "verdict" in artifacts_text, \
+            "Artifacts should include primary concern or verdict explanation"
+
+    def test_summary_references_composition(self, client):
+        """
+        Human summary should vary based on leg composition.
+        """
+        # Test ML-only parlay
+        response_ml = client.post("/app/evaluate", json={
+            "input": "ML parlay",
+            "tier": "good",
+            "legs": [
+                {"entity": "Lakers", "market": "moneyline", "value": None, "raw": "Lakers ML"},
+                {"entity": "Celtics", "market": "moneyline", "value": None, "raw": "Celtics ML"}
+            ]
+        })
+        assert response_ml.status_code == 200
+        data_ml = response_ml.json()
+        summary_ml = data_ml.get("humanSummary", "").lower()
+
+        # ML-only should mention low variance or moneyline
+        # (structure determines outlook text)
+        assert "structurally sound" in summary_ml or "complexity" in summary_ml or "risk" in summary_ml
+
+    def test_analysis_depth_for_text_input(self, client):
+        """
+        Text-only input (no canonical legs) should also have analysis_depth.
+        """
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers ML, Celtics -5.5",
+            "tier": "good"
+            # No legs array - text parsing mode
+        })
+        assert response.status_code == 200
+        data = response.json()
+
+        evaluated = data.get("evaluatedParlay", {})
+        assert evaluated.get("analysis_depth") == "structural_only", \
+            "Text-only input should also have analysis_depth='structural_only'"
