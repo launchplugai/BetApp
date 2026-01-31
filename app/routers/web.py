@@ -1851,7 +1851,8 @@ def _get_canonical_ui_html() -> str:
 
                 try {{
                     const formData = new FormData();
-                    formData.append('file', file);
+                    // Ticket 38A fix: Backend expects 'image' not 'file'
+                    formData.append('image', file);
 
                     const response = await fetch('/leading-light/evaluate/image', {{
                         method: 'POST',
