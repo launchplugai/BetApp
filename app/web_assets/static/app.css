@@ -833,6 +833,86 @@ header a {
     font-size: var(--text-sm);
 }
 
+/* ============================================================
+   TICKET 31 CHUNK 2: STATE-DRIVEN UI ELEMENTS
+   ============================================================ */
+
+/* State-hidden utility class */
+.state-hidden {
+    display: none !important;
+}
+
+/* Disclosure Badge (analysis transparency) */
+.disclosure-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-3);
+    font-size: var(--text-xs);
+    color: var(--signal-blue);
+}
+.disclosure-badge.hidden {
+    display: none;
+}
+.disclosure-icon {
+    font-size: var(--text-sm);
+}
+.disclosure-text {
+    flex: 1;
+}
+
+/* Complexity Banner (ELEVATED_PARLAY warning) */
+.complexity-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    background: rgba(250, 204, 21, 0.15);
+    border: 1px solid rgba(250, 204, 21, 0.3);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--sp-3);
+    font-size: var(--text-sm);
+    color: var(--signal-yellow);
+}
+.complexity-banner.hidden {
+    display: none;
+}
+.complexity-icon {
+    font-size: var(--text-lg);
+}
+.complexity-text {
+    flex: 1;
+    font-weight: 500;
+}
+
+/* Max Parlay Warning (MAX_PARLAY state) */
+.max-parlay-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-sm);
+    margin: var(--sp-2) 0 var(--sp-3) 0;
+    font-size: var(--text-sm);
+    color: var(--signal-red);
+}
+.max-parlay-warning.hidden {
+    display: none;
+}
+.max-warning-icon {
+    font-size: var(--text-lg);
+}
+.max-warning-text {
+    flex: 1;
+    font-weight: 500;
+}
+
 /* Delta Panel (enhanced) */
 .delta-panel {
     background: var(--surface-raised);
@@ -1906,6 +1986,29 @@ header a {
     border: 1px solid var(--signal-green);
     border-radius: var(--radius-md);
 }
+
+/* OCR Accuracy Warning Banner (Ticket 32 Part A) */
+.ocr-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    margin-bottom: var(--sp-3);
+    background: rgba(250, 204, 21, 0.1);
+    border: 1px solid var(--signal-yellow);
+    border-radius: var(--radius-sm);
+}
+.ocr-warning-icon {
+    color: var(--signal-yellow);
+    font-size: var(--text-base);
+    line-height: 1;
+}
+.ocr-warning-text {
+    font-size: var(--text-sm);
+    color: var(--fg-secondary);
+    line-height: 1.4;
+}
+
 .extracted-text-header {
     display: flex;
     align-items: center;

@@ -39,11 +39,103 @@
     let currentTier = 'good';
     let originalSignalInfo = null;
     let reEvalDebounceTimer = null;
+    let currentBuilderState = 'EMPTY';
+
+    // ============================================================
+    // TICKET 31: BUILDER STATE MACHINE (DNA Parlay Builder Spec v1.0)
+    // States: EMPTY(0), SINGLE_BET(1), STANDARD_PARLAY(2-3), ELEVATED_PARLAY(4-5), MAX_PARLAY(6)
+    // BLOCKED is a rejected transition, not a persistent state
+    // ============================================================
+    const BuilderStateMachine = {
+        // Maximum legs allowed (defense-in-depth)
+        MAX_LEGS: 6,
+
+        // State definitions with leg count thresholds per spec v1.0
+        STATES: {
+            EMPTY: { minLegs: 0, maxLegs: 0, label: 'Empty', canAdd: true, canRemove: false },
+            SINGLE_BET: { minLegs: 1, maxLegs: 1, label: 'Single Bet', canAdd: true, canRemove: true },
+            STANDARD_PARLAY: { minLegs: 2, maxLegs: 3, label: 'Standard Parlay', canAdd: true, canRemove: true },
+            ELEVATED_PARLAY: { minLegs: 4, maxLegs: 5, label: 'Elevated Risk', canAdd: true, canRemove: true },
+            MAX_PARLAY: { minLegs: 6, maxLegs: 6, label: 'Maximum Legs', canAdd: false, canRemove: true }
+        },
+
+        // Compute state from leg count (spec v1.0 thresholds)
+        computeState: function(legCount) {
+            if (legCount === 0) return 'EMPTY';
+            if (legCount === 1) return 'SINGLE_BET';
+            if (legCount >= 2 && legCount <= 3) return 'STANDARD_PARLAY';
+            if (legCount >= 4 && legCount <= 5) return 'ELEVATED_PARLAY';
+            if (legCount >= 6) return 'MAX_PARLAY';
+            return 'EMPTY';
+        },
+
+        // Check if can add more legs
+        canAddLeg: function(state) {
+            const stateConfig = this.STATES[state];
+            return stateConfig ? stateConfig.canAdd : false;
+        },
+
+        // Check if can remove legs
+        canRemoveLeg: function(state) {
+            const stateConfig = this.STATES[state];
+            return stateConfig ? stateConfig.canRemove : false;
+        },
+
+        // Attempt to add a leg - returns { allowed, reason } for BLOCKED transition handling
+        tryAddLeg: function(currentLegCount) {
+            if (currentLegCount >= this.MAX_LEGS) {
+                return {
+                    allowed: false,
+                    reason: 'Maximum 6 legs allowed',
+                    blocked: true
+                };
+            }
+            return { allowed: true, reason: null, blocked: false };
+        },
+
+        // Get state label for UI display
+        getStateLabel: function(state) {
+            const stateConfig = this.STATES[state];
+            return stateConfig ? stateConfig.label : 'Unknown';
+        },
+
+        // Get bet term based on leg count (bet vs parlay)
+        getBetTerm: function(legCount) {
+            if (legCount === 0) return '';
+            if (legCount === 1) return 'bet';
+            return 'parlay';
+        },
+
+        // Get leg count text with proper terminology per spec
+        // 1 leg: "Single bet"
+        // 2+ legs: "{N}-leg parlay"
+        getLegCountText: function(legCount) {
+            if (legCount === 0) return 'Empty slip';
+            if (legCount === 1) return 'Single bet';
+            return legCount + '-leg parlay';
+        },
+
+        // Check if transitioning to elevated state (for warning)
+        isTransitionToElevated: function(currentLegCount, newLegCount) {
+            const currentState = this.computeState(currentLegCount);
+            const newState = this.computeState(newLegCount);
+            return currentState !== 'ELEVATED_PARLAY' && newState === 'ELEVATED_PARLAY';
+        },
+
+        // Check if at max (6 legs)
+        isAtMax: function(legCount) {
+            return legCount >= this.MAX_LEGS;
+        }
+    };
+
+    // Export for testing
+    window.BuilderStateMachine = BuilderStateMachine;
 
     // ============================================================
     // LEG PARSING
     // ============================================================
-    function parseLegsFromText(text) {
+    function parseLegsFromText(text, options) {
+        options = options || {};
         if (!text) return [];
 
         // Split by common delimiters
@@ -58,8 +150,15 @@
             parts = beforeParlay.split(/\s*\+\s*/);
         }
 
+        // CHUNK 3: Enforce MAX_LEGS (6 leg cap)
+        let wasBlocked = false;
+        if (parts.length > BuilderStateMachine.MAX_LEGS) {
+            wasBlocked = true;
+            parts = parts.slice(0, BuilderStateMachine.MAX_LEGS);
+        }
+
         // Detect bet type for each leg
-        return parts.map((legText, index) => {
+        const legs = parts.map((legText, index) => {
             const lower = legText.toLowerCase();
             let betType = 'ml';
 
@@ -78,13 +177,212 @@
                 index: index
             };
         });
+
+        // Emit blocked event if legs were truncated (unless suppressed)
+        if (wasBlocked && !options.suppressBlockedEvent) {
+            // Defer to next tick so caller can finish before event fires
+            setTimeout(function() {
+                emitBlockedEvent('Input exceeded maximum of 6 legs');
+            }, 0);
+        }
+
+        return legs;
     }
 
     // ============================================================
     // RENDER FUNCTIONS
     // ============================================================
+    function updateBuilderState() {
+        // Compute new state from leg count
+        const newState = BuilderStateMachine.computeState(currentLegs.length);
+        const previousState = currentBuilderState;
+        currentBuilderState = newState;
+
+        // Emit state change event for UI updates
+        if (previousState !== newState) {
+            const event = new CustomEvent('builderStateChange', {
+                detail: {
+                    previousState: previousState,
+                    newState: newState,
+                    legCount: currentLegs.length,
+                    canAdd: BuilderStateMachine.canAddLeg(newState),
+                    canRemove: BuilderStateMachine.canRemoveLeg(newState),
+                    stateLabel: BuilderStateMachine.getStateLabel(newState),
+                    isAtMax: BuilderStateMachine.isAtMax(currentLegs.length)
+                }
+            });
+            document.dispatchEvent(event);
+        }
+
+        return newState;
+    }
+
+    // Emit blocked event when add is rejected at MAX_PARLAY
+    function emitBlockedEvent(reason) {
+        const event = new CustomEvent('builderAddBlocked', {
+            detail: {
+                state: currentBuilderState,
+                legCount: currentLegs.length,
+                reason: reason,
+                maxLegs: BuilderStateMachine.MAX_LEGS
+            }
+        });
+        document.dispatchEvent(event);
+    }
+
+    // ============================================================
+    // TICKET 31 CHUNK 2: UI STATE RENDERING
+    // Visibility matrix driven by BuilderStateMachine state
+    // ============================================================
+
+    // Get or create UI elements for state-driven rendering
+    function getStateUIElements() {
+        return {
+            builderTitle: document.querySelector('.builder-title'),
+            slipLegCount: document.getElementById('slip-leg-count'),
+            fastestFixCard: document.getElementById('fastest-fix-card'),
+            deltaPanel: document.getElementById('delta-panel'),
+            // Create complexity banner if not exists
+            complexityBanner: document.getElementById('complexity-banner') || createComplexityBanner(),
+            // Create max warning if not exists
+            maxWarning: document.getElementById('max-parlay-warning') || createMaxWarning(),
+            // Create disclosure badge if not exists
+            disclosureBadge: document.getElementById('disclosure-badge') || createDisclosureBadge()
+        };
+    }
+
+    // Create complexity banner element (for ELEVATED_PARLAY state)
+    function createComplexityBanner() {
+        const banner = document.createElement('div');
+        banner.id = 'complexity-banner';
+        banner.className = 'complexity-banner hidden';
+        banner.innerHTML = '<span class="complexity-icon">&#9888;</span> <span class="complexity-text">High complexity parlay - correlation risk increases</span>';
+        // Insert after builder header
+        const header = document.querySelector('.builder-header');
+        if (header && header.parentNode) {
+            header.parentNode.insertBefore(banner, header.nextSibling);
+        }
+        return banner;
+    }
+
+    // Create max parlay warning element (for MAX_PARLAY state)
+    function createMaxWarning() {
+        const warning = document.createElement('div');
+        warning.id = 'max-parlay-warning';
+        warning.className = 'max-parlay-warning hidden';
+        warning.innerHTML = '<span class="max-warning-icon">&#128721;</span> <span class="max-warning-text">Maximum legs reached (6). Remove a leg to add more.</span>';
+        // Insert after slip leg list header
+        const slipList = document.getElementById('slip-leg-list');
+        if (slipList) {
+            const header = slipList.querySelector('.slip-leg-list-header');
+            if (header && header.parentNode) {
+                header.parentNode.insertBefore(warning, header.nextSibling);
+            }
+        }
+        return warning;
+    }
+
+    // Create disclosure badge element (analysis transparency)
+    function createDisclosureBadge() {
+        const badge = document.createElement('div');
+        badge.id = 'disclosure-badge';
+        badge.className = 'disclosure-badge hidden';
+        badge.innerHTML = '<span class="disclosure-icon">&#128269;</span> <span class="disclosure-text">Structural analysis only - no live odds data</span>';
+        // Insert before fastest fix card
+        const fastestFix = document.getElementById('fastest-fix-card');
+        if (fastestFix && fastestFix.parentNode) {
+            fastestFix.parentNode.insertBefore(badge, fastestFix);
+        }
+        return badge;
+    }
+
+    // Render UI based on current state (visibility matrix)
+    function renderStateUI() {
+        const state = currentBuilderState;
+        const legCount = currentLegs.length;
+        const ui = getStateUIElements();
+
+        // Update header text based on state
+        if (ui.builderTitle) {
+            if (state === 'EMPTY') {
+                ui.builderTitle.textContent = 'Add your first leg to begin';
+            } else if (state === 'MAX_PARLAY') {
+                ui.builderTitle.textContent = '6-leg parlay (maximum)';
+            } else {
+                ui.builderTitle.textContent = BuilderStateMachine.getLegCountText(legCount);
+            }
+        }
+
+        // Disclosure badge: visible for SINGLE_BET and above
+        if (ui.disclosureBadge) {
+            if (state === 'EMPTY') {
+                ui.disclosureBadge.classList.add('hidden');
+            } else {
+                ui.disclosureBadge.classList.remove('hidden');
+            }
+        }
+
+        // Primary failure card (fastest fix): hidden for EMPTY and SINGLE_BET
+        if (ui.fastestFixCard) {
+            if (state === 'EMPTY' || state === 'SINGLE_BET') {
+                ui.fastestFixCard.classList.add('state-hidden');
+            } else {
+                ui.fastestFixCard.classList.remove('state-hidden');
+            }
+        }
+
+        // Delta panel: hidden for EMPTY
+        if (ui.deltaPanel) {
+            if (state === 'EMPTY') {
+                ui.deltaPanel.classList.add('state-hidden');
+            } else {
+                ui.deltaPanel.classList.remove('state-hidden');
+            }
+        }
+
+        // Complexity banner: visible for ELEVATED_PARLAY and MAX_PARLAY
+        if (ui.complexityBanner) {
+            if (state === 'ELEVATED_PARLAY' || state === 'MAX_PARLAY') {
+                ui.complexityBanner.classList.remove('hidden');
+            } else {
+                ui.complexityBanner.classList.add('hidden');
+            }
+        }
+
+        // Max parlay warning: visible only for MAX_PARLAY
+        if (ui.maxWarning) {
+            if (state === 'MAX_PARLAY') {
+                ui.maxWarning.classList.remove('hidden');
+            } else {
+                ui.maxWarning.classList.add('hidden');
+            }
+        }
+    }
+
+    // Handle blocked add event (show toast, no evaluation)
+    function handleBlockedAdd(event) {
+        const detail = event.detail || {};
+        showToast('Maximum of 6 legs supported', 'error');
+        // No evaluation triggered - this is enforced by the blocked transition
+    }
+
+    // Listen for blocked add events
+    document.addEventListener('builderAddBlocked', handleBlockedAdd);
+
+    // Listen for state change events to update UI
+    document.addEventListener('builderStateChange', function(event) {
+        renderStateUI();
+    });
+
     function renderLegList() {
-        slipLegCount.textContent = currentLegs.length + ' leg' + (currentLegs.length !== 1 ? 's' : '');
+        // Update state first
+        const state = updateBuilderState();
+
+        // Render state-driven UI elements (Chunk 2)
+        renderStateUI();
+
+        // Use state machine for terminology
+        slipLegCount.textContent = BuilderStateMachine.getLegCountText(currentLegs.length);
 
         if (currentLegs.length === 0) {
             slipLegRows.innerHTML = '<div class="slip-empty-state">No legs in slip</div>';
@@ -96,11 +394,13 @@
         const affectedIds = (ctx.primaryFailure && ctx.primaryFailure.affectedLegIds) || [];
         const candidateIds = (ctx.fastestFix && ctx.fastestFix.candidateLegIds) || [];
 
+        // Check if remove is allowed based on state
+        const canRemoveAny = BuilderStateMachine.canRemoveLeg(state);
+
         let html = '';
         currentLegs.forEach((leg, index) => {
             const isAffected = affectedIds.includes(leg.id) || candidateIds.includes(leg.id);
             const isProp = leg.betType === 'prop';
-            const canRemove = currentLegs.length > 1;
 
             let rowClass = 'slip-leg-row';
             if (isAffected) rowClass += ' affected';
@@ -113,7 +413,7 @@
                 html += '<span class="slip-leg-tag ' + leg.betType + '">' + leg.betType.toUpperCase() + '</span>';
             }
 
-            html += '<button type="button" class="slip-leg-remove" data-leg-index="' + index + '"' + (canRemove ? '' : ' disabled') + '>&times;</button>';
+            html += '<button type="button" class="slip-leg-remove" data-leg-index="' + index + '"' + (canRemoveAny ? '' : ' disabled') + '>&times;</button>';
             html += '</div>';
         });
 
@@ -122,6 +422,10 @@
         // Attach remove handlers
         slipLegRows.querySelectorAll('.slip-leg-remove').forEach(btn => {
             btn.addEventListener('click', function() {
+                if (!BuilderStateMachine.canRemoveLeg(currentBuilderState)) {
+                    showToast('No legs to remove', 'error');
+                    return;
+                }
                 const idx = parseInt(this.getAttribute('data-leg-index'));
                 removeLeg(idx);
             });
@@ -242,10 +546,10 @@
             fastestFixDisabledReason.classList.remove('hidden');
         }
 
-        // Check for single-leg case
-        if (currentLegs.length <= 1 && ff.action === 'remove_leg') {
+        // Check for empty case using state machine (SINGLE_BET allows removal per spec)
+        if (!BuilderStateMachine.canRemoveLeg(currentBuilderState) && ff.action === 'remove_leg') {
             fastestFixButton.disabled = true;
-            fastestFixDisabledReason.textContent = 'Cannot remove the only leg';
+            fastestFixDisabledReason.textContent = 'No legs to remove';
             fastestFixDisabledReason.classList.remove('hidden');
         }
     }
@@ -261,9 +565,47 @@
     // ============================================================
     // ACTIONS
     // ============================================================
+
+    // CHUNK 3: Add a leg with MAX_LEGS enforcement
+    // Returns true if added, false if blocked (no evaluation triggered when blocked)
+    function addLeg(legText) {
+        // Use state machine to check if adding is allowed
+        const result = BuilderStateMachine.tryAddLeg(currentLegs.length);
+
+        if (!result.allowed) {
+            // BLOCKED: emit event and short-circuit - NO evaluation
+            emitBlockedEvent(result.reason);
+            return false;
+        }
+
+        // Allowed: add the leg
+        const lower = legText.toLowerCase();
+        let betType = 'ml';
+        if (/yards|points|rebounds|assists|touchdowns|td|passing|receiving|rushing|hits|strikeouts/i.test(lower)) {
+            betType = 'prop';
+        } else if (/over|under|o\/|u\//i.test(lower)) {
+            betType = 'total';
+        } else if (/[+-]\d+\.?\d*/i.test(lower) && !/over|under/i.test(lower)) {
+            betType = 'spread';
+        }
+
+        const newLeg = {
+            id: 'leg_' + currentLegs.length,
+            text: legText,
+            betType: betType,
+            index: currentLegs.length
+        };
+
+        currentLegs.push(newLeg);
+        renderLegList();
+        triggerReEvaluate();
+        return true;
+    }
+
     function removeLeg(index) {
-        if (currentLegs.length <= 1) {
-            showToast('Cannot remove the only leg', 'error');
+        // Use state machine to check if removal is allowed (only EMPTY blocks removal)
+        if (!BuilderStateMachine.canRemoveLeg(currentBuilderState)) {
+            showToast('No legs to remove', 'error');
             return;
         }
 
@@ -509,6 +851,48 @@
 
     // Export check function for tab switching
     window._checkFixContext = checkBuilderContext;
+
+    // Export state getter for testing (Ticket 31)
+    window._getBuilderState = function() {
+        return {
+            state: currentBuilderState,
+            legCount: currentLegs.length,
+            canAdd: BuilderStateMachine.canAddLeg(currentBuilderState),
+            canRemove: BuilderStateMachine.canRemoveLeg(currentBuilderState),
+            stateLabel: BuilderStateMachine.getStateLabel(currentBuilderState),
+            betTerm: BuilderStateMachine.getBetTerm(currentLegs.length),
+            isAtMax: BuilderStateMachine.isAtMax(currentLegs.length),
+            maxLegs: BuilderStateMachine.MAX_LEGS
+        };
+    };
+
+    // Export blocked event emitter for testing
+    window._emitBlockedEvent = emitBlockedEvent;
+
+    // Export addLeg function for testing (Ticket 31 Chunk 3)
+    window._addLeg = addLeg;
+
+    // Export parseLegsFromText for testing (Ticket 31 Chunk 3)
+    window._parseLegsFromText = parseLegsFromText;
+
+    // Export UI rendering function for testing (Ticket 31 Chunk 2)
+    window._renderStateUI = renderStateUI;
+
+    // Export visibility matrix info for testing (Ticket 31 Chunk 2)
+    window._getVisibilityMatrix = function() {
+        const state = currentBuilderState;
+        return {
+            state: state,
+            headerText: state === 'EMPTY' ? 'Add your first leg to begin' :
+                        state === 'MAX_PARLAY' ? '6-leg parlay (maximum)' :
+                        BuilderStateMachine.getLegCountText(currentLegs.length),
+            disclosureVisible: state !== 'EMPTY',
+            primaryFailureVisible: state !== 'EMPTY' && state !== 'SINGLE_BET',
+            complexityBannerVisible: state === 'ELEVATED_PARLAY' || state === 'MAX_PARLAY',
+            maxWarningVisible: state === 'MAX_PARLAY',
+            deltaPanelVisible: state !== 'EMPTY'
+        };
+    };
 
     // Initial check
     checkBuilderContext();

@@ -44,9 +44,10 @@ class TestParseBetText:
         assert len(blocks) == 3
 
     def test_max_legs_capped(self):
-        """Leg count capped at 5."""
+        """Parser caps at 6 legs (Builder State Machine handles full limits)."""
+        # Parser has internal cap; Builder State Machine handles extended limits
         blocks = _parse_bet_text("A + B + C + D + E + F + G + H")
-        assert len(blocks) == 5
+        assert len(blocks) == 6  # Parser caps at 6; full 12-leg limit in Builder
 
     def test_prop_bet_detected(self):
         """Player prop keywords detected."""
@@ -70,7 +71,8 @@ class TestGenerateSummary:
         mock_response.metrics.correlation_penalty = 0
         mock_response.correlations = []
 
-        summary = _generate_summary(mock_response, 3)
+        # Ticket 28: Pass leg_count as keyword argument (eval_ctx is optional)
+        summary = _generate_summary(mock_response, leg_count=3)
         assert "3 leg(s)" in summary[0]
 
     def test_summary_includes_risk_level(self):
@@ -81,7 +83,8 @@ class TestGenerateSummary:
         mock_response.metrics.correlation_penalty = 0
         mock_response.correlations = []
 
-        summary = _generate_summary(mock_response, 1)
+        # Ticket 28: Pass leg_count as keyword argument (eval_ctx is optional)
+        summary = _generate_summary(mock_response, leg_count=1)
         assert any("TENSE" in s for s in summary)
 
 

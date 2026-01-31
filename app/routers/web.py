@@ -159,8 +159,100 @@ def _get_canonical_ui_html() -> str:
         }}
         .build-stamp {{
             font-size: 11px;
+        }}
+        /* Ticket 32 Part B: Session Bar */
+        .session-bar {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 12px;
+        }}
+        .session-label {{
             color: var(--text-muted);
+        }}
+        .session-name-input {{
+            flex: 1;
+            padding: 4px 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 12px;
+            min-width: 0;
+        }}
+        .session-name-input:focus {{
+            outline: none;
+            border-color: var(--accent);
+        }}
+        .session-name-input::placeholder {{
+            color: var(--text-muted);
+        }}
+        .session-history {{
+            color: var(--text-muted);
+            white-space: nowrap;
             font-family: monospace;
+        }}
+        /* Ticket 32 Part D: Workbench Layout */
+        .workbench {{
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }}
+        .workbench-panel {{
+            flex: 1;
+        }}
+        .workbench-panel-header {{
+            padding: 8px 0;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }}
+        .workbench-panel-title {{
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent);
+        }}
+        .workbench-results .workbench-panel-title {{
+            color: var(--green);
+        }}
+        /* Desktop: Side-by-side layout */
+        @media (min-width: 768px) {{
+            .workbench {{
+                flex-direction: row;
+                align-items: flex-start;
+            }}
+            .workbench-input {{
+                flex: 0 0 45%;
+                max-width: 45%;
+                position: sticky;
+                top: 16px;
+            }}
+            .workbench-results {{
+                flex: 0 0 55%;
+                max-width: 55%;
+            }}
+        }}
+        /* Sticky action bar */
+        .sticky-actions {{
+            position: sticky;
+            bottom: 0;
+            background: var(--bg);
+            padding: 12px 0;
+            border-top: 1px solid var(--border);
+            margin-top: 16px;
+        }}
+        @media (min-width: 768px) {{
+            .sticky-actions {{
+                position: static;
+                border-top: none;
+                margin-top: 16px;
+            }}
         }}
         .card {{
             background: var(--surface);
@@ -311,6 +403,41 @@ def _get_canonical_ui_html() -> str:
         .grade-info p {{
             font-size: 13px;
             color: var(--text-muted);
+        }}
+        /* Ticket 32 Part C: Sherlock/DNA Analysis Badges */
+        .analysis-badges {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }}
+        .analysis-badge {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 11px;
+            cursor: help;
+        }}
+        .badge-icon {{
+            font-size: 14px;
+        }}
+        .badge-text {{
+            color: var(--text);
+            font-weight: 500;
+        }}
+        .badge-qualifier {{
+            color: var(--text-muted);
+            font-size: 10px;
+        }}
+        .sherlock-badge {{
+            border-left: 3px solid var(--accent);
+        }}
+        .dna-badge {{
+            border-left: 3px solid var(--green);
         }}
         .section-title {{
             font-size: 12px;
@@ -619,6 +746,94 @@ def _get_canonical_ui_html() -> str:
         .paste-section.active {{
             display: block;
         }}
+        /* Ticket 32 Part A: Image Upload Styles */
+        .image-upload-section {{
+            margin: 16px 0;
+            text-align: center;
+        }}
+        .image-upload-label {{
+            cursor: pointer;
+        }}
+        .image-upload-btn {{
+            display: inline-block;
+            padding: 10px 16px;
+            background: var(--surface);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 13px;
+            transition: all 0.2s;
+        }}
+        .image-upload-btn:hover {{
+            border-color: var(--accent);
+            background: var(--surface-hover);
+        }}
+        .image-status {{
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }}
+        .image-status.loading {{
+            color: var(--accent);
+        }}
+        .image-status.error {{
+            color: var(--red);
+        }}
+        .ocr-result {{
+            margin-top: 12px;
+            text-align: left;
+        }}
+        .ocr-warning-banner {{
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(234, 179, 8, 0.1);
+            border: 1px solid var(--yellow);
+            border-radius: var(--radius);
+        }}
+        .ocr-warning-icon {{
+            color: var(--yellow);
+            font-size: 16px;
+        }}
+        .ocr-warning-text {{
+            font-size: 12px;
+            color: var(--text);
+            line-height: 1.4;
+        }}
+        .ocr-result label {{
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }}
+        .ocr-result textarea {{
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 12px;
+            font-family: monospace;
+            resize: vertical;
+        }}
+        .use-ocr-btn {{
+            margin-top: 8px;
+            padding: 8px 16px;
+            background: var(--green);
+            color: #000;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .use-ocr-btn:hover {{
+            opacity: 0.9;
+        }}
         .builder-row {{
             display: flex;
             gap: 8px;
@@ -756,6 +971,21 @@ def _get_canonical_ui_html() -> str:
             <span class="build-stamp">build: {git_sha}</span>
         </header>
 
+        <!-- Ticket 32 Part B: Session Indicator -->
+        <div class="session-bar" id="session-bar">
+            <span class="session-label">Session:</span>
+            <input type="text" id="session-name" class="session-name-input" placeholder="Name this session (optional)" maxlength="30">
+            <span class="session-history" id="session-history">0 evaluations</span>
+        </div>
+
+        <!-- Ticket 32 Part D: Workbench Container -->
+        <div class="workbench" id="workbench">
+            <!-- Left Panel: Input/Builder -->
+            <div class="workbench-panel workbench-input" id="workbench-input">
+                <div class="workbench-panel-header">
+                    <span class="workbench-panel-title">Build Your Parlay</span>
+                </div>
+
         <div id="input-section" class="card">
             <!-- Ticket 23: Mode Toggle -->
             <div class="mode-toggle">
@@ -875,6 +1105,24 @@ def _get_canonical_ui_html() -> str:
                 ></textarea>
             </div>
 
+            <!-- Ticket 32 Part A: Image Upload Section -->
+            <div id="image-upload-section" class="image-upload-section">
+                <label class="image-upload-label">
+                    <input type="file" id="image-input" accept="image/png,image/jpeg,image/jpg,image/webp" style="display:none">
+                    <span class="image-upload-btn">&#128247; Upload Bet Slip Image</span>
+                </label>
+                <div id="image-status" class="image-status" style="display:none"></div>
+                <div id="ocr-result" class="ocr-result" style="display:none">
+                    <div class="ocr-warning-banner">
+                        <span class="ocr-warning-icon">&#9888;</span>
+                        <span class="ocr-warning-text">Image text extracted. Please review for accuracy before evaluating.</span>
+                    </div>
+                    <label for="ocr-text">Extracted Text:</label>
+                    <textarea id="ocr-text" readonly></textarea>
+                    <button id="use-ocr-text" class="use-ocr-btn">Use This Text</button>
+                </div>
+            </div>
+
             <div class="tier-selector">
                 <button class="tier-btn active" data-tier="good">GOOD</button>
                 <button class="tier-btn" data-tier="better">BETTER</button>
@@ -883,6 +1131,14 @@ def _get_canonical_ui_html() -> str:
 
             <button id="submit-btn" class="submit-btn">Evaluate Bet</button>
         </div>
+
+            </div> <!-- End workbench-input panel -->
+
+            <!-- Right Panel: Results/Analysis -->
+            <div class="workbench-panel workbench-results" id="workbench-results">
+                <div class="workbench-panel-header">
+                    <span class="workbench-panel-title">Analysis Results</span>
+                </div>
 
         <div id="loading" class="loading">
             <div class="spinner"></div>
@@ -904,6 +1160,20 @@ def _get_canonical_ui_html() -> str:
                 <div class="grade-info">
                     <h2 id="grade-title"></h2>
                     <p id="grade-subtitle"></p>
+                </div>
+            </div>
+
+            <!-- Ticket 32 Part C: Sherlock/DNA Analysis Badges -->
+            <div class="analysis-badges">
+                <div class="analysis-badge sherlock-badge" title="Sherlock analyzes structural relationships between legs. It does NOT predict outcomes or calculate odds.">
+                    <span class="badge-icon">&#128269;</span>
+                    <span class="badge-text">Analyzed by Sherlock</span>
+                    <span class="badge-qualifier">(Structural)</span>
+                </div>
+                <div class="analysis-badge dna-badge" title="DNA scores fragility and correlation risk based on bet structure. It does NOT factor in team strength, injuries, or live conditions.">
+                    <span class="badge-icon">&#129516;</span>
+                    <span class="badge-text">DNA Risk Model</span>
+                    <span class="badge-qualifier">(Structural)</span>
                 </div>
             </div>
 
@@ -954,11 +1224,14 @@ def _get_canonical_ui_html() -> str:
             </div>
         </div>
 
-        <!-- Ticket 25: Loop Signaling -->
-        <div id="action-buttons" class="action-buttons">
+        <!-- Ticket 25: Loop Signaling / Ticket 32 Part D: Sticky Action Bar -->
+        <div id="action-buttons" class="action-buttons sticky-actions">
             <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Refine Parlay</button>
             <button id="reset-btn" class="reset-btn" onclick="resetForm()">Evaluate Another</button>
         </div>
+
+            </div> <!-- End workbench-results panel -->
+        </div> <!-- End workbench container -->
     </div>
 
     <script>
@@ -982,6 +1255,228 @@ def _get_canonical_ui_html() -> str:
         const legsList = document.getElementById('legs-list');
         const legsEmpty = document.getElementById('legs-empty');
         const builderWarning = document.getElementById('builder-warning');
+
+        // Ticket 32 Part A: Image Upload Elements
+        const imageInput = document.getElementById('image-input');
+        const imageStatus = document.getElementById('image-status');
+        const ocrResult = document.getElementById('ocr-result');
+        const ocrText = document.getElementById('ocr-text');
+        const useOcrBtn = document.getElementById('use-ocr-text');
+
+        // Ticket 32 Part A: Image Upload Handler
+        if (imageInput) {{
+            imageInput.addEventListener('change', async (e) => {{
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Validate file type
+                if (!file.type.match(/^image\/(png|jpeg|jpg|webp)$/)) {{
+                    imageStatus.textContent = 'Invalid file type. Use PNG, JPG, or WebP.';
+                    imageStatus.className = 'image-status error';
+                    imageStatus.style.display = 'block';
+                    return;
+                }}
+
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {{
+                    imageStatus.textContent = 'File too large. Maximum 5MB.';
+                    imageStatus.className = 'image-status error';
+                    imageStatus.style.display = 'block';
+                    return;
+                }}
+
+                // Show loading state
+                imageStatus.textContent = 'Extracting text from image...';
+                imageStatus.className = 'image-status loading';
+                imageStatus.style.display = 'block';
+                ocrResult.style.display = 'none';
+
+                try {{
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const response = await fetch('/leading-light/evaluate/image', {{
+                        method: 'POST',
+                        body: formData
+                    }});
+
+                    const data = await response.json();
+
+                    if (!response.ok) {{
+                        throw new Error(data.detail || 'OCR extraction failed');
+                    }}
+
+                    // Show extracted text with warning banner
+                    const extractedText = data.extracted_text || data.image_parse?.extracted_text || '';
+                    if (extractedText) {{
+                        ocrText.value = extractedText;
+                        ocrResult.style.display = 'block';
+                        imageStatus.textContent = 'Text extracted successfully.';
+                        imageStatus.className = 'image-status';
+                    }} else {{
+                        imageStatus.textContent = 'No text found in image.';
+                        imageStatus.className = 'image-status error';
+                    }}
+                }} catch (err) {{
+                    imageStatus.textContent = 'Error: ' + err.message;
+                    imageStatus.className = 'image-status error';
+                }}
+            }});
+        }}
+
+        // Ticket 32 Part A: Use OCR Text Button
+        if (useOcrBtn) {{
+            useOcrBtn.addEventListener('click', () => {{
+                const extractedText = ocrText.value.trim();
+                if (extractedText) {{
+                    betInput.value = extractedText;
+                    // Switch to paste mode to show the textarea
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelector('.mode-btn[data-mode="paste"]')?.classList.add('active');
+                    builderSection.classList.remove('active');
+                    pasteSection.classList.add('active');
+                    currentMode = 'paste';
+                }}
+            }});
+        }}
+
+        // ============================================================
+        // Ticket 32 Part B: Session Manager (localStorage)
+        // ============================================================
+        const SessionManager = {{
+            STORAGE_KEY: 'dna_session',
+            MAX_HISTORY: 5,
+
+            // Get or create session
+            getSession: function() {{
+                try {{
+                    const stored = localStorage.getItem(this.STORAGE_KEY);
+                    if (stored) {{
+                        return JSON.parse(stored);
+                    }}
+                }} catch (e) {{
+                    console.warn('Session load failed:', e);
+                }}
+
+                // Create new session
+                const session = {{
+                    id: 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    name: '',
+                    createdAt: new Date().toISOString(),
+                    lastActivity: new Date().toISOString(),
+                    evaluations: [],
+                    refinementState: null
+                }};
+                this.saveSession(session);
+                return session;
+            }},
+
+            // Save session
+            saveSession: function(session) {{
+                try {{
+                    session.lastActivity = new Date().toISOString();
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(session));
+                }} catch (e) {{
+                    console.warn('Session save failed:', e);
+                }}
+            }},
+
+            // Update session name
+            setSessionName: function(name) {{
+                const session = this.getSession();
+                session.name = name || '';
+                this.saveSession(session);
+            }},
+
+            // Add evaluation to history
+            addEvaluation: function(evalData) {{
+                const session = this.getSession();
+                const entry = {{
+                    id: 'eval_' + Date.now(),
+                    timestamp: new Date().toISOString(),
+                    input: evalData.input || '',
+                    signal: evalData.signal || '',
+                    grade: evalData.grade || '',
+                    legCount: evalData.legCount || 0
+                }};
+                session.evaluations.unshift(entry);
+                // Keep only last MAX_HISTORY
+                session.evaluations = session.evaluations.slice(0, this.MAX_HISTORY);
+                this.saveSession(session);
+                return entry;
+            }},
+
+            // Get evaluation history
+            getEvaluations: function() {{
+                return this.getSession().evaluations || [];
+            }},
+
+            // Save refinement state
+            saveRefinement: function(state) {{
+                const session = this.getSession();
+                session.refinementState = state;
+                this.saveSession(session);
+            }},
+
+            // Get refinement state
+            getRefinement: function() {{
+                return this.getSession().refinementState;
+            }},
+
+            // Clear refinement state
+            clearRefinement: function() {{
+                const session = this.getSession();
+                session.refinementState = null;
+                this.saveSession(session);
+            }},
+
+            // Get session info for display
+            getInfo: function() {{
+                const session = this.getSession();
+                return {{
+                    id: session.id,
+                    name: session.name,
+                    evalCount: session.evaluations.length,
+                    hasRefinement: !!session.refinementState
+                }};
+            }}
+        }};
+
+        // Export for testing
+        window.SessionManager = SessionManager;
+
+        // Initialize session UI
+        const sessionNameInput = document.getElementById('session-name');
+        const sessionHistorySpan = document.getElementById('session-history');
+
+        function updateSessionUI() {{
+            const info = SessionManager.getInfo();
+            if (sessionNameInput) {{
+                sessionNameInput.value = info.name || '';
+            }}
+            if (sessionHistorySpan) {{
+                sessionHistorySpan.textContent = info.evalCount + ' evaluation' + (info.evalCount !== 1 ? 's' : '');
+            }}
+        }}
+
+        // Initialize session display
+        updateSessionUI();
+
+        // Handle session name changes
+        if (sessionNameInput) {{
+            sessionNameInput.addEventListener('blur', () => {{
+                SessionManager.setSessionName(sessionNameInput.value.trim());
+            }});
+            sessionNameInput.addEventListener('keydown', (e) => {{
+                if (e.key === 'Enter') {{
+                    sessionNameInput.blur();
+                }}
+            }});
+        }}
+
+        // Hook into results display to update session UI
+        const originalShowResults = showResults;
+        // Will be reassigned after showResults is defined
 
         // Ticket 23: Mode Toggle
         document.querySelectorAll('.mode-btn').forEach(btn => {{
@@ -1242,9 +1737,20 @@ def _get_canonical_ui_html() -> str:
             results.classList.add('active');
             document.getElementById('action-buttons').classList.add('active');
 
+            // Ticket 32 Part B: Save evaluation to session history
+            const parlay = data.evaluatedParlay;
+            if (parlay) {{
+                SessionManager.addEvaluation({{
+                    input: parlay.display_label || betInput.value.trim(),
+                    signal: data.signalInfo?.signal || '',
+                    grade: data.signalInfo?.grade || '',
+                    legCount: (parlay.legs || []).length
+                }});
+                updateSessionUI();
+            }}
+
             // Ticket 25: Evaluated Parlay Receipt
             // Ticket 26 Part A: Leg interpretation display
-            const parlay = data.evaluatedParlay;
             if (parlay) {{
                 document.getElementById('parlay-label').textContent = parlay.display_label || 'Parlay';
                 const parlayLegs = document.getElementById('parlay-legs');

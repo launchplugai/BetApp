@@ -1015,3 +1015,261 @@ class TestTicket29GroundedConfidenceUpgrade:
         evaluated = data.get("evaluatedParlay", {})
         assert evaluated.get("analysis_depth") == "structural_only", \
             "Text-only input should also have analysis_depth='structural_only'"
+
+
+class TestTicket32CoreWorkspace:
+    """
+    Ticket 32: Core Workspace Completion.
+
+    Part A: OCR accuracy warning banner
+    Part C: Sherlock/DNA badges + tooltips
+    Part B: Session continuity (client-side)
+    Part D: Workbench framing
+    """
+
+    def test_image_upload_section_exists(self, client):
+        """
+        Part A: Image upload section should exist in the UI.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for image upload elements
+        assert "image-upload-section" in html, "Image upload section should exist"
+        assert "image-input" in html, "Image input element should exist"
+        assert "Upload Bet Slip Image" in html, "Upload button text should exist"
+
+    def test_ocr_warning_banner_exists(self, client):
+        """
+        Part A: OCR warning banner should exist in the UI.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for OCR warning banner
+        assert "ocr-warning-banner" in html, "OCR warning banner element should exist"
+        assert "ocr-warning-icon" in html, "OCR warning icon should exist"
+        assert "Please review for accuracy before evaluating" in html, \
+            "OCR warning text should include accuracy disclaimer"
+
+    def test_ocr_result_section_exists(self, client):
+        """
+        Part A: OCR result section with textarea should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for OCR result elements
+        assert "ocr-result" in html, "OCR result section should exist"
+        assert "ocr-text" in html, "OCR text textarea should exist"
+        assert "use-ocr-text" in html, "Use OCR text button should exist"
+
+    def test_image_upload_styles_exist(self, client):
+        """
+        Part A: Image upload CSS styles should be included.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for key CSS classes
+        assert ".image-upload-section" in html, "Image upload section styles should exist"
+        assert ".ocr-warning-banner" in html, "OCR warning banner styles should exist"
+        assert ".use-ocr-btn" in html, "Use OCR button styles should exist"
+
+    # Part C: Sherlock/DNA Badges
+
+    def test_sherlock_badge_exists(self, client):
+        """
+        Part C: Sherlock analysis badge should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "sherlock-badge" in html, "Sherlock badge should exist"
+        assert "Analyzed by Sherlock" in html, "Sherlock badge text should exist"
+        assert "(Structural)" in html, "Structural qualifier should exist"
+
+    def test_dna_badge_exists(self, client):
+        """
+        Part C: DNA risk model badge should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "dna-badge" in html, "DNA badge should exist"
+        assert "DNA Risk Model" in html, "DNA badge text should exist"
+
+    def test_badges_have_tooltips(self, client):
+        """
+        Part C: Badges should have explanatory tooltips.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for title attributes with explanatory text
+        assert "does NOT predict outcomes" in html, \
+            "Sherlock tooltip should explain what it does NOT do"
+        assert "does NOT factor in team strength" in html, \
+            "DNA tooltip should explain what it does NOT do"
+
+    def test_badge_styles_exist(self, client):
+        """
+        Part C: Badge CSS styles should be included.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert ".analysis-badges" in html, "Analysis badges container styles should exist"
+        assert ".analysis-badge" in html, "Analysis badge styles should exist"
+        assert ".sherlock-badge" in html, "Sherlock badge styles should exist"
+        assert ".dna-badge" in html, "DNA badge styles should exist"
+
+    # Part B: Session Manager
+
+    def test_session_manager_exists(self, client):
+        """
+        Part B: SessionManager object should exist in JavaScript.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "SessionManager" in html, "SessionManager object should exist"
+        assert "STORAGE_KEY" in html, "SessionManager should have STORAGE_KEY"
+        assert "dna_session" in html, "Storage key should be 'dna_session'"
+
+    def test_session_bar_ui_exists(self, client):
+        """
+        Part B: Session bar UI should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "session-bar" in html, "Session bar should exist"
+        assert "session-name" in html, "Session name input should exist"
+        assert "session-history" in html, "Session history display should exist"
+
+    def test_session_manager_methods(self, client):
+        """
+        Part B: SessionManager should have required methods.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for required methods
+        assert "getSession" in html, "SessionManager should have getSession method"
+        assert "saveSession" in html, "SessionManager should have saveSession method"
+        assert "setSessionName" in html, "SessionManager should have setSessionName method"
+        assert "addEvaluation" in html, "SessionManager should have addEvaluation method"
+        assert "getEvaluations" in html, "SessionManager should have getEvaluations method"
+        assert "saveRefinement" in html, "SessionManager should have saveRefinement method"
+        assert "getRefinement" in html, "SessionManager should have getRefinement method"
+
+    def test_session_localStorage_only(self, client):
+        """
+        Part B: Session should use localStorage only, no server calls.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Should use localStorage
+        assert "localStorage.getItem" in html, "Should use localStorage.getItem"
+        assert "localStorage.setItem" in html, "Should use localStorage.setItem"
+
+        # Should NOT send session to server
+        assert "sessionId" not in html or "session_id" not in html, \
+            "Should not have server-bound session ID parameters"
+
+    def test_session_bar_styles_exist(self, client):
+        """
+        Part B: Session bar CSS styles should be included.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert ".session-bar" in html, "Session bar styles should exist"
+        assert ".session-name-input" in html, "Session name input styles should exist"
+        assert ".session-history" in html, "Session history styles should exist"
+
+    # Part D: Workbench Framing
+
+    def test_workbench_container_exists(self, client):
+        """
+        Part D: Workbench container should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert 'class="workbench"' in html, "Workbench container should exist"
+        assert 'id="workbench"' in html, "Workbench should have ID"
+
+    def test_workbench_panels_exist(self, client):
+        """
+        Part D: Workbench should have input and results panels.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "workbench-input" in html, "Workbench input panel should exist"
+        assert "workbench-results" in html, "Workbench results panel should exist"
+
+    def test_workbench_panel_headers_exist(self, client):
+        """
+        Part D: Workbench panels should have headers.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "Build Your Parlay" in html, "Input panel header should exist"
+        assert "Analysis Results" in html, "Results panel header should exist"
+
+    def test_sticky_action_bar_exists(self, client):
+        """
+        Part D: Sticky action bar should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert "sticky-actions" in html, "Sticky actions class should exist"
+        assert "action-buttons" in html, "Action buttons container should exist"
+
+    def test_workbench_layout_styles_exist(self, client):
+        """
+        Part D: Workbench CSS styles should be included.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        assert ".workbench" in html, "Workbench styles should exist"
+        assert ".workbench-panel" in html, "Workbench panel styles should exist"
+        assert ".workbench-panel-header" in html, "Panel header styles should exist"
+        assert ".sticky-actions" in html, "Sticky actions styles should exist"
+
+    def test_desktop_media_query_exists(self, client):
+        """
+        Part D: Desktop layout media query should exist.
+        """
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check for desktop breakpoint
+        assert "@media (min-width: 768px)" in html, "Desktop media query should exist"
+        assert "flex-direction: row" in html, "Desktop should use row layout"
