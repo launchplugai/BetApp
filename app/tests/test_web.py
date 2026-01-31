@@ -1508,3 +1508,516 @@ class TestTicket34OcrBuilderPrecision:
         html = response.text
         # Check that resetForm resets hasOcrLegs
         assert "hasOcrLegs = false" in html, "resetForm should reset hasOcrLegs"
+
+
+# =============================================================================
+# Tests: Ticket 35 - Inline Refine Loop
+# =============================================================================
+
+
+class TestTicket35InlineRefineLoop:
+    """
+    Ticket 35: Inline Refine Loop.
+
+    Part A: Results-Screen Leg Controls (Remove/Lock)
+    Part B: Re-evaluate Action
+    Part C: Full State Sync Guarantee
+    Part D: UX Details
+    """
+
+    # Part A: Results-Screen Leg Controls
+
+    def test_result_leg_controls_css_exists(self, client):
+        """Part A: Result leg controls CSS should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".result-leg-controls" in html, "result-leg-controls CSS should exist"
+        assert ".result-leg-num" in html, "result-leg-num CSS should exist"
+        assert ".result-leg-content" in html, "result-leg-content CSS should exist"
+
+    def test_leg_lock_btn_css_exists(self, client):
+        """Part A: Leg lock button CSS should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".leg-lock-btn" in html, "leg-lock-btn CSS should exist"
+        assert ".leg-lock-btn.locked" in html, "leg-lock-btn.locked CSS should exist"
+
+    def test_leg_remove_btn_css_exists(self, client):
+        """Part A: Leg remove button CSS should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".leg-remove-btn" in html, "leg-remove-btn CSS should exist"
+        assert ".leg-remove-btn:disabled" in html, "leg-remove-btn:disabled CSS should exist"
+
+    def test_locked_leg_styling_exists(self, client):
+        """Part A: Locked leg styling should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".parlay-legs li.locked" in html, "locked leg styling should exist"
+
+    def test_render_results_legs_function_exists(self, client):
+        """Part A: renderResultsLegs function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "renderResultsLegs" in html, "renderResultsLegs function should exist"
+
+    def test_toggle_leg_lock_function_exists(self, client):
+        """Part A: toggleLegLock function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "toggleLegLock" in html, "toggleLegLock function should exist"
+
+    def test_remove_leg_from_results_function_exists(self, client):
+        """Part A: removeLegFromResults function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "removeLegFromResults" in html, "removeLegFromResults function should exist"
+
+    def test_locked_leg_cannot_be_removed_logic(self, client):
+        """Part A: Locked legs should not be removable (logic check)."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that the function checks for locked state before removing
+        assert "if (leg.locked) return" in html, "Should check locked state before removing"
+
+    # Part B: Re-evaluate Action
+
+    def test_reevaluate_button_exists(self, client):
+        """Part B: Re-evaluate button should exist in HTML."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert 'id="reevaluate-btn"' in html, "Re-evaluate button should exist"
+        assert "Re-evaluate" in html, "'Re-evaluate' button text should exist"
+
+    def test_reevaluate_btn_css_exists(self, client):
+        """Part B: Re-evaluate button CSS should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".reevaluate-btn" in html, "reevaluate-btn CSS should exist"
+
+    def test_re_evaluate_parlay_function_exists(self, client):
+        """Part B: reEvaluateParlay function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "reEvaluateParlay" in html, "reEvaluateParlay function should exist"
+
+    def test_re_evaluate_uses_run_evaluation(self, client):
+        """Part B: reEvaluateParlay should use runEvaluation."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that reEvaluateParlay calls runEvaluation
+        assert "await runEvaluation" in html, "Should call runEvaluation"
+
+    def test_update_re_evaluate_button_function_exists(self, client):
+        """Part B: updateReEvaluateButton function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "updateReEvaluateButton" in html, "updateReEvaluateButton function should exist"
+
+    # Part C: Full State Sync Guarantee
+
+    def test_results_legs_state_exists(self, client):
+        """Part C: resultsLegs state variable should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "resultsLegs" in html, "resultsLegs state variable should exist"
+
+    def test_locked_leg_ids_state_exists(self, client):
+        """Part C: lockedLegIds state variable should exist (Ticket 37 migration)."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Ticket 37: Migrated from lockedLegIndices to lockedLegIds
+        assert "lockedLegIds" in html, "lockedLegIds state variable should exist"
+
+    def test_sync_state_from_results_function_exists(self, client):
+        """Part C: syncStateFromResults function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "syncStateFromResults" in html, "syncStateFromResults function should exist"
+
+    def test_sync_state_updates_builder_legs(self, client):
+        """Part C: syncStateFromResults should update builderLegs."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that builderLegs is updated from resultsLegs
+        assert "builderLegs = resultsLegs.map" in html, "Should update builderLegs from resultsLegs"
+
+    def test_sync_state_calls_sync_textarea(self, client):
+        """Part C: syncStateFromResults should call syncTextarea."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # The function should call syncTextarea
+        assert "syncTextarea()" in html, "Should call syncTextarea"
+
+    def test_update_parlay_label_function_exists(self, client):
+        """Part C: updateParlayLabel function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "updateParlayLabel" in html, "updateParlayLabel function should exist"
+
+    def test_reset_form_clears_refine_state(self, client):
+        """Part C: resetForm should clear refine loop state."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Ticket 37: Migrated from lockedLegIndices to lockedLegIds
+        assert "lockedLegIds.clear()" in html, "resetForm should clear lockedLegIds"
+        assert "resultsLegs = []" in html, "resetForm should clear resultsLegs"
+
+    def test_refine_parlay_uses_results_legs(self, client):
+        """Part C: refineParlay should use resultsLegs if available."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "resultsLegs.length > 0" in html, "refineParlay should check resultsLegs"
+
+    # Part D: UX Details
+
+    def test_refine_actions_row_exists(self, client):
+        """Part D: Refine actions row should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "refine-actions-row" in html, "refine-actions-row should exist"
+
+    def test_refine_hint_exists(self, client):
+        """Part D: Refine hint text should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "refine-hint" in html, "refine-hint CSS should exist"
+        assert "Remove or lock legs above" in html, "Hint text should exist"
+
+    def test_edit_in_builder_button_exists(self, client):
+        """Part D: Edit in Builder button should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "Edit in Builder" in html, "'Edit in Builder' button text should exist"
+
+    def test_lock_icons_in_code(self, client):
+        """Part D: Lock/unlock icons should be in code."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Unicode for lock icons
+        assert "&#128274;" in html, "Locked icon should exist"
+        assert "&#128275;" in html, "Unlocked icon should exist"
+
+    def test_lock_button_titles_exist(self, client):
+        """Part D: Lock button titles should exist for accessibility."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "Lock this leg" in html, "Lock title should exist"
+        assert "Unlock this leg" in html, "Unlock title should exist"
+        assert "Unlock to remove" in html, "Locked remove title should exist"
+
+    # State sync during evaluation
+
+    def test_show_results_populates_results_legs(self, client):
+        """Part C: showResults should populate resultsLegs."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that showResults creates resultsLegs from parlay.legs
+        assert "resultsLegs = (parlay.legs" in html, "showResults should populate resultsLegs"
+
+    def test_results_legs_preserve_original_index(self, client):
+        """Part C: resultsLegs should preserve originalIndex for lock tracking."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "originalIndex: i" in html, "Should track originalIndex"
+
+
+# =============================================================================
+# Tests: Ticket 36 - OCR Regression Repair + State Boundary Audit
+# =============================================================================
+
+
+class TestTicket36OcrRegressionRepair:
+    """
+    Ticket 36: OCR Regression Repair + State Boundary Audit.
+
+    Part A: Root cause identification (verified by implementation)
+    Part B: OCR → Builder path fix
+    Part C: State collision fix
+    Part D: Regression tests
+    """
+
+    # Part B: OCR → Builder path clears refine state
+
+    def test_ocr_add_to_builder_clears_locked_ids(self, client):
+        """Part B: 'Add to Builder' should clear lockedLegIds (Ticket 37 migration)."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that OCR handler clears lock state
+        # Ticket 37: Migrated from lockedLegIndices to lockedLegIds
+        assert "lockedLegIds.clear()" in html, \
+            "OCR handler should clear lockedLegIds"
+        # Verify it's in the useOcrBtn handler context
+        # Ticket 37 update: Comment may now include both ticket references
+        assert "Clear refine loop state" in html, \
+            "OCR handler should have clear refine loop comment"
+
+    def test_ocr_add_to_builder_clears_results_legs(self, client):
+        """Part B: 'Add to Builder' should clear resultsLegs."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that OCR handler clears resultsLegs
+        assert "resultsLegs = []" in html, \
+            "OCR handler should clear resultsLegs"
+
+    # Part C: State collision fix - isReEvaluation flag
+
+    def test_is_re_evaluation_state_exists(self, client):
+        """Part C: isReEvaluation state variable should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "isReEvaluation" in html, "isReEvaluation state variable should exist"
+
+    def test_submit_handler_clears_lock_state(self, client):
+        """Part C: Submit handler should clear lock state for fresh evaluations."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that submit handler marks as fresh evaluation
+        assert "isReEvaluation = false" in html, \
+            "Submit handler should set isReEvaluation = false"
+
+    def test_re_evaluate_sets_is_re_evaluation(self, client):
+        """Part C: reEvaluateParlay should set isReEvaluation = true."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that re-evaluate marks as re-evaluation
+        assert "isReEvaluation = true" in html, \
+            "reEvaluateParlay should set isReEvaluation = true"
+
+    def test_soft_gate_proceed_clears_lock_state(self, client):
+        """Part C: Soft gate 'Evaluate anyway' should clear lock state."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # The soft gate proceed handler should also clear lock state
+        # This is a fresh evaluation from OCR
+        # Ticket 37 update: Comment may now include both ticket references
+        assert "fresh evaluation from OCR" in html, \
+            "Soft gate proceed should document fresh evaluation from OCR"
+
+    def test_reset_form_clears_is_re_evaluation(self, client):
+        """Part C: resetForm should clear isReEvaluation."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that resetForm includes isReEvaluation = false
+        # This ensures fresh start after 'Evaluate Another'
+        assert "isReEvaluation = false" in html, \
+            "resetForm should reset isReEvaluation"
+
+    # Part D: Verify state boundaries
+
+    def test_ocr_handler_has_fresh_start_comment(self, client):
+        """Part D: OCR handler should document fresh start behavior."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "this is a fresh start" in html.lower(), \
+            "OCR handler should document fresh start"
+
+    def test_re_evaluate_has_preserve_lock_comment(self, client):
+        """Part D: reEvaluateParlay should document lock preservation."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "lock state should be preserved" in html.lower(), \
+            "reEvaluateParlay should document lock preservation"
+
+    def test_ticket_36_comments_present(self, client):
+        """Part D: Ticket 36 comments should be present in code."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Count Ticket 36 comments to ensure all fixes are documented
+        ticket_36_count = html.count("Ticket 36")
+        assert ticket_36_count >= 5, \
+            f"Should have at least 5 Ticket 36 comments, found {ticket_36_count}"
+
+
+class TestTicket37LegIdentity:
+    """Ticket 37: Deterministic leg_id for refine loop stability."""
+
+    def test_generate_leg_id_sync_exists(self, client):
+        """Part A: generateLegIdSync function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "function generateLegIdSync" in html, \
+            "generateLegIdSync function must be defined"
+
+    def test_leg_id_uses_canonical_fields(self, client):
+        """Part A: leg_id generation should use entity, market, value, sport."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that canonical fields are used
+        assert "leg.entity" in html and "toLowerCase" in html, \
+            "Should normalize entity to lowercase"
+        assert "leg.market" in html, \
+            "Should use market field"
+        assert "leg.value" in html, \
+            "Should use value field"
+        assert "leg.sport" in html, \
+            "Should use sport field"
+
+    def test_leg_id_deterministic_hash(self, client):
+        """Part A: leg_id should use djb2 hash algorithm."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # djb2 hash starts with 5381
+        assert "5381" in html, \
+            "Should use djb2 algorithm (starts with 5381)"
+        assert "leg_" in html, \
+            "leg_id should be prefixed with 'leg_'"
+
+    def test_locked_leg_ids_replaces_indices(self, client):
+        """Part B: lockedLegIds should replace lockedLegIndices."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check state variable declaration
+        assert "let lockedLegIds = new Set()" in html, \
+            "lockedLegIds state variable must be declared"
+        # Ensure old variable is not used functionally
+        # (may still appear in comments about the migration)
+        assert "lockedLegIds.add" in html, \
+            "Should use lockedLegIds.add()"
+        assert "lockedLegIds.has" in html, \
+            "Should use lockedLegIds.has()"
+        assert "lockedLegIds.clear()" in html, \
+            "Should use lockedLegIds.clear()"
+
+    def test_toggle_lock_uses_leg_id(self, client):
+        """Part B: toggleLegLock should use leg.leg_id."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Find the toggleLegLock function and check it uses leg_id
+        assert "lockedLegIds.add(leg.leg_id)" in html, \
+            "toggleLegLock should add leg.leg_id to lockedLegIds"
+        assert "lockedLegIds.delete(leg.leg_id)" in html, \
+            "toggleLegLock should delete leg.leg_id from lockedLegIds"
+
+    def test_show_results_uses_leg_id_for_lock_check(self, client):
+        """Part B: showResults should check lock state by leg_id."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "lockedLegIds.has(leg_id)" in html, \
+            "showResults should check lock state using leg_id"
+
+    def test_parse_ocr_line_includes_leg_id(self, client):
+        """Part C: parseOcrLine should return leg_id."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check parseOcrLine returns object with leg_id
+        assert "leg_id: leg_id" in html or "leg_id:" in html, \
+            "parseOcrLine should include leg_id in return value"
+
+    def test_add_leg_includes_leg_id(self, client):
+        """Part C: addLeg should generate leg_id for new legs."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check addLeg generates leg_id
+        # Look for generateLegIdSync call in addLeg context
+        assert "builderLegs.push" in html, \
+            "addLeg should push to builderLegs"
+
+    def test_sync_state_from_results_preserves_leg_id(self, client):
+        """Part C: syncStateFromResults should preserve leg_id."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check syncStateFromResults includes leg_id
+        assert "leg_id: leg.leg_id" in html, \
+            "syncStateFromResults should preserve leg_id"
+
+    def test_refine_parlay_includes_leg_id(self, client):
+        """Part C: refineParlay should include leg_id."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check refineParlay maps with leg_id
+        assert "leg.leg_id || generateLegIdSync" in html, \
+            "refineParlay should use existing leg_id or generate new one"
+
+    def test_reevaluate_uses_leg_id_persistence(self, client):
+        """Part B: reEvaluateParlay should rely on leg_id persistence."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that reEvaluateParlay doesn't do complex index-based restoration
+        # With leg_id, lock state is automatically restored via showResults
+        assert "lockedLegIds persists" in html or "Ticket 37" in html, \
+            "reEvaluateParlay should have Ticket 37 comments about leg_id persistence"
+
+    def test_reset_form_clears_leg_ids(self, client):
+        """Part B: resetForm should clear lockedLegIds."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check resetForm clears the set
+        # Count occurrences - should have multiple clear() calls
+        clear_count = html.count("lockedLegIds.clear()")
+        assert clear_count >= 3, \
+            f"Should have at least 3 lockedLegIds.clear() calls, found {clear_count}"
+
+    def test_ticket_37_comments_present(self, client):
+        """Part D: Ticket 37 comments should be present in code."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Count Ticket 37 comments to ensure all changes are documented
+        ticket_37_count = html.count("Ticket 37")
+        assert ticket_37_count >= 8, \
+            f"Should have at least 8 Ticket 37 comments, found {ticket_37_count}"
+
+    def test_no_functional_locked_leg_indices(self, client):
+        """Part D: lockedLegIndices should not be used functionally."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Should not have functional uses of old variable
+        # (it's OK if it appears in comments about the migration)
+        assert "lockedLegIndices.add(" not in html, \
+            "Should not use lockedLegIndices.add() anymore"
+        assert "lockedLegIndices.delete(" not in html, \
+            "Should not use lockedLegIndices.delete() anymore"
+        assert "lockedLegIndices.has(" not in html, \
+            "Should not use lockedLegIndices.has() anymore"

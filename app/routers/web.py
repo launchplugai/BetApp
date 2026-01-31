@@ -562,15 +562,18 @@ def _get_canonical_ui_html() -> str:
             margin-bottom: 8px;
         }}
         .parlay-legs {{
-            list-style: decimal inside;
+            list-style: none;
             padding: 0;
             margin: 0;
         }}
         .parlay-legs li {{
-            padding: 6px 0;
+            padding: 10px 8px;
             border-bottom: 1px solid var(--border);
             font-size: 13px;
             color: var(--text);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }}
         .parlay-legs li:last-child {{
             border-bottom: none;
@@ -580,6 +583,106 @@ def _get_canonical_ui_html() -> str:
             color: var(--text-muted);
             margin-left: 8px;
             text-transform: uppercase;
+        }}
+        /* Ticket 35: Leg Controls in Results */
+        .result-leg-num {{
+            font-weight: 600;
+            color: var(--text-muted);
+            min-width: 20px;
+            flex-shrink: 0;
+        }}
+        .result-leg-content {{
+            flex: 1;
+            min-width: 0;
+        }}
+        .result-leg-text {{
+            word-break: break-word;
+        }}
+        .result-leg-controls {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }}
+        .leg-lock-btn {{
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 14px;
+            color: var(--text-muted);
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }}
+        .leg-lock-btn:hover {{
+            background: var(--surface);
+            color: var(--text);
+        }}
+        .leg-lock-btn.locked {{
+            color: var(--accent);
+        }}
+        .leg-lock-btn.locked:hover {{
+            color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+        }}
+        .leg-remove-btn {{
+            background: none;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 3px 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }}
+        .leg-remove-btn:hover {{
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--red);
+            color: var(--red);
+        }}
+        .leg-remove-btn:disabled {{
+            opacity: 0.4;
+            cursor: not-allowed;
+        }}
+        .leg-remove-btn:disabled:hover {{
+            background: none;
+            border-color: var(--border);
+            color: var(--text-muted);
+        }}
+        .parlay-legs li.locked {{
+            background: rgba(99, 102, 241, 0.05);
+            border-left: 2px solid var(--accent);
+            padding-left: 6px;
+        }}
+        /* Ticket 35: Re-evaluate Button */
+        .reevaluate-btn {{
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            flex: 1;
+        }}
+        .reevaluate-btn:hover {{
+            opacity: 0.9;
+        }}
+        .reevaluate-btn:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }}
+        .refine-actions-row {{
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }}
+        .refine-hint {{
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 4px;
         }}
         /* Ticket 26 Part A: Leg Interpretation */
         .leg-interpretation {{
@@ -1404,9 +1507,14 @@ def _get_canonical_ui_html() -> str:
         </div>
 
         <!-- Ticket 25: Loop Signaling / Ticket 32 Part D: Sticky Action Bar -->
+        <!-- Ticket 35: Added Re-evaluate for inline refinement -->
         <div id="action-buttons" class="action-buttons sticky-actions">
-            <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Refine Parlay</button>
+            <div class="refine-actions-row">
+                <button id="reevaluate-btn" class="reevaluate-btn" onclick="reEvaluateParlay()">Re-evaluate</button>
+                <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Edit in Builder</button>
+            </div>
             <button id="reset-btn" class="reset-btn" onclick="resetForm()">Evaluate Another</button>
+            <div class="refine-hint">Remove or lock legs above, then re-evaluate</div>
         </div>
 
             </div> <!-- End workbench-results panel -->
@@ -1436,6 +1544,60 @@ def _get_canonical_ui_html() -> str:
         let builderLegs = [];
         let hasOcrLegs = false; // Ticket 34: Track if legs came from OCR
         let pendingEvaluation = null; // Ticket 34: For soft gate flow
+        let lockedLegIds = new Set(); // Ticket 37: Track locked legs by deterministic ID (was lockedLegIndices)
+        let resultsLegs = []; // Ticket 35: Current legs in results view (for inline edits)
+        let isReEvaluation = false; // Ticket 36: Track if current evaluation is a re-evaluation
+
+        // ============================================================
+        // Ticket 37: Deterministic Leg ID Generation
+        // ============================================================
+
+        /**
+         * Generate a deterministic leg_id from canonical fields.
+         * Uses SHA-256 hash of entity + market + value + sport.
+         * This ensures stable identity across sessions for identical legs.
+         */
+        async function generateLegId(leg) {{
+            const canonical = [
+                (leg.entity || '').toLowerCase().trim(),
+                (leg.market || '').toLowerCase().trim(),
+                (leg.value || '').toString().toLowerCase().trim(),
+                (leg.sport || '').toLowerCase().trim()
+            ].join('|');
+
+            // Use Web Crypto API for SHA-256
+            const encoder = new TextEncoder();
+            const data = encoder.encode(canonical);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            // Return first 16 chars for brevity (still 64 bits of entropy)
+            return 'leg_' + hashHex.substring(0, 16);
+        }}
+
+        /**
+         * Synchronous leg_id generation for immediate use.
+         * Falls back to a deterministic string hash if crypto not available.
+         */
+        function generateLegIdSync(leg) {{
+            const canonical = [
+                (leg.entity || '').toLowerCase().trim(),
+                (leg.market || '').toLowerCase().trim(),
+                (leg.value || '').toString().toLowerCase().trim(),
+                (leg.sport || '').toLowerCase().trim()
+            ].join('|');
+
+            // Simple deterministic hash (djb2 algorithm)
+            let hash = 5381;
+            for (let i = 0; i < canonical.length; i++) {{
+                hash = ((hash << 5) + hash) + canonical.charCodeAt(i);
+                hash = hash & hash; // Convert to 32-bit integer
+            }}
+            // Convert to positive hex string
+            const hashHex = (hash >>> 0).toString(16).padStart(8, '0');
+            return 'leg_' + hashHex;
+        }}
 
         // Elements
         const betInput = document.getElementById('bet-input');
@@ -1557,7 +1719,12 @@ def _get_canonical_ui_html() -> str:
                 entity = line.split(/\\s+/)[0] || line;
             }}
 
+            // Ticket 37: Generate deterministic leg_id
+            const legData = {{ entity, market, value, sport }};
+            const leg_id = generateLegIdSync(legData);
+
             return {{
+                leg_id: leg_id,
                 entity: entity,
                 market: market,
                 value: value,
@@ -1706,6 +1873,7 @@ def _get_canonical_ui_html() -> str:
         }}
 
         // Ticket 34: Use OCR Text Button - Now populates Builder with parsed legs
+        // Ticket 36: Reset refine loop state when importing OCR (fresh start)
         if (useOcrBtn) {{
             useOcrBtn.addEventListener('click', () => {{
                 const extractedText = ocrText.value.trim();
@@ -1714,6 +1882,10 @@ def _get_canonical_ui_html() -> str:
                     const ocrLegs = parseOcrToLegs(extractedText);
 
                     if (ocrLegs.length > 0) {{
+                        // Ticket 36/37: Clear refine loop state - this is a fresh start
+                        lockedLegIds.clear();
+                        resultsLegs = [];
+
                         // Replace builder legs with OCR-derived legs
                         builderLegs = ocrLegs;
                         hasOcrLegs = true;
@@ -1996,7 +2168,12 @@ def _get_canonical_ui_html() -> str:
             legText = legText.trim();
 
             // Ticket 27 Part B: Add to legs array with canonical schema
+            // Ticket 37: Include deterministic leg_id
+            const legData = {{ entity: team, market: canonicalMarket, value: legValue, sport: sport }};
+            const leg_id = generateLegIdSync(legData);
+
             builderLegs.push({{
+                leg_id: leg_id,
                 entity: team,
                 market: canonicalMarket,
                 value: legValue,
@@ -2194,6 +2371,11 @@ def _get_canonical_ui_html() -> str:
                 return;
             }}
 
+            // Ticket 36/37: This is a fresh evaluation, not a re-evaluation
+            // Clear stale lock state to prevent state collision
+            isReEvaluation = false;
+            lockedLegIds.clear();
+
             // Proceed with evaluation
             await runEvaluation(input);
         }});
@@ -2215,6 +2397,9 @@ def _get_canonical_ui_html() -> str:
             gateProceedBtn.addEventListener('click', async () => {{
                 hideOcrReviewGate();
                 if (pendingEvaluation) {{
+                    // Ticket 36/37: This is a fresh evaluation from OCR, clear stale lock state
+                    isReEvaluation = false;
+                    lockedLegIds.clear();
                     await runEvaluation(pendingEvaluation.input);
                     pendingEvaluation = null;
                 }}
@@ -2308,21 +2493,27 @@ def _get_canonical_ui_html() -> str:
 
             // Ticket 25: Evaluated Parlay Receipt
             // Ticket 26 Part A: Leg interpretation display
+            // Ticket 35: Add remove/lock controls for inline refinement
+            // Ticket 37: Use leg_id for identity instead of index
             if (parlay) {{
                 document.getElementById('parlay-label').textContent = parlay.display_label || 'Parlay';
-                const parlayLegs = document.getElementById('parlay-legs');
-                parlayLegs.innerHTML = '';
-                (parlay.legs || []).forEach(leg => {{
-                    const li = document.createElement('li');
-                    let html = escapeHtml(leg.text) +
-                        '<span class="leg-type">' + (leg.bet_type || '').replace('_', ' ') + '</span>';
-                    // Ticket 26: Add interpretation if present
-                    if (leg.interpretation) {{
-                        html += '<div class="leg-interpretation">' + escapeHtml(leg.interpretation) + '</div>';
-                    }}
-                    li.innerHTML = html;
-                    parlayLegs.appendChild(li);
+                // Store legs for inline editing with deterministic leg_id
+                resultsLegs = (parlay.legs || []).map((leg, i) => {{
+                    // Generate leg_id from canonical fields
+                    const leg_id = generateLegIdSync({{
+                        entity: leg.entity || leg.text?.split(' ')[0] || '',
+                        market: leg.bet_type || 'unknown',
+                        value: leg.line_value || null,
+                        sport: leg.sport || ''
+                    }});
+                    return {{
+                        ...leg,
+                        leg_id: leg_id,
+                        originalIndex: i,
+                        locked: lockedLegIds.has(leg_id)
+                    }};
                 }});
+                renderResultsLegs();
             }}
 
             // Grade/Signal
@@ -2486,6 +2677,12 @@ def _get_canonical_ui_html() -> str:
             if (ocrResult) ocrResult.style.display = 'none';
             if (imageStatus) imageStatus.style.display = 'none';
             if (imageInput) imageInput.value = '';
+            // Ticket 35: Reset refine loop state
+            // Ticket 36: Also reset re-evaluation flag
+            // Ticket 37: Use leg_id based tracking
+            lockedLegIds.clear();
+            resultsLegs = [];
+            isReEvaluation = false;
             // Focus appropriate element based on mode
             if (currentMode === 'builder') {{
                 document.getElementById('builder-team').focus();
@@ -2495,20 +2692,39 @@ def _get_canonical_ui_html() -> str:
         }}
 
         // Ticket 25: Refine Parlay - returns to builder with legs preloaded
+        // Ticket 35: Now uses resultsLegs (which may have been modified)
         function refineParlay() {{
-            if (!lastResponse || !lastResponse.evaluatedParlay) {{
+            // Use resultsLegs if available (reflects inline edits), otherwise fall back
+            const legsToUse = resultsLegs.length > 0 ? resultsLegs :
+                              (lastResponse?.evaluatedParlay?.legs || []);
+
+            if (legsToUse.length === 0) {{
                 resetForm();
                 return;
             }}
 
-            // Preload legs from the evaluated parlay
-            builderLegs = (lastResponse.evaluatedParlay.legs || []).map(leg => ({{
-                text: leg.text,
-                sport: '',
-                market: leg.bet_type === 'player_prop' ? 'Player Prop' :
-                        leg.bet_type === 'total' ? 'Total' :
-                        leg.bet_type === 'spread' ? 'Spread' : 'ML',
-            }}));
+            // Preload legs from the current results state
+            // Ticket 37: Include leg_id for deterministic tracking
+            builderLegs = legsToUse.map(leg => {{
+                const entity = leg.entity || leg.text?.split(' ')[0] || '';
+                const market = leg.bet_type === 'player_prop' ? 'player_prop' :
+                               leg.bet_type === 'total' ? 'total' :
+                               leg.bet_type === 'spread' ? 'spread' : 'moneyline';
+                const value = leg.line_value || null;
+                const sport = leg.sport || '';
+                // Use existing leg_id or generate new one
+                const leg_id = leg.leg_id || generateLegIdSync({{ entity, market, value, sport }});
+                return {{
+                    leg_id: leg_id,
+                    entity: entity,
+                    text: leg.text,
+                    raw: leg.text,
+                    sport: sport,
+                    market: market,
+                    value: value,
+                    locked: leg.locked || false
+                }};
+            }});
 
             // Switch to builder mode
             currentMode = 'builder';
@@ -2536,6 +2752,178 @@ def _get_canonical_ui_html() -> str:
                 submitBtn.click();
             }}
         }});
+
+        // ============================================================
+        // Ticket 35: Inline Refine Loop
+        // ============================================================
+
+        /**
+         * Render legs in results view with remove/lock controls.
+         */
+        function renderResultsLegs() {{
+            const parlayLegs = document.getElementById('parlay-legs');
+            parlayLegs.innerHTML = '';
+
+            resultsLegs.forEach((leg, i) => {{
+                const li = document.createElement('li');
+                li.dataset.index = i;
+                if (leg.locked) {{
+                    li.classList.add('locked');
+                }}
+
+                // Leg number
+                let html = '<span class="result-leg-num">' + (i + 1) + '.</span>';
+
+                // Leg content
+                html += '<div class="result-leg-content">';
+                html += '<span class="result-leg-text">' + escapeHtml(leg.text) + '</span>';
+                html += '<span class="leg-type">' + (leg.bet_type || '').replace('_', ' ') + '</span>';
+                if (leg.interpretation) {{
+                    html += '<div class="leg-interpretation">' + escapeHtml(leg.interpretation) + '</div>';
+                }}
+                html += '</div>';
+
+                // Controls
+                html += '<div class="result-leg-controls">';
+                // Lock button
+                const lockIcon = leg.locked ? '&#128274;' : '&#128275;'; // locked vs unlocked
+                const lockClass = leg.locked ? 'leg-lock-btn locked' : 'leg-lock-btn';
+                const lockTitle = leg.locked ? 'Unlock this leg' : 'Lock this leg (prevent removal)';
+                html += '<button class="' + lockClass + '" onclick="toggleLegLock(' + i + ')" title="' + lockTitle + '">' + lockIcon + '</button>';
+                // Remove button (disabled if locked)
+                const removeDisabled = leg.locked ? 'disabled' : '';
+                const removeTitle = leg.locked ? 'Unlock to remove' : 'Remove this leg';
+                html += '<button class="leg-remove-btn" onclick="removeLegFromResults(' + i + ')" ' + removeDisabled + ' title="' + removeTitle + '">Remove</button>';
+                html += '</div>';
+
+                li.innerHTML = html;
+                parlayLegs.appendChild(li);
+            }});
+
+            // Update the parlay label to reflect current count
+            updateParlayLabel();
+            // Update re-evaluate button state
+            updateReEvaluateButton();
+        }}
+
+        /**
+         * Update parlay label to show current leg count.
+         */
+        function updateParlayLabel() {{
+            const count = resultsLegs.length;
+            let label = '';
+            if (count === 0) {{
+                label = 'No legs remaining';
+            }} else if (count === 1) {{
+                label = 'Single bet';
+            }} else {{
+                label = count + '-leg parlay';
+            }}
+            document.getElementById('parlay-label').textContent = label;
+        }}
+
+        /**
+         * Update re-evaluate button enabled state.
+         */
+        function updateReEvaluateButton() {{
+            const btn = document.getElementById('reevaluate-btn');
+            if (btn) {{
+                btn.disabled = resultsLegs.length === 0;
+            }}
+        }}
+
+        /**
+         * Toggle lock state for a leg.
+         */
+        function toggleLegLock(index) {{
+            if (index < 0 || index >= resultsLegs.length) return;
+
+            const leg = resultsLegs[index];
+            leg.locked = !leg.locked;
+
+            // Ticket 37: Update lock tracking using deterministic leg_id
+            if (leg.locked) {{
+                lockedLegIds.add(leg.leg_id);
+            }} else {{
+                lockedLegIds.delete(leg.leg_id);
+            }}
+
+            renderResultsLegs();
+        }}
+
+        /**
+         * Remove a leg from results (inline refinement).
+         * Does NOT remove locked legs.
+         */
+        function removeLegFromResults(index) {{
+            if (index < 0 || index >= resultsLegs.length) return;
+
+            const leg = resultsLegs[index];
+            // Cannot remove locked leg
+            if (leg.locked) return;
+
+            // Remove from results
+            resultsLegs.splice(index, 1);
+
+            // Sync state: update builderLegs and textarea
+            syncStateFromResults();
+
+            // Re-render
+            renderResultsLegs();
+        }}
+
+        /**
+         * Sync all state from resultsLegs.
+         * Ensures builderLegs, textarea, and canonical state stay in sync.
+         * Ticket 37: Includes leg_id for deterministic tracking.
+         */
+        function syncStateFromResults() {{
+            // Update builderLegs to match resultsLegs
+            builderLegs = resultsLegs.map(leg => ({{
+                leg_id: leg.leg_id, // Ticket 37: Preserve deterministic leg_id
+                entity: leg.entity || leg.text?.split(' ')[0] || '',
+                market: leg.bet_type || 'unknown',
+                value: leg.line_value || null,
+                raw: leg.text,
+                text: leg.text,
+                sport: leg.sport || '',
+                source: 'refined'
+            }}));
+
+            // Update textarea
+            syncTextarea();
+        }}
+
+        /**
+         * Re-evaluate parlay with current legs (after inline removals).
+         * Ticket 36: This is a re-evaluation, so we preserve lock state.
+         * Ticket 37: Uses deterministic leg_id for stable lock preservation.
+         */
+        async function reEvaluateParlay() {{
+            if (resultsLegs.length === 0) {{
+                showError('Add at least one leg to evaluate');
+                return;
+            }}
+
+            // Ticket 36: Mark this as a re-evaluation (lock state should be preserved)
+            isReEvaluation = true;
+
+            // Build input from current results legs
+            const input = resultsLegs.map(l => l.text).join('\\n');
+
+            // Ensure state is synced
+            syncStateFromResults();
+
+            // Ticket 37: lockedLegIds persists across re-evaluation
+            // No need to save/restore - showResults will use lockedLegIds.has(leg_id)
+
+            // Run evaluation
+            await runEvaluation(input);
+
+            // Ticket 37: Lock state is automatically restored in showResults
+            // via lockedLegIds.has(leg_id) check
+            renderResultsLegs();
+        }}
     </script>
 </body>
 </html>'''
