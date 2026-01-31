@@ -1552,25 +1552,176 @@ def _build_evaluated_parlay(blocks: list, input_text: str, canonical_legs: Optio
     }
 
 
+def _extract_leg_info(block, selection: str) -> dict:
+    """
+    Ticket 38 Part A: Extract entity, market, value from block/selection.
+    Returns dict with entity, market, value, sport for reason generation.
+    """
+    bet_type = block.bet_type.value if hasattr(block, 'bet_type') else "unknown"
+    sport = block.sport if hasattr(block, 'sport') else ""
+
+    # Try to extract entity from selection text
+    entity = ""
+    value = None
+
+    # Parse selection for common patterns
+    sel_lower = selection.lower()
+
+    # Player props often have "player o/u X.X stat"
+    if bet_type == "player_prop":
+        # Try to get player name (first word(s) before o/u)
+        parts = selection.split()
+        if len(parts) >= 1:
+            # Find where the line starts (o/u, over, under)
+            for i, p in enumerate(parts):
+                if p.lower() in ('o', 'u', 'over', 'under', 'o25.5', 'u25.5') or \
+                   (p.lower().startswith('o') and any(c.isdigit() for c in p)) or \
+                   (p.lower().startswith('u') and any(c.isdigit() for c in p)):
+                    entity = ' '.join(parts[:i]) if i > 0 else parts[0]
+                    # Extract numeric value
+                    for remaining in parts[i:]:
+                        try:
+                            value = float(''.join(c for c in remaining if c.isdigit() or c == '.'))
+                            break
+                        except ValueError:
+                            continue
+                    break
+            if not entity and parts:
+                entity = parts[0]
+
+    # Spreads: "Team -X.X" or "Team +X.X"
+    elif bet_type == "spread":
+        import re
+        spread_match = re.search(r'([A-Za-z\s]+)\s*([+-]?\d+\.?\d*)', selection)
+        if spread_match:
+            entity = spread_match.group(1).strip()
+            try:
+                value = float(spread_match.group(2))
+            except ValueError:
+                pass
+
+    # Totals: "o/u X.X" or "Over X.X"
+    elif bet_type == "total":
+        import re
+        total_match = re.search(r'([ou]|over|under)\s*(\d+\.?\d*)', sel_lower)
+        if total_match:
+            try:
+                value = float(total_match.group(2))
+            except ValueError:
+                pass
+        # Entity might be game reference
+        entity = selection.split()[0] if selection.split() else "Total"
+
+    # Moneyline: "Team ML" or just team name
+    elif bet_type == "moneyline":
+        entity = selection.replace('ML', '').replace('ml', '').strip()
+
+    # Fallback
+    if not entity:
+        entity = selection.split()[0] if selection.split() else "Leg"
+
+    return {
+        "entity": entity,
+        "market": bet_type,
+        "value": value,
+        "sport": sport,
+        "selection": selection,
+    }
+
+
+def _build_leg_specific_reason(leg_info: dict, reason_type: str, is_correlated: bool = False) -> str:
+    """
+    Ticket 38 Part A: Generate leg-specific reason referencing actual leg fields.
+
+    Format: [What it is]. [Why it matters structurally]. [What you might observe].
+    No live data, no odds, no predictions.
+    """
+    entity = leg_info.get("entity", "This leg")
+    market = leg_info.get("market", "unknown")
+    value = leg_info.get("value")
+    sport = leg_info.get("sport", "")
+
+    # Build market-specific reasons
+    if market == "player_prop":
+        what_it_is = f"{entity} is a player prop."
+        why_matters = "Individual performance depends on minutes, role, and game flow."
+        if value is not None:
+            if value >= 25:
+                what_observe = f"Higher thresholds like {value} require sustained opportunity and efficiency."
+            elif value <= 10:
+                what_observe = f"Lower thresholds like {value} can still miss in blowouts or foul trouble."
+            else:
+                what_observe = "Variance in individual stats compounds parlay fragility."
+        else:
+            what_observe = "Props add individual variance that's harder to model structurally."
+
+    elif market == "total":
+        what_it_is = f"This is a game total bet."
+        why_matters = "Totals depend on pace, foul situations, and late-game scenarios from both teams."
+        if value is not None:
+            if value >= 230:
+                what_observe = f"A total of {value} assumes a faster-paced, higher-scoring game environment."
+            elif value <= 200:
+                what_observe = f"A total of {value} assumes a slower, more defensive game."
+            else:
+                what_observe = "Totals correlate with other same-game props and spreads."
+        else:
+            what_observe = "Totals are sensitive to game environment and correlate with props."
+
+    elif market == "spread":
+        what_it_is = f"{entity} is a spread bet."
+        why_matters = "Spreads are sensitive to margin—late fouls, garbage time, and final possessions shift outcomes."
+        if value is not None:
+            abs_val = abs(value)
+            if abs_val >= 10:
+                what_observe = f"A {abs_val}-point spread requires a decisive margin, reducing late-game variance."
+            elif abs_val <= 3:
+                what_observe = f"A {abs_val}-point spread means the game likely comes down to final possessions."
+            else:
+                what_observe = "Mid-range spreads can swing either way depending on late-game flow."
+        else:
+            what_observe = "Spread outcomes often hinge on final minutes and free throw situations."
+
+    elif market == "moneyline":
+        what_it_is = f"{entity} is a moneyline bet."
+        why_matters = "Moneylines are structurally cleaner—only the win matters, not the margin."
+        what_observe = "Stacking multiple moneylines still compounds fragility even if each feels safer individually."
+
+    else:
+        what_it_is = f"{entity} is part of this parlay."
+        why_matters = "Each leg adds structural complexity to the overall bet."
+        what_observe = "Combined variance increases as legs are added."
+
+    # Add correlation context if relevant
+    if is_correlated and reason_type == "correlation":
+        why_matters = "This leg shares underlying game conditions with another leg in the parlay."
+        what_observe = "If game flow goes against one, it likely affects both."
+
+    return f"{what_it_is} {why_matters} {what_observe}"
+
+
 def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list:
     """
-    Build notable legs section with leg-aware context.
+    Ticket 38: Build notable legs with leg-specific reasoning.
 
-    Ticket 25 Part B: Select 1-3 legs that matter most with plain-English why.
+    Ticket 25 Part B: Select 1-3 legs that matter most.
     Ticket 26 Part B: Expanded to 2-3 sentence cadence.
+    Ticket 38: Leg-specific reasons referencing actual entity/market/value.
 
     Selection criteria (deterministic):
-    - Player props (high variance)
-    - Totals (dependency on game pace)
-    - Legs with highest base_fragility
-    - Legs implicated in correlations
+    - Player props: +3 (high individual variance)
+    - Totals: +2 (game environment dependency)
+    - Spreads: +2 (margin sensitivity)
+    - Large line magnitude (abs >= 8): +1
+    - Correlation involvement: +2
+    - High base fragility (>= 0.15): +2
 
+    Tie-break by original leg order.
     Returns list of dicts: [{"leg": str, "reason": str}, ...]
     """
     if not blocks:
         return []
 
-    notable = []
     correlations = evaluation.correlations if evaluation else ()
 
     # Build correlation involvement map
@@ -1579,73 +1730,73 @@ def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list
         corr_block_ids.add(str(corr.block_a))
         corr_block_ids.add(str(corr.block_b))
 
-    # Ticket 26 Part B: Expanded explanation templates (2-3 sentences)
-    # Cadence: [What it is]. [Why it matters]. [What you might see.]
-    expanded_reasons = {
-        "player_prop": (
-            "Props depend on individual performance. "
-            "A player might rest late, exit early, or simply miss shots. "
-            "That makes it harder to predict outcomes cleanly."
-        ),
-        "total": (
-            "Totals depend on combined scoring. "
-            "Game pace, foul trouble, and late-game situations all affect this. "
-            "A slow-paced blowout can easily miss a total."
-        ),
-        "correlation": (
-            "These legs share the same underlying game or outcome. "
-            "If one fails due to game flow, the other is more likely to fail too. "
-            "Consider whether you want both riding on the same conditions."
-        ),
-        "fragility": (
-            "This leg carries higher base volatility than others. "
-            "Small swings in the game could tip this outcome either way. "
-            "It contributes disproportionately to overall parlay risk."
-        ),
-    }
-
     # Score each leg for notability
     leg_scores = []
     for i, block in enumerate(blocks):
         score = 0
-        reason_key = None
+        reason_type = None
         bet_type = block.bet_type.value if hasattr(block, 'bet_type') else "unknown"
         leg_text = block.selection if hasattr(block, 'selection') else f"Leg {i+1}"
 
-        # Player props add variance (highest priority)
+        # Extract leg info for specific reasons
+        leg_info = _extract_leg_info(block, leg_text)
+        value = leg_info.get("value")
+
+        # Check correlation involvement
+        block_id_str = str(block.block_id) if hasattr(block, 'block_id') else ""
+        is_correlated = block_id_str in corr_block_ids
+
+        # Player props: highest variance (+3)
         if bet_type == "player_prop":
             score += 3
-            reason_key = "player_prop"
+            reason_type = "player_prop"
 
-        # Totals depend on game pace
-        if bet_type == "total":
+        # Totals: game environment dependency (+2)
+        elif bet_type == "total":
             score += 2
-            if reason_key is None:
-                reason_key = "total"
+            reason_type = "total"
 
-        # Involved in correlations
-        block_id_str = str(block.block_id) if hasattr(block, 'block_id') else ""
-        if block_id_str in corr_block_ids:
+        # Spreads: margin sensitivity (+2)
+        elif bet_type == "spread":
             score += 2
-            if reason_key is None:
-                reason_key = "correlation"
+            reason_type = "spread"
 
-        # High base fragility
+        # Moneyline: base score (+1) - cleaner but still compounds
+        elif bet_type == "moneyline":
+            score += 1
+            reason_type = "moneyline"
+
+        # Large line magnitude bonus (+1)
+        if value is not None and abs(value) >= 8:
+            score += 1
+
+        # Correlation involvement (+2)
+        if is_correlated:
+            score += 2
+            if reason_type is None:
+                reason_type = "correlation"
+
+        # High base fragility (+2)
         if hasattr(block, 'base_fragility') and block.base_fragility >= 0.15:
             score += 2
-            if reason_key is None:
-                reason_key = "fragility"
+            if reason_type is None:
+                reason_type = "fragility"
 
-        if score > 0 and reason_key:
+        # Only include legs with positive score and a reason type
+        if score > 0 and reason_type:
+            # Generate leg-specific reason
+            reason = _build_leg_specific_reason(leg_info, reason_type, is_correlated)
             leg_scores.append({
-                "position": i + 1,
+                "position": i,  # Original order for tie-break
                 "leg": leg_text,
-                "reason": expanded_reasons[reason_key],
+                "reason": reason,
                 "score": score,
             })
 
-    # Sort by score descending, take top 3
-    leg_scores.sort(key=lambda x: x["score"], reverse=True)
+    # Sort by score descending, then by original position (tie-break)
+    leg_scores.sort(key=lambda x: (-x["score"], x["position"]))
+
+    # Take top 3
     notable = [
         {"leg": item["leg"], "reason": item["reason"]}
         for item in leg_scores[:3]

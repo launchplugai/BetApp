@@ -2021,3 +2021,201 @@ class TestTicket37LegIdentity:
             "Should not use lockedLegIndices.delete() anymore"
         assert "lockedLegIndices.has(" not in html, \
             "Should not use lockedLegIndices.has() anymore"
+
+
+class TestTicket37BHashUpgrade:
+    """Ticket 37B: Upgrade leg_id hash to SHA-256 with djb2 fallback."""
+
+    def test_get_canonical_leg_string_exists(self, client):
+        """Ticket 37B: getCanonicalLegString helper should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "function getCanonicalLegString" in html, \
+            "getCanonicalLegString function must be defined"
+
+    def test_hash_djb2_exists(self, client):
+        """Ticket 37B: hashDjb2 fallback function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "function hashDjb2" in html, \
+            "hashDjb2 fallback function must be defined"
+
+    def test_generate_leg_id_uses_sha256(self, client):
+        """Ticket 37B: generateLegId should use SHA-256 via WebCrypto."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "crypto.subtle.digest" in html, \
+            "Should use crypto.subtle.digest for SHA-256"
+        assert "SHA-256" in html, \
+            "Should specify SHA-256 algorithm"
+
+    def test_generate_leg_id_has_webcrypto_check(self, client):
+        """Ticket 37B: generateLegId should check for WebCrypto availability."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "crypto.subtle" in html, \
+            "Should check for crypto.subtle availability"
+
+    def test_generate_leg_id_has_djb2_fallback(self, client):
+        """Ticket 37B: generateLegId should fallback to djb2."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "hashDjb2(canonical)" in html, \
+            "Should call hashDjb2 as fallback"
+
+    def test_generate_leg_id_sync_uses_djb2(self, client):
+        """Ticket 37B: generateLegIdSync should use djb2."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "hashDjb2(getCanonicalLegString(leg))" in html, \
+            "generateLegIdSync should use hashDjb2"
+
+    def test_ticket_37b_comments_present(self, client):
+        """Ticket 37B: Ticket 37B comments should be present."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        ticket_37b_count = html.count("Ticket 37B")
+        assert ticket_37b_count >= 4, \
+            f"Should have at least 4 Ticket 37B comments, found {ticket_37b_count}"
+
+
+class TestTicket38AOcrErrorRendering:
+    """Ticket 38A: Fix OCR error rendering ([object Object])."""
+
+    def test_safe_any_to_string_exists(self, client):
+        """Ticket 38A: safeAnyToString helper function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "function safeAnyToString" in html, \
+            "safeAnyToString helper function must be defined"
+
+    def test_safe_response_error_exists(self, client):
+        """Ticket 38A: safeResponseError helper function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "function safeResponseError" in html, \
+            "safeResponseError helper function must be defined"
+
+    def test_safe_any_to_string_handles_null(self, client):
+        """Ticket 38A: safeAnyToString should handle null/undefined."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check for null/undefined handling
+        assert "x === null || x === undefined" in html, \
+            "Should check for null/undefined"
+        assert "Unknown error" in html, \
+            "Should have fallback for null/undefined"
+
+    def test_safe_any_to_string_handles_string(self, client):
+        """Ticket 38A: safeAnyToString should return strings directly."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "typeof x === 'string'" in html, \
+            "Should check if input is already a string"
+
+    def test_safe_any_to_string_handles_error_message(self, client):
+        """Ticket 38A: safeAnyToString should extract Error.message."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "x.message && typeof x.message === 'string'" in html, \
+            "Should extract message from Error objects"
+
+    def test_safe_any_to_string_handles_detail(self, client):
+        """Ticket 38A: safeAnyToString should handle API {detail: ...} responses."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "x.detail" in html, \
+            "Should check for .detail property"
+        assert "Array.isArray(x.detail)" in html, \
+            "Should handle Pydantic validation errors (array of details)"
+
+    def test_safe_any_to_string_handles_error_property(self, client):
+        """Ticket 38A: safeAnyToString should handle {error: ...} responses."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "x.error && typeof x.error === 'string'" in html, \
+            "Should check for .error property"
+
+    def test_ocr_handler_uses_safe_stringifier(self, client):
+        """Ticket 38A: OCR error handler should use safeAnyToString."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "safeAnyToString(err," in html, \
+            "OCR catch block should use safeAnyToString"
+
+    def test_ocr_response_uses_safe_error(self, client):
+        """Ticket 38A: OCR response error should use safeResponseError."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "safeResponseError(data," in html, \
+            "OCR response error should use safeResponseError"
+
+    def test_evaluation_error_uses_safe_error(self, client):
+        """Ticket 38A: Evaluation error should use safeResponseError."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Count safeResponseError usages - should be at least 2 (OCR + evaluation)
+        count = html.count("safeResponseError(data,")
+        assert count >= 2, \
+            f"Should use safeResponseError for at least OCR and evaluation errors, found {count}"
+
+    def test_no_object_object_in_error_assignments(self, client):
+        """Ticket 38A: No raw object concatenation that could produce [object Object]."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+
+        # Patterns that could produce [object Object]
+        # Look for "+ err" or "${err}" without safe extraction
+        import re
+
+        # Find textContent or innerHTML assignments with err concatenation
+        # This is a best-effort check - look for dangerous patterns
+        dangerous_patterns = [
+            r"textContent\s*=\s*['\"].*['\"].*\+\s*err(?!\s*\.\s*message)",  # + err (not err.message)
+            r"innerHTML\s*=\s*['\"].*['\"].*\+\s*err(?!\s*\.\s*message)",    # + err (not err.message)
+        ]
+
+        for pattern in dangerous_patterns:
+            matches = re.findall(pattern, html)
+            # Filter out safe uses
+            safe_matches = [m for m in matches if "safeAnyToString" not in m]
+            assert len(safe_matches) == 0, \
+                f"Found dangerous error concatenation pattern: {safe_matches}"
+
+    def test_ticket_38a_comments_present(self, client):
+        """Ticket 38A: Ticket 38A comments should be present."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        ticket_38a_count = html.count("Ticket 38A")
+        assert ticket_38a_count >= 3, \
+            f"Should have at least 3 Ticket 38A comments, found {ticket_38a_count}"
+
+    def test_never_returns_object_object(self, client):
+        """Ticket 38A: safeAnyToString should never return [object Object]."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # The function should explicitly check for and avoid [object Object]
+        assert "[object Object]" in html, \
+            "Should have explicit check against [object Object] string"
+        assert "str !== '[object Object]'" in html, \
+            "Should explicitly reject [object Object] from toString()"

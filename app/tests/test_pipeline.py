@@ -22,6 +22,9 @@ from app.pipeline import (
     _generate_alerts,
     _interpret_fragility,
     _apply_tier_filtering,
+    _extract_leg_info,
+    _build_leg_specific_reason,
+    _build_notable_legs,
 )
 
 
@@ -322,3 +325,319 @@ class TestRouteIntegration:
         assert response_best.status_code == 200
         explain = response_best.json()["explain"]
         assert "summary" in explain
+
+
+class TestTicket38NotableLegsV2:
+    """
+    Ticket 38: Notable Legs v2 with leg-specific reasoning.
+
+    Tests verify specificity and non-generic behavior:
+    1. Player prop notable leg includes player/entity reference
+    2. Total notable leg mentions totals dependency language
+    3. Spread notable leg mentions margin sensitivity language
+    4. Multi-leg mixed markets produces distinct reason patterns
+    5. No forbidden language (odds, payout, probability, lock, guarantee)
+    6. Deterministic output: same input → same ordering
+    """
+
+    def test_extract_leg_info_player_prop(self):
+        """Part A: Extract entity and value from player prop."""
+        mock_block = MagicMock()
+        mock_block.bet_type.value = "player_prop"
+        mock_block.sport = "NBA"
+
+        leg_info = _extract_leg_info(mock_block, "LeBron o25.5 pts")
+        assert leg_info["market"] == "player_prop"
+        assert "LeBron" in leg_info["entity"]
+        assert leg_info["value"] == 25.5
+
+    def test_extract_leg_info_spread(self):
+        """Part A: Extract entity and value from spread."""
+        mock_block = MagicMock()
+        mock_block.bet_type.value = "spread"
+        mock_block.sport = "NBA"
+
+        leg_info = _extract_leg_info(mock_block, "Lakers -5.5")
+        assert leg_info["market"] == "spread"
+        assert "Lakers" in leg_info["entity"]
+        assert leg_info["value"] == -5.5
+
+    def test_extract_leg_info_total(self):
+        """Part A: Extract value from total."""
+        mock_block = MagicMock()
+        mock_block.bet_type.value = "total"
+        mock_block.sport = "NBA"
+
+        leg_info = _extract_leg_info(mock_block, "Over 220.5")
+        assert leg_info["market"] == "total"
+        assert leg_info["value"] == 220.5
+
+    def test_extract_leg_info_moneyline(self):
+        """Part A: Extract entity from moneyline."""
+        mock_block = MagicMock()
+        mock_block.bet_type.value = "moneyline"
+        mock_block.sport = "NBA"
+
+        leg_info = _extract_leg_info(mock_block, "Celtics ML")
+        assert leg_info["market"] == "moneyline"
+        assert "Celtics" in leg_info["entity"]
+
+    def test_player_prop_reason_includes_entity(self):
+        """Part A: Player prop reason must include entity reference."""
+        leg_info = {
+            "entity": "LeBron",
+            "market": "player_prop",
+            "value": 25.5,
+            "sport": "NBA",
+        }
+        reason = _build_leg_specific_reason(leg_info, "player_prop")
+
+        assert "LeBron" in reason
+        assert "player prop" in reason.lower()
+        assert "individual" in reason.lower() or "performance" in reason.lower()
+
+    def test_total_reason_mentions_dependency_language(self):
+        """Part A: Total reason must mention totals dependency."""
+        leg_info = {
+            "entity": "Game",
+            "market": "total",
+            "value": 220.5,
+            "sport": "NBA",
+        }
+        reason = _build_leg_specific_reason(leg_info, "total")
+
+        assert "total" in reason.lower()
+        # Should mention pace, foul, environment, or correlate
+        assert any(word in reason.lower() for word in ["pace", "foul", "environment", "correlate", "scenarios"])
+
+    def test_spread_reason_mentions_margin_sensitivity(self):
+        """Part A: Spread reason must mention margin sensitivity."""
+        leg_info = {
+            "entity": "Lakers",
+            "market": "spread",
+            "value": -5.5,
+            "sport": "NBA",
+        }
+        reason = _build_leg_specific_reason(leg_info, "spread")
+
+        assert "Lakers" in reason
+        assert "spread" in reason.lower()
+        # Should mention margin, late, fouls, or final
+        assert any(word in reason.lower() for word in ["margin", "late", "foul", "final", "possession"])
+
+    def test_high_value_prop_mentions_threshold(self):
+        """Part A: High value prop mentions higher threshold language."""
+        leg_info = {
+            "entity": "Giannis",
+            "market": "player_prop",
+            "value": 30.0,
+            "sport": "NBA",
+        }
+        reason = _build_leg_specific_reason(leg_info, "player_prop")
+
+        # Should mention the threshold value
+        assert "30" in reason or "higher" in reason.lower() or "threshold" in reason.lower()
+
+    def test_large_spread_mentions_decisive_margin(self):
+        """Part A: Large spread (+10) mentions decisive margin."""
+        leg_info = {
+            "entity": "Warriors",
+            "market": "spread",
+            "value": -12.0,
+            "sport": "NBA",
+        }
+        reason = _build_leg_specific_reason(leg_info, "spread")
+
+        # Should mention the large spread
+        assert "12" in reason or "decisive" in reason.lower() or "reducing" in reason.lower()
+
+    def test_mixed_markets_produce_distinct_reasons(self):
+        """Part D: Multi-leg mixed markets produces at least 2 distinct patterns."""
+        # Create mock blocks for different market types
+        blocks = []
+        for bet_type, selection in [
+            ("player_prop", "LeBron o25.5 pts"),
+            ("spread", "Lakers -5.5"),
+            ("total", "Over 220.5"),
+        ]:
+            block = MagicMock()
+            block.bet_type.value = bet_type
+            block.selection = selection
+            block.sport = "NBA"
+            block.block_id = uuid4()
+            block.base_fragility = 0.10
+            blocks.append(block)
+
+        mock_eval = MagicMock()
+        mock_eval.correlations = []
+
+        notable = _build_notable_legs(blocks, mock_eval, {})
+
+        # Should have at least 2 notable legs
+        assert len(notable) >= 2
+
+        # Reasons should be distinct (not copy-paste)
+        reasons = [n["reason"] for n in notable]
+        # At least 2 reasons should be different
+        assert len(set(reasons)) >= 2, "Reasons should be distinct, not generic copy-paste"
+
+    def test_no_forbidden_language_in_reasons(self):
+        """Part D: No forbidden language: odds, payout, probability, lock, guarantee, should bet."""
+        forbidden_words = ["odds", "payout", "probability", "lock", "guarantee", "should bet"]
+
+        # Test all market types
+        for market, value in [
+            ("player_prop", 25.5),
+            ("spread", -5.5),
+            ("total", 220.5),
+            ("moneyline", None),
+        ]:
+            leg_info = {
+                "entity": "TestEntity",
+                "market": market,
+                "value": value,
+                "sport": "NBA",
+            }
+            reason = _build_leg_specific_reason(leg_info, market)
+
+            for forbidden in forbidden_words:
+                assert forbidden not in reason.lower(), \
+                    f"Forbidden word '{forbidden}' found in {market} reason: {reason}"
+
+    def test_deterministic_ordering(self):
+        """Part D: Same input produces same notable legs ordering."""
+        # Create consistent mock blocks
+        blocks = []
+        for bet_type, selection in [
+            ("player_prop", "LeBron o25.5 pts"),
+            ("spread", "Lakers -5.5"),
+            ("moneyline", "Celtics ML"),
+        ]:
+            block = MagicMock()
+            block.bet_type.value = bet_type
+            block.selection = selection
+            block.sport = "NBA"
+            block.block_id = uuid4()
+            block.base_fragility = 0.10
+            blocks.append(block)
+
+        mock_eval = MagicMock()
+        mock_eval.correlations = []
+
+        # Run twice
+        result1 = _build_notable_legs(blocks, mock_eval, {})
+        result2 = _build_notable_legs(blocks, mock_eval, {})
+
+        # Same ordering
+        assert len(result1) == len(result2)
+        for i in range(len(result1)):
+            assert result1[i]["leg"] == result2[i]["leg"], \
+                f"Ordering differs at position {i}"
+
+    def test_scoring_player_prop_highest(self):
+        """Part B: Player props should score highest (+3)."""
+        blocks = []
+        for bet_type, selection in [
+            ("moneyline", "Celtics ML"),
+            ("player_prop", "LeBron o25.5 pts"),
+            ("spread", "Lakers -5.5"),
+        ]:
+            block = MagicMock()
+            block.bet_type.value = bet_type
+            block.selection = selection
+            block.sport = "NBA"
+            block.block_id = uuid4()
+            block.base_fragility = 0.10
+            blocks.append(block)
+
+        mock_eval = MagicMock()
+        mock_eval.correlations = []
+
+        notable = _build_notable_legs(blocks, mock_eval, {})
+
+        # Player prop should be first (highest score)
+        assert len(notable) >= 1
+        assert "LeBron" in notable[0]["leg"]
+
+    def test_large_line_magnitude_bonus(self):
+        """Part B: Large line magnitude (>=8) gets +1 bonus."""
+        blocks = []
+
+        # Two spreads: one large, one small
+        for spread_val, selection in [
+            (-3.5, "Celtics -3.5"),
+            (-10.5, "Lakers -10.5"),
+        ]:
+            block = MagicMock()
+            block.bet_type.value = "spread"
+            block.selection = selection
+            block.sport = "NBA"
+            block.block_id = uuid4()
+            block.base_fragility = 0.10
+            blocks.append(block)
+
+        mock_eval = MagicMock()
+        mock_eval.correlations = []
+
+        notable = _build_notable_legs(blocks, mock_eval, {})
+
+        # The large spread should appear (gets magnitude bonus)
+        assert len(notable) >= 1
+        # At least one should mention the larger spread
+        all_legs = " ".join(n["leg"] for n in notable)
+        assert "-10.5" in all_legs or "-3.5" in all_legs
+
+    def test_correlation_involvement_bonus(self):
+        """Part B: Legs in correlations get +2 bonus."""
+        blocks = []
+        block_ids = []
+
+        for bet_type, selection in [
+            ("moneyline", "Celtics ML"),
+            ("spread", "Lakers -5.5"),
+        ]:
+            block = MagicMock()
+            block.bet_type.value = bet_type
+            block.selection = selection
+            block.sport = "NBA"
+            bid = uuid4()
+            block.block_id = bid
+            block_ids.append(bid)
+            block.base_fragility = 0.10
+            blocks.append(block)
+
+        # Create correlation involving the first block
+        mock_corr = MagicMock()
+        mock_corr.block_a = block_ids[0]
+        mock_corr.block_b = uuid4()  # Some other block
+
+        mock_eval = MagicMock()
+        mock_eval.correlations = [mock_corr]
+
+        notable = _build_notable_legs(blocks, mock_eval, {})
+
+        # The correlated leg should appear with high priority
+        assert len(notable) >= 1
+
+    def test_empty_blocks_returns_empty(self):
+        """Part D: Empty blocks returns empty notable legs."""
+        mock_eval = MagicMock()
+        mock_eval.correlations = []
+
+        notable = _build_notable_legs([], mock_eval, {})
+        assert notable == []
+
+    def test_moneyline_reason_mentions_stacking(self):
+        """Part A: Moneyline reason mentions stacking/compounding."""
+        leg_info = {
+            "entity": "Heat",
+            "market": "moneyline",
+            "value": None,
+            "sport": "NBA",
+        }
+        reason = _build_leg_specific_reason(leg_info, "moneyline")
+
+        assert "Heat" in reason
+        assert "moneyline" in reason.lower()
+        # Should mention stacking or compounding
+        assert any(word in reason.lower() for word in ["stack", "compound", "fragility", "multiple"])

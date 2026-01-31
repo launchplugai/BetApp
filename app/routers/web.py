@@ -1553,50 +1553,60 @@ def _get_canonical_ui_html() -> str:
         // ============================================================
 
         /**
-         * Generate a deterministic leg_id from canonical fields.
-         * Uses SHA-256 hash of entity + market + value + sport.
-         * This ensures stable identity across sessions for identical legs.
+         * Ticket 37B: Get canonical string for leg hashing.
          */
-        async function generateLegId(leg) {{
-            const canonical = [
+        function getCanonicalLegString(leg) {{
+            return [
                 (leg.entity || '').toLowerCase().trim(),
                 (leg.market || '').toLowerCase().trim(),
                 (leg.value || '').toString().toLowerCase().trim(),
                 (leg.sport || '').toLowerCase().trim()
             ].join('|');
-
-            // Use Web Crypto API for SHA-256
-            const encoder = new TextEncoder();
-            const data = encoder.encode(canonical);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-            // Return first 16 chars for brevity (still 64 bits of entropy)
-            return 'leg_' + hashHex.substring(0, 16);
         }}
 
         /**
-         * Synchronous leg_id generation for immediate use.
-         * Falls back to a deterministic string hash if crypto not available.
+         * Ticket 37B: djb2 hash algorithm (sync fallback).
+         */
+        function hashDjb2(str) {{
+            let hash = 5381;
+            for (let i = 0; i < str.length; i++) {{
+                hash = ((hash << 5) + hash) + str.charCodeAt(i);
+                hash = hash & hash;
+            }}
+            return 'leg_' + (hash >>> 0).toString(16).padStart(8, '0');
+        }}
+
+        /**
+         * Ticket 37B: Generate leg_id using SHA-256 (WebCrypto) with djb2 fallback.
+         * Uses first 16 hex chars of SHA-256 for 64 bits of entropy.
+         */
+        async function generateLegId(leg) {{
+            const canonical = getCanonicalLegString(leg);
+
+            // Try WebCrypto SHA-256 first
+            if (typeof crypto !== 'undefined' && crypto.subtle) {{
+                try {{
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(canonical);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                    return 'leg_' + hashHex.substring(0, 16);
+                }} catch (e) {{
+                    // WebCrypto failed, fall through to djb2
+                }}
+            }}
+
+            // Fallback to djb2 if WebCrypto unavailable
+            return hashDjb2(canonical);
+        }}
+
+        /**
+         * Ticket 37B: Synchronous leg_id generation (djb2 only).
+         * Use async generateLegId() when possible for SHA-256.
          */
         function generateLegIdSync(leg) {{
-            const canonical = [
-                (leg.entity || '').toLowerCase().trim(),
-                (leg.market || '').toLowerCase().trim(),
-                (leg.value || '').toString().toLowerCase().trim(),
-                (leg.sport || '').toLowerCase().trim()
-            ].join('|');
-
-            // Simple deterministic hash (djb2 algorithm)
-            let hash = 5381;
-            for (let i = 0; i < canonical.length; i++) {{
-                hash = ((hash << 5) + hash) + canonical.charCodeAt(i);
-                hash = hash & hash; // Convert to 32-bit integer
-            }}
-            // Convert to positive hex string
-            const hashHex = (hash >>> 0).toString(16).padStart(8, '0');
-            return 'leg_' + hashHex;
+            return hashDjb2(getCanonicalLegString(leg));
         }}
 
         // Elements
@@ -1851,7 +1861,8 @@ def _get_canonical_ui_html() -> str:
                     const data = await response.json();
 
                     if (!response.ok) {{
-                        throw new Error(data.detail || 'OCR extraction failed');
+                        // Ticket 38A: Safely extract error message from response
+                        throw new Error(safeResponseError(data, 'OCR extraction failed'));
                     }}
 
                     // Show extracted text with warning banner
@@ -1866,7 +1877,8 @@ def _get_canonical_ui_html() -> str:
                         imageStatus.className = 'image-status error';
                     }}
                 }} catch (err) {{
-                    imageStatus.textContent = 'Error: ' + err.message;
+                    // Ticket 38A: Safe error string extraction
+                    imageStatus.textContent = 'Error: ' + safeAnyToString(err, 'OCR extraction failed');
                     imageStatus.className = 'image-status error';
                 }}
             }});
@@ -2341,6 +2353,69 @@ def _get_canonical_ui_html() -> str:
             return div.innerHTML;
         }}
 
+        /**
+         * Ticket 38A: Safe error message extraction.
+         * Handles Error objects, API error responses, and unknown objects.
+         * Never returns "[object Object]".
+         */
+        function safeAnyToString(x, fallback) {{
+            if (x === null || x === undefined) {{
+                return fallback || 'Unknown error';
+            }}
+            if (typeof x === 'string') {{
+                return x;
+            }}
+            // Error object
+            if (x.message && typeof x.message === 'string') {{
+                return x.message;
+            }}
+            // API error response shapes
+            if (x.detail) {{
+                // Pydantic validation errors have detail as array
+                if (Array.isArray(x.detail)) {{
+                    const msgs = x.detail.map(d => d.msg || d.message || JSON.stringify(d)).join('; ');
+                    return msgs || fallback || 'Validation error';
+                }}
+                if (typeof x.detail === 'string') {{
+                    return x.detail;
+                }}
+                // detail is object
+                if (x.detail.msg) return x.detail.msg;
+                if (x.detail.message) return x.detail.message;
+            }}
+            if (x.error && typeof x.error === 'string') {{
+                return x.error;
+            }}
+            if (x.msg && typeof x.msg === 'string') {{
+                return x.msg;
+            }}
+            // Custom toString (not Object.prototype.toString)
+            if (typeof x.toString === 'function' && x.toString !== Object.prototype.toString) {{
+                const str = x.toString();
+                if (str !== '[object Object]') {{
+                    return str;
+                }}
+            }}
+            // Last resort: try JSON stringify (bounded length)
+            try {{
+                const json = JSON.stringify(x);
+                if (json && json !== '{{}}' && json.length < 200) {{
+                    return json;
+                }}
+            }} catch (e) {{
+                // ignore stringify errors
+            }}
+            return fallback || 'Unknown error';
+        }}
+
+        /**
+         * Ticket 38A: Extract error message from API response.
+         * Use for response.json() results.
+         */
+        function safeResponseError(resJson, fallback) {{
+            return safeAnyToString(resJson, fallback);
+        }}
+
         // Tier selector
         document.querySelectorAll('.tier-btn').forEach(btn => {{
             btn.addEventListener('click', () => {{
@@ -2446,7 +2521,8 @@ def _get_canonical_ui_html() -> str:
                 lastResponse = data;
 
                 if (!response.ok) {{
-                    showError(data.detail || data.error || 'Evaluation failed');
+                    // Ticket 38A: Safely extract error message
+                    showError(safeResponseError(data, 'Evaluation failed'));
                     return;
                 }}
 
