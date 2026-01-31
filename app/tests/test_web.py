@@ -1273,3 +1273,238 @@ class TestTicket32CoreWorkspace:
         # Check for desktop breakpoint
         assert "@media (min-width: 768px)" in html, "Desktop media query should exist"
         assert "flex-direction: row" in html, "Desktop should use row layout"
+
+
+# =============================================================================
+# Tests: Ticket 34 - OCR → Builder Precision + Trust Tightening
+# =============================================================================
+
+
+class TestTicket34OcrBuilderPrecision:
+    """
+    Ticket 34: OCR → Builder Precision + Trust Tightening.
+
+    Part A: OCR → Canonical Builder Mapping
+    Part B: Per-Leg Confidence Indicators
+    Part C: OCR Review Soft Gate
+    Part D: Promo/Info Box
+    """
+
+    # Part A: OCR → Canonical Builder Mapping
+
+    def test_ocr_button_text_changed_to_add_to_builder(self, client):
+        """Part A: OCR button should say 'Add to Builder' not 'Use This Text'."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "Add to Builder" in html, "OCR button should say 'Add to Builder'"
+
+    def test_parse_ocr_to_legs_function_exists(self, client):
+        """Part A: parseOcrToLegs function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "parseOcrToLegs" in html, "parseOcrToLegs function should exist"
+
+    def test_parse_ocr_line_function_exists(self, client):
+        """Part A: parseOcrLine function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "parseOcrLine" in html, "parseOcrLine function should exist"
+
+    def test_leg_source_tag_class_exists(self, client):
+        """Part A: leg-source-tag CSS class should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "leg-source-tag" in html, "leg-source-tag CSS class should exist"
+
+    def test_ocr_leg_class_exists(self, client):
+        """Part A: ocr-leg CSS class should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".ocr-leg" in html, "ocr-leg CSS class should exist"
+
+    def test_detected_from_slip_tag_in_js(self, client):
+        """Part A: 'Detected from slip' tag should appear in JavaScript."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "Detected from slip" in html, "'Detected from slip' tag should be in code"
+
+    # Part B: Per-Leg Confidence Indicators
+
+    def test_leg_clarity_css_classes_exist(self, client):
+        """Part B: Leg clarity CSS classes should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".leg-clarity.clear" in html, "Clear clarity class should exist"
+        assert ".leg-clarity.review" in html, "Review clarity class should exist"
+        assert ".leg-clarity.ambiguous" in html, "Ambiguous clarity class should exist"
+
+    def test_get_ocr_leg_clarity_function_exists(self, client):
+        """Part B: getOcrLegClarity function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "getOcrLegClarity" in html, "getOcrLegClarity function should exist"
+
+    def test_get_clarity_display_function_exists(self, client):
+        """Part B: getClarityDisplay function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "getClarityDisplay" in html, "getClarityDisplay function should exist"
+
+    def test_clarity_labels_exist(self, client):
+        """Part B: Clarity labels should exist in code."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "Clear match" in html, "'Clear match' label should exist"
+        assert "Review recommended" in html, "'Review recommended' label should exist"
+        assert "Ambiguous" in html, "'Ambiguous' label should exist"
+
+    # Part C: OCR Review Soft Gate
+
+    def test_ocr_review_gate_element_exists(self, client):
+        """Part C: OCR review gate element should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert 'id="ocr-review-gate"' in html, "OCR review gate element should exist"
+        assert "ocr-review-gate" in html, "ocr-review-gate class should exist"
+
+    def test_ocr_review_gate_buttons_exist(self, client):
+        """Part C: Review gate buttons should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert 'id="gate-review-btn"' in html, "Review button should exist"
+        assert 'id="gate-proceed-btn"' in html, "Proceed button should exist"
+        assert "Review legs" in html, "'Review legs' button text should exist"
+        assert "Evaluate anyway" in html, "'Evaluate anyway' button text should exist"
+
+    def test_ocr_review_gate_message_exists(self, client):
+        """Part C: Review gate message should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "Some detected legs may need review" in html, \
+            "Review gate message should exist"
+
+    def test_has_legs_needing_review_function_exists(self, client):
+        """Part C: hasLegsNeedingReview function should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "hasLegsNeedingReview" in html, "hasLegsNeedingReview function should exist"
+
+    def test_show_hide_ocr_review_gate_functions_exist(self, client):
+        """Part C: showOcrReviewGate and hideOcrReviewGate functions should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "showOcrReviewGate" in html, "showOcrReviewGate function should exist"
+        assert "hideOcrReviewGate" in html, "hideOcrReviewGate function should exist"
+
+    def test_ocr_review_gate_css_exists(self, client):
+        """Part C: OCR review gate CSS styles should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".ocr-review-gate" in html, "ocr-review-gate styles should exist"
+        assert ".ocr-review-gate-content" in html, "gate content styles should exist"
+        assert ".ocr-review-gate-btn" in html, "gate button styles should exist"
+
+    # Part D: Promo/Info Box
+
+    def test_ocr_info_box_element_exists(self, client):
+        """Part D: OCR info box element should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert 'id="ocr-info-box"' in html, "OCR info box element should exist"
+
+    def test_ocr_info_box_title_exists(self, client):
+        """Part D: OCR info box title should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "How DNA reads bet slips" in html, "Info box title should exist"
+
+    def test_ocr_info_box_content_exists(self, client):
+        """Part D: OCR info box content should exist with exact copy."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "DNA analyzes bet structure, not odds or payouts" in html, \
+            "Info box should mention structure analysis"
+        assert "including 6-leg slips" in html, \
+            "Info box should mention 6-leg parlays are normal"
+        assert "Image text may require review" in html, \
+            "Info box should mention review requirement"
+
+    def test_ocr_info_box_css_exists(self, client):
+        """Part D: OCR info box CSS styles should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".ocr-info-box" in html, "ocr-info-box styles should exist"
+        assert ".ocr-info-title" in html, "ocr-info-title styles should exist"
+        assert ".ocr-info-text" in html, "ocr-info-text styles should exist"
+
+    # Edit leg functionality
+
+    def test_edit_leg_functionality_exists(self, client):
+        """Part A: Edit leg functionality should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "startEditLeg" in html, "startEditLeg function should exist"
+        assert "saveEditLeg" in html, "saveEditLeg function should exist"
+        assert "cancelEditLeg" in html, "cancelEditLeg function should exist"
+
+    def test_leg_edit_css_exists(self, client):
+        """Part A: Leg edit CSS styles should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".leg-edit-input" in html, "leg-edit-input styles should exist"
+        assert ".leg-edit-actions" in html, "leg-edit-actions styles should exist"
+        assert ".leg-edit-save" in html, "leg-edit-save styles should exist"
+        assert ".leg-edit-cancel" in html, "leg-edit-cancel styles should exist"
+
+    def test_editable_leg_class_exists(self, client):
+        """Part A: Editable leg CSS class should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert ".ocr-leg.editable" in html, "editable leg class should exist"
+
+    # State tracking
+
+    def test_has_ocr_legs_state_exists(self, client):
+        """Part A: hasOcrLegs state variable should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "hasOcrLegs" in html, "hasOcrLegs state variable should exist"
+
+    def test_pending_evaluation_state_exists(self, client):
+        """Part C: pendingEvaluation state variable should exist."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        assert "pendingEvaluation" in html, "pendingEvaluation state variable should exist"
+
+    def test_reset_form_clears_ocr_state(self, client):
+        """Part A: resetForm should clear OCR state."""
+        response = client.get("/app")
+        assert response.status_code == 200
+        html = response.text
+        # Check that resetForm resets hasOcrLegs
+        assert "hasOcrLegs = false" in html, "resetForm should reset hasOcrLegs"

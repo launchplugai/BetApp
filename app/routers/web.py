@@ -962,6 +962,175 @@ def _get_canonical_ui_html() -> str:
         .builder-warning.active {{
             display: block;
         }}
+        /* Ticket 34: OCR Leg Clarity Indicators */
+        .leg-clarity {{
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }}
+        .leg-clarity.clear {{
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }}
+        .leg-clarity.review {{
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--yellow);
+        }}
+        .leg-clarity.ambiguous {{
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+        }}
+        .leg-source-tag {{
+            font-size: 10px;
+            color: var(--text-muted);
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: auto;
+        }}
+        .leg-item.ocr-leg {{
+            border-left: 2px solid var(--accent);
+        }}
+        .leg-item.ocr-leg.editable {{
+            cursor: pointer;
+        }}
+        .leg-item.ocr-leg.editable:hover {{
+            background: var(--surface);
+        }}
+        .leg-item.editing {{
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }}
+        .leg-edit-input {{
+            flex: 1;
+            padding: 8px;
+            background: var(--bg);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+        }}
+        .leg-edit-input:focus {{
+            outline: none;
+        }}
+        .leg-edit-actions {{
+            display: flex;
+            gap: 6px;
+        }}
+        .leg-edit-btn {{
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+        }}
+        .leg-edit-save {{
+            background: var(--accent);
+            border: none;
+            color: white;
+        }}
+        .leg-edit-cancel {{
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }}
+        /* Ticket 34: OCR Info Box */
+        .ocr-info-box {{
+            display: none;
+            margin: 12px 0;
+            padding: 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius);
+        }}
+        .ocr-info-box.active {{
+            display: block;
+        }}
+        .ocr-info-title {{
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }}
+        .ocr-info-text {{
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }}
+        .ocr-info-text p {{
+            margin: 4px 0;
+        }}
+        /* Ticket 34: OCR Review Soft Gate */
+        .ocr-review-gate {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }}
+        .ocr-review-gate.active {{
+            display: flex;
+        }}
+        .ocr-review-gate-content {{
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+        }}
+        .ocr-review-gate-title {{
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 12px;
+        }}
+        .ocr-review-gate-message {{
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }}
+        .ocr-review-gate-actions {{
+            display: flex;
+            gap: 10px;
+        }}
+        .ocr-review-gate-btn {{
+            flex: 1;
+            padding: 10px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }}
+        .ocr-review-gate-btn.primary {{
+            background: var(--accent);
+            border: none;
+            color: white;
+        }}
+        .ocr-review-gate-btn.secondary {{
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }}
+        .leg-meta {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }}
     </style>
 </head>
 <body>
@@ -1119,7 +1288,17 @@ def _get_canonical_ui_html() -> str:
                     </div>
                     <label for="ocr-text">Extracted Text:</label>
                     <textarea id="ocr-text" readonly></textarea>
-                    <button id="use-ocr-text" class="use-ocr-btn">Use This Text</button>
+                    <button id="use-ocr-text" class="use-ocr-btn">Add to Builder</button>
+                </div>
+            </div>
+
+            <!-- Ticket 34 Part D: OCR Info Box -->
+            <div id="ocr-info-box" class="ocr-info-box">
+                <div class="ocr-info-title">How DNA reads bet slips</div>
+                <div class="ocr-info-text">
+                    <p>DNA analyzes bet structure, not odds or payouts.</p>
+                    <p>Sportsbook parlays (including 6-leg slips) are normal.</p>
+                    <p>Image text may require review before analysis.</p>
                 </div>
             </div>
 
@@ -1232,6 +1411,20 @@ def _get_canonical_ui_html() -> str:
 
             </div> <!-- End workbench-results panel -->
         </div> <!-- End workbench container -->
+
+        <!-- Ticket 34 Part C: OCR Review Soft Gate -->
+        <div id="ocr-review-gate" class="ocr-review-gate">
+            <div class="ocr-review-gate-content">
+                <div class="ocr-review-gate-title">Review Detected Legs</div>
+                <div class="ocr-review-gate-message">
+                    Some detected legs may need review before analysis. You can edit them in the Builder or proceed anyway.
+                </div>
+                <div class="ocr-review-gate-actions">
+                    <button id="gate-review-btn" class="ocr-review-gate-btn secondary">Review legs</button>
+                    <button id="gate-proceed-btn" class="ocr-review-gate-btn primary">Evaluate anyway</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1241,6 +1434,8 @@ def _get_canonical_ui_html() -> str:
         let lastResponse = null;
         let currentMode = 'builder';
         let builderLegs = [];
+        let hasOcrLegs = false; // Ticket 34: Track if legs came from OCR
+        let pendingEvaluation = null; // Ticket 34: For soft gate flow
 
         // Elements
         const betInput = document.getElementById('bet-input');
@@ -1262,6 +1457,192 @@ def _get_canonical_ui_html() -> str:
         const ocrResult = document.getElementById('ocr-result');
         const ocrText = document.getElementById('ocr-text');
         const useOcrBtn = document.getElementById('use-ocr-text');
+
+        // Ticket 34: OCR Info Box and Review Gate Elements
+        const ocrInfoBox = document.getElementById('ocr-info-box');
+        const ocrReviewGate = document.getElementById('ocr-review-gate');
+        const gateReviewBtn = document.getElementById('gate-review-btn');
+        const gateProceedBtn = document.getElementById('gate-proceed-btn');
+
+        // ============================================================
+        // Ticket 34 Part A: OCR → Canonical Leg Parsing
+        // ============================================================
+
+        /**
+         * Parse OCR text into canonical leg objects.
+         * Each line is treated as a potential leg.
+         */
+        function parseOcrToLegs(text) {{
+            const lines = text.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
+            const legs = [];
+
+            for (const line of lines) {{
+                const leg = parseOcrLine(line);
+                if (leg) {{
+                    legs.push(leg);
+                }}
+            }}
+
+            return legs;
+        }}
+
+        /**
+         * Parse a single OCR line into a canonical leg object.
+         */
+        function parseOcrLine(line) {{
+            const raw = line;
+            let entity = '';
+            let market = 'unknown';
+            let value = null;
+            let sport = null;
+
+            // Normalize line for parsing
+            const normalized = line.toLowerCase();
+
+            // Detect sport (optional)
+            if (/\\b(nba|basketball)\\b/i.test(line)) sport = 'NBA';
+            else if (/\\b(nfl|football)\\b/i.test(line)) sport = 'NFL';
+            else if (/\\b(mlb|baseball)\\b/i.test(line)) sport = 'MLB';
+            else if (/\\b(ncaa|college)\\b/i.test(line)) sport = 'NCAA';
+
+            // Detect market type and extract components
+            // Moneyline patterns: "Lakers ML", "Lakers to win", "Lakers moneyline"
+            if (/\\b(ml|moneyline|to win)\\b/i.test(line)) {{
+                market = 'moneyline';
+                entity = line.replace(/\\b(ml|moneyline|to win)\\b/gi, '').trim();
+                entity = cleanEntityName(entity);
+            }}
+            // Spread patterns: "Lakers -5.5", "Lakers +3", "Lakers -5.5 spread"
+            else if (/[+-]\\d+\\.?\\d*/i.test(line) && !/\\b(over|under|o\\/u|pts|points|rebounds|assists|3pt)\\b/i.test(line)) {{
+                market = 'spread';
+                const spreadMatch = line.match(/([+-]\\d+\\.?\\d*)/);
+                if (spreadMatch) {{
+                    value = spreadMatch[1];
+                    entity = line.replace(/[+-]\\d+\\.?\\d*/g, '').replace(/\\bspread\\b/gi, '').trim();
+                    entity = cleanEntityName(entity);
+                }}
+            }}
+            // Total patterns: "over 220", "under 45.5", "Lakers o220", "Lakers u45"
+            else if (/\\b(over|under|o\\/u)\\b/i.test(line) || /[ou]\\d+\\.?\\d*/i.test(line)) {{
+                market = 'total';
+                const overMatch = line.match(/\\b(over|o)\\s*(\\d+\\.?\\d*)/i);
+                const underMatch = line.match(/\\b(under|u)\\s*(\\d+\\.?\\d*)/i);
+                if (overMatch) {{
+                    value = 'over ' + overMatch[2];
+                    entity = line.replace(/\\b(over|o)\\s*\\d+\\.?\\d*/gi, '').trim();
+                }} else if (underMatch) {{
+                    value = 'under ' + underMatch[2];
+                    entity = line.replace(/\\b(under|u)\\s*\\d+\\.?\\d*/gi, '').trim();
+                }}
+                entity = cleanEntityName(entity);
+            }}
+            // Player prop patterns: "LeBron over 25.5 pts", "Curry 5.5+ 3pt"
+            else if (/\\b(pts|points|rebounds|assists|3pt|threes|steals|blocks)\\b/i.test(line)) {{
+                market = 'player_prop';
+                const propMatch = line.match(/(over|under)?\\s*(\\d+\\.?\\d*)\\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/i);
+                if (propMatch) {{
+                    const direction = propMatch[1] ? propMatch[1].toLowerCase() : 'over';
+                    value = direction + ' ' + propMatch[2] + ' ' + propMatch[3].toLowerCase();
+                }}
+                entity = line.replace(/(over|under)?\\s*\\d+\\.?\\d*\\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/gi, '').trim();
+                entity = cleanEntityName(entity);
+            }}
+            // If no pattern matched, use the whole line as entity with unknown market
+            else {{
+                entity = cleanEntityName(line);
+            }}
+
+            // Skip empty entities
+            if (!entity || entity.length < 2) {{
+                entity = line.split(/\\s+/)[0] || line;
+            }}
+
+            return {{
+                entity: entity,
+                market: market,
+                value: value,
+                raw: raw,
+                text: raw,
+                sport: sport,
+                source: 'ocr',
+                clarity: getOcrLegClarity({{ entity, market, value, raw }})
+            }};
+        }}
+
+        /**
+         * Clean up entity name by removing common noise words.
+         */
+        function cleanEntityName(name) {{
+            return name
+                .replace(/\\b(nba|nfl|mlb|ncaa|college|basketball|football|baseball)\\b/gi, '')
+                .replace(/\\b(game|match|vs|@|at)\\b/gi, '')
+                .replace(/[,()]/g, '')
+                .replace(/\\s+/g, ' ')
+                .trim();
+        }}
+
+        // ============================================================
+        // Ticket 34 Part B: Per-Leg Confidence Indicators
+        // ============================================================
+
+        /**
+         * Determine clarity indicator for an OCR-derived leg.
+         * Returns: 'clear', 'review', or 'ambiguous'
+         */
+        function getOcrLegClarity(leg) {{
+            let score = 0;
+
+            // Has recognized market type (+2)
+            if (leg.market && leg.market !== 'unknown') {{
+                score += 2;
+            }}
+
+            // Has clean entity name (+1)
+            if (leg.entity && leg.entity.length >= 3 && /^[a-zA-Z\\s]+$/.test(leg.entity)) {{
+                score += 1;
+            }}
+
+            // Has numeric value for spread/total/prop (+1)
+            if (leg.value && /\\d/.test(leg.value)) {{
+                score += 1;
+            }}
+
+            // Contains market keywords (+1)
+            const marketKeywords = /(ml|moneyline|spread|over|under|pts|points|rebounds|assists)/i;
+            if (marketKeywords.test(leg.raw)) {{
+                score += 1;
+            }}
+
+            // Penalize if raw text is very short or has unusual characters
+            if (leg.raw.length < 5) score -= 1;
+            if (/[^a-zA-Z0-9\\s.+-]/g.test(leg.raw)) score -= 1;
+
+            // Determine clarity level
+            if (score >= 4) return 'clear';
+            if (score >= 2) return 'review';
+            return 'ambiguous';
+        }}
+
+        /**
+         * Get clarity icon and label for display.
+         */
+        function getClarityDisplay(clarity) {{
+            const displays = {{
+                'clear': {{ icon: '&#10003;', label: 'Clear match', css: 'clear' }},
+                'review': {{ icon: '&#9888;', label: 'Review recommended', css: 'review' }},
+                'ambiguous': {{ icon: '?', label: 'Ambiguous', css: 'ambiguous' }}
+            }};
+            return displays[clarity] || displays['ambiguous'];
+        }}
+
+        /**
+         * Check if any OCR legs need review (have review or ambiguous clarity).
+         */
+        function hasLegsNeedingReview() {{
+            return builderLegs.some(leg =>
+                leg.source === 'ocr' && (leg.clarity === 'review' || leg.clarity === 'ambiguous')
+            );
+        }}
 
         // Ticket 32 Part A: Image Upload Handler
         if (imageInput) {{
@@ -1324,18 +1705,48 @@ def _get_canonical_ui_html() -> str:
             }});
         }}
 
-        // Ticket 32 Part A: Use OCR Text Button
+        // Ticket 34: Use OCR Text Button - Now populates Builder with parsed legs
         if (useOcrBtn) {{
             useOcrBtn.addEventListener('click', () => {{
                 const extractedText = ocrText.value.trim();
                 if (extractedText) {{
-                    betInput.value = extractedText;
-                    // Switch to paste mode to show the textarea
-                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                    document.querySelector('.mode-btn[data-mode="paste"]')?.classList.add('active');
-                    builderSection.classList.remove('active');
-                    pasteSection.classList.add('active');
-                    currentMode = 'paste';
+                    // Parse OCR text into canonical legs
+                    const ocrLegs = parseOcrToLegs(extractedText);
+
+                    if (ocrLegs.length > 0) {{
+                        // Replace builder legs with OCR-derived legs
+                        builderLegs = ocrLegs;
+                        hasOcrLegs = true;
+
+                        // Switch to Builder mode (not Paste mode)
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        document.querySelector('.mode-btn[data-mode="builder"]')?.classList.add('active');
+                        builderSection.classList.add('active');
+                        pasteSection.classList.remove('active');
+                        currentMode = 'builder';
+
+                        // Update UI
+                        renderLegs();
+                        syncTextarea();
+
+                        // Show OCR info box (Part D)
+                        if (ocrInfoBox) {{
+                            ocrInfoBox.classList.add('active');
+                        }}
+
+                        // Hide the OCR result section since legs are now in builder
+                        ocrResult.style.display = 'none';
+                        imageStatus.textContent = ocrLegs.length + ' leg(s) added to Builder.';
+                        imageStatus.className = 'image-status';
+                    }} else {{
+                        // Fallback: copy to textarea if parsing failed
+                        betInput.value = extractedText;
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        document.querySelector('.mode-btn[data-mode="paste"]')?.classList.add('active');
+                        builderSection.classList.remove('active');
+                        pasteSection.classList.add('active');
+                        currentMode = 'paste';
+                    }}
                 }}
             }});
         }}
@@ -1616,15 +2027,112 @@ def _get_canonical_ui_html() -> str:
                 legsEmpty.style.display = 'none';
                 builderLegs.forEach((leg, i) => {{
                     const item = document.createElement('div');
-                    item.className = 'leg-item';
-                    item.innerHTML = `
-                        <span class="leg-num">${{i + 1}}.</span>
-                        <span class="leg-text">${{escapeHtml(leg.text)}}</span>
-                        <button class="remove-leg-btn" onclick="removeLeg(${{i}})">Remove</button>
-                    `;
+                    const isOcr = leg.source === 'ocr';
+                    item.className = 'leg-item' + (isOcr ? ' ocr-leg editable' : '');
+                    item.dataset.index = i;
+
+                    // Build leg HTML with OCR metadata if applicable
+                    let legHtml = `<span class="leg-num">${{i + 1}}.</span>`;
+                    legHtml += `<span class="leg-text">${{escapeHtml(leg.text)}}</span>`;
+
+                    // Ticket 34: Add meta section for OCR legs
+                    if (isOcr) {{
+                        const clarityDisplay = getClarityDisplay(leg.clarity || 'review');
+                        legHtml += `<div class="leg-meta">`;
+                        legHtml += `<span class="leg-clarity ${{clarityDisplay.css}}">${{clarityDisplay.icon}} ${{clarityDisplay.label}}</span>`;
+                        legHtml += `<span class="leg-source-tag">Detected from slip</span>`;
+                        legHtml += `</div>`;
+                    }}
+
+                    legHtml += `<button class="remove-leg-btn" onclick="removeLeg(${{i}})">Remove</button>`;
+                    item.innerHTML = legHtml;
+
+                    // Ticket 34: Click to edit OCR legs
+                    if (isOcr) {{
+                        item.addEventListener('click', (e) => {{
+                            // Don't trigger edit if clicking remove button
+                            if (e.target.classList.contains('remove-leg-btn')) return;
+                            startEditLeg(i);
+                        }});
+                    }}
+
                     legsList.appendChild(item);
                 }});
             }}
+        }}
+
+        // Ticket 34: Edit leg functionality
+        let editingLegIndex = null;
+
+        function startEditLeg(index) {{
+            // Don't start new edit if already editing
+            if (editingLegIndex !== null) return;
+
+            editingLegIndex = index;
+            const leg = builderLegs[index];
+            const item = legsList.querySelector(`.leg-item[data-index="${{index}}"]`);
+
+            if (!item) return;
+
+            // Replace content with edit form
+            item.classList.add('editing');
+            item.classList.remove('editable');
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                    <span class="leg-num">${{index + 1}}.</span>
+                    <input type="text" class="leg-edit-input" value="${{escapeHtml(leg.raw)}}" autofocus>
+                </div>
+                <div class="leg-edit-actions">
+                    <button class="leg-edit-btn leg-edit-save">Save</button>
+                    <button class="leg-edit-btn leg-edit-cancel">Cancel</button>
+                </div>
+            `;
+
+            const input = item.querySelector('.leg-edit-input');
+            const saveBtn = item.querySelector('.leg-edit-save');
+            const cancelBtn = item.querySelector('.leg-edit-cancel');
+
+            // Focus and select
+            input.focus();
+            input.select();
+
+            // Prevent click from bubbling
+            item.onclick = (e) => e.stopPropagation();
+
+            // Save handler
+            saveBtn.addEventListener('click', () => saveEditLeg(index, input.value));
+
+            // Cancel handler
+            cancelBtn.addEventListener('click', () => cancelEditLeg());
+
+            // Enter to save, Escape to cancel
+            input.addEventListener('keydown', (e) => {{
+                if (e.key === 'Enter') {{
+                    e.preventDefault();
+                    saveEditLeg(index, input.value);
+                }} else if (e.key === 'Escape') {{
+                    cancelEditLeg();
+                }}
+            }});
+        }}
+
+        function saveEditLeg(index, newText) {{
+            newText = newText.trim();
+            if (newText) {{
+                // Re-parse the edited text
+                const newLeg = parseOcrLine(newText);
+                // Mark as edited by user (upgrades clarity to clear since user reviewed it)
+                newLeg.clarity = 'clear';
+                builderLegs[index] = newLeg;
+            }}
+            editingLegIndex = null;
+            renderLegs();
+            syncTextarea();
+        }}
+
+        function cancelEditLeg() {{
+            editingLegIndex = null;
+            renderLegs();
         }}
 
         function syncTextarea() {{
@@ -1678,6 +2186,55 @@ def _get_canonical_ui_html() -> str:
                 return;
             }}
 
+            // Ticket 34 Part C: Check if OCR legs need review
+            if (hasOcrLegs && hasLegsNeedingReview()) {{
+                // Store the evaluation intent and show soft gate
+                pendingEvaluation = {{ input, tier: selectedTier }};
+                showOcrReviewGate();
+                return;
+            }}
+
+            // Proceed with evaluation
+            await runEvaluation(input);
+        }});
+
+        // Ticket 34 Part C: Soft gate handlers
+        if (gateReviewBtn) {{
+            gateReviewBtn.addEventListener('click', () => {{
+                hideOcrReviewGate();
+                pendingEvaluation = null;
+                // Focus the legs list for review
+                const firstOcrLeg = legsList.querySelector('.leg-item.ocr-leg');
+                if (firstOcrLeg) {{
+                    firstOcrLeg.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                }}
+            }});
+        }}
+
+        if (gateProceedBtn) {{
+            gateProceedBtn.addEventListener('click', async () => {{
+                hideOcrReviewGate();
+                if (pendingEvaluation) {{
+                    await runEvaluation(pendingEvaluation.input);
+                    pendingEvaluation = null;
+                }}
+            }});
+        }}
+
+        function showOcrReviewGate() {{
+            if (ocrReviewGate) {{
+                ocrReviewGate.classList.add('active');
+            }}
+        }}
+
+        function hideOcrReviewGate() {{
+            if (ocrReviewGate) {{
+                ocrReviewGate.classList.remove('active');
+            }}
+        }}
+
+        // Core evaluation function
+        async function runEvaluation(input) {{
             showLoading();
 
             try {{
@@ -1712,7 +2269,7 @@ def _get_canonical_ui_html() -> str:
             }} catch (err) {{
                 showError('Network error. Please try again.');
             }}
-        }});
+        }}
 
         function showLoading() {{
             inputSection.style.display = 'none';
@@ -1922,6 +2479,13 @@ def _get_canonical_ui_html() -> str:
             renderLegs();
             clearBuilderInputs();
             hideBuilderWarning();
+            // Ticket 34: Reset OCR state
+            hasOcrLegs = false;
+            pendingEvaluation = null;
+            if (ocrInfoBox) ocrInfoBox.classList.remove('active');
+            if (ocrResult) ocrResult.style.display = 'none';
+            if (imageStatus) imageStatus.style.display = 'none';
+            if (imageInput) imageInput.value = '';
             // Focus appropriate element based on mode
             if (currentMode === 'builder') {{
                 document.getElementById('builder-team').focus();
