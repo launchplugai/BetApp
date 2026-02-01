@@ -641,3 +641,132 @@ class TestTicket38NotableLegsV2:
         assert "moneyline" in reason.lower()
         # Should mention stacking or compounding
         assert any(word in reason.lower() for word in ["stack", "compound", "fragility", "multiple"])
+
+
+# =============================================================================
+# TICKET 39: Leg Order Integrity Tests
+# =============================================================================
+
+
+class TestLegOrderIntegrity:
+    """
+    Ticket 39: Tests verifying leg order is preserved throughout the system.
+
+    Core principle: Leg order is semantic data, not presentation.
+    If order changes without explicit user action, the system is incorrect.
+    """
+
+    def test_canonical_legs_preserve_order_in_evaluated_parlay(self):
+        """Canonical legs maintain their exact input order in evaluated_parlay."""
+        from app.pipeline import _build_evaluated_parlay
+        from app.airlock import CanonicalLegData
+
+        # Create canonical legs in specific order
+        canonical_legs = (
+            CanonicalLegData(entity="Lakers", market="spread", value="-5.5", raw="Lakers -5.5"),
+            CanonicalLegData(entity="Celtics", market="moneyline", value=None, raw="Celtics ML"),
+            CanonicalLegData(entity="Heat", market="total", value="over 210", raw="Heat over 210"),
+        )
+
+        result = _build_evaluated_parlay([], "test", canonical_legs)
+
+        # Verify order is preserved
+        assert result["legs"][0]["entity"] == "Lakers"
+        assert result["legs"][0]["position"] == 1
+        assert result["legs"][1]["entity"] == "Celtics"
+        assert result["legs"][1]["position"] == 2
+        assert result["legs"][2]["entity"] == "Heat"
+        assert result["legs"][2]["position"] == 3
+
+    def test_position_field_matches_array_index(self):
+        """Position field always equals array index + 1."""
+        from app.pipeline import _build_evaluated_parlay
+        from app.airlock import CanonicalLegData
+
+        canonical_legs = tuple(
+            CanonicalLegData(entity=f"Team{i}", market="spread", value=f"-{i}", raw=f"Team{i} -{i}")
+            for i in range(1, 6)  # 5 legs
+        )
+
+        result = _build_evaluated_parlay([], "test", canonical_legs)
+
+        for i, leg in enumerate(result["legs"]):
+            assert leg["position"] == i + 1, f"Leg at index {i} has position {leg['position']}, expected {i + 1}"
+
+    def test_airlock_tuple_preserves_list_order(self):
+        """Airlock converts list to tuple while preserving order."""
+        from app.airlock import airlock_ingest
+
+        legs_input = [
+            {"entity": "A", "market": "spread", "value": "-1", "raw": "A -1"},
+            {"entity": "B", "market": "spread", "value": "-2", "raw": "B -2"},
+            {"entity": "C", "market": "spread", "value": "-3", "raw": "C -3"},
+        ]
+
+        result = airlock_ingest(input_text="A -1, B -2, C -3", canonical_legs=legs_input)
+
+        assert result.canonical_legs[0].entity == "A"
+        assert result.canonical_legs[1].entity == "B"
+        assert result.canonical_legs[2].entity == "C"
+
+    def test_filter_comprehension_preserves_order(self):
+        """List comprehension filtering preserves order of remaining elements."""
+        from app.pipeline import _build_evaluated_parlay
+        from app.airlock import CanonicalLegData
+
+        # Simulate what happens when a leg is removed
+        original = [
+            CanonicalLegData(entity="A", market="spread", value="-1", raw="A -1"),
+            CanonicalLegData(entity="B", market="spread", value="-2", raw="B -2"),
+            CanonicalLegData(entity="C", market="spread", value="-3", raw="C -3"),
+        ]
+
+        # Remove B (index 1)
+        filtered = [leg for i, leg in enumerate(original) if i != 1]
+
+        # Order should be A, C (not C, A)
+        assert filtered[0].entity == "A"
+        assert filtered[1].entity == "C"
+
+    def test_evaluated_parlay_legs_are_list_not_set(self):
+        """evaluated_parlay.legs is a list (ordered), not a set (unordered)."""
+        from app.pipeline import _build_evaluated_parlay
+        from app.airlock import CanonicalLegData
+
+        canonical_legs = (
+            CanonicalLegData(entity="Lakers", market="spread", value="-5.5", raw="Lakers -5.5"),
+        )
+
+        result = _build_evaluated_parlay([], "test", canonical_legs)
+
+        assert isinstance(result["legs"], list), "legs must be a list, not a set or dict"
+
+    def test_canonical_legs_are_tuple_not_set(self):
+        """canonical_legs from airlock is a tuple (ordered), not a set."""
+        from app.airlock import airlock_ingest
+
+        legs_input = [
+            {"entity": "A", "market": "spread", "value": "-1", "raw": "A -1"},
+        ]
+
+        result = airlock_ingest(input_text="A -1", canonical_legs=legs_input)
+
+        assert isinstance(result.canonical_legs, tuple), "canonical_legs must be a tuple"
+
+    def test_order_stable_across_multiple_runs(self):
+        """Same input produces same order on multiple runs (no random shuffling)."""
+        from app.pipeline import _build_evaluated_parlay
+        from app.airlock import CanonicalLegData
+
+        canonical_legs = (
+            CanonicalLegData(entity="Lakers", market="spread", value="-5.5", raw="Lakers -5.5"),
+            CanonicalLegData(entity="Celtics", market="moneyline", value=None, raw="Celtics ML"),
+            CanonicalLegData(entity="Heat", market="total", value="over 210", raw="Heat over 210"),
+        )
+
+        # Run multiple times
+        results = [_build_evaluated_parlay([], "test", canonical_legs) for _ in range(5)]
+
+        # All results should have identical order
+        for result in results:
+            assert [leg["entity"] for leg in result["legs"]] == ["Lakers", "Celtics", "Heat"]

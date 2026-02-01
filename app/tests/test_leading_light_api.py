@@ -763,3 +763,146 @@ class TestContextSignals:
             assert response.status_code == 400
             data = response.json()
             assert data["detail"]["code"] == "SIGNAL_NOT_ALLOWED"
+
+
+# =============================================================================
+# OCR Endpoint Tests (Ticket: OCR Verification)
+# =============================================================================
+
+
+class TestOCREndpoint:
+    """
+    Integration tests for /leading-light/evaluate/image endpoint.
+
+    Ticket: OCR Verification + Hard Proof
+    """
+
+    def test_ocr_endpoint_exists(self, client):
+        """OCR endpoint is reachable (not 404)."""
+        # Create minimal 1x1 white PNG
+        # PNG header + IHDR chunk + IDAT chunk + IEND chunk
+        minimal_png = bytes([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
+            0x00, 0x00, 0x00, 0x0D,  # IHDR length
+            0x49, 0x48, 0x44, 0x52,  # IHDR
+            0x00, 0x00, 0x00, 0x01,  # width: 1
+            0x00, 0x00, 0x00, 0x01,  # height: 1
+            0x08, 0x02,              # bit depth: 8, color type: 2 (RGB)
+            0x00, 0x00, 0x00,        # compression, filter, interlace
+            0x90, 0x77, 0x53, 0xDE,  # CRC
+            0x00, 0x00, 0x00, 0x0C,  # IDAT length
+            0x49, 0x44, 0x41, 0x54,  # IDAT
+            0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0xFF, 0x00,  # compressed data
+            0x05, 0xFE, 0x02, 0xFE,  # CRC
+            0x00, 0x00, 0x00, 0x00,  # IEND length
+            0x49, 0x45, 0x4E, 0x44,  # IEND
+            0xAE, 0x42, 0x60, 0x82,  # CRC
+        ])
+
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate/image",
+                files={"image": ("test.png", minimal_png, "image/png")},
+                data={"plan": "free"},
+            )
+
+        # Should NOT be 404 (endpoint exists)
+        assert response.status_code != 404, "OCR endpoint not found"
+
+    def test_ocr_requires_image_field(self, client):
+        """OCR endpoint requires 'image' form field (not 'file')."""
+        minimal_png = bytes([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE,
+            0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54,
+            0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0xFF, 0x00,
+            0x05, 0xFE, 0x02, 0xFE,
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+            0xAE, 0x42, 0x60, 0x82,
+        ])
+
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            # Send with WRONG field name 'file' instead of 'image'
+            response = client.post(
+                "/leading-light/evaluate/image",
+                files={"file": ("test.png", minimal_png, "image/png")},
+                data={"plan": "free"},
+            )
+
+        # Should fail with 422 (validation error) because 'image' field missing
+        assert response.status_code == 422, f"Expected 422, got {response.status_code}"
+        data = response.json()
+        assert "detail" in data
+        # Pydantic validation error mentions the missing field
+        assert any("image" in str(d).lower() for d in data["detail"])
+
+    def test_ocr_correct_field_name_accepted(self, client):
+        """OCR endpoint accepts 'image' form field."""
+        minimal_png = bytes([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE,
+            0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54,
+            0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0xFF, 0x00,
+            0x05, 0xFE, 0x02, 0xFE,
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+            0xAE, 0x42, 0x60, 0x82,
+        ])
+
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            # Send with CORRECT field name 'image'
+            response = client.post(
+                "/leading-light/evaluate/image",
+                files={"image": ("test.png", minimal_png, "image/png")},
+                data={"plan": "free"},
+            )
+
+        # Should NOT be 422 (field is recognized)
+        # May be 200 (success) or 500 (OCR service error) but NOT 422
+        assert response.status_code != 422, f"Field 'image' should be accepted"
+
+    def test_ocr_rejects_non_image_content_type(self, client):
+        """OCR endpoint rejects non-image content types."""
+        text_file = b"This is not an image"
+
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate/image",
+                files={"image": ("test.txt", text_file, "text/plain")},
+                data={"plan": "free"},
+            )
+
+        # Should reject with 400
+        assert response.status_code == 400
+        data = response.json()
+        assert data["detail"]["code"] == "INVALID_FILE_TYPE"
+
+    def test_ocr_response_structure(self, client):
+        """OCR endpoint returns expected response structure on success."""
+        minimal_png = bytes([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xDE,
+            0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54,
+            0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0xFF, 0x00,
+            0x05, 0xFE, 0x02, 0xFE,
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
+            0xAE, 0x42, 0x60, 0x82,
+        ])
+
+        with patch.dict(os.environ, {"LEADING_LIGHT_ENABLED": "true"}):
+            response = client.post(
+                "/leading-light/evaluate/image",
+                files={"image": ("test.png", minimal_png, "image/png")},
+                data={"plan": "free"},
+            )
+
+        # If 200, check response structure
+        if response.status_code == 200:
+            data = response.json()
+            assert "input" in data, "Response missing 'input' field"
+            assert "image_filename" in data["input"], "Response missing filename"

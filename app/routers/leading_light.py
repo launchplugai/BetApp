@@ -8,6 +8,7 @@ Feature-flagged via LEADING_LIGHT_ENABLED environment variable.
 from __future__ import annotations
 
 import base64
+import logging
 import os
 import time
 from collections import defaultdict
@@ -67,6 +68,8 @@ from app.tiering import (
 # =============================================================================
 # Router Setup
 # =============================================================================
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/leading-light",
@@ -1023,6 +1026,17 @@ async def evaluate_from_image(
     client_ip = request.client.host if request.client else "unknown"
     _check_rate_limit(client_ip)
 
+    # OCR intake logging (Ticket: OCR Verification)
+    request_id = str(uuid4())[:8]
+    logger.info(
+        "OCR_INTAKE request_id=%s filename=%s content_type=%s plan=%s session_id=%s",
+        request_id,
+        image.filename or "unnamed",
+        image.content_type or "unknown",
+        plan,
+        session_id or "none",
+    )
+
     # Guardrail 2: Validate content type
     if image.content_type and not image.content_type.startswith("image/"):
         raise HTTPException(
@@ -1037,6 +1051,13 @@ async def evaluate_from_image(
     try:
         # Read image bytes
         image_bytes = await image.read()
+
+        # Log file size (OCR Verification)
+        logger.info(
+            "OCR_INTAKE request_id=%s file_size_bytes=%d",
+            request_id,
+            len(image_bytes),
+        )
 
         # Guardrail 3: Check file size
         if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:

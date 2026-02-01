@@ -2870,7 +2870,8 @@ def _get_canonical_ui_html() -> str:
                 // Remove button (disabled if locked)
                 const removeDisabled = leg.locked ? 'disabled' : '';
                 const removeTitle = leg.locked ? 'Unlock to remove' : 'Remove this leg';
-                html += '<button class="leg-remove-btn" onclick="removeLegFromResults(' + i + ')" ' + removeDisabled + ' title="' + removeTitle + '">Remove</button>';
+                // Ticket 39: Use leg_id for robust removal (survives reordering)
+                html += '<button class="leg-remove-btn" onclick="removeLegFromResults(\\'' + leg.leg_id + '\\')" ' + removeDisabled + ' title="' + removeTitle + '">Remove</button>';
                 html += '</div>';
 
                 li.innerHTML = html;
@@ -2930,9 +2931,18 @@ def _get_canonical_ui_html() -> str:
 
         /**
          * Remove a leg from results (inline refinement).
+         * Ticket 39: Accepts leg_id (preferred) or index for robustness.
          * Does NOT remove locked legs.
          */
-        function removeLegFromResults(index) {{
+        function removeLegFromResults(identifier) {{
+            let index;
+            if (typeof identifier === 'string') {{
+                // Ticket 39: leg_id-based removal (robust)
+                index = resultsLegs.findIndex(leg => leg.leg_id === identifier);
+            }} else {{
+                // Legacy: index-based removal
+                index = identifier;
+            }}
             if (index < 0 || index >= resultsLegs.length) return;
 
             const leg = resultsLegs[index];
