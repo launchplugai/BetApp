@@ -18,6 +18,7 @@ from app.routers import panel
 from app.routers import web
 from app.routers import history
 from app.routers import v1_ui
+from app.routers import debug
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -173,3 +174,7 @@ async def debug_contracts():
             "started_at": _SERVICE_START_TIME.isoformat(),
         },
     }
+
+# Include debug router for /debug/sherlock-dna/* endpoints
+# Note: inline /debug/contracts above takes precedence over debug.router version
+app.include_router(debug.router)
