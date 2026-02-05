@@ -3203,6 +3203,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             "gentleGuidance": result.gentle_guidance,
             "groundingWarnings": result.grounding_warnings,
             "proofSummary": result.proof_summary,
+            "structure": result.structure,  # Ticket 38B-A: Structural snapshot
+            "delta": result.delta,  # Ticket 38B-B: Change delta
         }
 
         return JSONResponse(content=response_data)

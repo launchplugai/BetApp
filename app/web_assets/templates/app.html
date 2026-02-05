@@ -386,6 +386,15 @@
                             </div>
                         </div>
 
+                        <!-- Ticket 38B-C1: Delta Sentence (shown when has_delta is true) -->
+                        <div class="delta-sentence hidden" id="delta-sentence" style="margin: var(--sp-2) 0; padding: var(--sp-2); font-size: var(--text-sm); color: var(--fg-muted); background: rgba(74, 158, 255, 0.05); border-radius: 4px;"></div>
+
+                        <!-- Ticket 38B-C1: Structural Snapshot (collapsed by default) -->
+                        <details class="snapshot-panel" id="snapshot-panel" style="margin: var(--sp-3) 0;">
+                            <summary style="cursor: pointer; font-weight: 600; font-size: var(--text-sm); color: var(--fg-secondary); padding: var(--sp-2); background: var(--bg-subtle); border-radius: 4px;">Structural Snapshot</summary>
+                            <div class="snapshot-content" id="snapshot-content" style="padding: var(--sp-3); font-size: var(--text-sm); color: var(--fg-muted); background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 4px; margin-top: var(--sp-1);"></div>
+                        </details>
+
                         <!-- Legacy elements for test compatibility -->
                         <div id="compressed-pf" class="hidden">
                             <span id="cpf-badge"></span>

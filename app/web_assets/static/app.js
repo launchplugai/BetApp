@@ -1246,6 +1246,39 @@ async function evaluateBundle(bundleText) {
         document.getElementById('signal-bar-grade').textContent = si.grade || 'B';
         document.getElementById('signal-bar-score').textContent = 'Fragility: ' + Math.round(si.fragilityScore || fragility.display_value || 0);
 
+        // Ticket 38B-C1: Delta Sentence (shown when has_delta is true)
+        const deltaSentence = document.getElementById('delta-sentence');
+        const deltaData = data.delta;
+        if (deltaData && deltaData.has_delta && deltaData.delta_sentence) {
+            deltaSentence.textContent = deltaData.delta_sentence;
+            deltaSentence.classList.remove('hidden');
+        } else {
+            deltaSentence.classList.add('hidden');
+        }
+
+        // Ticket 38B-C1: Structural Snapshot (collapsed by default)
+        const snapshotPanel = document.getElementById('snapshot-panel');
+        const snapshotContent = document.getElementById('snapshot-content');
+        const structureData = data.structure;
+        if (structureData) {
+            let snapshotHtml = '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2);">';
+            snapshotHtml += '<div><strong>Legs:</strong> ' + (structureData.leg_count || 0) + '</div>';
+            snapshotHtml += '<div><strong>Props:</strong> ' + (structureData.props || 0) + '</div>';
+            snapshotHtml += '<div><strong>Totals:</strong> ' + (structureData.totals || 0) + '</div>';
+            snapshotHtml += '<div><strong>Leg Types:</strong> ' + ((structureData.leg_types || []).join(', ') || 'N/A') + '</div>';
+            snapshotHtml += '</div>';
+            if (structureData.correlation_flags && structureData.correlation_flags.length > 0) {
+                snapshotHtml += '<div style="margin-top: var(--sp-2);"><strong>Correlations:</strong> ' + structureData.correlation_flags.join(', ') + '</div>';
+            }
+            if (structureData.volatility_sources && structureData.volatility_sources.length > 0) {
+                snapshotHtml += '<div style="margin-top: var(--sp-2);"><strong>Volatility Sources:</strong> ' + structureData.volatility_sources.join(', ') + '</div>';
+            }
+            snapshotContent.innerHTML = snapshotHtml;
+            snapshotPanel.style.display = 'block';
+        } else {
+            snapshotPanel.style.display = 'none';
+        }
+
         // Card 2: PRIMARY FAILURE
         const pfCard = document.getElementById('pf-card');
         const pfBadge = document.getElementById('pf-card-badge');
