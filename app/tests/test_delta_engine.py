@@ -468,3 +468,324 @@ class TestSessionStorage:
         retrieved = get_previous_snapshot_for_session("nonexistent_session")
 
         assert retrieved is None
+
+
+# =============================================================================
+# Edge Case Tests (Ticket 38B-B2)
+# =============================================================================
+
+
+class TestEdgeCaseMultipleSimultaneousChanges:
+    """Test complex scenarios with multiple simultaneous changes."""
+
+    def test_three_changes_at_once(self):
+        """Three simultaneous changes: leg removal + correlation added + volatility added."""
+        previous = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id3"],
+            "leg_types": ["spread", "ml", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id4"],
+            "leg_types": ["spread", "ml", "player_prop"],
+            "props": 1,
+            "totals": 0,
+            "correlation_flags": ["same_game"],
+            "volatility_sources": ["player_prop"],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        assert delta.has_delta is True
+        assert delta.delta_sentence is not None
+        # Should contain all three change types
+        assert len(delta.changes_detected) >= 3
+
+    def test_leg_addition_removal_simultaneously(self):
+        """Legs added and removed at the same time (net zero but composition changed)."""
+        previous = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id3"],
+            "leg_types": ["spread", "ml", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id4"],
+            "leg_types": ["spread", "ml", "player_prop"],
+            "props": 1,
+            "totals": 0,
+            "correlation_flags": [],
+            "volatility_sources": ["player_prop"],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        assert delta.has_delta is True
+        # Leg count unchanged but composition changed
+        assert "leg_replaced" in str(delta.changes_detected)
+
+
+class TestOrderPreservedButContentChanged:
+    """Test when order is preserved but leg content changes."""
+
+    def test_same_position_different_leg(self):
+        """Leg at same position but different leg_id (replacement)."""
+        previous = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id3"],  # id2 replaced with id3
+            "leg_types": ["spread", "ml"],
+            "props": 0,
+            "totals": 0,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        assert delta.has_delta is True
+        # Should detect replacement (leg_ids changed)
+        assert "leg_replaced" in str(delta.changes_detected)
+
+
+class TestNoOpReEvaluationEdgeCases:
+    """Test no-op re-evaluations with edge cases."""
+
+    def test_completely_identical_snapshots(self):
+        """Completely identical snapshots down to every field."""
+        snapshot = {
+            "leg_count": 4,
+            "leg_ids": ["id1", "id2", "id3", "id4"],
+            "leg_types": ["spread", "total", "ml", "player_prop"],
+            "props": 1,
+            "totals": 1,
+            "correlation_flags": ["same_game"],
+            "volatility_sources": ["player_prop", "totals"],
+        }
+
+        delta = compute_snapshot_delta(previous=snapshot, current=snapshot)
+
+        assert delta.has_delta is False
+        assert delta.delta_sentence is None
+        assert len(delta.changes_detected) == 0
+
+    def test_empty_arrays_preserved(self):
+        """Empty arrays in both snapshots still produce no delta."""
+        snapshot = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "ml"],
+            "props": 0,
+            "totals": 0,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        delta = compute_snapshot_delta(previous=snapshot, current=snapshot)
+
+        assert delta.has_delta is False
+        assert delta.delta_sentence is None
+
+
+class TestMissingOptionalFields:
+    """Test defensive handling of missing optional fields."""
+
+    def test_missing_correlation_flags(self):
+        """Snapshot missing correlation_flags field."""
+        previous = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            # Missing: "correlation_flags"
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id3"],
+            "leg_types": ["spread", "total", "ml"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        # Should handle missing field gracefully
+        assert delta.has_delta is True
+        assert "added 1 leg" in delta.delta_sentence
+
+    def test_missing_volatility_sources(self):
+        """Snapshot missing volatility_sources field."""
+        previous = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            # Missing: "volatility_sources"
+        }
+
+        current = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        # Should handle missing field gracefully (no delta)
+        assert delta.has_delta is False
+
+    def test_missing_leg_ids(self):
+        """Snapshot missing leg_ids field."""
+        previous = {
+            "leg_count": 2,
+            # Missing: "leg_ids"
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id3"],
+            "leg_types": ["spread", "total", "ml"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        # Should detect leg count change even without leg_ids
+        assert delta.has_delta is True
+        assert "added 1 leg" in delta.delta_sentence
+
+
+class TestUnexpectedSnapshotShapes:
+    """Test defensive handling of unexpected snapshot shapes."""
+
+    def test_extra_fields_ignored(self):
+        """Extra fields in snapshot are ignored."""
+        previous = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id3"],
+            "leg_types": ["spread", "total", "ml"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+            "extra_field": "should be ignored",
+            "another_field": 12345,
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        # Should work despite extra fields
+        assert delta.has_delta is True
+        assert "added 1 leg" in delta.delta_sentence
+
+    def test_empty_snapshot(self):
+        """Empty snapshot handled gracefully."""
+        previous = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 0,
+            "leg_ids": [],
+            "leg_types": [],
+            "props": 0,
+            "totals": 0,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        delta = compute_snapshot_delta(previous, current)
+
+        # Should detect all legs removed
+        assert delta.has_delta is True
+        assert "removed 2 legs" in delta.delta_sentence
+
+
+class TestDeterministicEdgeCases:
+    """Test determinism in edge cases."""
+
+    def test_same_changes_different_order(self):
+        """Same changes produce same result regardless of internal order."""
+        previous = {
+            "leg_count": 2,
+            "leg_ids": ["id1", "id2"],
+            "leg_types": ["spread", "total"],
+            "props": 0,
+            "totals": 1,
+            "correlation_flags": [],
+            "volatility_sources": [],
+        }
+
+        current = {
+            "leg_count": 3,
+            "leg_ids": ["id1", "id2", "id3"],
+            "leg_types": ["spread", "total", "player_prop"],
+            "props": 1,
+            "totals": 1,
+            "correlation_flags": ["same_game"],
+            "volatility_sources": ["player_prop"],
+        }
+
+        # Run delta multiple times
+        delta1 = compute_snapshot_delta(previous, current)
+        delta2 = compute_snapshot_delta(previous, current)
+        delta3 = compute_snapshot_delta(previous, current)
+
+        # All should be identical
+        assert delta1.delta_sentence == delta2.delta_sentence == delta3.delta_sentence
+        assert delta1.changes_detected == delta2.changes_detected == delta3.changes_detected
