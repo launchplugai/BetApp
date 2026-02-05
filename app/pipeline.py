@@ -66,6 +66,13 @@ from app.dna.ui_contract_v1 import validate_for_ui, get_ui_contract_version
 # Structural Snapshot (Ticket 38B-A)
 from app.structure_snapshot import generate_structure_snapshot
 
+# Change Delta Engine (Ticket 38B-B)
+from app.delta_engine import (
+    compute_snapshot_delta,
+    get_previous_snapshot_for_session,
+    store_snapshot_for_session,
+)
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -155,6 +162,9 @@ class PipelineResponse:
 
     # Ticket 38B-A: Structural snapshot (machine-readable structure)
     structure: Optional[dict] = None
+
+    # Ticket 38B-B: Change delta (what changed from previous evaluation)
+    delta: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -2541,6 +2551,20 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         canonical_legs=normalized.canonical_legs if hasattr(normalized, 'canonical_legs') else None
     )
 
+    # Step 25: Ticket 38B-B — Compute change delta
+    # Get previous snapshot from session (if any)
+    session_id = str(evaluation.parlay_id)  # Use parlay_id as session identifier
+    previous_snapshot = get_previous_snapshot_for_session(session_id)
+    
+    # Compute delta
+    delta_result = compute_snapshot_delta(
+        previous=previous_snapshot,
+        current=structure_snapshot.to_dict(),
+    )
+    
+    # Store current snapshot for next evaluation
+    store_snapshot_for_session(session_id, structure_snapshot.to_dict())
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -2561,6 +2585,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         debug_explainability=debug_explainability,
         proof_summary=proof_summary,
         structure=structure_snapshot.to_dict(),  # Ticket 38B-A: Structural snapshot
+        delta=delta_result.to_dict() if delta_result else None,  # Ticket 38B-B: Change delta
         leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
     )
