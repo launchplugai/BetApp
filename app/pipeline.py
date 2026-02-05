@@ -63,6 +63,9 @@ from app.dna.artifact_emitter import emit_artifacts_from_evaluation, get_artifac
 # UI Artifact Contract (Ticket 21)
 from app.dna.ui_contract_v1 import validate_for_ui, get_ui_contract_version
 
+# Structural Snapshot (Ticket 38B-A)
+from app.structure_snapshot import generate_structure_snapshot
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -149,6 +152,9 @@ class PipelineResponse:
 
     # Ticket 18B: Proof summary (always present, shows flag status)
     proof_summary: Optional[dict] = None
+
+    # Ticket 38B-A: Structural snapshot (machine-readable structure)
+    structure: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -2529,6 +2535,12 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         canonical_legs=normalized.canonical_legs if hasattr(normalized, 'canonical_legs') else None
     )
 
+    # Step 24: Ticket 38B-A — Generate structural snapshot
+    structure_snapshot = generate_structure_snapshot(
+        blocks,
+        canonical_legs=normalized.canonical_legs if hasattr(normalized, 'canonical_legs') else None
+    )
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -2548,6 +2560,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,
         proof_summary=proof_summary,
+        structure=structure_snapshot.to_dict(),  # Ticket 38B-A: Structural snapshot
         leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
     )
