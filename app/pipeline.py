@@ -73,6 +73,9 @@ from app.delta_engine import (
     store_snapshot_for_session,
 )
 
+# Grounding Score Engine (Ticket 38B-C2)
+from app.grounding_score import compute_grounding_score
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -165,6 +168,9 @@ class PipelineResponse:
 
     # Ticket 38B-B: Change delta (what changed from previous evaluation)
     delta: Optional[dict] = None
+
+    # Ticket 38B-C2: Grounding score (breakdown of output sources)
+    grounding_score: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -2565,6 +2571,14 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Store current snapshot for next evaluation
     store_snapshot_for_session(session_id, structure_snapshot.to_dict())
 
+    # Step 26: Ticket 38B-C2 — Compute grounding score
+    grounding_score_result = compute_grounding_score(
+        structure=structure_snapshot.to_dict(),
+        evaluation=evaluation,  # Pass object directly, grounding_score handles both dict/object
+        primary_failure=primary_failure,
+        final_verdict=final_verdict,
+    )
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -2586,6 +2600,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         proof_summary=proof_summary,
         structure=structure_snapshot.to_dict(),  # Ticket 38B-A: Structural snapshot
         delta=delta_result.to_dict() if delta_result else None,  # Ticket 38B-B: Change delta
+        grounding_score=grounding_score_result.to_dict(),  # Ticket 38B-C2: Grounding score
         leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
     )
