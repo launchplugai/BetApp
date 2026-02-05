@@ -783,6 +783,40 @@ def _get_canonical_ui_html() -> str:
             padding: 3px 0;
             font-style: italic;
         }}
+        /* Ticket 38B-C1: Delta Sentence & Snapshot Panel */
+        .delta-sentence {{
+            margin: 12px 0;
+            padding: 10px 14px;
+            background: var(--bg);
+            border: 1px solid var(--accent);
+            border-left-width: 3px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            color: var(--text);
+        }}
+        .delta-sentence.hidden {{
+            display: none;
+        }}
+        .snapshot-panel {{
+            margin: 16px 0;
+            padding: 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }}
+        .snapshot-panel summary {{
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            margin-bottom: 8px;
+        }}
+        .snapshot-content {{
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            padding-top: 8px;
+        }}
         /* Ticket 25: Action Buttons */
         .action-buttons {{
             display: none;
@@ -1445,6 +1479,9 @@ def _get_canonical_ui_html() -> str:
                 </div>
             </div>
 
+            <!-- Ticket 38B-C1: Delta Sentence -->
+            <div id="delta-sentence" class="delta-sentence hidden"></div>
+
             <!-- Ticket 32 Part C: Sherlock/DNA Analysis Badges -->
             <div class="analysis-badges">
                 <div class="analysis-badge sherlock-badge" title="Sherlock analyzes structural relationships between legs. It does NOT predict outcomes or calculate odds.">
@@ -1494,6 +1531,12 @@ def _get_canonical_ui_html() -> str:
             <div id="grounding-warnings" class="grounding-warnings" style="display: none;">
                 <ul id="grounding-warnings-list" class="grounding-warnings-list"></ul>
             </div>
+
+            <!-- Ticket 38B-C1: Structural Snapshot Panel -->
+            <details class="snapshot-panel" id="snapshot-panel">
+                <summary>Structural Snapshot</summary>
+                <div id="snapshot-content" class="snapshot-content"></div>
+            </details>
 
             <div id="debug-section" class="debug-section">
                 <div class="card">
