@@ -110,8 +110,12 @@ def detect_correlation_flags(blocks: List[BetBlock]) -> tuple[str, ...]:
     """
     flags = []
 
-    # Same-game detection: Check if multiple blocks reference same game_id
+    # Same-game detection strategy:
+    # 1. Explicit: Multiple blocks share the same game_id
+    # 2. Heuristic (Ticket A1): Team bet + player prop likely same-game
+    
     if len(blocks) >= 2:
+        # Strategy 1: Explicit game_id matching
         game_ids_seen = set()
         same_game_detected = False
         for block in blocks:
@@ -119,6 +123,23 @@ def detect_correlation_flags(blocks: List[BetBlock]) -> tuple[str, ...]:
                 same_game_detected = True
                 break
             game_ids_seen.add(block.game_id)
+
+        # Strategy 2: Heuristic for common real-world parlays
+        # If parlay has team bet (ML/spread) + player prop, assume same-game
+        # This handles cases like "Lakers ML + LeBron pts" where parser
+        # doesn't have player-to-team mapping
+        if not same_game_detected:
+            has_team_bet = any(
+                block.bet_type in (BetType.ML, BetType.SPREAD) 
+                for block in blocks
+            )
+            has_player_prop = any(
+                block.bet_type == BetType.PLAYER_PROP 
+                for block in blocks
+            )
+            
+            if has_team_bet and has_player_prop:
+                same_game_detected = True
 
         if same_game_detected:
             flags.append("same_game")
@@ -151,6 +172,30 @@ def detect_volatility_sources(blocks: List[BetBlock]) -> tuple[str, ...]:
     return tuple(sorted(sources))  # Sort for determinism
 
 
+def detect_volatility_sources_from_types(leg_types: tuple[str, ...]) -> tuple[str, ...]:
+    """
+    Detect sources of volatility from leg type strings.
+
+    Same logic as detect_volatility_sources but works with string leg types
+    from canonical legs instead of BetBlock objects.
+
+    Args:
+        leg_types: Tuple of leg type strings (e.g., "player_prop", "total")
+
+    Returns:
+        Tuple of volatility source strings
+    """
+    sources = set()
+
+    for leg_type in leg_types:
+        if leg_type == "player_prop":
+            sources.add("player_prop")
+        if leg_type in ("total", "team_total"):
+            sources.add("totals")
+
+    return tuple(sorted(sources))  # Sort for determinism
+
+
 def generate_structure_snapshot(
     blocks: List[BetBlock],
     canonical_legs: Optional[List] = None
@@ -175,10 +220,24 @@ def generate_structure_snapshot(
     - Deterministic (same blocks → same snapshot)
     - No engine dependencies (uses only BetBlock data)
     """
-    # Leg count: Use canonical legs if present, else blocks
+    # Leg count: Use canonical legs if present AND they have valid market data, else blocks
+    # Check if canonical_legs have actual market data (not just empty strings)
+    has_valid_canonical = False
     if canonical_legs:
+        # Peek at first leg to see if it has market data
+        for leg in canonical_legs:
+            market = None
+            if hasattr(leg, 'market'):
+                market = leg.market
+            elif isinstance(leg, dict):
+                market = leg.get("market")
+            if market and market != "" and market != "unknown":
+                has_valid_canonical = True
+                break
+    
+    if canonical_legs and has_valid_canonical:
         leg_count = len(canonical_legs)
-        # Use canonical leg IDs/types if present (handle both dict and dataclass)
+        # Use canonical leg IDs/types (handle both dict and dataclass)
         leg_ids = []
         leg_types = []
         for leg in canonical_legs:
@@ -191,7 +250,7 @@ def generate_structure_snapshot(
                 leg_ids.append("")
             
             if hasattr(leg, 'market'):
-                leg_types.append(leg.market)
+                leg_types.append(leg.market if leg.market else "")
             elif isinstance(leg, dict):
                 leg_types.append(leg.get("market", ""))
             else:
@@ -207,17 +266,30 @@ def generate_structure_snapshot(
         leg_types = tuple(block.bet_type.value for block in blocks)
 
     # Count props and totals
-    props = sum(1 for block in blocks if block.bet_type == BetType.PLAYER_PROP)
-    totals = sum(
-        1 for block in blocks
-        if block.bet_type in (BetType.TOTAL, BetType.TEAM_TOTAL)
-    )
+    # If canonical legs with valid market data provided, count from leg_types
+    # Otherwise count from blocks
+    if canonical_legs and has_valid_canonical:
+        props = sum(1 for lt in leg_types if lt == "player_prop")
+        totals = sum(
+            1 for lt in leg_types
+            if lt in ("total", "team_total")
+        )
+    else:
+        props = sum(1 for block in blocks if block.bet_type == BetType.PLAYER_PROP)
+        totals = sum(
+            1 for block in blocks
+            if block.bet_type in (BetType.TOTAL, BetType.TEAM_TOTAL)
+        )
 
     # Detect correlation flags
     correlation_flags = detect_correlation_flags(blocks)
 
     # Detect volatility sources
-    volatility_sources = detect_volatility_sources(blocks)
+    # If canonical legs with valid data provided, use leg_types; otherwise use blocks
+    if canonical_legs and has_valid_canonical:
+        volatility_sources = detect_volatility_sources_from_types(leg_types)
+    else:
+        volatility_sources = detect_volatility_sources(blocks)
 
     return StructureSnapshot(
         leg_count=leg_count,

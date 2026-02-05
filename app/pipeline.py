@@ -569,12 +569,17 @@ def _detect_leg_markets(bet_text: str) -> list[dict]:
     Split input into legs and detect the market type for each leg.
 
     Returns a list of dicts: [{"text": raw_leg, "bet_type": BetType, "base_fragility": float}, ...]
+    
+    Ticket A1: Enhanced to recognize common prop abbreviations (pts, reb, ast, etc.)
+    and O/U patterns (O27.5, U10.5) for real-world betting slips.
     """
     text_lower = bet_text.lower()
 
     # Split on common leg delimiters
+    # BUT: Don't split on + when it's part of a number (+3.5)
+    # Solution: Split on + with surrounding whitespace
     import re
-    parts = re.split(r'\s*\+\s*|\s*,\s*|\s+and\s+', text_lower)
+    parts = re.split(r'\s+\+\s+|\s*,\s*|\s+and\s+', text_lower)
     parts = [p.strip() for p in parts if p.strip()]
 
     if not parts:
@@ -582,13 +587,34 @@ def _detect_leg_markets(bet_text: str) -> list[dict]:
 
     legs = []
     for part in parts:
-        is_prop = any(w in part for w in [
-            'yards', 'points', 'rebounds', 'assists', 'touchdowns', 'td',
+        # Ticket A1: Expanded player prop detection
+        # Check for common prop abbreviations
+        prop_abbreviations = [
+            'pts', 'reb', 'ast', 'blk', 'stl', 'to',  # Common abbreviations
+            '3pm', '3pa', 'fgm', 'fga', 'ftm', 'fta',  # Shooting stats
+            'pra', 'pr', 'ra', 'pa',  # Combo props
+            'yards', 'points', 'rebounds', 'assists', 'touchdowns', 'td',  # Full words
             'tds', 'threes', '3pt', 'steals', 'blocks', 'strikeouts',
             'home run', 'hr', 'rbi', 'hits', 'receptions', 'rec',
-        ])
-        is_total = any(w in part for w in ['over', 'under', 'o/', 'u/'])
-        is_spread = bool(re.search(r'[+-]\d+\.?\d*', part)) and not is_total
+        ]
+        
+        # Check for prop keywords
+        has_prop_keyword = any(w in part for w in prop_abbreviations)
+        
+        # Check for O/U patterns with numbers (e.g., "O27.5", "U10")
+        # BUT: Game totals also use O/U patterns (e.g., "O220.5")
+        # Distinction: Props have stat keywords, totals don't
+        has_ou_pattern = bool(re.search(r'\b[ou]\d+\.?\d*', part))
+        
+        # Player props: O/U pattern + prop keyword
+        is_prop = has_prop_keyword or (has_ou_pattern and has_prop_keyword)
+        
+        # Total detection: O/U pattern WITHOUT prop keyword, OR "over"/"under" keywords
+        has_total_keyword = any(w in part for w in ['over', 'under', 'o/', 'u/'])
+        is_total = (has_ou_pattern and not has_prop_keyword) or (has_total_keyword and not has_prop_keyword)
+        
+        # Spread detection: +/- with number, but not if it's a total or prop
+        is_spread = bool(re.search(r'[+-]\d+\.?\d*', part)) and not is_total and not is_prop
 
         if is_prop:
             legs.append({"text": part, "bet_type": BetType.PLAYER_PROP, "base_fragility": 0.20})
