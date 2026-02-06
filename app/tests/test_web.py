@@ -29,6 +29,14 @@ def client_disabled():
     from app.main import app
     return TestClient(app)
 
+@pytest.fixture
+def app_js(client):
+    """Fetch app.js content for JS-specific tests (S6 refactor)."""
+    response = client.get("/static/js/app.js")
+    if response.status_code == 200:
+        return response.text
+    return ""
+
 
 # =============================================================================
 # Tests: Root Redirect
@@ -1768,102 +1776,72 @@ class TestTicket36OcrRegressionRepair:
 
     # Part B: OCR → Builder path clears refine state
 
-    def test_ocr_add_to_builder_clears_locked_ids(self, client):
+    def test_ocr_add_to_builder_clears_locked_ids(self, app_js):
         """Part B: 'Add to Builder' should clear lockedLegIds (Ticket 37 migration)."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that OCR handler clears lock state
         # Ticket 37: Migrated from lockedLegIndices to lockedLegIds
-        assert "lockedLegIds.clear()" in html, \
+        assert "lockedLegIds.clear()" in app_js, \
             "OCR handler should clear lockedLegIds"
         # Verify it's in the useOcrBtn handler context
         # Ticket 37 update: Comment may now include both ticket references
-        assert "Clear refine loop state" in html, \
+        assert "Clear refine loop state" in app_js, \
             "OCR handler should have clear refine loop comment"
 
-    def test_ocr_add_to_builder_clears_results_legs(self, client):
+    def test_ocr_add_to_builder_clears_results_legs(self, app_js):
         """Part B: 'Add to Builder' should clear resultsLegs."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that OCR handler clears resultsLegs
-        assert "resultsLegs = []" in html, \
+        assert "resultsLegs = []" in app_js, \
             "OCR handler should clear resultsLegs"
 
     # Part C: State collision fix - isReEvaluation flag
 
-    def test_is_re_evaluation_state_exists(self, client):
+    def test_is_re_evaluation_state_exists(self, app_js):
         """Part C: isReEvaluation state variable should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "isReEvaluation" in html, "isReEvaluation state variable should exist"
+        assert "isReEvaluation" in app_js, "isReEvaluation state variable should exist"
 
-    def test_submit_handler_clears_lock_state(self, client):
+    def test_submit_handler_clears_lock_state(self, app_js):
         """Part C: Submit handler should clear lock state for fresh evaluations."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that submit handler marks as fresh evaluation
-        assert "isReEvaluation = false" in html, \
+        assert "isReEvaluation = false" in app_js, \
             "Submit handler should set isReEvaluation = false"
 
-    def test_re_evaluate_sets_is_re_evaluation(self, client):
+    def test_re_evaluate_sets_is_re_evaluation(self, app_js):
         """Part C: reEvaluateParlay should set isReEvaluation = true."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that re-evaluate marks as re-evaluation
-        assert "isReEvaluation = true" in html, \
+        assert "isReEvaluation = true" in app_js, \
             "reEvaluateParlay should set isReEvaluation = true"
 
-    def test_soft_gate_proceed_clears_lock_state(self, client):
+    def test_soft_gate_proceed_clears_lock_state(self, app_js):
         """Part C: Soft gate 'Evaluate anyway' should clear lock state."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # The soft gate proceed handler should also clear lock state
         # This is a fresh evaluation from OCR
         # Ticket 37 update: Comment may now include both ticket references
-        assert "fresh evaluation from OCR" in html, \
+        assert "fresh evaluation from OCR" in app_js, \
             "Soft gate proceed should document fresh evaluation from OCR"
 
-    def test_reset_form_clears_is_re_evaluation(self, client):
+    def test_reset_form_clears_is_re_evaluation(self, app_js):
         """Part C: resetForm should clear isReEvaluation."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that resetForm includes isReEvaluation = false
         # This ensures fresh start after 'Evaluate Another'
-        assert "isReEvaluation = false" in html, \
+        assert "isReEvaluation = false" in app_js, \
             "resetForm should reset isReEvaluation"
 
     # Part D: Verify state boundaries
 
-    def test_ocr_handler_has_fresh_start_comment(self, client):
+    def test_ocr_handler_has_fresh_start_comment(self, app_js):
         """Part D: OCR handler should document fresh start behavior."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "this is a fresh start" in html.lower(), \
+        assert "this is a fresh start" in app_js.lower(), \
             "OCR handler should document fresh start"
 
-    def test_re_evaluate_has_preserve_lock_comment(self, client):
+    def test_re_evaluate_has_preserve_lock_comment(self, app_js):
         """Part D: reEvaluateParlay should document lock preservation."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "lock state should be preserved" in html.lower(), \
+        assert "lock state should be preserved" in app_js.lower(), \
             "reEvaluateParlay should document lock preservation"
 
-    def test_ticket_36_comments_present(self, client):
+    def test_ticket_36_comments_present(self, app_js):
         """Part D: Ticket 36 comments should be present in code."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Count Ticket 36 comments to ensure all fixes are documented
-        ticket_36_count = html.count("Ticket 36")
+        ticket_36_count = app_js.count("Ticket 36")
         assert ticket_36_count >= 5, \
             f"Should have at least 5 Ticket 36 comments, found {ticket_36_count}"
 
@@ -1871,218 +1849,155 @@ class TestTicket36OcrRegressionRepair:
 class TestTicket37LegIdentity:
     """Ticket 37: Deterministic leg_id for refine loop stability."""
 
-    def test_generate_leg_id_sync_exists(self, client):
+    def test_generate_leg_id_sync_exists(self, app_js):
         """Part A: generateLegIdSync function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "function generateLegIdSync" in html, \
+        assert "function generateLegIdSync" in app_js, \
             "generateLegIdSync function must be defined"
 
-    def test_leg_id_uses_canonical_fields(self, client):
+    def test_leg_id_uses_canonical_fields(self, app_js):
         """Part A: leg_id generation should use entity, market, value, sport."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that canonical fields are used
-        assert "leg.entity" in html and "toLowerCase" in html, \
+        assert "leg.entity" in app_js and "toLowerCase" in app_js, \
             "Should normalize entity to lowercase"
-        assert "leg.market" in html, \
+        assert "leg.market" in app_js, \
             "Should use market field"
-        assert "leg.value" in html, \
+        assert "leg.value" in app_js, \
             "Should use value field"
-        assert "leg.sport" in html, \
+        assert "leg.sport" in app_js, \
             "Should use sport field"
 
-    def test_leg_id_deterministic_hash(self, client):
+    def test_leg_id_deterministic_hash(self, app_js):
         """Part A: leg_id should use djb2 hash algorithm."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # djb2 hash starts with 5381
-        assert "5381" in html, \
+        assert "5381" in app_js, \
             "Should use djb2 algorithm (starts with 5381)"
-        assert "leg_" in html, \
+        assert "leg_" in app_js, \
             "leg_id should be prefixed with 'leg_'"
 
-    def test_locked_leg_ids_replaces_indices(self, client):
+    def test_locked_leg_ids_replaces_indices(self, app_js):
         """Part B: lockedLegIds should replace lockedLegIndices."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check state variable declaration
-        assert "let lockedLegIds = new Set()" in html, \
+        assert "let lockedLegIds = new Set()" in app_js, \
             "lockedLegIds state variable must be declared"
         # Ensure old variable is not used functionally
         # (may still appear in comments about the migration)
-        assert "lockedLegIds.add" in html, \
+        assert "lockedLegIds.add" in app_js, \
             "Should use lockedLegIds.add()"
-        assert "lockedLegIds.has" in html, \
+        assert "lockedLegIds.has" in app_js, \
             "Should use lockedLegIds.has()"
-        assert "lockedLegIds.clear()" in html, \
+        assert "lockedLegIds.clear()" in app_js, \
             "Should use lockedLegIds.clear()"
 
-    def test_toggle_lock_uses_leg_id(self, client):
+    def test_toggle_lock_uses_leg_id(self, app_js):
         """Part B: toggleLegLock should use leg.leg_id."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Find the toggleLegLock function and check it uses leg_id
-        assert "lockedLegIds.add(leg.leg_id)" in html, \
+        assert "lockedLegIds.add(leg.leg_id)" in app_js, \
             "toggleLegLock should add leg.leg_id to lockedLegIds"
-        assert "lockedLegIds.delete(leg.leg_id)" in html, \
+        assert "lockedLegIds.delete(leg.leg_id)" in app_js, \
             "toggleLegLock should delete leg.leg_id from lockedLegIds"
 
-    def test_show_results_uses_leg_id_for_lock_check(self, client):
+    def test_show_results_uses_leg_id_for_lock_check(self, app_js):
         """Part B: showResults should check lock state by leg_id."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "lockedLegIds.has(leg_id)" in html, \
+        assert "lockedLegIds.has(leg_id)" in app_js, \
             "showResults should check lock state using leg_id"
 
-    def test_parse_ocr_line_includes_leg_id(self, client):
+    def test_parse_ocr_line_includes_leg_id(self, app_js):
         """Part C: parseOcrLine should return leg_id."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check parseOcrLine returns object with leg_id
-        assert "leg_id: leg_id" in html or "leg_id:" in html, \
+        assert "leg_id: leg_id" in app_js or "leg_id:" in app_js, \
             "parseOcrLine should include leg_id in return value"
 
-    def test_add_leg_includes_leg_id(self, client):
+    def test_add_leg_includes_leg_id(self, app_js):
         """Part C: addLeg should generate leg_id for new legs."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check addLeg generates leg_id
         # Look for generateLegIdSync call in addLeg context
-        assert "builderLegs.push" in html, \
+        assert "builderLegs.push" in app_js, \
             "addLeg should push to builderLegs"
 
-    def test_sync_state_from_results_preserves_leg_id(self, client):
+    def test_sync_state_from_results_preserves_leg_id(self, app_js):
         """Part C: syncStateFromResults should preserve leg_id."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check syncStateFromResults includes leg_id
-        assert "leg_id: leg.leg_id" in html, \
+        assert "leg_id: leg.leg_id" in app_js, \
             "syncStateFromResults should preserve leg_id"
 
-    def test_refine_parlay_includes_leg_id(self, client):
+    def test_refine_parlay_includes_leg_id(self, app_js):
         """Part C: refineParlay should include leg_id."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check refineParlay maps with leg_id
-        assert "leg.leg_id || generateLegIdSync" in html, \
+        assert "leg.leg_id || generateLegIdSync" in app_js, \
             "refineParlay should use existing leg_id or generate new one"
 
-    def test_reevaluate_uses_leg_id_persistence(self, client):
+    def test_reevaluate_uses_leg_id_persistence(self, app_js):
         """Part B: reEvaluateParlay should rely on leg_id persistence."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that reEvaluateParlay doesn't do complex index-based restoration
         # With leg_id, lock state is automatically restored via showResults
-        assert "lockedLegIds persists" in html or "Ticket 37" in html, \
+        assert "lockedLegIds persists" in app_js or "Ticket 37" in app_js, \
             "reEvaluateParlay should have Ticket 37 comments about leg_id persistence"
 
-    def test_reset_form_clears_leg_ids(self, client):
+    def test_reset_form_clears_leg_ids(self, app_js):
         """Part B: resetForm should clear lockedLegIds."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check resetForm clears the set
         # Count occurrences - should have multiple clear() calls
-        clear_count = html.count("lockedLegIds.clear()")
+        clear_count = app_js.count("lockedLegIds.clear()")
         assert clear_count >= 3, \
             f"Should have at least 3 lockedLegIds.clear() calls, found {clear_count}"
 
-    def test_ticket_37_comments_present(self, client):
+    def test_ticket_37_comments_present(self, app_js):
         """Part D: Ticket 37 comments should be present in code."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Count Ticket 37 comments to ensure all changes are documented
-        ticket_37_count = html.count("Ticket 37")
+        ticket_37_count = app_js.count("Ticket 37")
         assert ticket_37_count >= 8, \
             f"Should have at least 8 Ticket 37 comments, found {ticket_37_count}"
 
-    def test_no_functional_locked_leg_indices(self, client):
+    def test_no_functional_locked_leg_indices(self, app_js):
         """Part D: lockedLegIndices should not be used functionally."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Should not have functional uses of old variable
         # (it's OK if it appears in comments about the migration)
-        assert "lockedLegIndices.add(" not in html, \
+        assert "lockedLegIndices.add(" not in app_js, \
             "Should not use lockedLegIndices.add() anymore"
-        assert "lockedLegIndices.delete(" not in html, \
+        assert "lockedLegIndices.delete(" not in app_js, \
             "Should not use lockedLegIndices.delete() anymore"
-        assert "lockedLegIndices.has(" not in html, \
+        assert "lockedLegIndices.has(" not in app_js, \
             "Should not use lockedLegIndices.has() anymore"
 
 
 class TestTicket37BHashUpgrade:
     """Ticket 37B: Upgrade leg_id hash to SHA-256 with djb2 fallback."""
 
-    def test_get_canonical_leg_string_exists(self, client):
+    def test_get_canonical_leg_string_exists(self, app_js):
         """Ticket 37B: getCanonicalLegString helper should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "function getCanonicalLegString" in html, \
+        assert "function getCanonicalLegString" in app_js, \
             "getCanonicalLegString function must be defined"
 
-    def test_hash_djb2_exists(self, client):
+    def test_hash_djb2_exists(self, app_js):
         """Ticket 37B: hashDjb2 fallback function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "function hashDjb2" in html, \
+        assert "function hashDjb2" in app_js, \
             "hashDjb2 fallback function must be defined"
 
-    def test_generate_leg_id_uses_sha256(self, client):
+    def test_generate_leg_id_uses_sha256(self, app_js):
         """Ticket 37B: generateLegId should use SHA-256 via WebCrypto."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "crypto.subtle.digest" in html, \
+        assert "crypto.subtle.digest" in app_js, \
             "Should use crypto.subtle.digest for SHA-256"
-        assert "SHA-256" in html, \
+        assert "SHA-256" in app_js, \
             "Should specify SHA-256 algorithm"
 
-    def test_generate_leg_id_has_webcrypto_check(self, client):
+    def test_generate_leg_id_has_webcrypto_check(self, app_js):
         """Ticket 37B: generateLegId should check for WebCrypto availability."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "crypto.subtle" in html, \
+        assert "crypto.subtle" in app_js, \
             "Should check for crypto.subtle availability"
 
-    def test_generate_leg_id_has_djb2_fallback(self, client):
+    def test_generate_leg_id_has_djb2_fallback(self, app_js):
         """Ticket 37B: generateLegId should fallback to djb2."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "hashDjb2(canonical)" in html, \
+        assert "hashDjb2(canonical)" in app_js, \
             "Should call hashDjb2 as fallback"
 
-    def test_generate_leg_id_sync_uses_djb2(self, client):
+    def test_generate_leg_id_sync_uses_djb2(self, app_js):
         """Ticket 37B: generateLegIdSync should use djb2."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "hashDjb2(getCanonicalLegString(leg))" in html, \
+        assert "hashDjb2(getCanonicalLegString(leg))" in app_js, \
             "generateLegIdSync should use hashDjb2"
 
-    def test_ticket_37b_comments_present(self, client):
+    def test_ticket_37b_comments_present(self, app_js):
         """Ticket 37B: Ticket 37B comments should be present."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        ticket_37b_count = html.count("Ticket 37B")
+        ticket_37b_count = app_js.count("Ticket 37B")
         assert ticket_37b_count >= 4, \
             f"Should have at least 4 Ticket 37B comments, found {ticket_37b_count}"
 
@@ -2090,99 +2005,65 @@ class TestTicket37BHashUpgrade:
 class TestTicket38AOcrErrorRendering:
     """Ticket 38A: Fix OCR error rendering ([object Object])."""
 
-    def test_safe_any_to_string_exists(self, client):
+    def test_safe_any_to_string_exists(self, app_js):
         """Ticket 38A: safeAnyToString helper function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "function safeAnyToString" in html, \
+        assert "function safeAnyToString" in app_js, \
             "safeAnyToString helper function must be defined"
 
-    def test_safe_response_error_exists(self, client):
+    def test_safe_response_error_exists(self, app_js):
         """Ticket 38A: safeResponseError helper function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "function safeResponseError" in html, \
+        assert "function safeResponseError" in app_js, \
             "safeResponseError helper function must be defined"
 
-    def test_safe_any_to_string_handles_null(self, client):
+    def test_safe_any_to_string_handles_null(self, app_js):
         """Ticket 38A: safeAnyToString should handle null/undefined."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check for null/undefined handling
-        assert "x === null || x === undefined" in html, \
+        assert "x === null || x === undefined" in app_js, \
             "Should check for null/undefined"
-        assert "Unknown error" in html, \
+        assert "Unknown error" in app_js, \
             "Should have fallback for null/undefined"
 
-    def test_safe_any_to_string_handles_string(self, client):
+    def test_safe_any_to_string_handles_string(self, app_js):
         """Ticket 38A: safeAnyToString should return strings directly."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "typeof x === 'string'" in html, \
+        assert "typeof x === 'string'" in app_js, \
             "Should check if input is already a string"
 
-    def test_safe_any_to_string_handles_error_message(self, client):
+    def test_safe_any_to_string_handles_error_message(self, app_js):
         """Ticket 38A: safeAnyToString should extract Error.message."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "x.message && typeof x.message === 'string'" in html, \
+        assert "x.message && typeof x.message === 'string'" in app_js, \
             "Should extract message from Error objects"
 
-    def test_safe_any_to_string_handles_detail(self, client):
+    def test_safe_any_to_string_handles_detail(self, app_js):
         """Ticket 38A: safeAnyToString should handle API {detail: ...} responses."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "x.detail" in html, \
+        assert "x.detail" in app_js, \
             "Should check for .detail property"
-        assert "Array.isArray(x.detail)" in html, \
+        assert "Array.isArray(x.detail)" in app_js, \
             "Should handle Pydantic validation errors (array of details)"
 
-    def test_safe_any_to_string_handles_error_property(self, client):
+    def test_safe_any_to_string_handles_error_property(self, app_js):
         """Ticket 38A: safeAnyToString should handle {error: ...} responses."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "x.error && typeof x.error === 'string'" in html, \
+        assert "x.error && typeof x.error === 'string'" in app_js, \
             "Should check for .error property"
 
-    def test_ocr_handler_uses_safe_stringifier(self, client):
+    def test_ocr_handler_uses_safe_stringifier(self, app_js):
         """Ticket 38A: OCR error handler should use safeAnyToString."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "safeAnyToString(err," in html, \
+        assert "safeAnyToString(err," in app_js, \
             "OCR catch block should use safeAnyToString"
 
-    def test_ocr_response_uses_safe_error(self, client):
+    def test_ocr_response_uses_safe_error(self, app_js):
         """Ticket 38A: OCR response error should use safeResponseError."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "safeResponseError(data," in html, \
+        assert "safeResponseError(data," in app_js, \
             "OCR response error should use safeResponseError"
 
-    def test_evaluation_error_uses_safe_error(self, client):
+    def test_evaluation_error_uses_safe_error(self, app_js):
         """Ticket 38A: Evaluation error should use safeResponseError."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Count safeResponseError usages - should be at least 2 (OCR + evaluation)
-        count = html.count("safeResponseError(data,")
+        count = app_js.count("safeResponseError(data,")
         assert count >= 2, \
             f"Should use safeResponseError for at least OCR and evaluation errors, found {count}"
 
-    def test_no_object_object_in_error_assignments(self, client):
+    def test_no_object_object_in_error_assignments(self, app_js):
         """Ticket 38A: No raw object concatenation that could produce [object Object]."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-
         # Patterns that could produce [object Object]
         # Look for "+ err" or "${err}" without safe extraction
         import re
@@ -2195,28 +2076,22 @@ class TestTicket38AOcrErrorRendering:
         ]
 
         for pattern in dangerous_patterns:
-            matches = re.findall(pattern, html)
+            matches = re.findall(pattern, app_js)
             # Filter out safe uses
             safe_matches = [m for m in matches if "safeAnyToString" not in m]
             assert len(safe_matches) == 0, \
                 f"Found dangerous error concatenation pattern: {safe_matches}"
 
-    def test_ticket_38a_comments_present(self, client):
+    def test_ticket_38a_comments_present(self, app_js):
         """Ticket 38A: Ticket 38A comments should be present."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        ticket_38a_count = html.count("Ticket 38A")
+        ticket_38a_count = app_js.count("Ticket 38A")
         assert ticket_38a_count >= 3, \
             f"Should have at least 3 Ticket 38A comments, found {ticket_38a_count}"
 
-    def test_never_returns_object_object(self, client):
+    def test_never_returns_object_object(self, app_js):
         """Ticket 38A: safeAnyToString should never return [object Object]."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # The function should explicitly check for and avoid [object Object]
-        assert "[object Object]" in html, \
+        assert "[object Object]" in app_js, \
             "Should have explicit check against [object Object] string"
-        assert "str !== '[object Object]'" in html, \
+        assert "str !== '[object Object]'" in app_js, \
             "Should explicitly reject [object Object] from toString()"
