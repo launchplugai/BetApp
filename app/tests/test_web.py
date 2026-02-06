@@ -110,9 +110,11 @@ class TestCanonicalAppPage:
         assert "Evaluate Bet" in response.text
 
     def test_contains_build_stamp(self, client):
-        """App page contains build stamp."""
+        """S4: App page contains version badge and deploy proof."""
         response = client.get("/app")
-        assert "build:" in response.text
+        assert "v0.2.1" in response.text
+        assert "version-badge" in response.text
+        assert "DEPLOYED:" in response.text
 
     def test_returns_html_content_type(self, client):
         """App page returns HTML content type."""

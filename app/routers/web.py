@@ -157,8 +157,21 @@ def _get_canonical_ui_html() -> str:
             font-size: 20px;
             font-weight: 600;
         }}
-        .build-stamp {{
-            font-size: 11px;
+        .version-info {{
+            text-align: right;
+        }}
+        .version-badge {{
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            font-family: monospace;
+        }}
+        .deploy-proof {{
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
         }}
         /* Ticket 32 Part B: Session Bar */
         .session-bar {{
@@ -1313,7 +1326,10 @@ def _get_canonical_ui_html() -> str:
     <div class="container">
         <header>
             <h1>DNA Bet Engine</h1>
-            <span class="build-stamp">build: {git_sha}</span>
+            <div class="version-info">
+                <div class="version-badge">v0.2.1 • {git_sha}</div>
+                <div class="deploy-proof">DEPLOYED: S3 Momentum × Ritual</div>
+            </div>
         </header>
 
         <!-- Ticket 32 Part B: Session Indicator -->
