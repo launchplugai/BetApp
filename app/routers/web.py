@@ -173,6 +173,57 @@ def _get_canonical_ui_html() -> str:
             letter-spacing: 0.5px;
             margin-top: 2px;
         }}
+        .copy-debug-btn {{
+            margin-left: 8px;
+            padding: 2px 6px;
+            font-size: 9px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .copy-debug-btn:hover {{
+            background: var(--surface-hover);
+            color: var(--accent);
+        }}
+        /* S5-A: What's New Section */
+        .whats-new {{
+            margin: 12px 0;
+            padding: 12px 14px;
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-left-width: 3px;
+            border-radius: var(--radius);
+        }}
+        .whats-new-title {{
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .whats-new-list {{
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }}
+        .whats-new-list li {{
+            font-size: 12px;
+            color: var(--text);
+            padding: 3px 0;
+            padding-left: 12px;
+            position: relative;
+        }}
+        .whats-new-list li:before {{
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }}
         /* Ticket 32 Part B: Session Bar */
         .session-bar {{
             display: flex;
@@ -1327,7 +1378,10 @@ def _get_canonical_ui_html() -> str:
         <header>
             <h1>DNA Bet Engine</h1>
             <div class="version-info">
-                <div class="version-badge">v0.2.1 • {git_sha}</div>
+                <div class="version-badge">
+                    v0.2.1 • {git_sha}
+                    <button class="copy-debug-btn" onclick="copyDebugInfo()" title="Copy version + commit to clipboard">Copy</button>
+                </div>
                 <div class="deploy-proof">DEPLOYED: S3 Momentum × Ritual</div>
             </div>
         </header>
@@ -1537,6 +1591,17 @@ def _get_canonical_ui_html() -> str:
             <!-- Ticket 38B-C1: Delta Sentence -->
             <div id="delta-sentence" class="delta-sentence hidden"></div>
 
+            <!-- S5-A: What's New Section -->
+            <div class="whats-new">
+                <div class="whats-new-title">What's New in v0.2.1</div>
+                <ul class="whats-new-list">
+                    <li>Confidence labels now directional (Stable → Composed → Pressured → Fragile)</li>
+                    <li>Re-evaluation rewrites: "Test This Adjustment" replaces "Re-evaluate"</li>
+                    <li>Notable legs rewritten as story: "What's doing the work here?"</li>
+                    <li>Edge framing throughout: calm, confident, assistive tone</li>
+                </ul>
+            </div>
+
             <!-- Ticket 32 Part C: Sherlock/DNA Analysis Badges -->
             <div class="analysis-badges">
                 <div class="analysis-badge sherlock-badge" title="Sherlock reads how legs interact—correlations, dependencies, and structure.">
@@ -1666,6 +1731,30 @@ def _get_canonical_ui_html() -> str:
         let lockedLegIds = new Set(); // Ticket 37: Track locked legs by deterministic ID (was lockedLegIndices)
         let resultsLegs = []; // Ticket 35: Current legs in results view (for inline edits)
         let isReEvaluation = false; // Ticket 36: Track if current evaluation is a re-evaluation
+
+        // ============================================================
+        // S5-A: Copy Debug Info
+        // ============================================================
+
+        function copyDebugInfo() {{
+            const version = 'v0.2.1';
+            const commit = '{git_sha}';
+            const timestamp = new Date().toISOString();
+            const debugText = `DNA Bet Engine ${{version}}\\nCommit: ${{commit}}\\nTimestamp: ${{timestamp}}`;
+            
+            navigator.clipboard.writeText(debugText).then(() => {{
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.color = 'var(--green)';
+                setTimeout(() => {{
+                    btn.textContent = originalText;
+                    btn.style.color = '';
+                }}, 2000);
+            }}).catch(err => {{
+                console.error('Copy failed:', err);
+            }});
+        }}
 
         // ============================================================
         // Ticket 37: Deterministic Leg ID Generation
