@@ -981,7 +981,7 @@ class TestTicket29GroundedConfidenceUpgrade:
 
     def test_summary_references_composition(self, client):
         """
-        Human summary should vary based on leg composition.
+        S3-D: Human summary should use edge framing based on leg composition.
         """
         # Test ML-only parlay
         response_ml = client.post("/app/evaluate", json={
@@ -996,9 +996,8 @@ class TestTicket29GroundedConfidenceUpgrade:
         data_ml = response_ml.json()
         summary_ml = data_ml.get("humanSummary", "").lower()
 
-        # ML-only should mention low variance or moneyline
-        # (structure determines outlook text)
-        assert "structurally sound" in summary_ml or "complexity" in summary_ml or "risk" in summary_ml
+        # S3-D: Should use edge framing language
+        assert any(phrase in summary_ml for phrase in ["holds together", "asks you to manage", "puts pressure", "thin ice", "moneylines", "variance", "pressure"])
 
     def test_analysis_depth_for_text_input(self, client):
         """
@@ -1092,7 +1091,7 @@ class TestTicket32CoreWorkspace:
 
         assert "sherlock-badge" in html, "Sherlock badge should exist"
         assert "Analyzed by Sherlock" in html, "Sherlock badge text should exist"
-        assert "(Structural)" in html, "Structural qualifier should exist"
+        assert "(Structure)" in html, "Structural qualifier should exist"
 
     def test_dna_badge_exists(self, client):
         """
@@ -1107,17 +1106,17 @@ class TestTicket32CoreWorkspace:
 
     def test_badges_have_tooltips(self, client):
         """
-        Part C: Badges should have explanatory tooltips.
+        S3-D: Badges should have concise, edge-framing tooltips.
         """
         response = client.get("/app")
         assert response.status_code == 200
         html = response.text
 
-        # Check for title attributes with explanatory text
-        assert "does NOT predict outcomes" in html, \
-            "Sherlock tooltip should explain what it does NOT do"
-        assert "does NOT factor in team strength" in html, \
-            "DNA tooltip should explain what it does NOT do"
+        # S3-D: Edge framing - focus on what they do, not defensive disclaimers
+        assert "Sherlock reads how legs interact" in html, \
+            "Sherlock tooltip should explain what it does"
+        assert "DNA scores fragility based on leg relationships" in html, \
+            "DNA tooltip should explain what it does"
 
     def test_badge_styles_exist(self, client):
         """

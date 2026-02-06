@@ -1523,15 +1523,15 @@ def _get_canonical_ui_html() -> str:
 
             <!-- Ticket 32 Part C: Sherlock/DNA Analysis Badges -->
             <div class="analysis-badges">
-                <div class="analysis-badge sherlock-badge" title="Sherlock analyzes structural relationships between legs. It does NOT predict outcomes or calculate odds.">
+                <div class="analysis-badge sherlock-badge" title="Sherlock reads how legs interact—correlations, dependencies, and structure.">
                     <span class="badge-icon">&#128269;</span>
                     <span class="badge-text">Analyzed by Sherlock</span>
-                    <span class="badge-qualifier">(Structural)</span>
+                    <span class="badge-qualifier">(Structure)</span>
                 </div>
-                <div class="analysis-badge dna-badge" title="DNA scores fragility and correlation risk based on bet structure. It does NOT factor in team strength, injuries, or live conditions.">
+                <div class="analysis-badge dna-badge" title="DNA scores fragility based on leg relationships, not teams or odds.">
                     <span class="badge-icon">&#129516;</span>
                     <span class="badge-text">DNA Risk Model</span>
-                    <span class="badge-qualifier">(Structural)</span>
+                    <span class="badge-qualifier">(Structure)</span>
                 </div>
             </div>
 

@@ -1442,49 +1442,49 @@ def _build_human_summary(evaluation, blocks, entities, primary_failure, eval_ctx
     total_count = markets.count("total") + markets.count("over") + markets.count("under")
     prop_count = markets.count("prop") + markets.count("player_prop")
 
-    # Ticket 29: Vary assessment based on composition + fragility
+    # S3-D: Edge framing - calm, confident, assistive tone
     if fragility <= 15:
-        assessment = "looks structurally sound"
+        assessment = "holds together cleanly"
         # Vary outlook based on what's in the slip
         if ml_count > 0 and spread_count == 0 and prop_count == 0:
-            outlook = "Moneyline-only structure keeps variance low."
+            outlook = "Moneylines keep it simple—just wins, no margin worries."
         elif prop_count == 0:
-            outlook = "Most paths lead to success here."
+            outlook = "You've got room to breathe here."
         else:
-            outlook = "Structure is solid despite prop inclusion."
+            outlook = "Even with props, this one feels stable."
     elif fragility <= 35:
-        assessment = "has moderate complexity"
+        assessment = "asks you to manage a few moving parts"
         if prop_count > ml_count:
-            outlook = "Props add variance but the structure is manageable."
+            outlook = "Props bring variance, but nothing unmanageable."
         elif spread_count > 0 and total_count > 0:
-            outlook = "Spreads and totals on the same slip can interact."
+            outlook = "Spreads and totals can amplify each other—watch game flow."
         else:
-            outlook = "A few things need to align, but it's workable."
+            outlook = "You need a few things to line up, but they can."
     elif fragility <= 60:
-        assessment = "carries elevated risk"
+        assessment = "puts pressure on every leg"
         if prop_count >= 2:
-            outlook = "Heavy prop concentration drives the fragility score."
+            outlook = "Props stack variance—one cold quarter can sink it."
         elif spread_count >= 3:
-            outlook = "Multiple spreads multiply margin-of-error sensitivity."
+            outlook = "Multiple spreads mean multiple margin risks."
         else:
-            outlook = "One miss could break the ticket."
+            outlook = "One miss here likely breaks the whole thing."
     else:
-        assessment = "is highly fragile"
+        assessment = "is built on thin ice"
         if prop_count >= 3:
-            outlook = "Prop-heavy structure is inherently volatile."
+            outlook = "Heavy props mean everything swings wider."
         else:
-            outlook = "Multiple failure points compound against you."
+            outlook = "Too many ways this can break."
 
-    # Build specific insight from primary failure — Ticket 29: explain WHY
+    # S3-D: Edge framing - show the pressure points, no academic hedging
     pf_insights = {
-        "correlation": "Correlated legs inflate the penalty—when one fails, linked legs often follow.",
-        "leg_count": f"{leg_count} legs add structural penalty; each additional leg multiplies failure risk.",
-        "volatility": "High-variance props drive fragility—player stats fluctuate more than team outcomes.",
-        "dependency": "Shared outcomes create hidden dependencies—teams appearing twice tie results together.",
-        "prop_density": "Prop-heavy slips have elevated variance—player performance depends on minutes and game flow.",
-        "same_game_dependency": "Same-game legs aren't independent—if the game script changes, multiple legs flip.",
-        "market_conflict": "Overlapping markets amplify correlation—totals and spreads in the same game aren't separate.",
-        "weak_clarity": "Better input yields better analysis—more specific selections improve confidence.",
+        "correlation": "When legs link together, one bad break often sinks both.",
+        "leg_count": f"{leg_count} legs compound—each one narrows your margin.",
+        "volatility": "Props swing wider than team bets—watch individual performance closely.",
+        "dependency": "Same team twice means outcomes tie together—one loss hits multiple legs.",
+        "prop_density": "Props stack variance—minutes and game flow determine everything.",
+        "same_game_dependency": "Same-game legs move together—if the script flips, multiple legs break.",
+        "market_conflict": "Totals and spreads in the same game aren't independent—pace drives both.",
+        "weak_clarity": "Clearer input helps—more specificity improves the read.",
     }
     insight = pf_insights.get(pf_type, "")
 
