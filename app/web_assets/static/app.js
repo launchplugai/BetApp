@@ -532,16 +532,16 @@
 
         if (supportedActions.includes(ff.action)) {
             fastestFixButton.disabled = false;
-            fastestFixButton.textContent = 'Apply Fix';
+            fastestFixButton.textContent = 'Apply';
             fastestFixDisabledReason.classList.add('hidden');
         } else if (partialActions.includes(ff.action)) {
             // Visual-only for split_parlay
             fastestFixButton.disabled = false;
-            fastestFixButton.textContent = 'Apply Fix';
+            fastestFixButton.textContent = 'Apply';
             fastestFixDisabledReason.classList.add('hidden');
         } else {
             fastestFixButton.disabled = true;
-            fastestFixButton.textContent = 'Apply Fix';
+            fastestFixButton.textContent = 'Apply';
             fastestFixDisabledReason.textContent = 'Action "' + ff.action + '" requires manual editing';
             fastestFixDisabledReason.classList.remove('hidden');
         }

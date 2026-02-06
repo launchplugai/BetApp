@@ -31,7 +31,7 @@
             <div class="discover-section">
                 <div class="discover-hero">
                     <h2>Know Your Bet Before You Place It</h2>
-                    <p class="discover-tagline">We analyze risk, correlation, and fragility so you can make informed decisions.</p>
+                    <p class="discover-tagline">Risk analysis, correlation checks, and fragility scores for informed decisions.</p>
                 </div>
 
                 <div class="discover-steps">
@@ -46,14 +46,14 @@
                         <div class="step-number">2</div>
                         <div class="step-content">
                             <h3>Get Your Analysis</h3>
-                            <p>See fragility score, correlation risks, and actionable recommendations.</p>
+                            <p>Fragility score, correlation risks, and recommendations.</p>
                         </div>
                     </div>
                     <div class="discover-step">
                         <div class="step-number">3</div>
                         <div class="step-content">
                             <h3>See What's Weak</h3>
-                            <p>Know which legs add risk and what to change before you commit.</p>
+                            <p>Identify risky legs and fix them before placing.</p>
                         </div>
                     </div>
                 </div>
@@ -80,7 +80,7 @@
 
                 <div class="discover-cta">
                     <button type="button" class="submit-btn discover-start-btn" onclick="switchToTab('evaluate')">
-                        Start Evaluating
+                        Start
                     </button>
                 </div>
 
@@ -186,7 +186,7 @@
                 <!-- D. ACTION BAR -->
                 <div class="builder-action-bar">
                     <button type="button" class="builder-save-btn" id="builder-save-btn" disabled>
-                        Save to History
+                        Save
                     </button>
                     <button type="button" class="builder-back-btn" id="builder-back-btn">
                         Back
@@ -268,7 +268,7 @@
                                     <span class="extracted-text-confidence" id="extracted-confidence"></span>
                                 </div>
                                 <textarea class="extracted-text-content" id="extracted-text-content" placeholder="Extracted bet text will appear here..."></textarea>
-                                <button type="button" class="use-extracted-btn" id="use-extracted-btn">Use This Text</button>
+                                <button type="button" class="use-extracted-btn" id="use-extracted-btn">Use Text</button>
                             </div>
                         </div>
 
@@ -276,7 +276,7 @@
                         <div class="input-panel" id="bundle-input-panel">
                             <div class="bundle-prompt">
                                 <p>Build a custom parlay using the Builder.</p>
-                                <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Go to Builder</button>
+                                <button type="button" class="secondary-btn" onclick="switchToTab('builder')">Open Builder</button>
                             </div>
                         </div>
 
@@ -341,7 +341,7 @@
                     </div>
 
                     <div id="eval-results-placeholder" class="results-placeholder">
-                        <p>Enter or upload your bet slip and click Evaluate</p>
+                        <p>Enter or upload your bet slip, then click Evaluate</p>
                     </div>
 
                     <div id="eval-results-content" class="hidden">
@@ -420,7 +420,7 @@
 
                         <!-- Card 3: FASTEST FIX (always shown if available) -->
                         <div class="result-card fix-card hidden" id="fix-card">
-                            <div class="result-card-header">Recommended Fix <span class="fix-card-arrow">&rarr;</span></div>
+                            <div class="result-card-header">Fix <span class="fix-card-arrow">&rarr;</span></div>
                             <div class="fix-card-action" id="fix-card-action"></div>
                             <div class="fix-card-description" id="fix-card-description"></div>
                         </div>
@@ -478,13 +478,13 @@
 
                         <!-- BEST Card: RECOMMENDED NEXT STEP (tier-gated) -->
                         <div class="result-card hidden" id="next-step-card" style="border-left: 4px solid var(--accent); background: rgba(74, 158, 255, 0.03);">
-                            <div class="result-card-header">Recommended Next Step <span class="tier-indicator best">BEST</span></div>
+                            <div class="result-card-header">Next Step <span class="tier-indicator best">BEST</span></div>
                             <div id="next-step-content"></div>
                         </div>
 
                         <!-- IMPROVE IN BUILDER Button -->
                         <button type="button" class="improve-btn" id="improve-btn" disabled>
-                            Improve in Builder
+                            Improve
                         </button>
 
                         <!-- Expandable Details (raw data) -->
@@ -644,7 +644,7 @@
                 <!-- Empty state (shown when no items) -->
                 <div id="history-empty" class="history-empty-state hidden">
                     <p>No evaluations yet.</p>
-                    <button type="button" class="history-start-btn" onclick="switchToTab('evaluate')">Start Evaluating</button>
+                    <button type="button" class="history-start-btn" onclick="switchToTab('evaluate')">Start</button>
                 </div>
             </div>
         </div> <!-- End tab-history -->
