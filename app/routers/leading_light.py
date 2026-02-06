@@ -954,11 +954,25 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
         "max_tokens": 300,
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=payload,
+    logger.info("OCR_VISION_API_CALL starting OpenAI Vision API request")
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+        logger.info("OCR_VISION_API_RESPONSE status=%d", response.status_code)
+    except Exception as e:
+        logger.error("OCR_VISION_API_ERROR exception=%s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Vision API request failed",
+                "detail": str(e),
+                "code": "VISION_API_REQUEST_ERROR",
+            },
         )
 
     if response.status_code != 200:
@@ -980,8 +994,11 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
     try:
         result = response.json()
         extracted_text = result["choices"][0]["message"]["content"].strip()
+        
+        logger.info("OCR_EXTRACTED_TEXT length=%d preview=%s", len(extracted_text), extracted_text[:100])
 
         if "NOT_A_BET_SLIP" in extracted_text:
+            logger.warning("OCR_NOT_BET_SLIP extracted_text=%s", extracted_text)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -1138,6 +1155,7 @@ async def evaluate_from_image(
     except HTTPException:
         raise
     except ValueError as e:
+        logger.error("OCR_PARSE_ERROR request_id=%s error=%s", request_id, str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -1147,6 +1165,7 @@ async def evaluate_from_image(
             },
         )
     except Exception as e:
+        logger.error("OCR_INTERNAL_ERROR request_id=%s error=%s", request_id, str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
