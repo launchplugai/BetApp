@@ -71,6 +71,10 @@ from app.delta_engine import (
     compute_snapshot_delta,
     get_previous_snapshot_for_session,
     store_snapshot_for_session,
+    # S7-B: Confidence Trend
+    store_signal_for_session,
+    get_previous_signal_for_session,
+    compute_confidence_trend,
 )
 
 # Grounding Score Engine (Ticket 38B-C2)
@@ -150,6 +154,12 @@ class PipelineResponse:
 
     # Ticket 26: Gentle Guidance (optional adjustment hints)
     gentle_guidance: Optional[dict] = None
+
+    # S7-A: Next Action Guidance (single soft suggestion for what to do next)
+    next_action: Optional[dict] = None
+
+    # S7-B: Confidence Trend (comparison with previous evaluation in session)
+    confidence_trend: Optional[dict] = None
 
     # Ticket 27: Grounding Warnings (soft warnings for unrecognized entities)
     grounding_warnings: Optional[list] = None
@@ -1991,6 +2001,64 @@ def _build_gentle_guidance(primary_failure: dict, signal_info: dict) -> Optional
     }
 
 
+def _build_next_action_guidance(
+    signal_info: dict,
+    primary_failure: Optional[dict],
+    has_fix: bool = False,
+    has_warnings: bool = False,
+    has_correlations: bool = False
+) -> Optional[dict]:
+    """
+    S7-A: Next Action Guidance.
+
+    Provides a single soft suggestion for what the user might do next after evaluation.
+    Rules:
+    - Use existing signals only
+    - Exactly ONE suggestion per run
+    - Action-oriented (not bet-adjustment)
+    - Calm, helpful tone
+
+    Returns dict with single suggestion string, or None if not applicable.
+    """
+    if not signal_info:
+        return None
+
+    signal = signal_info.get("signal", "yellow")
+
+    # Priority logic: most urgent action first
+    
+    # Red signal + fix available → suggest using builder
+    if signal == "red" and has_fix:
+        return {"suggestion": "Consider using the builder to address the highlighted issue"}
+    
+    # Red signal without fix → suggest reviewing details
+    if signal == "red":
+        return {"suggestion": "Review the primary failure details to understand the risk"}
+    
+    # Yellow signal + warnings → point to warnings
+    if signal == "yellow" and has_warnings:
+        return {"suggestion": "Review the warnings before finalizing this bet"}
+    
+    # Yellow signal + correlations → point to correlation details
+    if signal == "yellow" and has_correlations:
+        return {"suggestion": "Check the correlation details to understand how legs interact"}
+    
+    # Yellow signal general → encourage review
+    if signal == "yellow":
+        return {"suggestion": "Review the analysis before proceeding"}
+    
+    # Green signal → positive confidence
+    if signal == "green":
+        return {"suggestion": "This structure looks solid — proceed when ready"}
+    
+    # Blue signal → highest confidence
+    if signal == "blue":
+        return {"suggestion": "Structure is clean and well-balanced"}
+    
+    # Default fallback
+    return {"suggestion": "Review the evaluation details"}
+
+
 def _build_grounding_warnings(
     evaluated_parlay: dict,
     entities: dict,
@@ -2594,6 +2662,24 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         final_verdict=final_verdict,
     )
 
+    # Step 27: S7-A — Build next action guidance
+    has_fix = bool(primary_failure and primary_failure.get("fastest_fix"))
+    has_warnings = bool(explain_filtered.get("warnings"))
+    has_correlations = bool(evaluation.correlations)
+    next_action = _build_next_action_guidance(
+        signal_info=signal_info,
+        primary_failure=primary_failure,
+        has_fix=has_fix,
+        has_warnings=has_warnings,
+        has_correlations=has_correlations
+    )
+
+    # Step 28: S7-B — Compute confidence trend
+    previous_signal = get_previous_signal_for_session(session_id)
+    confidence_trend = compute_confidence_trend(previous_signal, signal_info)
+    # Store current signal for next evaluation
+    store_signal_for_session(session_id, signal_info)
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -2609,6 +2695,8 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         notable_legs=notable_legs,
         final_verdict=final_verdict,
         gentle_guidance=gentle_guidance,
+        next_action=next_action,
+        confidence_trend=confidence_trend,
         grounding_warnings=grounding_warnings if grounding_warnings else None,
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,

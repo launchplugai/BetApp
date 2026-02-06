@@ -268,3 +268,115 @@ def get_previous_snapshot_for_session(
 
 # Module-level storage (temporary, for MVP)
 _snapshot_storage: dict[str, dict] = {}
+
+
+# =============================================================================
+# S7-B: Confidence Trend Tracking
+# =============================================================================
+
+# Signal ordinal mapping (higher = better)
+_SIGNAL_ORDER = {"red": 0, "yellow": 1, "green": 2, "blue": 3}
+
+
+def store_signal_for_session(
+    session_id: str,
+    signal_info: dict,
+) -> None:
+    """
+    Store signal info for trend comparison.
+
+    Args:
+        session_id: Session identifier (parlay_id)
+        signal_info: Current signal info dict with 'signal' and 'fragilityScore'
+    """
+    global _signal_storage
+    if "_signal_storage" not in globals():
+        _signal_storage = {}
+    
+    _signal_storage[session_id] = {
+        "signal": signal_info.get("signal", "yellow"),
+        "fragility_score": signal_info.get("fragilityScore", 50),
+    }
+
+
+def get_previous_signal_for_session(
+    session_id: str,
+) -> Optional[dict]:
+    """
+    Retrieve previous signal info for session.
+
+    Returns:
+        Previous signal dict with 'signal' and 'fragility_score', or None
+    """
+    global _signal_storage
+    if "_signal_storage" not in globals():
+        return None
+    
+    return _signal_storage.get(session_id)
+
+
+def compute_confidence_trend(
+    previous_signal: Optional[dict],
+    current_signal: dict,
+) -> dict:
+    """
+    S7-B: Compute confidence trend between evaluations.
+
+    Compares signal level and fragility score to determine if confidence
+    has improved, softened, or remained unchanged.
+
+    Args:
+        previous_signal: Previous evaluation's signal info (or None for first eval)
+        current_signal: Current evaluation's signal info
+
+    Returns:
+        dict with:
+        - has_trend: bool (False if first evaluation)
+        - trend: str ("improved", "softened", "unchanged")
+        - trend_text: str (human-readable description, subtle)
+    """
+    if previous_signal is None:
+        return {
+            "has_trend": False,
+            "trend": None,
+            "trend_text": None,
+        }
+
+    prev_signal = previous_signal.get("signal", "yellow")
+    curr_signal = current_signal.get("signal", "yellow")
+    prev_score = previous_signal.get("fragility_score", 50)
+    curr_score = current_signal.get("fragilityScore", 50)
+
+    prev_order = _SIGNAL_ORDER.get(prev_signal, 1)
+    curr_order = _SIGNAL_ORDER.get(curr_signal, 1)
+
+    # Determine trend based on signal change and fragility score
+    if curr_order > prev_order:
+        trend = "improved"
+        trend_text = "Confidence has strengthened since your last evaluation"
+    elif curr_order < prev_order:
+        trend = "softened"
+        trend_text = "Confidence has softened since your last evaluation"
+    else:
+        # Same signal level - compare fragility scores
+        # Lower fragility = better (more confident)
+        score_diff = prev_score - curr_score
+        if score_diff > 2:  # Meaningful improvement (lower fragility)
+            trend = "improved"
+            trend_text = "Slightly more confident than your last evaluation"
+        elif score_diff < -2:  # Meaningful softening (higher fragility)
+            trend = "softened"
+            trend_text = "Slightly less confident than your last evaluation"
+        else:
+            trend = "unchanged"
+            trend_text = "Confidence level is similar to your last evaluation"
+
+    return {
+        "has_trend": True,
+        "trend": trend,
+        "trend_text": trend_text,
+    }
+
+
+# Module-level storage for signal tracking
+_signal_storage: dict[str, dict] = {}
