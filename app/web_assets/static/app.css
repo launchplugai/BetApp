@@ -1074,13 +1074,20 @@ header a {
     font-size: var(--text-base);
     font-weight: 600;
     cursor: pointer;
-    transition: background var(--transition-fast);
+    transition: all var(--transition-fast);
 }
-.submit-btn:hover { background: var(--accent-hover); }
+.submit-btn:hover { 
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+.submit-btn:active {
+    transform: translateY(0);
+}
 .submit-btn:disabled {
     background: var(--surface-overlay);
     color: var(--fg-muted);
     cursor: not-allowed;
+    transform: none;
 }
 
 /* Results Section */
@@ -1617,6 +1624,10 @@ header a {
 .secondary-btn:hover {
     background: var(--accent);
     color: var(--surface-base);
+    transform: translateY(-1px);
+}
+.secondary-btn:active {
+    transform: translateY(0);
 }
 .secondary-btn.disabled {
     border-color: var(--fg-faint);
