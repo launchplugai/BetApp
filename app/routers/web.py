@@ -53,6 +53,26 @@ class WebEvaluateRequest(BaseModel):
 
 router = APIRouter(tags=["web"])
 
+
+# =============================================================================
+# Serialization Helpers
+# =============================================================================
+
+def snake_to_camel(snake_str: str) -> str:
+    """Convert snake_case to camelCase for JS frontend compatibility."""
+    components = snake_str.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+
+def convert_keys_to_camel(obj):
+    """Recursively convert dict keys from snake_case to camelCase."""
+    if isinstance(obj, dict):
+        return {snake_to_camel(k): convert_keys_to_camel(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_keys_to_camel(item) for item in obj]
+    else:
+        return obj
+
 # Template setup
 templates_dir = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
@@ -138,5 +158,8 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     from dataclasses import asdict
     result_dict = asdict(result)
     result_dict["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
+    
+    # Convert snake_case to camelCase for JS frontend compatibility
+    result_dict = convert_keys_to_camel(result_dict)
 
     return result_dict

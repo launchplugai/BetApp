@@ -368,8 +368,8 @@ class TestTicket25EvaluationReceipt:
         data = response.json()
         assert "evaluatedParlay" in data
         parlay = data["evaluatedParlay"]
-        assert "leg_count" in parlay
-        assert parlay["leg_count"] == 3
+        assert "legCount" in parlay
+        assert parlay["legCount"] == 3
         assert "legs" in parlay
         assert len(parlay["legs"]) == 3
 
