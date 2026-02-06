@@ -14,25 +14,25 @@
         // S5-A: Copy Debug Info
         // ============================================================
 
-        function copyDebugInfo() {{
+        function copyDebugInfo() {
             const version = 'v0.2.1';
             const commit = '{git_sha}';
             const timestamp = new Date().toISOString();
-            const debugText = `DNA Bet Engine ${{version}}\\nCommit: ${{commit}}\\nTimestamp: ${{timestamp}}`;
+            const debugText = `DNA Bet Engine ${version}\\nCommit: ${commit}\\nTimestamp: ${timestamp}`;
             
-            navigator.clipboard.writeText(debugText).then(() => {{
+            navigator.clipboard.writeText(debugText).then(() => {
                 const btn = event.target;
                 const originalText = btn.textContent;
                 btn.textContent = 'Copied!';
                 btn.style.color = 'var(--green)';
-                setTimeout(() => {{
+                setTimeout(() => {
                     btn.textContent = originalText;
                     btn.style.color = '';
-                }}, 2000);
-            }}).catch(err => {{
+                }, 2000);
+            }).catch(err => {
                 console.error('Copy failed:', err);
-            }});
-        }}
+            });
+        }
 
         // ============================================================
         // Ticket 37: Deterministic Leg ID Generation
@@ -41,59 +41,59 @@
         /**
          * Ticket 37B: Get canonical string for leg hashing.
          */
-        function getCanonicalLegString(leg) {{
+        function getCanonicalLegString(leg) {
             return [
                 (leg.entity || '').toLowerCase().trim(),
                 (leg.market || '').toLowerCase().trim(),
                 (leg.value || '').toString().toLowerCase().trim(),
                 (leg.sport || '').toLowerCase().trim()
             ].join('|');
-        }}
+        }
 
         /**
          * Ticket 37B: djb2 hash algorithm (sync fallback).
          */
-        function hashDjb2(str) {{
+        function hashDjb2(str) {
             let hash = 5381;
-            for (let i = 0; i < str.length; i++) {{
+            for (let i = 0; i < str.length; i++) {
                 hash = ((hash << 5) + hash) + str.charCodeAt(i);
                 hash = hash & hash;
-            }}
+            }
             return 'leg_' + (hash >>> 0).toString(16).padStart(8, '0');
-        }}
+        }
 
         /**
          * Ticket 37B: Generate leg_id using SHA-256 (WebCrypto) with djb2 fallback.
          * Uses first 16 hex chars of SHA-256 for 64 bits of entropy.
          */
-        async function generateLegId(leg) {{
+        async function generateLegId(leg) {
             const canonical = getCanonicalLegString(leg);
 
             // Try WebCrypto SHA-256 first
-            if (typeof crypto !== 'undefined' && crypto.subtle) {{
-                try {{
+            if (typeof crypto !== 'undefined' && crypto.subtle) {
+                try {
                     const encoder = new TextEncoder();
                     const data = encoder.encode(canonical);
                     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
                     const hashArray = Array.from(new Uint8Array(hashBuffer));
                     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                     return 'leg_' + hashHex.substring(0, 16);
-                }} catch (e) {{
+                } catch (e) {
                     // WebCrypto failed, fall through to djb2
-                }}
-            }}
+                }
+            }
 
             // Fallback to djb2 if WebCrypto unavailable
             return hashDjb2(canonical);
-        }}
+        }
 
         /**
          * Ticket 37B: Synchronous leg_id generation (djb2 only).
          * Use async generateLegId() when possible for SHA-256.
          */
-        function generateLegIdSync(leg) {{
+        function generateLegIdSync(leg) {
             return hashDjb2(getCanonicalLegString(leg));
-        }}
+        }
 
         // Elements
         const betInput = document.getElementById('bet-input');
@@ -130,24 +130,24 @@
          * Parse OCR text into canonical leg objects.
          * Each line is treated as a potential leg.
          */
-        function parseOcrToLegs(text) {{
+        function parseOcrToLegs(text) {
             const lines = text.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
             const legs = [];
 
-            for (const line of lines) {{
+            for (const line of lines) {
                 const leg = parseOcrLine(line);
-                if (leg) {{
+                if (leg) {
                     legs.push(leg);
-                }}
-            }}
+                }
+            }
 
             return legs;
-        }}
+        }
 
         /**
          * Parse a single OCR line into a canonical leg object.
          */
-        function parseOcrLine(line) {{
+        function parseOcrLine(line) {
             const raw = line;
             let entity = '';
             let market = 'unknown';
@@ -165,61 +165,61 @@
 
             // Detect market type and extract components
             // Moneyline patterns: "Lakers ML", "Lakers to win", "Lakers moneyline"
-            if (/\\b(ml|moneyline|to win)\\b/i.test(line)) {{
+            if (/\\b(ml|moneyline|to win)\\b/i.test(line)) {
                 market = 'moneyline';
                 entity = line.replace(/\\b(ml|moneyline|to win)\\b/gi, '').trim();
                 entity = cleanEntityName(entity);
-            }}
+            }
             // Spread patterns: "Lakers -5.5", "Lakers +3", "Lakers -5.5 spread"
-            else if (/[+-]\\d+\\.?\\d*/i.test(line) && !/\\b(over|under|o\\/u|pts|points|rebounds|assists|3pt)\\b/i.test(line)) {{
+            else if (/[+-]\\d+\\.?\\d*/i.test(line) && !/\\b(over|under|o\\/u|pts|points|rebounds|assists|3pt)\\b/i.test(line)) {
                 market = 'spread';
                 const spreadMatch = line.match(/([+-]\\d+\\.?\\d*)/);
-                if (spreadMatch) {{
+                if (spreadMatch) {
                     value = spreadMatch[1];
                     entity = line.replace(/[+-]\\d+\\.?\\d*/g, '').replace(/\\bspread\\b/gi, '').trim();
                     entity = cleanEntityName(entity);
-                }}
-            }}
+                }
+            }
             // Total patterns: "over 220", "under 45.5", "Lakers o220", "Lakers u45"
-            else if (/\\b(over|under|o\\/u)\\b/i.test(line) || /[ou]\\d+\\.?\\d*/i.test(line)) {{
+            else if (/\\b(over|under|o\\/u)\\b/i.test(line) || /[ou]\\d+\\.?\\d*/i.test(line)) {
                 market = 'total';
                 const overMatch = line.match(/\\b(over|o)\\s*(\\d+\\.?\\d*)/i);
                 const underMatch = line.match(/\\b(under|u)\\s*(\\d+\\.?\\d*)/i);
-                if (overMatch) {{
+                if (overMatch) {
                     value = 'over ' + overMatch[2];
                     entity = line.replace(/\\b(over|o)\\s*\\d+\\.?\\d*/gi, '').trim();
-                }} else if (underMatch) {{
+                } else if (underMatch) {
                     value = 'under ' + underMatch[2];
                     entity = line.replace(/\\b(under|u)\\s*\\d+\\.?\\d*/gi, '').trim();
-                }}
+                }
                 entity = cleanEntityName(entity);
-            }}
+            }
             // Player prop patterns: "LeBron over 25.5 pts", "Curry 5.5+ 3pt"
-            else if (/\\b(pts|points|rebounds|assists|3pt|threes|steals|blocks)\\b/i.test(line)) {{
+            else if (/\\b(pts|points|rebounds|assists|3pt|threes|steals|blocks)\\b/i.test(line)) {
                 market = 'player_prop';
                 const propMatch = line.match(/(over|under)?\\s*(\\d+\\.?\\d*)\\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/i);
-                if (propMatch) {{
+                if (propMatch) {
                     const direction = propMatch[1] ? propMatch[1].toLowerCase() : 'over';
                     value = direction + ' ' + propMatch[2] + ' ' + propMatch[3].toLowerCase();
-                }}
+                }
                 entity = line.replace(/(over|under)?\\s*\\d+\\.?\\d*\\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/gi, '').trim();
                 entity = cleanEntityName(entity);
-            }}
+            }
             // If no pattern matched, use the whole line as entity with unknown market
-            else {{
+            else {
                 entity = cleanEntityName(line);
-            }}
+            }
 
             // Skip empty entities
-            if (!entity || entity.length < 2) {{
+            if (!entity || entity.length < 2) {
                 entity = line.split(/\\s+/)[0] || line;
-            }}
+            }
 
             // Ticket 37: Generate deterministic leg_id
-            const legData = {{ entity, market, value, sport }};
+            const legData = { entity, market, value, sport };
             const leg_id = generateLegIdSync(legData);
 
-            return {{
+            return {
                 leg_id: leg_id,
                 entity: entity,
                 market: market,
@@ -228,21 +228,21 @@
                 text: raw,
                 sport: sport,
                 source: 'ocr',
-                clarity: getOcrLegClarity({{ entity, market, value, raw }})
-            }};
-        }}
+                clarity: getOcrLegClarity({ entity, market, value, raw })
+            };
+        }
 
         /**
          * Clean up entity name by removing common noise words.
          */
-        function cleanEntityName(name) {{
+        function cleanEntityName(name) {
             return name
                 .replace(/\\b(nba|nfl|mlb|ncaa|college|basketball|football|baseball)\\b/gi, '')
                 .replace(/\\b(game|match|vs|@|at)\\b/gi, '')
                 .replace(/[,()]/g, '')
                 .replace(/\\s+/g, ' ')
                 .trim();
-        }}
+        }
 
         // ============================================================
         // Ticket 34 Part B: Per-Leg Confidence Indicators
@@ -252,29 +252,29 @@
          * Determine clarity indicator for an OCR-derived leg.
          * Returns: 'clear', 'review', or 'ambiguous'
          */
-        function getOcrLegClarity(leg) {{
+        function getOcrLegClarity(leg) {
             let score = 0;
 
             // Has recognized market type (+2)
-            if (leg.market && leg.market !== 'unknown') {{
+            if (leg.market && leg.market !== 'unknown') {
                 score += 2;
-            }}
+            }
 
             // Has clean entity name (+1)
-            if (leg.entity && leg.entity.length >= 3 && /^[a-zA-Z\\s]+$/.test(leg.entity)) {{
+            if (leg.entity && leg.entity.length >= 3 && /^[a-zA-Z\\s]+$/.test(leg.entity)) {
                 score += 1;
-            }}
+            }
 
             // Has numeric value for spread/total/prop (+1)
-            if (leg.value && /\\d/.test(leg.value)) {{
+            if (leg.value && /\\d/.test(leg.value)) {
                 score += 1;
-            }}
+            }
 
             // Contains market keywords (+1)
             const marketKeywords = /(ml|moneyline|spread|over|under|pts|points|rebounds|assists)/i;
-            if (marketKeywords.test(leg.raw)) {{
+            if (marketKeywords.test(leg.raw)) {
                 score += 1;
-            }}
+            }
 
             // Penalize if raw text is very short or has unusual characters
             if (leg.raw.length < 5) score -= 1;
@@ -284,50 +284,50 @@
             if (score >= 4) return 'clear';
             if (score >= 2) return 'review';
             return 'ambiguous';
-        }}
+        }
 
         /**
          * Get clarity icon and label for display.
          */
-        function getClarityDisplay(clarity) {{
-            const displays = {{
-                'clear': {{ icon: '&#10003;', label: 'Clear match', css: 'clear' }},
-                'review': {{ icon: '&#9888;', label: 'Review recommended', css: 'review' }},
-                'ambiguous': {{ icon: '?', label: 'Ambiguous', css: 'ambiguous' }}
-            }};
+        function getClarityDisplay(clarity) {
+            const displays = {
+                'clear': { icon: '&#10003;', label: 'Clear match', css: 'clear' },
+                'review': { icon: '&#9888;', label: 'Review recommended', css: 'review' },
+                'ambiguous': { icon: '?', label: 'Ambiguous', css: 'ambiguous' }
+            };
             return displays[clarity] || displays['ambiguous'];
-        }}
+        }
 
         /**
          * Check if any OCR legs need review (have review or ambiguous clarity).
          */
-        function hasLegsNeedingReview() {{
+        function hasLegsNeedingReview() {
             return builderLegs.some(leg =>
                 leg.source === 'ocr' && (leg.clarity === 'review' || leg.clarity === 'ambiguous')
             );
-        }}
+        }
 
         // Ticket 32 Part A: Image Upload Handler
-        if (imageInput) {{
-            imageInput.addEventListener('change', async (e) => {{
+        if (imageInput) {
+            imageInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
                 // Validate file type
-                if (!file.type.match(/^image\/(png|jpeg|jpg|webp)$/)) {{
+                if (!file.type.match(/^image\/(png|jpeg|jpg|webp)$/)) {
                     imageStatus.textContent = 'Invalid file type. Use PNG, JPG, or WebP.';
                     imageStatus.className = 'image-status error';
                     imageStatus.style.display = 'block';
                     return;
-                }}
+                }
 
                 // Validate file size (max 5MB)
-                if (file.size > 5 * 1024 * 1024) {{
+                if (file.size > 5 * 1024 * 1024) {
                     imageStatus.textContent = 'File too large. Maximum 5MB.';
                     imageStatus.className = 'image-status error';
                     imageStatus.style.display = 'block';
                     return;
-                }}
+                }
 
                 // Show loading state
                 imageStatus.textContent = 'Extracting text from image...';
@@ -335,52 +335,52 @@
                 imageStatus.style.display = 'block';
                 ocrResult.style.display = 'none';
 
-                try {{
+                try {
                     const formData = new FormData();
                     // Ticket 38A fix: Backend expects 'image' not 'file'
                     formData.append('image', file);
 
-                    const response = await fetch('/leading-light/evaluate/image', {{
+                    const response = await fetch('/leading-light/evaluate/image', {
                         method: 'POST',
                         body: formData
-                    }});
+                    });
 
                     const data = await response.json();
 
-                    if (!response.ok) {{
+                    if (!response.ok) {
                         // Ticket 38A: Safely extract error message from response
                         throw new Error(safeResponseError(data, 'OCR extraction failed'));
-                    }}
+                    }
 
                     // Show extracted text with warning banner
                     const extractedText = data.extracted_text || data.image_parse?.extracted_text || '';
-                    if (extractedText) {{
+                    if (extractedText) {
                         ocrText.value = extractedText;
                         ocrResult.style.display = 'block';
                         imageStatus.textContent = 'Text extracted successfully.';
                         imageStatus.className = 'image-status';
-                    }} else {{
+                    } else {
                         imageStatus.textContent = 'No text found in image.';
                         imageStatus.className = 'image-status error';
-                    }}
-                }} catch (err) {{
+                    }
+                } catch (err) {
                     // Ticket 38A: Safe error string extraction
                     imageStatus.textContent = 'Error: ' + safeAnyToString(err, 'OCR extraction failed');
                     imageStatus.className = 'image-status error';
-                }}
-            }});
-        }}
+                }
+            });
+        }
 
         // Ticket 34: Use OCR Text Button - Now populates Builder with parsed legs
         // Ticket 36: Reset refine loop state when importing OCR (fresh start)
-        if (useOcrBtn) {{
-            useOcrBtn.addEventListener('click', () => {{
+        if (useOcrBtn) {
+            useOcrBtn.addEventListener('click', () => {
                 const extractedText = ocrText.value.trim();
-                if (extractedText) {{
+                if (extractedText) {
                     // Parse OCR text into canonical legs
                     const ocrLegs = parseOcrToLegs(extractedText);
 
-                    if (ocrLegs.length > 0) {{
+                    if (ocrLegs.length > 0) {
                         // Ticket 36/37: Clear refine loop state - this is a fresh start
                         lockedLegIds.clear();
                         resultsLegs = [];
@@ -401,15 +401,15 @@
                         syncTextarea();
 
                         // Show OCR info box (Part D)
-                        if (ocrInfoBox) {{
+                        if (ocrInfoBox) {
                             ocrInfoBox.classList.add('active');
-                        }}
+                        }
 
                         // Hide the OCR result section since legs are now in builder
                         ocrResult.style.display = 'none';
                         imageStatus.textContent = ocrLegs.length + ' leg(s) added to Builder.';
                         imageStatus.className = 'image-status';
-                    }} else {{
+                    } else {
                         // Fallback: copy to textarea if parsing failed
                         betInput.value = extractedText;
                         document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -417,112 +417,112 @@
                         builderSection.classList.remove('active');
                         pasteSection.classList.add('active');
                         currentMode = 'paste';
-                    }}
-                }}
-            }});
-        }}
+                    }
+                }
+            });
+        }
 
         // ============================================================
         // Ticket 32 Part B: Session Manager (localStorage)
         // ============================================================
-        const SessionManager = {{
+        const SessionManager = {
             STORAGE_KEY: 'dna_session',
             MAX_HISTORY: 5,
 
             // Get or create session
-            getSession: function() {{
-                try {{
+            getSession: function() {
+                try {
                     const stored = localStorage.getItem(this.STORAGE_KEY);
-                    if (stored) {{
+                    if (stored) {
                         return JSON.parse(stored);
-                    }}
-                }} catch (e) {{
+                    }
+                } catch (e) {
                     console.warn('Session load failed:', e);
-                }}
+                }
 
                 // Create new session
-                const session = {{
+                const session = {
                     id: 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                     name: '',
                     createdAt: new Date().toISOString(),
                     lastActivity: new Date().toISOString(),
                     evaluations: [],
                     refinementState: null
-                }};
+                };
                 this.saveSession(session);
                 return session;
-            }},
+            },
 
             // Save session
-            saveSession: function(session) {{
-                try {{
+            saveSession: function(session) {
+                try {
                     session.lastActivity = new Date().toISOString();
                     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(session));
-                }} catch (e) {{
+                } catch (e) {
                     console.warn('Session save failed:', e);
-                }}
-            }},
+                }
+            },
 
             // Update session name
-            setSessionName: function(name) {{
+            setSessionName: function(name) {
                 const session = this.getSession();
                 session.name = name || '';
                 this.saveSession(session);
-            }},
+            },
 
             // Add evaluation to history
-            addEvaluation: function(evalData) {{
+            addEvaluation: function(evalData) {
                 const session = this.getSession();
-                const entry = {{
+                const entry = {
                     id: 'eval_' + Date.now(),
                     timestamp: new Date().toISOString(),
                     input: evalData.input || '',
                     signal: evalData.signal || '',
                     grade: evalData.grade || '',
                     legCount: evalData.legCount || 0
-                }};
+                };
                 session.evaluations.unshift(entry);
                 // Keep only last MAX_HISTORY
                 session.evaluations = session.evaluations.slice(0, this.MAX_HISTORY);
                 this.saveSession(session);
                 return entry;
-            }},
+            },
 
             // Get evaluation history
-            getEvaluations: function() {{
+            getEvaluations: function() {
                 return this.getSession().evaluations || [];
-            }},
+            },
 
             // Save refinement state
-            saveRefinement: function(state) {{
+            saveRefinement: function(state) {
                 const session = this.getSession();
                 session.refinementState = state;
                 this.saveSession(session);
-            }},
+            },
 
             // Get refinement state
-            getRefinement: function() {{
+            getRefinement: function() {
                 return this.getSession().refinementState;
-            }},
+            },
 
             // Clear refinement state
-            clearRefinement: function() {{
+            clearRefinement: function() {
                 const session = this.getSession();
                 session.refinementState = null;
                 this.saveSession(session);
-            }},
+            },
 
             // Get session info for display
-            getInfo: function() {{
+            getInfo: function() {
                 const session = this.getSession();
-                return {{
+                return {
                     id: session.id,
                     name: session.name,
                     evalCount: session.evaluations.length,
                     hasRefinement: !!session.refinementState
-                }};
-            }}
-        }};
+                };
+            }
+        };
 
         // Export for testing
         window.SessionManager = SessionManager;
@@ -531,80 +531,80 @@
         const sessionNameInput = document.getElementById('session-name');
         const sessionHistorySpan = document.getElementById('session-history');
 
-        function updateSessionUI() {{
+        function updateSessionUI() {
             const info = SessionManager.getInfo();
-            if (sessionNameInput) {{
+            if (sessionNameInput) {
                 sessionNameInput.value = info.name || '';
-            }}
-            if (sessionHistorySpan) {{
+            }
+            if (sessionHistorySpan) {
                 sessionHistorySpan.textContent = info.evalCount + ' evaluation' + (info.evalCount !== 1 ? 's' : '');
-            }}
-        }}
+            }
+        }
 
         // Initialize session display
         updateSessionUI();
 
         // Handle session name changes
-        if (sessionNameInput) {{
-            sessionNameInput.addEventListener('blur', () => {{
+        if (sessionNameInput) {
+            sessionNameInput.addEventListener('blur', () => {
                 SessionManager.setSessionName(sessionNameInput.value.trim());
-            }});
-            sessionNameInput.addEventListener('keydown', (e) => {{
-                if (e.key === 'Enter') {{
+            });
+            sessionNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
                     sessionNameInput.blur();
-                }}
-            }});
-        }}
+                }
+            });
+        }
 
         // Hook into results display to update session UI
         const originalShowResults = showResults;
         // Will be reassigned after showResults is defined
 
         // Ticket 23: Mode Toggle
-        document.querySelectorAll('.mode-btn').forEach(btn => {{
-            btn.addEventListener('click', () => {{
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentMode = btn.dataset.mode;
-                if (currentMode === 'builder') {{
+                if (currentMode === 'builder') {
                     builderSection.classList.add('active');
                     pasteSection.classList.remove('active');
-                }} else {{
+                } else {
                     builderSection.classList.remove('active');
                     pasteSection.classList.add('active');
-                }}
-            }});
-        }});
+                }
+            });
+        });
 
         // Ticket 23: Quick Add Chips
-        document.querySelectorAll('.quick-chip').forEach(chip => {{
-            chip.addEventListener('click', () => {{
+        document.querySelectorAll('.quick-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
                 const selectedMarket = chip.dataset.market;
                 document.getElementById('builder-market').value = selectedMarket;
                 updateLineRowVisibility(selectedMarket);
                 document.getElementById('builder-team').focus();
-            }});
-        }});
+            });
+        });
 
         // Show/hide line row based on market type
-        function updateLineRowVisibility(market) {{
+        function updateLineRowVisibility(market) {
             const lineRow = document.getElementById('line-row');
-            if (market === 'Spread' || market === 'Total' || market === 'Player Prop') {{
+            if (market === 'Spread' || market === 'Total' || market === 'Player Prop') {
                 lineRow.classList.add('active');
-            }} else {{
+            } else {
                 lineRow.classList.remove('active');
-            }}
-        }}
+            }
+        }
 
         // Market dropdown change handler
-        document.getElementById('builder-market').addEventListener('change', (e) => {{
+        document.getElementById('builder-market').addEventListener('change', (e) => {
             updateLineRowVisibility(e.target.value);
-        }});
+        });
 
         // Ticket 23: Add Leg
         document.getElementById('add-leg-btn').addEventListener('click', addLeg);
 
-        function addLeg() {{
+        function addLeg() {
             const market = document.getElementById('builder-market').value;
             const team = document.getElementById('builder-team').value.trim();
             const sign = document.getElementById('builder-sign').value;
@@ -613,65 +613,65 @@
 
             // Build the full line (sign + value)
             let line = '';
-            if (lineValue) {{
+            if (lineValue) {
                 line = sign + lineValue;
-            }}
+            }
 
             // Validation
-            if (!market) {{
+            if (!market) {
                 showBuilderWarning('Please select a market type');
                 return;
-            }}
-            if (!team) {{
+            }
+            if (!team) {
                 showBuilderWarning('Please enter a team or player');
                 return;
-            }}
+            }
             // Line is encouraged for Spread/Total/Prop but not strictly required
-            if ((market === 'Spread' || market === 'Total' || market === 'Player Prop') && !lineValue) {{
+            if ((market === 'Spread' || market === 'Total' || market === 'Player Prop') && !lineValue) {
                 showBuilderWarning('Line/value recommended for this market type');
                 // Don't return - allow adding without line
-            }}
+            }
 
             hideBuilderWarning();
 
             // Ticket 27: Map UI market to canonical market type
-            const marketMap = {{
+            const marketMap = {
                 'ML': 'moneyline',
                 'Spread': 'spread',
                 'Total': 'total',
                 'Player Prop': 'player_prop'
-            }};
+            };
             const canonicalMarket = marketMap[market] || 'unknown';
 
             // Build leg text (for display and textarea)
             let legText = team;
             let legValue = null;
-            if (market === 'ML') {{
+            if (market === 'ML') {
                 legText += ' ML';
-            }} else if (market === 'Spread') {{
+            } else if (market === 'Spread') {
                 legText += ' ' + (line || '');
                 legValue = line || null;
-            }} else if (market === 'Total') {{
+            } else if (market === 'Total') {
                 // For totals, use "over" or "under" based on sign
                 const overUnder = sign === '+' ? 'over' : 'under';
                 const totalText = lineValue ? overUnder + ' ' + lineValue : '';
                 legText += ' ' + totalText;
                 legValue = totalText || null;
-            }} else if (market === 'Player Prop') {{
+            } else if (market === 'Player Prop') {
                 // For props, use "over" or "under" based on sign
                 const overUnder = sign === '+' ? 'over' : 'under';
                 const propText = lineValue ? overUnder + ' ' + lineValue : 'prop';
                 legText += ' ' + propText;
                 legValue = propText || null;
-            }}
+            }
             legText = legText.trim();
 
             // Ticket 27 Part B: Add to legs array with canonical schema
             // Ticket 37: Include deterministic leg_id
-            const legData = {{ entity: team, market: canonicalMarket, value: legValue, sport: sport }};
+            const legData = { entity: team, market: canonicalMarket, value: legValue, sport: sport };
             const leg_id = generateLegIdSync(legData);
 
-            builderLegs.push({{
+            builderLegs.push({
                 leg_id: leg_id,
                 entity: team,
                 market: canonicalMarket,
@@ -680,73 +680,73 @@
                 // Keep display fields for UI
                 text: legText,
                 sport: sport,
-            }});
+            });
 
             renderLegs();
             syncTextarea();
             clearBuilderInputs();
-        }}
+        }
 
-        function removeLeg(index) {{
+        function removeLeg(index) {
             builderLegs.splice(index, 1);
             renderLegs();
             syncTextarea();
-        }}
+        }
 
-        function renderLegs() {{
+        function renderLegs() {
             // Clear existing leg items (but keep empty message)
             legsList.querySelectorAll('.leg-item').forEach(el => el.remove());
 
-            if (builderLegs.length === 0) {{
+            if (builderLegs.length === 0) {
                 legsEmpty.style.display = 'block';
-            }} else {{
+            } else {
                 legsEmpty.style.display = 'none';
-                builderLegs.forEach((leg, i) => {{
+                builderLegs.forEach((leg, i) => {
                     const item = document.createElement('div');
                     const isOcr = leg.source === 'ocr';
                     item.className = 'leg-item' + (isOcr ? ' ocr-leg editable' : '');
                     item.dataset.index = i;
 
                     // Build leg HTML with OCR metadata if applicable
-                    let legHtml = `<span class="leg-num">${{i + 1}}.</span>`;
-                    legHtml += `<span class="leg-text">${{escapeHtml(leg.text)}}</span>`;
+                    let legHtml = `<span class="leg-num">${i + 1}.</span>`;
+                    legHtml += `<span class="leg-text">${escapeHtml(leg.text)}</span>`;
 
                     // Ticket 34: Add meta section for OCR legs
-                    if (isOcr) {{
+                    if (isOcr) {
                         const clarityDisplay = getClarityDisplay(leg.clarity || 'review');
                         legHtml += `<div class="leg-meta">`;
-                        legHtml += `<span class="leg-clarity ${{clarityDisplay.css}}">${{clarityDisplay.icon}} ${{clarityDisplay.label}}</span>`;
+                        legHtml += `<span class="leg-clarity ${clarityDisplay.css}">${clarityDisplay.icon} ${clarityDisplay.label}</span>`;
                         legHtml += `<span class="leg-source-tag">Detected from slip</span>`;
                         legHtml += `</div>`;
-                    }}
+                    }
 
-                    legHtml += `<button class="remove-leg-btn" onclick="removeLeg(${{i}})">Remove</button>`;
+                    legHtml += `<button class="remove-leg-btn" onclick="removeLeg(${i})">Remove</button>`;
                     item.innerHTML = legHtml;
 
                     // Ticket 34: Click to edit OCR legs
-                    if (isOcr) {{
-                        item.addEventListener('click', (e) => {{
+                    if (isOcr) {
+                        item.addEventListener('click', (e) => {
                             // Don't trigger edit if clicking remove button
                             if (e.target.classList.contains('remove-leg-btn')) return;
                             startEditLeg(i);
-                        }});
-                    }}
+                        });
+                    }
 
                     legsList.appendChild(item);
-                }});
-            }}
-        }}
+                });
+            }
+        }
 
         // Ticket 34: Edit leg functionality
         let editingLegIndex = null;
 
-        function startEditLeg(index) {{
+        function startEditLeg(index) {
             // Don't start new edit if already editing
             if (editingLegIndex !== null) return;
 
             editingLegIndex = index;
             const leg = builderLegs[index];
-            const item = legsList.querySelector(`.leg-item[data-index="${{index}}"]`);
+            const item = legsList.querySelector(`.leg-item[data-index="${index}"]`);
 
             if (!item) return;
 
@@ -755,8 +755,8 @@
             item.classList.remove('editable');
             item.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px; width:100%;">
-                    <span class="leg-num">${{index + 1}}.</span>
-                    <input type="text" class="leg-edit-input" value="${{escapeHtml(leg.raw)}}" autofocus>
+                    <span class="leg-num">${index + 1}.</span>
+                    <input type="text" class="leg-edit-input" value="${escapeHtml(leg.raw)}" autofocus>
                 </div>
                 <div class="leg-edit-actions">
                     <button class="leg-edit-btn leg-edit-save">Save</button>
@@ -782,156 +782,156 @@
             cancelBtn.addEventListener('click', () => cancelEditLeg());
 
             // Enter to save, Escape to cancel
-            input.addEventListener('keydown', (e) => {{
-                if (e.key === 'Enter') {{
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
                     e.preventDefault();
                     saveEditLeg(index, input.value);
-                }} else if (e.key === 'Escape') {{
+                } else if (e.key === 'Escape') {
                     cancelEditLeg();
-                }}
-            }});
-        }}
+                }
+            });
+        }
 
-        function saveEditLeg(index, newText) {{
+        function saveEditLeg(index, newText) {
             newText = newText.trim();
-            if (newText) {{
+            if (newText) {
                 // Re-parse the edited text
                 const newLeg = parseOcrLine(newText);
                 // Mark as edited by user (upgrades clarity to clear since user reviewed it)
                 newLeg.clarity = 'clear';
                 builderLegs[index] = newLeg;
-            }}
+            }
             editingLegIndex = null;
             renderLegs();
             syncTextarea();
-        }}
+        }
 
-        function cancelEditLeg() {{
+        function cancelEditLeg() {
             editingLegIndex = null;
             renderLegs();
-        }}
+        }
 
-        function syncTextarea() {{
+        function syncTextarea() {
             // Update textarea with current legs (single source of truth)
             betInput.value = builderLegs.map(l => l.text).join('\\n');
-        }}
+        }
 
-        function clearBuilderInputs() {{
+        function clearBuilderInputs() {
             document.getElementById('builder-market').value = '';
             document.getElementById('builder-team').value = '';
             document.getElementById('builder-sign').value = '-';
             document.getElementById('builder-line').value = '';
             // Keep sport selected
             updateLineRowVisibility('');  // Hide line row when cleared
-        }}
+        }
 
-        function showBuilderWarning(msg) {{
+        function showBuilderWarning(msg) {
             builderWarning.textContent = msg;
             builderWarning.classList.add('active');
-        }}
+        }
 
-        function hideBuilderWarning() {{
+        function hideBuilderWarning() {
             builderWarning.classList.remove('active');
-        }}
+        }
 
-        function escapeHtml(text) {{
+        function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }}
+        }
 
         /**
          * Ticket 38A: Safe error message extraction.
          * Handles Error objects, API error responses, and unknown objects.
          * Never returns "[object Object]".
          */
-        function safeAnyToString(x, fallback) {{
-            if (x === null || x === undefined) {{
+        function safeAnyToString(x, fallback) {
+            if (x === null || x === undefined) {
                 return fallback || 'Unknown error';
-            }}
-            if (typeof x === 'string') {{
+            }
+            if (typeof x === 'string') {
                 return x;
-            }}
+            }
             // Error object
-            if (x.message && typeof x.message === 'string') {{
+            if (x.message && typeof x.message === 'string') {
                 return x.message;
-            }}
+            }
             // API error response shapes
-            if (x.detail) {{
+            if (x.detail) {
                 // Pydantic validation errors have detail as array
-                if (Array.isArray(x.detail)) {{
+                if (Array.isArray(x.detail)) {
                     const msgs = x.detail.map(d => d.msg || d.message || JSON.stringify(d)).join('; ');
                     return msgs || fallback || 'Validation error';
-                }}
-                if (typeof x.detail === 'string') {{
+                }
+                if (typeof x.detail === 'string') {
                     return x.detail;
-                }}
+                }
                 // detail is object
                 if (x.detail.msg) return x.detail.msg;
                 if (x.detail.message) return x.detail.message;
-            }}
-            if (x.error && typeof x.error === 'string') {{
+            }
+            if (x.error && typeof x.error === 'string') {
                 return x.error;
-            }}
-            if (x.msg && typeof x.msg === 'string') {{
+            }
+            if (x.msg && typeof x.msg === 'string') {
                 return x.msg;
-            }}
+            }
             // Custom toString (not Object.prototype.toString)
-            if (typeof x.toString === 'function' && x.toString !== Object.prototype.toString) {{
+            if (typeof x.toString === 'function' && x.toString !== Object.prototype.toString) {
                 const str = x.toString();
-                if (str !== '[object Object]') {{
+                if (str !== '[object Object]') {
                     return str;
-                }}
-            }}
+                }
+            }
             // Last resort: try JSON stringify (bounded length)
-            try {{
+            try {
                 const json = JSON.stringify(x);
-                if (json && json !== '{{}}' && json.length < 200) {{
+                if (json && json !== '{}' && json.length < 200) {
                     return json;
-                }}
-            }} catch (e) {{
+                }
+            } catch (e) {
                 // ignore stringify errors
-            }}
+            }
             return fallback || 'Unknown error';
-        }}
+        }
 
         /**
          * Ticket 38A: Extract error message from API response.
          * Use for response.json() results.
          */
-        function safeResponseError(resJson, fallback) {{
+        function safeResponseError(resJson, fallback) {
             return safeAnyToString(resJson, fallback);
-        }}
+        }
 
         // Tier selector
-        document.querySelectorAll('.tier-btn').forEach(btn => {{
-            btn.addEventListener('click', () => {{
+        document.querySelectorAll('.tier-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
                 document.querySelectorAll('.tier-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 selectedTier = btn.dataset.tier;
-            }});
-        }});
+            });
+        });
 
         // Submit handler
-        submitBtn.addEventListener('click', async () => {{
+        submitBtn.addEventListener('click', async () => {
             // Always use textarea content as single source of truth
             const input = betInput.value.trim();
-            if (!input) {{
-                if (currentMode === 'builder' && builderLegs.length === 0) {{
+            if (!input) {
+                if (currentMode === 'builder' && builderLegs.length === 0) {
                     showError('Please add at least one leg to your parlay');
-                }} else {{
+                } else {
                     showError('Please enter a bet slip');
-                }}
+                }
                 return;
-            }}
+            }
 
             // Ticket 34 Part C: Check if OCR legs need review
-            if (hasOcrLegs && hasLegsNeedingReview()) {{
+            if (hasOcrLegs && hasLegsNeedingReview()) {
                 // Store the evaluation intent and show soft gate
-                pendingEvaluation = {{ input, tier: selectedTier }};
+                pendingEvaluation = { input, tier: selectedTier };
                 showOcrReviewGate();
                 return;
-            }}
+            }
 
             // Ticket 36/37: This is a fresh evaluation, not a re-evaluation
             // Clear stale lock state to prevent state collision
@@ -940,103 +940,103 @@
 
             // Proceed with evaluation
             await runEvaluation(input);
-        }});
+        });
 
         // Ticket 34 Part C: Soft gate handlers
-        if (gateReviewBtn) {{
-            gateReviewBtn.addEventListener('click', () => {{
+        if (gateReviewBtn) {
+            gateReviewBtn.addEventListener('click', () => {
                 hideOcrReviewGate();
                 pendingEvaluation = null;
                 // Focus the legs list for review
                 const firstOcrLeg = legsList.querySelector('.leg-item.ocr-leg');
-                if (firstOcrLeg) {{
-                    firstOcrLeg.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                }}
-            }});
-        }}
+                if (firstOcrLeg) {
+                    firstOcrLeg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
 
-        if (gateProceedBtn) {{
-            gateProceedBtn.addEventListener('click', async () => {{
+        if (gateProceedBtn) {
+            gateProceedBtn.addEventListener('click', async () => {
                 hideOcrReviewGate();
-                if (pendingEvaluation) {{
+                if (pendingEvaluation) {
                     // Ticket 36/37: This is a fresh evaluation from OCR, clear stale lock state
                     isReEvaluation = false;
                     lockedLegIds.clear();
                     await runEvaluation(pendingEvaluation.input);
                     pendingEvaluation = null;
-                }}
-            }});
-        }}
+                }
+            });
+        }
 
-        function showOcrReviewGate() {{
-            if (ocrReviewGate) {{
+        function showOcrReviewGate() {
+            if (ocrReviewGate) {
                 ocrReviewGate.classList.add('active');
-            }}
-        }}
+            }
+        }
 
-        function hideOcrReviewGate() {{
-            if (ocrReviewGate) {{
+        function hideOcrReviewGate() {
+            if (ocrReviewGate) {
                 ocrReviewGate.classList.remove('active');
-            }}
-        }}
+            }
+        }
 
         // Core evaluation function
-        async function runEvaluation(input) {{
+        async function runEvaluation(input) {
             showLoading();
 
-            try {{
+            try {
                 // Ticket 27 Part B: Build request with canonical legs if from builder
-                const requestBody = {{ input, tier: selectedTier }};
+                const requestBody = { input, tier: selectedTier };
 
                 // If we have builder legs, send canonical structure
-                if (currentMode === 'builder' && builderLegs.length > 0) {{
-                    requestBody.legs = builderLegs.map(leg => ({{
+                if (currentMode === 'builder' && builderLegs.length > 0) {
+                    requestBody.legs = builderLegs.map(leg => ({
                         entity: leg.entity,
                         market: leg.market,
                         value: leg.value,
                         raw: leg.raw || leg.text
-                    }}));
-                }}
+                    }));
+                }
 
-                const response = await fetch('/app/evaluate', {{
+                const response = await fetch('/app/evaluate', {
                     method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
-                }});
+                });
 
                 const data = await response.json();
                 lastResponse = data;
 
-                if (!response.ok) {{
+                if (!response.ok) {
                     // Ticket 38A: Safely extract error message
                     showError(safeResponseError(data, 'Evaluation failed'));
                     return;
-                }}
+                }
 
                 showResults(data);
-            }} catch (err) {{
+            } catch (err) {
                 showError('Network error. Please try again.');
-            }}
-        }}
+            }
+        }
 
-        function showLoading() {{
+        function showLoading() {
             inputSection.style.display = 'none';
             loading.classList.add('active');
             errorPanel.classList.remove('active');
             results.classList.remove('active');
             document.getElementById('action-buttons').classList.remove('active');
-        }}
+        }
 
-        function showError(message) {{
+        function showError(message) {
             loading.classList.remove('active');
             inputSection.style.display = 'block';
             errorPanel.textContent = message;
             errorPanel.classList.add('active');
             results.classList.remove('active');
             document.getElementById('action-buttons').classList.remove('active');
-        }}
+        }
 
-        function showResults(data) {{
+        function showResults(data) {
             loading.classList.remove('active');
             errorPanel.classList.remove('active');
             results.classList.add('active');
@@ -1044,44 +1044,44 @@
 
             // Ticket 32 Part B: Save evaluation to session history
             const parlay = data.evaluatedParlay;
-            if (parlay) {{
-                SessionManager.addEvaluation({{
+            if (parlay) {
+                SessionManager.addEvaluation({
                     input: parlay.display_label || betInput.value.trim(),
                     signal: data.signalInfo?.signal || '',
                     grade: data.signalInfo?.grade || '',
                     legCount: (parlay.legs || []).length
-                }});
+                });
                 updateSessionUI();
-            }}
+            }
 
             // Ticket 25: Evaluated Parlay Receipt
             // Ticket 26 Part A: Leg interpretation display
             // Ticket 35: Add remove/lock controls for inline refinement
             // Ticket 37: Use leg_id for identity instead of index
-            if (parlay) {{
+            if (parlay) {
                 document.getElementById('parlay-label').textContent = parlay.display_label || 'Parlay';
                 // Store legs for inline editing with deterministic leg_id
-                resultsLegs = (parlay.legs || []).map((leg, i) => {{
+                resultsLegs = (parlay.legs || []).map((leg, i) => {
                     // Generate leg_id from canonical fields
-                    const leg_id = generateLegIdSync({{
+                    const leg_id = generateLegIdSync({
                         entity: leg.entity || leg.text?.split(' ')[0] || '',
                         market: leg.bet_type || 'unknown',
                         value: leg.line_value || null,
                         sport: leg.sport || ''
-                    }});
-                    return {{
+                    });
+                    return {
                         ...leg,
                         leg_id: leg_id,
                         originalIndex: i,
                         locked: lockedLegIds.has(leg_id)
-                    }};
-                }});
+                    };
+                });
                 renderResultsLegs();
-            }}
+            }
 
             // Grade/Signal (S3-A: Confidence Gradient System)
             const signal = data.signalInfo?.signal || 'yellow';
-            const signalLabels = {{ blue: 'Stable', green: 'Composed', yellow: 'Pressured', red: 'Fragile' }};
+            const signalLabels = { blue: 'Stable', green: 'Composed', yellow: 'Pressured', red: 'Fragile' };
             const gradeSignal = document.getElementById('grade-signal');
             gradeSignal.className = 'grade-signal ' + signal;
             gradeSignal.textContent = signal[0].toUpperCase();
@@ -1094,95 +1094,95 @@
 
             // S3-B: Delta Sentence (progress feedback)
             const deltaSentenceEl = document.getElementById('delta-sentence');
-            if (data.delta && isReEvaluation) {{
+            if (data.delta && isReEvaluation) {
                 const delta = data.delta;
                 let deltaText = '';
                 
-                if (delta.legs_removed > 0 || delta.legs_added > 0) {{
-                    if (delta.legs_removed > 0 && delta.legs_added === 0) {{
-                        deltaText = `You removed ${{delta.legs_removed}} leg${{delta.legs_removed > 1 ? 's' : ''}}. `;
-                    }} else if (delta.legs_added > 0 && delta.legs_removed === 0) {{
-                        deltaText = `You added ${{delta.legs_added}} leg${{delta.legs_added > 1 ? 's' : ''}}. `;
-                    }} else {{
-                        deltaText = `You traded ${{delta.legs_removed}} for ${{delta.legs_added}}. `;
-                    }}
-                }}
+                if (delta.legs_removed > 0 || delta.legs_added > 0) {
+                    if (delta.legs_removed > 0 && delta.legs_added === 0) {
+                        deltaText = `You removed ${delta.legs_removed} leg${delta.legs_removed > 1 ? 's' : ''}. `;
+                    } else if (delta.legs_added > 0 && delta.legs_removed === 0) {
+                        deltaText = `You added ${delta.legs_added} leg${delta.legs_added > 1 ? 's' : ''}. `;
+                    } else {
+                        deltaText = `You traded ${delta.legs_removed} for ${delta.legs_added}. `;
+                    }
+                }
                 
                 // Add structural direction
-                if (delta.correlation_delta !== 0) {{
-                    if (delta.correlation_delta < 0) {{
+                if (delta.correlation_delta !== 0) {
+                    if (delta.correlation_delta < 0) {
                         deltaText += 'Structure tightened.';
-                    }} else {{
+                    } else {
                         deltaText += 'Structure loosened.';
-                    }}
-                }}
+                    }
+                }
                 
-                if (deltaText) {{
+                if (deltaText) {
                     deltaSentenceEl.textContent = deltaText.trim();
                     deltaSentenceEl.classList.remove('hidden');
-                }} else {{
+                } else {
                     deltaSentenceEl.classList.add('hidden');
-                }}
-            }} else {{
+                }
+            } else {
                 deltaSentenceEl.classList.add('hidden');
-            }}
+            }
 
             // Risks
             const risksList = document.getElementById('risks-list');
             risksList.innerHTML = '';
             const risks = [];
-            if (data.primaryFailure?.type) {{
+            if (data.primaryFailure?.type) {
                 risks.push(data.primaryFailure.type.replace(/_/g, ' '));
-            }}
-            if (data.evaluation?.inductor?.explanation) {{
+            }
+            if (data.evaluation?.inductor?.explanation) {
                 risks.push(data.evaluation.inductor.explanation);
-            }}
-            if (data.secondaryFactors) {{
+            }
+            if (data.secondaryFactors) {
                 data.secondaryFactors.slice(0, 2).forEach(f => risks.push(f));
-            }}
-            if (risks.length === 0) {{
+            }
+            if (risks.length === 0) {
                 risks.push('No significant risks detected');
-            }}
-            risks.slice(0, 4).forEach(risk => {{
+            }
+            risks.slice(0, 4).forEach(risk => {
                 const li = document.createElement('li');
                 li.textContent = risk;
                 risksList.appendChild(li);
-            }});
+            });
 
             // Ticket 25: Notable Legs
             const notableSection = document.getElementById('notable-legs-section');
             const notableList = document.getElementById('notable-legs-list');
             notableList.innerHTML = '';
             const notable = data.notableLegs || [];
-            if (notable.length === 0) {{
+            if (notable.length === 0) {
                 notableSection.style.display = 'none';
-            }} else {{
+            } else {
                 notableSection.style.display = 'block';
-                notable.forEach(item => {{
+                notable.forEach(item => {
                     const li = document.createElement('li');
                     li.className = 'notable-leg';
                     li.innerHTML =
                         '<div class="notable-leg-text">' + escapeHtml(item.leg) + '</div>' +
                         '<div class="notable-leg-reason">' + escapeHtml(item.reason) + '</div>';
                     notableList.appendChild(li);
-                }});
-            }}
+                });
+            }
 
             // Artifacts
             const artifacts = data.proofSummary?.sample_artifacts || [];
-            const counts = data.proofSummary?.dna_artifact_counts || {{}};
+            const counts = data.proofSummary?.dna_artifact_counts || {};
             const countStr = Object.entries(counts).map(([k,v]) => k + ':' + v).join(', ') || 'none';
             document.getElementById('artifact-count').textContent = countStr;
 
             const artifactsList = document.getElementById('artifacts-list');
             artifactsList.innerHTML = '';
-            if (artifacts.length === 0) {{
+            if (artifacts.length === 0) {
                 const li = document.createElement('li');
                 li.className = 'artifact-item';
                 li.innerHTML = '<div class="artifact-label">(No artifacts)</div>';
                 artifactsList.appendChild(li);
-            }} else {{
-                artifacts.slice(0, 5).forEach(a => {{
+            } else {
+                artifacts.slice(0, 5).forEach(a => {
                     const li = document.createElement('li');
                     const type = a.artifact_type || a.type || 'unknown';
                     li.className = 'artifact-item artifact-type-' + type;
@@ -1190,61 +1190,61 @@
                         '<div class="artifact-label">' + (a.display_label || type) + '</div>' +
                         '<div class="artifact-text">' + (a.display_text || '') + '</div>';
                     artifactsList.appendChild(li);
-                }});
-            }}
+                });
+            }
 
             // Ticket 25: Final Verdict
             const verdict = data.finalVerdict;
             const verdictSection = document.getElementById('verdict-section');
-            if (verdict && verdict.verdict_text) {{
+            if (verdict && verdict.verdict_text) {
                 verdictSection.style.display = 'block';
                 document.getElementById('verdict-text').textContent = verdict.verdict_text;
                 // Apply tone class
                 verdictSection.className = 'card verdict-section';
-                if (verdict.tone) {{
+                if (verdict.tone) {
                     verdictSection.classList.add('tone-' + verdict.tone);
-                }}
-            }} else {{
+                }
+            } else {
                 verdictSection.style.display = 'none';
-            }}
+            }
 
             // Ticket 26 Part C: Gentle Guidance
             const guidance = data.gentleGuidance;
             const guidanceSection = document.getElementById('guidance-section');
-            if (guidance && guidance.suggestions && guidance.suggestions.length > 0) {{
+            if (guidance && guidance.suggestions && guidance.suggestions.length > 0) {
                 guidanceSection.style.display = 'block';
                 document.getElementById('guidance-header').textContent = guidance.header || 'If you wanted to adjust this:';
                 const guidanceList = document.getElementById('guidance-list');
                 guidanceList.innerHTML = '';
-                guidance.suggestions.forEach(suggestion => {{
+                guidance.suggestions.forEach(suggestion => {
                     const li = document.createElement('li');
                     li.textContent = suggestion;
                     guidanceList.appendChild(li);
-                }});
-            }} else {{
+                });
+            } else {
                 guidanceSection.style.display = 'none';
-            }}
+            }
 
             // Ticket 27 Part D: Grounding Warnings
             const groundingWarnings = data.groundingWarnings;
             const groundingSection = document.getElementById('grounding-warnings');
-            if (groundingWarnings && groundingWarnings.length > 0) {{
+            if (groundingWarnings && groundingWarnings.length > 0) {
                 groundingSection.style.display = 'block';
                 const warningsList = document.getElementById('grounding-warnings-list');
                 warningsList.innerHTML = '';
-                groundingWarnings.forEach(warning => {{
+                groundingWarnings.forEach(warning => {
                     const li = document.createElement('li');
                     li.textContent = warning;
                     warningsList.appendChild(li);
-                }});
-            }} else {{
+                });
+            } else {
                 groundingSection.style.display = 'none';
-            }}
+            }
 
             // Ticket D1 / 38B-C3: Grounding Score Display
             const groundingScore = data.groundingScore;
             const groundingScorePanel = document.getElementById('grounding-score-panel');
-            if (groundingScore) {{
+            if (groundingScore) {
                 groundingScorePanel.style.display = 'block';
                 
                 // Plain-language narrative (primary signal)
@@ -1254,31 +1254,31 @@
                 const generic = groundingScore.generic || 0;
                 
                 let narrativeText = '';
-                if (structural >= 50) {{
+                if (structural >= 50) {
                     narrativeText = 'This analysis is grounded mainly by structural features like leg relationships and bet types.';
-                }} else if (heuristics >= 50) {{
+                } else if (heuristics >= 50) {
                     narrativeText = 'This analysis relies heavily on bet-type patterns and established heuristics.';
-                }} else if (generic >= 50) {{
+                } else if (generic >= 50) {
                     narrativeText = 'This analysis uses general guidance with limited structural grounding.';
-                }} else if (structural >= heuristics && structural >= generic) {{
+                } else if (structural >= heuristics && structural >= generic) {
                     narrativeText = 'This analysis draws primarily from structural features.';
-                }} else if (heuristics >= structural && heuristics >= generic) {{
+                } else if (heuristics >= structural && heuristics >= generic) {
                     narrativeText = 'This analysis is more intuition-driven than structural.';
-                }} else {{
+                } else {
                     narrativeText = 'This analysis blends structural, heuristic, and general insights.';
-                }}
+                }
                 narrative.textContent = narrativeText;
                 
                 // Supporting numbers (secondary signal)
                 document.getElementById('grounding-score-structural').textContent = structural + '%';
                 document.getElementById('grounding-score-heuristics').textContent = heuristics + '%';
                 document.getElementById('grounding-score-generic').textContent = generic + '%';
-            }} else {{
+            } else {
                 groundingScorePanel.style.display = 'none';
-            }}
+            }
 
             // Debug section
-            if (debugMode) {{
+            if (debugMode) {
                 document.getElementById('debug-section').classList.add('active');
                 const uiStatus = data.proofSummary?.ui_contract_status || 'unknown';
                 const uiVersion = data.proofSummary?.ui_contract_version || 'unknown';
@@ -1286,15 +1286,15 @@
                 statusEl.textContent = 'UI: ' + uiStatus + ' (' + uiVersion + ')';
                 statusEl.className = 'contract-status ' + (uiStatus === 'PASS' ? 'pass' : 'fail');
                 document.getElementById('debug-content').textContent = JSON.stringify(data, null, 2);
-            }}
-        }}
+            }
+        }
 
-        function toggleDebug() {{
+        function toggleDebug() {
             const content = document.getElementById('debug-content');
             content.style.display = content.style.display === 'none' ? 'block' : 'none';
-        }}
+        }
 
-        function resetForm() {{
+        function resetForm() {
             inputSection.style.display = 'block';
             results.classList.remove('active');
             document.getElementById('action-buttons').classList.remove('active');
@@ -1318,28 +1318,28 @@
             resultsLegs = [];
             isReEvaluation = false;
             // Focus appropriate element based on mode
-            if (currentMode === 'builder') {{
+            if (currentMode === 'builder') {
                 document.getElementById('builder-team').focus();
-            }} else {{
+            } else {
                 betInput.focus();
-            }}
-        }}
+            }
+        }
 
         // Ticket 25: Refine Parlay - returns to builder with legs preloaded
         // Ticket 35: Now uses resultsLegs (which may have been modified)
-        function refineParlay() {{
+        function refineParlay() {
             // Use resultsLegs if available (reflects inline edits), otherwise fall back
             const legsToUse = resultsLegs.length > 0 ? resultsLegs :
                               (lastResponse?.evaluatedParlay?.legs || []);
 
-            if (legsToUse.length === 0) {{
+            if (legsToUse.length === 0) {
                 resetForm();
                 return;
-            }}
+            }
 
             // Preload legs from the current results state
             // Ticket 37: Include leg_id for deterministic tracking
-            builderLegs = legsToUse.map(leg => {{
+            builderLegs = legsToUse.map(leg => {
                 const entity = leg.entity || leg.text?.split(' ')[0] || '';
                 const market = leg.bet_type === 'player_prop' ? 'player_prop' :
                                leg.bet_type === 'total' ? 'total' :
@@ -1347,8 +1347,8 @@
                 const value = leg.line_value || null;
                 const sport = leg.sport || '';
                 // Use existing leg_id or generate new one
-                const leg_id = leg.leg_id || generateLegIdSync({{ entity, market, value, sport }});
-                return {{
+                const leg_id = leg.leg_id || generateLegIdSync({ entity, market, value, sport });
+                return {
                     leg_id: leg_id,
                     entity: entity,
                     text: leg.text,
@@ -1357,8 +1357,8 @@
                     market: market,
                     value: value,
                     locked: leg.locked || false
-                }};
-            }});
+                };
+            });
 
             // Switch to builder mode
             currentMode = 'builder';
@@ -1378,14 +1378,14 @@
 
             // Focus on builder
             document.getElementById('builder-team').focus();
-        }}
+        }
 
         // Enter key submits
-        betInput.addEventListener('keydown', (e) => {{
-            if (e.key === 'Enter' && e.metaKey) {{
+        betInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.metaKey) {
                 submitBtn.click();
-            }}
-        }});
+            }
+        });
 
         // ============================================================
         // Ticket 35: Inline Refine Loop
@@ -1394,16 +1394,16 @@
         /**
          * Render legs in results view with remove/lock controls.
          */
-        function renderResultsLegs() {{
+        function renderResultsLegs() {
             const parlayLegs = document.getElementById('parlay-legs');
             parlayLegs.innerHTML = '';
 
-            resultsLegs.forEach((leg, i) => {{
+            resultsLegs.forEach((leg, i) => {
                 const li = document.createElement('li');
                 li.dataset.index = i;
-                if (leg.locked) {{
+                if (leg.locked) {
                     li.classList.add('locked');
-                }}
+                }
 
                 // Leg number
                 let html = '<span class="result-leg-num">' + (i + 1) + '.</span>';
@@ -1412,9 +1412,9 @@
                 html += '<div class="result-leg-content">';
                 html += '<span class="result-leg-text">' + escapeHtml(leg.text) + '</span>';
                 html += '<span class="leg-type">' + (leg.bet_type || '').replace('_', ' ') + '</span>';
-                if (leg.interpretation) {{
+                if (leg.interpretation) {
                     html += '<div class="leg-interpretation">' + escapeHtml(leg.interpretation) + '</div>';
-                }}
+                }
                 html += '</div>';
 
                 // Controls
@@ -1433,73 +1433,73 @@
 
                 li.innerHTML = html;
                 parlayLegs.appendChild(li);
-            }});
+            });
 
             // Update the parlay label to reflect current count
             updateParlayLabel();
             // Update re-evaluate button state
             updateReEvaluateButton();
-        }}
+        }
 
         /**
          * Update parlay label to show current leg count.
          */
-        function updateParlayLabel() {{
+        function updateParlayLabel() {
             const count = resultsLegs.length;
             let label = '';
-            if (count === 0) {{
+            if (count === 0) {
                 label = 'No legs remaining';
-            }} else if (count === 1) {{
+            } else if (count === 1) {
                 label = 'Single bet';
-            }} else {{
+            } else {
                 label = count + '-leg parlay';
-            }}
+            }
             document.getElementById('parlay-label').textContent = label;
-        }}
+        }
 
         /**
          * Update re-evaluate button enabled state.
          */
-        function updateReEvaluateButton() {{
+        function updateReEvaluateButton() {
             const btn = document.getElementById('reevaluate-btn');
-            if (btn) {{
+            if (btn) {
                 btn.disabled = resultsLegs.length === 0;
-            }}
-        }}
+            }
+        }
 
         /**
          * Toggle lock state for a leg.
          */
-        function toggleLegLock(index) {{
+        function toggleLegLock(index) {
             if (index < 0 || index >= resultsLegs.length) return;
 
             const leg = resultsLegs[index];
             leg.locked = !leg.locked;
 
             // Ticket 37: Update lock tracking using deterministic leg_id
-            if (leg.locked) {{
+            if (leg.locked) {
                 lockedLegIds.add(leg.leg_id);
-            }} else {{
+            } else {
                 lockedLegIds.delete(leg.leg_id);
-            }}
+            }
 
             renderResultsLegs();
-        }}
+        }
 
         /**
          * Remove a leg from results (inline refinement).
          * Ticket 39: Accepts leg_id (preferred) or index for robustness.
          * Does NOT remove locked legs.
          */
-        function removeLegFromResults(identifier) {{
+        function removeLegFromResults(identifier) {
             let index;
-            if (typeof identifier === 'string') {{
+            if (typeof identifier === 'string') {
                 // Ticket 39: leg_id-based removal (robust)
                 index = resultsLegs.findIndex(leg => leg.leg_id === identifier);
-            }} else {{
+            } else {
                 // Legacy: index-based removal
                 index = identifier;
-            }}
+            }
             if (index < 0 || index >= resultsLegs.length) return;
 
             const leg = resultsLegs[index];
@@ -1514,16 +1514,16 @@
 
             // Re-render
             renderResultsLegs();
-        }}
+        }
 
         /**
          * Sync all state from resultsLegs.
          * Ensures builderLegs, textarea, and canonical state stay in sync.
          * Ticket 37: Includes leg_id for deterministic tracking.
          */
-        function syncStateFromResults() {{
+        function syncStateFromResults() {
             // Update builderLegs to match resultsLegs
-            builderLegs = resultsLegs.map(leg => ({{
+            builderLegs = resultsLegs.map(leg => ({
                 leg_id: leg.leg_id, // Ticket 37: Preserve deterministic leg_id
                 entity: leg.entity || leg.text?.split(' ')[0] || '',
                 market: leg.bet_type || 'unknown',
@@ -1532,22 +1532,22 @@
                 text: leg.text,
                 sport: leg.sport || '',
                 source: 'refined'
-            }}));
+            }));
 
             // Update textarea
             syncTextarea();
-        }}
+        }
 
         /**
          * Re-evaluate parlay with current legs (after inline removals).
          * Ticket 36: This is a re-evaluation, so we preserve lock state.
          * Ticket 37: Uses deterministic leg_id for stable lock preservation.
          */
-        async function reEvaluateParlay() {{
-            if (resultsLegs.length === 0) {{
+        async function reEvaluateParlay() {
+            if (resultsLegs.length === 0) {
                 showError('Add at least one leg to evaluate');
                 return;
-            }}
+            }
 
             // Ticket 36: Mark this as a re-evaluation (lock state should be preserved)
             isReEvaluation = true;
@@ -1567,4 +1567,4 @@
             // Ticket 37: Lock state is automatically restored in showResults
             // via lockedLegIds.has(leg_id) check
             renderResultsLegs();
-        }}
+        }
