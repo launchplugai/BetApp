@@ -1246,6 +1246,17 @@ async function evaluateBundle(bundleText) {
         document.getElementById('signal-bar-grade').textContent = si.grade || 'B';
         document.getElementById('signal-bar-score').textContent = 'Fragility: ' + Math.round(si.fragilityScore || fragility.display_value || 0);
 
+        // S7-B: Confidence Trend Indicator
+        const confidenceTrend = document.getElementById('confidence-trend');
+        const trendData = data.confidenceTrend;
+        if (trendData && trendData.hasTrend && trendData.trendText) {
+            confidenceTrend.textContent = trendData.trendText;
+            confidenceTrend.className = 'confidence-trend trend-' + trendData.trend;
+            confidenceTrend.classList.remove('hidden');
+        } else {
+            confidenceTrend.classList.add('hidden');
+        }
+
         // Ticket 38B-C1: Delta Sentence (shown when has_delta is true)
         const deltaSentence = document.getElementById('delta-sentence');
         const deltaData = data.delta;

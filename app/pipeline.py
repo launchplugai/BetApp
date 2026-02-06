@@ -71,6 +71,10 @@ from app.delta_engine import (
     compute_snapshot_delta,
     get_previous_snapshot_for_session,
     store_snapshot_for_session,
+    # S7-B: Confidence Trend
+    store_signal_for_session,
+    get_previous_signal_for_session,
+    compute_confidence_trend,
 )
 
 # Grounding Score Engine (Ticket 38B-C2)
@@ -153,6 +157,9 @@ class PipelineResponse:
 
     # S7-A: Next Action Guidance (single soft suggestion for what to do next)
     next_action: Optional[dict] = None
+
+    # S7-B: Confidence Trend (comparison with previous evaluation in session)
+    confidence_trend: Optional[dict] = None
 
     # Ticket 27: Grounding Warnings (soft warnings for unrecognized entities)
     grounding_warnings: Optional[list] = None
@@ -2667,6 +2674,12 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         has_correlations=has_correlations
     )
 
+    # Step 28: S7-B — Compute confidence trend
+    previous_signal = get_previous_signal_for_session(session_id)
+    confidence_trend = compute_confidence_trend(previous_signal, signal_info)
+    # Store current signal for next evaluation
+    store_signal_for_session(session_id, signal_info)
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -2683,6 +2696,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         final_verdict=final_verdict,
         gentle_guidance=gentle_guidance,
         next_action=next_action,
+        confidence_trend=confidence_trend,
         grounding_warnings=grounding_warnings if grounding_warnings else None,
         sherlock_result=sherlock_result,
         debug_explainability=debug_explainability,
