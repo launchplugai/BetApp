@@ -383,7 +383,7 @@ class TestTicket38NotableLegsV2:
         assert "Celtics" in leg_info["entity"]
 
     def test_player_prop_reason_includes_entity(self):
-        """Part A: Player prop reason must include entity reference."""
+        """S3-C: Player prop reason must include entity reference and narrative context."""
         leg_info = {
             "entity": "LeBron",
             "market": "player_prop",
@@ -393,11 +393,11 @@ class TestTicket38NotableLegsV2:
         reason = _build_leg_specific_reason(leg_info, "player_prop")
 
         assert "LeBron" in reason
-        assert "player prop" in reason.lower()
-        assert "individual" in reason.lower() or "performance" in reason.lower()
+        # S3-C: Narrative style - check for role/pressure/watch language
+        assert any(word in reason.lower() for word in ["variance", "risk", "individual", "minutes", "role", "flow"])
 
     def test_total_reason_mentions_dependency_language(self):
-        """Part A: Total reason must mention totals dependency."""
+        """S3-C: Total reason must mention pace/environment context."""
         leg_info = {
             "entity": "Game",
             "market": "total",
@@ -407,11 +407,11 @@ class TestTicket38NotableLegsV2:
         reason = _build_leg_specific_reason(leg_info, "total")
 
         assert "total" in reason.lower()
-        # Should mention pace, foul, environment, or correlate
-        assert any(word in reason.lower() for word in ["pace", "foul", "environment", "correlate", "scenarios"])
+        # S3-C: Narrative style - check for pace, environment, game flow language
+        assert any(word in reason.lower() for word in ["pace", "foul", "environment", "game", "scoring", "defense"])
 
     def test_spread_reason_mentions_margin_sensitivity(self):
-        """Part A: Spread reason must mention margin sensitivity."""
+        """S3-C: Spread reason must mention margin and timing context."""
         leg_info = {
             "entity": "Lakers",
             "market": "spread",
@@ -421,12 +421,11 @@ class TestTicket38NotableLegsV2:
         reason = _build_leg_specific_reason(leg_info, "spread")
 
         assert "Lakers" in reason
-        assert "spread" in reason.lower()
-        # Should mention margin, late, fouls, or final
-        assert any(word in reason.lower() for word in ["margin", "late", "foul", "final", "possession"])
+        # S3-C: Narrative style - check for margin, timing, pressure language
+        assert any(word in reason.lower() for word in ["margin", "late", "foul", "final", "possession", "flow", "minutes"])
 
     def test_high_value_prop_mentions_threshold(self):
-        """Part A: High value prop mentions higher threshold language."""
+        """S3-C: High value prop mentions ceiling/sustained opportunity."""
         leg_info = {
             "entity": "Giannis",
             "market": "player_prop",
@@ -435,11 +434,11 @@ class TestTicket38NotableLegsV2:
         }
         reason = _build_leg_specific_reason(leg_info, "player_prop")
 
-        # Should mention the threshold value
-        assert "30" in reason or "higher" in reason.lower() or "threshold" in reason.lower()
+        # S3-C: Should mention ceiling, sustained, minutes, or efficiency
+        assert any(word in reason.lower() for word in ["ceiling", "sustained", "minutes", "efficiency", "opportunity"])
 
     def test_large_spread_mentions_decisive_margin(self):
-        """Part A: Large spread (+10) mentions decisive margin."""
+        """S3-C: Large spread mentions decisive win requirement."""
         leg_info = {
             "entity": "Warriors",
             "market": "spread",
@@ -448,8 +447,8 @@ class TestTicket38NotableLegsV2:
         }
         reason = _build_leg_specific_reason(leg_info, "spread")
 
-        # Should mention the large spread
-        assert "12" in reason or "decisive" in reason.lower() or "reducing" in reason.lower()
+        # S3-C: Should mention decisive, one-sided, or blowout language
+        assert "12" in reason or any(word in reason.lower() for word in ["decisive", "one-sided", "blowout", "whole way"])
 
     def test_mixed_markets_produce_distinct_reasons(self):
         """Part D: Multi-leg mixed markets produces at least 2 distinct patterns."""

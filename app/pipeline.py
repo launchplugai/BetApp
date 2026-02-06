@@ -1679,73 +1679,62 @@ def _extract_leg_info(block, selection: str) -> dict:
 
 def _build_leg_specific_reason(leg_info: dict, reason_type: str, is_correlated: bool = False) -> str:
     """
-    Ticket 38 Part A: Generate leg-specific reason referencing actual leg fields.
+    S3-C: Generate narrative leg-specific reason answering "What's doing the work here?"
 
-    Format: [What it is]. [Why it matters structurally]. [What you might observe].
-    No live data, no odds, no predictions.
+    Story format: role + pressure + what to watch.
+    No hedging, no academic explanations.
     """
     entity = leg_info.get("entity", "This leg")
     market = leg_info.get("market", "unknown")
     value = leg_info.get("value")
     sport = leg_info.get("sport", "")
 
-    # Build market-specific reasons
+    # Build narrative reasons
     if market == "player_prop":
-        what_it_is = f"{entity} is a player prop."
-        why_matters = "Individual performance depends on minutes, role, and game flow."
         if value is not None:
             if value >= 25:
-                what_observe = f"Higher thresholds like {value} require sustained opportunity and efficiency."
+                return f"{entity} sets the ceiling here. You need sustained minutes, touches, and efficiency. Watch for foul trouble or blowouts cutting opportunity short."
             elif value <= 10:
-                what_observe = f"Lower thresholds like {value} can still miss in blowouts or foul trouble."
+                return f"{entity} carries most of the individual risk. Minutes, role, and game flow determine whether they get enough chances. One bad quarter can sink it."
             else:
-                what_observe = "Variance in individual stats compounds parlay fragility."
+                return f"{entity} is your high-variance piece. Individual performance swings wider than team outcomes. Watch usage, matchups, and garbage time risk."
         else:
-            what_observe = "Props add individual variance that's harder to model structurally."
+            return f"{entity} adds the most individual variance. Props swing on a single player's night—watch opportunity and efficiency."
 
     elif market == "total":
-        what_it_is = f"This is a game total bet."
-        why_matters = "Totals depend on pace, foul situations, and late-game scenarios from both teams."
         if value is not None:
             if value >= 230:
-                what_observe = f"A total of {value} assumes a faster-paced, higher-scoring game environment."
+                return f"This total bets on pace and offense. You're leaning into a shootout—watch for defensive adjustments or slow second halves that kill scoring."
             elif value <= 200:
-                what_observe = f"A total of {value} assumes a slower, more defensive game."
+                return f"This total bets on defense and pace control. You need a grind—watch for late-game fouling or surprise shootouts breaking the under."
             else:
-                what_observe = "Totals correlate with other same-game props and spreads."
+                return f"This total links to everything else in the game. Pace dictates props, margin determines late possessions. It's structural connective tissue."
         else:
-            what_observe = "Totals are sensitive to game environment and correlate with props."
+            return f"The total shapes the entire game environment. Pace, fouling, and late possessions all flow through it."
 
     elif market == "spread":
-        what_it_is = f"{entity} is a spread bet."
-        why_matters = "Spreads are sensitive to margin—late fouls, garbage time, and final possessions shift outcomes."
-        if value is not None:
-            abs_val = abs(value)
+        abs_val = abs(value) if value is not None else None
+        if abs_val is not None:
             if abs_val >= 10:
-                what_observe = f"A {abs_val}-point spread requires a decisive margin, reducing late-game variance."
+                return f"{entity} at {value} demands a decisive win. Garbage time matters less, but you need the game to stay one-sided the whole way."
             elif abs_val <= 3:
-                what_observe = f"A {abs_val}-point spread means the game likely comes down to final possessions."
+                return f"{entity} at {value} lives or dies in the final two minutes. Every possession, foul, and timeout decision matters. Margin is razor-thin."
             else:
-                what_observe = "Mid-range spreads can swing either way depending on late-game flow."
+                return f"{entity} at {value} sits in the middle—not a blowout, not a coin flip. Late-game flow determines whether it covers or folds."
         else:
-            what_observe = "Spread outcomes often hinge on final minutes and free throw situations."
+            return f"{entity} is all about margin. Final possessions, fouls, and coaching decisions determine whether it lands or misses by a basket."
 
     elif market == "moneyline":
-        what_it_is = f"{entity} is a moneyline bet."
-        why_matters = "Moneylines are structurally cleaner—only the win matters, not the margin."
-        what_observe = "Stacking multiple moneylines still compounds fragility even if each feels safer individually."
+        return f"{entity} is your clean piece—just win, margin doesn't matter. But stacking multiple moneylines compounds fragility even when each feels safe."
 
     else:
-        what_it_is = f"{entity} is part of this parlay."
-        why_matters = "Each leg adds structural complexity to the overall bet."
-        what_observe = "Combined variance increases as legs are added."
+        return f"{entity} adds structural complexity. Every leg you add increases the chance something breaks."
 
     # Add correlation context if relevant
     if is_correlated and reason_type == "correlation":
-        why_matters = "This leg shares underlying game conditions with another leg in the parlay."
-        what_observe = "If game flow goes against one, it likely affects both."
+        return f"{entity} moves with another leg here. If game flow goes wrong for one, it sinks both. Correlated bets amplify pressure."
 
-    return f"{what_it_is} {why_matters} {what_observe}"
+    return f"{entity} is doing meaningful work in this structure. Watch how it interacts with the other pieces."
 
 
 def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list:
