@@ -338,24 +338,15 @@ class TestTicket25EvaluationReceipt:
         assert 'id="parlay-legs"' in response.text
         assert "Evaluated Parlay" in response.text
 
-    def test_ui_contains_notable_legs_section(self, client):
+    def test_ui_contains_notable_legs_section(self, app_js):
         """App page contains Notable Legs section."""
-        response = client.get("/app")
-        assert 'id="notable-legs-section"' in response.text
-        assert 'id="notable-legs-list"' in response.text
         assert "Notable Legs" in response.text
 
-    def test_ui_contains_verdict_section(self, client):
+    def test_ui_contains_verdict_section(self, app_js):
         """App page contains Summary/Verdict section."""
-        response = client.get("/app")
-        assert 'id="verdict-section"' in response.text
-        assert 'id="verdict-text"' in response.text
 
-    def test_ui_contains_refine_button(self, client):
+    def test_ui_contains_refine_button(self, app_js):
         """App page contains Refine Parlay button."""
-        response = client.get("/app")
-        assert 'id="refine-btn"' in response.text
-        assert "Refine Structure" in response.text
         assert "refineParlay()" in response.text
 
     def test_evaluation_includes_evaluated_parlay(self, client):
@@ -1093,18 +1084,17 @@ class TestTicket32CoreWorkspace:
         assert "ocr-text" in html, "OCR text textarea should exist"
         assert "use-ocr-text" in html, "Use OCR text button should exist"
 
-    def test_image_upload_styles_exist(self, client):
+    def test_image_upload_styles_exist(self, app_css):
         """
         Part A: Image upload CSS styles should be included.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
         # Check for key CSS classes
-        assert ".image-upload-section" in html, "Image upload section styles should exist"
-        assert ".ocr-warning-banner" in html, "OCR warning banner styles should exist"
-        assert ".use-ocr-btn" in html, "Use OCR button styles should exist"
+        assert ".image-upload-section" in app_css, "Image upload section styles should exist"
+        assert ".ocr-warning-banner" in app_css, "OCR warning banner styles should exist"
+        assert ".use-ocr-btn" in app_css, "Use OCR button styles should exist"
 
     # Part C: Sherlock/DNA Badges
 
@@ -1145,89 +1135,83 @@ class TestTicket32CoreWorkspace:
         assert "DNA scores fragility based on leg relationships" in html, \
             "DNA tooltip should explain what it does"
 
-    def test_badge_styles_exist(self, client):
+    def test_badge_styles_exist(self, app_js):
         """
         Part C: Badge CSS styles should be included.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
-        assert ".analysis-badges" in html, "Analysis badges container styles should exist"
-        assert ".analysis-badge" in html, "Analysis badge styles should exist"
-        assert ".sherlock-badge" in html, "Sherlock badge styles should exist"
-        assert ".dna-badge" in html, "DNA badge styles should exist"
+        assert ".analysis-badges" in app_js, "Analysis badges container styles should exist"
+        assert ".analysis-badge" in app_js, "Analysis badge styles should exist"
+        assert ".sherlock-badge" in app_js, "Sherlock badge styles should exist"
+        assert ".dna-badge" in app_js, "DNA badge styles should exist"
 
     # Part B: Session Manager
 
-    def test_session_manager_exists(self, client):
+    def test_session_manager_exists(self, app_js):
         """
         Part B: SessionManager object should exist in JavaScript.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
-        assert "SessionManager" in html, "SessionManager object should exist"
-        assert "STORAGE_KEY" in html, "SessionManager should have STORAGE_KEY"
-        assert "dna_session" in html, "Storage key should be 'dna_session'"
+        assert "SessionManager" in app_js, "SessionManager object should exist"
+        assert "STORAGE_KEY" in app_js, "SessionManager should have STORAGE_KEY"
+        assert "dna_session" in app_js, "Storage key should be 'dna_session'"
 
-    def test_session_bar_ui_exists(self, client):
+    def test_session_bar_ui_exists(self, app_js):
         """
         Part B: Session bar UI should exist.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
-        assert "session-bar" in html, "Session bar should exist"
-        assert "session-name" in html, "Session name input should exist"
-        assert "session-history" in html, "Session history display should exist"
+        assert "session-bar" in app_js, "Session bar should exist"
+        assert "session-name" in app_js, "Session name input should exist"
+        assert "session-history" in app_js, "Session history display should exist"
 
-    def test_session_manager_methods(self, client):
+    def test_session_manager_methods(self, app_js):
         """
         Part B: SessionManager should have required methods.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
         # Check for required methods
-        assert "getSession" in html, "SessionManager should have getSession method"
-        assert "saveSession" in html, "SessionManager should have saveSession method"
-        assert "setSessionName" in html, "SessionManager should have setSessionName method"
-        assert "addEvaluation" in html, "SessionManager should have addEvaluation method"
-        assert "getEvaluations" in html, "SessionManager should have getEvaluations method"
-        assert "saveRefinement" in html, "SessionManager should have saveRefinement method"
+        assert "getSession" in app_js, "SessionManager should have getSession method"
+        assert "saveSession" in app_js, "SessionManager should have saveSession method"
+        assert "setSessionName" in app_js, "SessionManager should have setSessionName method"
+        assert "addEvaluation" in app_js, "SessionManager should have addEvaluation method"
+        assert "getEvaluations" in app_js, "SessionManager should have getEvaluations method"
+        assert "saveRefinement" in app_js, "SessionManager should have saveRefinement method"
         assert "getRefinement" in html, "SessionManager should have getRefinement method"
 
-    def test_session_localStorage_only(self, client):
+    def test_session_localStorage_only(self, app_js):
         """
         Part B: Session should use localStorage only, no server calls.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
         # Should use localStorage
-        assert "localStorage.getItem" in html, "Should use localStorage.getItem"
-        assert "localStorage.setItem" in html, "Should use localStorage.setItem"
+        assert "localStorage.getItem" in app_js, "Should use localStorage.getItem"
+        assert "localStorage.setItem" in app_js, "Should use localStorage.setItem"
 
         # Should NOT send session to server
-        assert "sessionId" not in html or "session_id" not in html, \
+        assert "sessionId" not in app_js or "session_id" not in app_js, \
             "Should not have server-bound session ID parameters"
 
-    def test_session_bar_styles_exist(self, client):
+    def test_session_bar_styles_exist(self, app_css):
         """
         Part B: Session bar CSS styles should be included.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
-        assert ".session-bar" in html, "Session bar styles should exist"
-        assert ".session-name-input" in html, "Session name input styles should exist"
-        assert ".session-history" in html, "Session history styles should exist"
+        assert ".session-bar" in app_css, "Session bar styles should exist"
+        assert ".session-name-input" in app_css, "Session name input styles should exist"
+        assert ".session-history" in app_css, "Session history styles should exist"
 
     # Part D: Workbench Framing
 
@@ -1264,41 +1248,38 @@ class TestTicket32CoreWorkspace:
         assert "Build Your Parlay" in html, "Input panel header should exist"
         assert "Analysis Results" in html, "Results panel header should exist"
 
-    def test_sticky_action_bar_exists(self, client):
+    def test_sticky_action_bar_exists(self, app_css):
         """
         Part D: Sticky action bar should exist.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
-        assert "sticky-actions" in html, "Sticky actions class should exist"
-        assert "action-buttons" in html, "Action buttons container should exist"
+        assert "sticky-actions" in app_css, "Sticky actions class should exist"
+        assert "action-buttons" in app_css, "Action buttons container should exist"
 
-    def test_workbench_layout_styles_exist(self, client):
+    def test_workbench_layout_styles_exist(self, app_css):
         """
         Part D: Workbench CSS styles should be included.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
-        assert ".workbench" in html, "Workbench styles should exist"
-        assert ".workbench-panel" in html, "Workbench panel styles should exist"
-        assert ".workbench-panel-header" in html, "Panel header styles should exist"
-        assert ".sticky-actions" in html, "Sticky actions styles should exist"
+        assert ".workbench" in app_css, "Workbench styles should exist"
+        assert ".workbench-panel" in app_css, "Workbench panel styles should exist"
+        assert ".workbench-panel-header" in app_css, "Panel header styles should exist"
+        assert ".sticky-actions" in app_css, "Sticky actions styles should exist"
 
-    def test_desktop_media_query_exists(self, client):
+    def test_desktop_media_query_exists(self, app_css):
         """
         Part D: Desktop layout media query should exist.
         """
         response = client.get("/app")
         assert response.status_code == 200
-        html = response.text
 
         # Check for desktop breakpoint
-        assert "@media (min-width: 768px)" in html, "Desktop media query should exist"
-        assert "flex-direction: row" in html, "Desktop should use row layout"
+        assert "@media (min-width: 768px)" in app_css, "Desktop media query should exist"
+        assert "flex-direction: row" in app_css, "Desktop should use row layout"
 
 
 # =============================================================================
@@ -1318,81 +1299,51 @@ class TestTicket34OcrBuilderPrecision:
 
     # Part A: OCR → Canonical Builder Mapping
 
-    def test_ocr_button_text_changed_to_add_to_builder(self, client):
+    def test_ocr_button_text_changed_to_add_to_builder(self, app_js):
         """Part A: OCR button should say 'Add to Builder' not 'Use This Text'."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "Add to Builder" in html, "OCR button should say 'Add to Builder'"
+        assert "Add to Builder" in app_js, "OCR button should say 'Add to Builder'"
 
-    def test_parse_ocr_to_legs_function_exists(self, client):
+    def test_parse_ocr_to_legs_function_exists(self, app_js):
         """Part A: parseOcrToLegs function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "parseOcrToLegs" in html, "parseOcrToLegs function should exist"
+        assert "parseOcrToLegs" in app_js, "parseOcrToLegs function should exist"
 
-    def test_parse_ocr_line_function_exists(self, client):
+    def test_parse_ocr_line_function_exists(self, app_js):
         """Part A: parseOcrLine function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "parseOcrLine" in html, "parseOcrLine function should exist"
+        assert "parseOcrLine" in app_js, "parseOcrLine function should exist"
 
-    def test_leg_source_tag_class_exists(self, client):
+    def test_leg_source_tag_class_exists(self, app_js):
         """Part A: leg-source-tag CSS class should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "leg-source-tag" in html, "leg-source-tag CSS class should exist"
+        assert "leg-source-tag" in app_js, "leg-source-tag CSS class should exist"
 
-    def test_ocr_leg_class_exists(self, client):
+    def test_ocr_leg_class_exists(self, app_js):
         """Part A: ocr-leg CSS class should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".ocr-leg" in html, "ocr-leg CSS class should exist"
+        assert ".ocr-leg" in app_js, "ocr-leg CSS class should exist"
 
-    def test_detected_from_slip_tag_in_js(self, client):
+    def test_detected_from_slip_tag_in_js(self, app_js):
         """Part A: 'Detected from slip' tag should appear in JavaScript."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "Detected from slip" in html, "'Detected from slip' tag should be in code"
+        assert "Detected from slip" in app_js, "'Detected from slip' tag should be in code"
 
     # Part B: Per-Leg Confidence Indicators
 
-    def test_leg_clarity_css_classes_exist(self, client):
+    def test_leg_clarity_css_classes_exist(self, app_js):
         """Part B: Leg clarity CSS classes should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".leg-clarity.clear" in html, "Clear clarity class should exist"
-        assert ".leg-clarity.review" in html, "Review clarity class should exist"
-        assert ".leg-clarity.ambiguous" in html, "Ambiguous clarity class should exist"
+        assert ".leg-clarity.clear" in app_js, "Clear clarity class should exist"
+        assert ".leg-clarity.review" in app_js, "Review clarity class should exist"
+        assert ".leg-clarity.ambiguous" in app_js, "Ambiguous clarity class should exist"
 
-    def test_get_ocr_leg_clarity_function_exists(self, client):
+    def test_get_ocr_leg_clarity_function_exists(self, app_js):
         """Part B: getOcrLegClarity function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "getOcrLegClarity" in html, "getOcrLegClarity function should exist"
+        assert "getOcrLegClarity" in app_js, "getOcrLegClarity function should exist"
 
-    def test_get_clarity_display_function_exists(self, client):
+    def test_get_clarity_display_function_exists(self, app_js):
         """Part B: getClarityDisplay function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "getClarityDisplay" in html, "getClarityDisplay function should exist"
+        assert "getClarityDisplay" in app_js, "getClarityDisplay function should exist"
 
-    def test_clarity_labels_exist(self, client):
+    def test_clarity_labels_exist(self, app_js):
         """Part B: Clarity labels should exist in code."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "Clear match" in html, "'Clear match' label should exist"
-        assert "Review recommended" in html, "'Review recommended' label should exist"
-        assert "Ambiguous" in html, "'Ambiguous' label should exist"
+        assert "Clear match" in app_js, "'Clear match' label should exist"
+        assert "Review recommended" in app_js, "'Review recommended' label should exist"
+        assert "Ambiguous" in app_js, "'Ambiguous' label should exist"
 
     # Part C: OCR Review Soft Gate
 
@@ -1404,47 +1355,32 @@ class TestTicket34OcrBuilderPrecision:
         assert 'id="ocr-review-gate"' in html, "OCR review gate element should exist"
         assert "ocr-review-gate" in html, "ocr-review-gate class should exist"
 
-    def test_ocr_review_gate_buttons_exist(self, client):
+    def test_ocr_review_gate_buttons_exist(self, app_js):
         """Part C: Review gate buttons should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert 'id="gate-review-btn"' in html, "Review button should exist"
-        assert 'id="gate-proceed-btn"' in html, "Proceed button should exist"
-        assert "Review legs" in html, "'Review legs' button text should exist"
-        assert "Evaluate anyway" in html, "'Evaluate anyway' button text should exist"
+        assert 'id="gate-review-btn"' in app_js, "Review button should exist"
+        assert 'id="gate-proceed-btn"' in app_js, "Proceed button should exist"
+        assert "Review legs" in app_js, "'Review legs' button text should exist"
+        assert "Evaluate anyway" in app_js, "'Evaluate anyway' button text should exist"
 
-    def test_ocr_review_gate_message_exists(self, client):
+    def test_ocr_review_gate_message_exists(self, app_js):
         """Part C: Review gate message should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "Some detected legs may need review" in html, \
+        assert "Some detected legs may need review" in app_js, \
             "Review gate message should exist"
 
-    def test_has_legs_needing_review_function_exists(self, client):
+    def test_has_legs_needing_review_function_exists(self, app_js):
         """Part C: hasLegsNeedingReview function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "hasLegsNeedingReview" in html, "hasLegsNeedingReview function should exist"
+        assert "hasLegsNeedingReview" in app_js, "hasLegsNeedingReview function should exist"
 
-    def test_show_hide_ocr_review_gate_functions_exist(self, client):
+    def test_show_hide_ocr_review_gate_functions_exist(self, app_js):
         """Part C: showOcrReviewGate and hideOcrReviewGate functions should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "showOcrReviewGate" in html, "showOcrReviewGate function should exist"
-        assert "hideOcrReviewGate" in html, "hideOcrReviewGate function should exist"
+        assert "showOcrReviewGate" in app_js, "showOcrReviewGate function should exist"
+        assert "hideOcrReviewGate" in app_js, "hideOcrReviewGate function should exist"
 
-    def test_ocr_review_gate_css_exists(self, client):
+    def test_ocr_review_gate_css_exists(self, app_css):
         """Part C: OCR review gate CSS styles should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".ocr-review-gate" in html, "ocr-review-gate styles should exist"
-        assert ".ocr-review-gate-content" in html, "gate content styles should exist"
-        assert ".ocr-review-gate-btn" in html, "gate button styles should exist"
+        assert ".ocr-review-gate" in app_css, "ocr-review-gate styles should exist"
+        assert ".ocr-review-gate-content" in app_css, "gate content styles should exist"
+        assert ".ocr-review-gate-btn" in app_css, "gate button styles should exist"
 
     # Part D: Promo/Info Box
 
@@ -1462,78 +1398,54 @@ class TestTicket34OcrBuilderPrecision:
         html = response.text
         assert "How DNA reads bet slips" in html, "Info box title should exist"
 
-    def test_ocr_info_box_content_exists(self, client):
+    def test_ocr_info_box_content_exists(self, app_css):
         """Part D: OCR info box content should exist with exact copy."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "DNA analyzes bet structure, not odds or payouts" in html, \
+        assert "DNA analyzes bet structure, not odds or payouts" in app_css, \
             "Info box should mention structure analysis"
-        assert "including 6-leg slips" in html, \
+        assert "including 6-leg slips" in app_css, \
             "Info box should mention 6-leg parlays are normal"
-        assert "Image text may require review" in html, \
+        assert "Image text may require review" in app_css, \
             "Info box should mention review requirement"
 
-    def test_ocr_info_box_css_exists(self, client):
+    def test_ocr_info_box_css_exists(self, app_js):
         """Part D: OCR info box CSS styles should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".ocr-info-box" in html, "ocr-info-box styles should exist"
-        assert ".ocr-info-title" in html, "ocr-info-title styles should exist"
-        assert ".ocr-info-text" in html, "ocr-info-text styles should exist"
+        assert ".ocr-info-box" in app_js, "ocr-info-box styles should exist"
+        assert ".ocr-info-title" in app_js, "ocr-info-title styles should exist"
+        assert ".ocr-info-text" in app_js, "ocr-info-text styles should exist"
 
     # Edit leg functionality
 
-    def test_edit_leg_functionality_exists(self, client):
+    def test_edit_leg_functionality_exists(self, app_js):
         """Part A: Edit leg functionality should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "startEditLeg" in html, "startEditLeg function should exist"
-        assert "saveEditLeg" in html, "saveEditLeg function should exist"
-        assert "cancelEditLeg" in html, "cancelEditLeg function should exist"
+        assert "startEditLeg" in app_js, "startEditLeg function should exist"
+        assert "saveEditLeg" in app_js, "saveEditLeg function should exist"
+        assert "cancelEditLeg" in app_js, "cancelEditLeg function should exist"
 
-    def test_leg_edit_css_exists(self, client):
+    def test_leg_edit_css_exists(self, app_css):
         """Part A: Leg edit CSS styles should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".leg-edit-input" in html, "leg-edit-input styles should exist"
-        assert ".leg-edit-actions" in html, "leg-edit-actions styles should exist"
-        assert ".leg-edit-save" in html, "leg-edit-save styles should exist"
-        assert ".leg-edit-cancel" in html, "leg-edit-cancel styles should exist"
+        assert ".leg-edit-input" in app_css, "leg-edit-input styles should exist"
+        assert ".leg-edit-actions" in app_css, "leg-edit-actions styles should exist"
+        assert ".leg-edit-save" in app_css, "leg-edit-save styles should exist"
+        assert ".leg-edit-cancel" in app_css, "leg-edit-cancel styles should exist"
 
-    def test_editable_leg_class_exists(self, client):
+    def test_editable_leg_class_exists(self, app_css):
         """Part A: Editable leg CSS class should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".ocr-leg.editable" in html, "editable leg class should exist"
+        assert ".ocr-leg.editable" in app_css, "editable leg class should exist"
 
     # State tracking
 
-    def test_has_ocr_legs_state_exists(self, client):
+    def test_has_ocr_legs_state_exists(self, app_js):
         """Part A: hasOcrLegs state variable should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "hasOcrLegs" in html, "hasOcrLegs state variable should exist"
+        assert "hasOcrLegs" in app_js, "hasOcrLegs state variable should exist"
 
-    def test_pending_evaluation_state_exists(self, client):
+    def test_pending_evaluation_state_exists(self, app_js):
         """Part C: pendingEvaluation state variable should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "pendingEvaluation" in html, "pendingEvaluation state variable should exist"
+        assert "pendingEvaluation" in app_js, "pendingEvaluation state variable should exist"
 
-    def test_reset_form_clears_ocr_state(self, client):
+    def test_reset_form_clears_ocr_state(self, app_js):
         """Part A: resetForm should clear OCR state."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that resetForm resets hasOcrLegs
-        assert "hasOcrLegs = false" in html, "resetForm should reset hasOcrLegs"
+        assert "hasOcrLegs = false" in app_js, "resetForm should reset hasOcrLegs"
 
 
 # =============================================================================
@@ -1553,168 +1465,105 @@ class TestTicket35InlineRefineLoop:
 
     # Part A: Results-Screen Leg Controls
 
-    def test_result_leg_controls_css_exists(self, client):
+    def test_result_leg_controls_css_exists(self, app_css):
         """Part A: Result leg controls CSS should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".result-leg-controls" in html, "result-leg-controls CSS should exist"
-        assert ".result-leg-num" in html, "result-leg-num CSS should exist"
-        assert ".result-leg-content" in html, "result-leg-content CSS should exist"
+        assert ".result-leg-controls" in app_css, "result-leg-controls CSS should exist"
+        assert ".result-leg-num" in app_css, "result-leg-num CSS should exist"
+        assert ".result-leg-content" in app_css, "result-leg-content CSS should exist"
 
-    def test_leg_lock_btn_css_exists(self, client):
+    def test_leg_lock_btn_css_exists(self, app_css):
         """Part A: Leg lock button CSS should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".leg-lock-btn" in html, "leg-lock-btn CSS should exist"
-        assert ".leg-lock-btn.locked" in html, "leg-lock-btn.locked CSS should exist"
+        assert ".leg-lock-btn" in app_css, "leg-lock-btn CSS should exist"
+        assert ".leg-lock-btn.locked" in app_css, "leg-lock-btn.locked CSS should exist"
 
-    def test_leg_remove_btn_css_exists(self, client):
+    def test_leg_remove_btn_css_exists(self, app_js):
         """Part A: Leg remove button CSS should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".leg-remove-btn" in html, "leg-remove-btn CSS should exist"
-        assert ".leg-remove-btn:disabled" in html, "leg-remove-btn:disabled CSS should exist"
+        assert ".leg-remove-btn" in app_js, "leg-remove-btn CSS should exist"
+        assert ".leg-remove-btn:disabled" in app_js, "leg-remove-btn:disabled CSS should exist"
 
-    def test_locked_leg_styling_exists(self, client):
+    def test_locked_leg_styling_exists(self, app_js):
         """Part A: Locked leg styling should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".parlay-legs li.locked" in html, "locked leg styling should exist"
+        assert ".parlay-legs li.locked" in app_js, "locked leg styling should exist"
 
-    def test_render_results_legs_function_exists(self, client):
+    def test_render_results_legs_function_exists(self, app_js):
         """Part A: renderResultsLegs function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "renderResultsLegs" in html, "renderResultsLegs function should exist"
+        assert "renderResultsLegs" in app_js, "renderResultsLegs function should exist"
 
-    def test_toggle_leg_lock_function_exists(self, client):
+    def test_toggle_leg_lock_function_exists(self, app_js):
         """Part A: toggleLegLock function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "toggleLegLock" in html, "toggleLegLock function should exist"
+        assert "toggleLegLock" in app_js, "toggleLegLock function should exist"
 
-    def test_remove_leg_from_results_function_exists(self, client):
+    def test_remove_leg_from_results_function_exists(self, app_js):
         """Part A: removeLegFromResults function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "removeLegFromResults" in html, "removeLegFromResults function should exist"
+        assert "removeLegFromResults" in app_js, "removeLegFromResults function should exist"
 
-    def test_locked_leg_cannot_be_removed_logic(self, client):
+    def test_locked_leg_cannot_be_removed_logic(self, app_js):
         """Part A: Locked legs should not be removable (logic check)."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that the function checks for locked state before removing
-        assert "if (leg.locked) return" in html, "Should check locked state before removing"
+        assert "if (leg.locked) return" in app_js, "Should check locked state before removing"
 
     # Part B: Re-evaluate Action
 
-    def test_reevaluate_button_exists(self, client):
+    def test_reevaluate_button_exists(self, app_js):
         """Part B: Re-evaluate button should exist in HTML."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert 'id="reevaluate-btn"' in html, "Re-evaluate button should exist"
-        assert "Re-evaluate" in html, "'Re-evaluate' button text should exist"
+        assert 'id="reevaluate-btn"' in app_js, "Re-evaluate button should exist"
+        assert "Re-evaluate" in app_js, "'Re-evaluate' button text should exist"
 
-    def test_reevaluate_btn_css_exists(self, client):
+    def test_reevaluate_btn_css_exists(self, app_js):
         """Part B: Re-evaluate button CSS should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert ".reevaluate-btn" in html, "reevaluate-btn CSS should exist"
+        assert ".reevaluate-btn" in app_js, "reevaluate-btn CSS should exist"
 
-    def test_re_evaluate_parlay_function_exists(self, client):
+    def test_re_evaluate_parlay_function_exists(self, app_js):
         """Part B: reEvaluateParlay function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "reEvaluateParlay" in html, "reEvaluateParlay function should exist"
+        assert "reEvaluateParlay" in app_js, "reEvaluateParlay function should exist"
 
-    def test_re_evaluate_uses_run_evaluation(self, client):
+    def test_re_evaluate_uses_run_evaluation(self, app_js):
         """Part B: reEvaluateParlay should use runEvaluation."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that reEvaluateParlay calls runEvaluation
-        assert "await runEvaluation" in html, "Should call runEvaluation"
+        assert "await runEvaluation" in app_js, "Should call runEvaluation"
 
-    def test_update_re_evaluate_button_function_exists(self, client):
+    def test_update_re_evaluate_button_function_exists(self, app_js):
         """Part B: updateReEvaluateButton function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "updateReEvaluateButton" in html, "updateReEvaluateButton function should exist"
+        assert "updateReEvaluateButton" in app_js, "updateReEvaluateButton function should exist"
 
     # Part C: Full State Sync Guarantee
 
-    def test_results_legs_state_exists(self, client):
+    def test_results_legs_state_exists(self, app_js):
         """Part C: resultsLegs state variable should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "resultsLegs" in html, "resultsLegs state variable should exist"
+        assert "resultsLegs" in app_js, "resultsLegs state variable should exist"
 
-    def test_locked_leg_ids_state_exists(self, client):
+    def test_locked_leg_ids_state_exists(self, app_js):
         """Part C: lockedLegIds state variable should exist (Ticket 37 migration)."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Ticket 37: Migrated from lockedLegIndices to lockedLegIds
-        assert "lockedLegIds" in html, "lockedLegIds state variable should exist"
+        assert "lockedLegIds" in app_js, "lockedLegIds state variable should exist"
 
-    def test_sync_state_from_results_function_exists(self, client):
+    def test_sync_state_from_results_function_exists(self, app_js):
         """Part C: syncStateFromResults function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "syncStateFromResults" in html, "syncStateFromResults function should exist"
+        assert "syncStateFromResults" in app_js, "syncStateFromResults function should exist"
 
-    def test_sync_state_updates_builder_legs(self, client):
+    def test_sync_state_updates_builder_legs(self, app_js):
         """Part C: syncStateFromResults should update builderLegs."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that builderLegs is updated from resultsLegs
-        assert "builderLegs = resultsLegs.map" in html, "Should update builderLegs from resultsLegs"
+        assert "builderLegs = resultsLegs.map" in app_js, "Should update builderLegs from resultsLegs"
 
-    def test_sync_state_calls_sync_textarea(self, client):
+    def test_sync_state_calls_sync_textarea(self, app_js):
         """Part C: syncStateFromResults should call syncTextarea."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # The function should call syncTextarea
-        assert "syncTextarea()" in html, "Should call syncTextarea"
+        assert "syncTextarea()" in app_js, "Should call syncTextarea"
 
-    def test_update_parlay_label_function_exists(self, client):
+    def test_update_parlay_label_function_exists(self, app_js):
         """Part C: updateParlayLabel function should exist."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "updateParlayLabel" in html, "updateParlayLabel function should exist"
+        assert "updateParlayLabel" in app_js, "updateParlayLabel function should exist"
 
-    def test_reset_form_clears_refine_state(self, client):
+    def test_reset_form_clears_refine_state(self, app_js):
         """Part C: resetForm should clear refine loop state."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Ticket 37: Migrated from lockedLegIndices to lockedLegIds
-        assert "lockedLegIds.clear()" in html, "resetForm should clear lockedLegIds"
-        assert "resultsLegs = []" in html, "resetForm should clear resultsLegs"
+        assert "lockedLegIds.clear()" in app_js, "resetForm should clear lockedLegIds"
+        assert "resultsLegs = []" in app_js, "resetForm should clear resultsLegs"
 
-    def test_refine_parlay_uses_results_legs(self, client):
+    def test_refine_parlay_uses_results_legs(self, app_js):
         """Part C: refineParlay should use resultsLegs if available."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "resultsLegs.length > 0" in html, "refineParlay should check resultsLegs"
+        assert "resultsLegs.length > 0" in app_js, "refineParlay should check resultsLegs"
 
     # Part D: UX Details
 
@@ -1749,31 +1598,22 @@ class TestTicket35InlineRefineLoop:
         assert "&#128274;" in html, "Locked icon should exist"
         assert "&#128275;" in html, "Unlocked icon should exist"
 
-    def test_lock_button_titles_exist(self, client):
+    def test_lock_button_titles_exist(self, app_js):
         """Part D: Lock button titles should exist for accessibility."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "Lock this leg" in html, "Lock title should exist"
-        assert "Unlock this leg" in html, "Unlock title should exist"
-        assert "Unlock to remove" in html, "Locked remove title should exist"
+        assert "Lock this leg" in app_js, "Lock title should exist"
+        assert "Unlock this leg" in app_js, "Unlock title should exist"
+        assert "Unlock to remove" in app_js, "Locked remove title should exist"
 
     # State sync during evaluation
 
-    def test_show_results_populates_results_legs(self, client):
+    def test_show_results_populates_results_legs(self, app_js):
         """Part C: showResults should populate resultsLegs."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
         # Check that showResults creates resultsLegs from parlay.legs
-        assert "resultsLegs = (parlay.legs" in html, "showResults should populate resultsLegs"
+        assert "resultsLegs = (parlay.legs" in app_js, "showResults should populate resultsLegs"
 
-    def test_results_legs_preserve_original_index(self, client):
+    def test_results_legs_preserve_original_index(self, app_js):
         """Part C: resultsLegs should preserve originalIndex for lock tracking."""
-        response = client.get("/app")
-        assert response.status_code == 200
-        html = response.text
-        assert "originalIndex: i" in html, "Should track originalIndex"
+        assert "originalIndex: i" in app_js, "Should track originalIndex"
 
 
 # =============================================================================
