@@ -158,51 +158,51 @@
             const normalized = line.toLowerCase();
 
             // Detect sport (optional)
-            if (/\\b(nba|basketball)\\b/i.test(line)) sport = 'NBA';
-            else if (/\\b(nfl|football)\\b/i.test(line)) sport = 'NFL';
-            else if (/\\b(mlb|baseball)\\b/i.test(line)) sport = 'MLB';
-            else if (/\\b(ncaa|college)\\b/i.test(line)) sport = 'NCAA';
+            if (/\b(nba|basketball)\b/i.test(line)) sport = 'NBA';
+            else if (/\b(nfl|football)\b/i.test(line)) sport = 'NFL';
+            else if (/\b(mlb|baseball)\b/i.test(line)) sport = 'MLB';
+            else if (/\b(ncaa|college)\b/i.test(line)) sport = 'NCAA';
 
             // Detect market type and extract components
             // Moneyline patterns: "Lakers ML", "Lakers to win", "Lakers moneyline"
-            if (/\\b(ml|moneyline|to win)\\b/i.test(line)) {
+            if (/\b(ml|moneyline|to win)\b/i.test(line)) {
                 market = 'moneyline';
-                entity = line.replace(/\\b(ml|moneyline|to win)\\b/gi, '').trim();
+                entity = line.replace(/\b(ml|moneyline|to win)\b/gi, '').trim();
                 entity = cleanEntityName(entity);
             }
             // Spread patterns: "Lakers -5.5", "Lakers +3", "Lakers -5.5 spread"
-            else if (/[+-]\\d+\\.?\\d*/i.test(line) && !/\\b(over|under|o\\/u|pts|points|rebounds|assists|3pt)\\b/i.test(line)) {
+            else if (/[+-]\d+\\.?\d*/i.test(line) && !/\b(over|under|o\/u|pts|points|rebounds|assists|3pt)\b/i.test(line)) {
                 market = 'spread';
-                const spreadMatch = line.match(/([+-]\\d+\\.?\\d*)/);
+                const spreadMatch = line.match(/([+-]\d+\\.?\d*)/);
                 if (spreadMatch) {
                     value = spreadMatch[1];
-                    entity = line.replace(/[+-]\\d+\\.?\\d*/g, '').replace(/\\bspread\\b/gi, '').trim();
+                    entity = line.replace(/[+-]\d+\\.?\d*/g, '').replace(/\bspread\b/gi, '').trim();
                     entity = cleanEntityName(entity);
                 }
             }
             // Total patterns: "over 220", "under 45.5", "Lakers o220", "Lakers u45"
-            else if (/\\b(over|under|o\\/u)\\b/i.test(line) || /[ou]\\d+\\.?\\d*/i.test(line)) {
+            else if (/\b(over|under|o\/u)\b/i.test(line) || /[ou]\d+\\.?\d*/i.test(line)) {
                 market = 'total';
-                const overMatch = line.match(/\\b(over|o)\\s*(\\d+\\.?\\d*)/i);
-                const underMatch = line.match(/\\b(under|u)\\s*(\\d+\\.?\\d*)/i);
+                const overMatch = line.match(/\b(over|o)\s*(\d+\\.?\d*)/i);
+                const underMatch = line.match(/\b(under|u)\s*(\d+\\.?\d*)/i);
                 if (overMatch) {
                     value = 'over ' + overMatch[2];
-                    entity = line.replace(/\\b(over|o)\\s*\\d+\\.?\\d*/gi, '').trim();
+                    entity = line.replace(/\b(over|o)\s*\d+\\.?\d*/gi, '').trim();
                 } else if (underMatch) {
                     value = 'under ' + underMatch[2];
-                    entity = line.replace(/\\b(under|u)\\s*\\d+\\.?\\d*/gi, '').trim();
+                    entity = line.replace(/\b(under|u)\s*\d+\\.?\d*/gi, '').trim();
                 }
                 entity = cleanEntityName(entity);
             }
             // Player prop patterns: "LeBron over 25.5 pts", "Curry 5.5+ 3pt"
-            else if (/\\b(pts|points|rebounds|assists|3pt|threes|steals|blocks)\\b/i.test(line)) {
+            else if (/\b(pts|points|rebounds|assists|3pt|threes|steals|blocks)\b/i.test(line)) {
                 market = 'player_prop';
-                const propMatch = line.match(/(over|under)?\\s*(\\d+\\.?\\d*)\\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/i);
+                const propMatch = line.match(/(over|under)?\s*(\d+\\.?\d*)\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/i);
                 if (propMatch) {
                     const direction = propMatch[1] ? propMatch[1].toLowerCase() : 'over';
                     value = direction + ' ' + propMatch[2] + ' ' + propMatch[3].toLowerCase();
                 }
-                entity = line.replace(/(over|under)?\\s*\\d+\\.?\\d*\\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/gi, '').trim();
+                entity = line.replace(/(over|under)?\s*\d+\\.?\d*\s*(pts|points|rebounds|assists|3pt|threes|steals|blocks)/gi, '').trim();
                 entity = cleanEntityName(entity);
             }
             // If no pattern matched, use the whole line as entity with unknown market
@@ -212,7 +212,7 @@
 
             // Skip empty entities
             if (!entity || entity.length < 2) {
-                entity = line.split(/\\s+/)[0] || line;
+                entity = line.split(/\s+/)[0] || line;
             }
 
             // Ticket 37: Generate deterministic leg_id
@@ -237,10 +237,10 @@
          */
         function cleanEntityName(name) {
             return name
-                .replace(/\\b(nba|nfl|mlb|ncaa|college|basketball|football|baseball)\\b/gi, '')
-                .replace(/\\b(game|match|vs|@|at)\\b/gi, '')
+                .replace(/\b(nba|nfl|mlb|ncaa|college|basketball|football|baseball)\b/gi, '')
+                .replace(/\b(game|match|vs|@|at)\b/gi, '')
                 .replace(/[,()]/g, '')
-                .replace(/\\s+/g, ' ')
+                .replace(/\s+/g, ' ')
                 .trim();
         }
 
@@ -261,12 +261,12 @@
             }
 
             // Has clean entity name (+1)
-            if (leg.entity && leg.entity.length >= 3 && /^[a-zA-Z\\s]+$/.test(leg.entity)) {
+            if (leg.entity && leg.entity.length >= 3 && /^[a-zA-Z\s]+$/.test(leg.entity)) {
                 score += 1;
             }
 
             // Has numeric value for spread/total/prop (+1)
-            if (leg.value && /\\d/.test(leg.value)) {
+            if (leg.value && /\d/.test(leg.value)) {
                 score += 1;
             }
 
@@ -278,7 +278,7 @@
 
             // Penalize if raw text is very short or has unusual characters
             if (leg.raw.length < 5) score -= 1;
-            if (/[^a-zA-Z0-9\\s.+-]/g.test(leg.raw)) score -= 1;
+            if (/[^a-zA-Z0-9\s.+-]/g.test(leg.raw)) score -= 1;
 
             // Determine clarity level
             if (score >= 4) return 'clear';
@@ -1428,7 +1428,7 @@
                 const removeDisabled = leg.locked ? 'disabled' : '';
                 const removeTitle = leg.locked ? 'Unlock to remove' : 'Remove this leg';
                 // Ticket 39: Use leg_id for robust removal (survives reordering)
-                html += '<button class="leg-remove-btn" onclick="removeLegFromResults(\\'' + leg.leg_id + '\\')" ' + removeDisabled + ' title="' + removeTitle + '">Remove</button>';
+                html += '<button class="leg-remove-btn" onclick="removeLegFromResults(\'' + leg.leg_id + '\')" ' + removeDisabled + ' title="' + removeTitle + '">Remove</button>';
                 html += '</div>';
 
                 li.innerHTML = html;
