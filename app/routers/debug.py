@@ -171,3 +171,33 @@ def _check_module_boundaries() -> dict:
         }
 
     return result
+
+
+@router.get("/ocr-health")
+async def ocr_health_check():
+    """Check if OCR dependencies are configured."""
+    import os
+    
+    openai_key_present = bool(os.environ.get("OPENAI_API_KEY"))
+    openai_key_length = len(os.environ.get("OPENAI_API_KEY", "")) if openai_key_present else 0
+    leading_light_enabled = os.environ.get("LEADING_LIGHT_ENABLED", "false").lower() == "true"
+    
+    def _diagnose():
+        if not leading_light_enabled:
+            return "LEADING_LIGHT_ENABLED is not set to 'true' in Railway environment variables"
+        if not openai_key_present:
+            return "OPENAI_API_KEY is missing from Railway environment variables"
+        if openai_key_length < 20:
+            return "OPENAI_API_KEY is too short (should be ~51 chars, starts with sk-)"
+        return "Configuration looks good"
+    
+    return {
+        "ocr_ready": openai_key_present and leading_light_enabled,
+        "openai_api_key": {
+            "present": openai_key_present,
+            "length": openai_key_length,
+            "valid_format": openai_key_length > 20 and os.environ.get("OPENAI_API_KEY", "").startswith("sk-") if openai_key_present else False
+        },
+        "leading_light_enabled": leading_light_enabled,
+        "diagnosis": _diagnose()
+    }
