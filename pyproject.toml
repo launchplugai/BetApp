@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dna-matrix"
-version = "0.1.0"
+version = "0.2.0"
 description = "DNA Matrix - Semantic identity management system"
 readme = "README.md"
 requires-python = ">=3.10"

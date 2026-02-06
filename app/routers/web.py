@@ -2695,9 +2695,9 @@ def _get_canonical_ui_html() -> str:
                 renderResultsLegs();
             }}
 
-            // Grade/Signal
+            // Grade/Signal (S3-A: Confidence Gradient System)
             const signal = data.signalInfo?.signal || 'yellow';
-            const signalLabels = {{ blue: 'Strong', green: 'Solid', yellow: 'Fixable', red: 'Fragile' }};
+            const signalLabels = {{ blue: 'Stable', green: 'Composed', yellow: 'Pressured', red: 'Fragile' }};
             const gradeSignal = document.getElementById('grade-signal');
             gradeSignal.className = 'grade-signal ' + signal;
             gradeSignal.textContent = signal[0].toUpperCase();
