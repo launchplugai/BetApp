@@ -1610,13 +1610,14 @@ def _get_canonical_ui_html() -> str:
 
         <!-- Ticket 25: Loop Signaling / Ticket 32 Part D: Sticky Action Bar -->
         <!-- Ticket 35: Added Re-evaluate for inline refinement -->
+        <!-- S3-B: Ritualized Re-evaluation Loop -->
         <div id="action-buttons" class="action-buttons sticky-actions">
             <div class="refine-actions-row">
-                <button id="reevaluate-btn" class="reevaluate-btn" onclick="reEvaluateParlay()">Re-evaluate</button>
-                <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Edit in Builder</button>
+                <button id="reevaluate-btn" class="reevaluate-btn" onclick="reEvaluateParlay()">Test This Adjustment</button>
+                <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Refine Structure</button>
             </div>
             <button id="reset-btn" class="reset-btn" onclick="resetForm()">Evaluate Another</button>
-            <div class="refine-hint">Remove or lock legs above, then re-evaluate</div>
+            <div class="refine-hint">Adjust structure above, then test</div>
         </div>
 
             </div> <!-- End workbench-results panel -->
@@ -2707,6 +2708,41 @@ def _get_canonical_ui_html() -> str:
                 data.evaluation?.recommendation?.reason ||
                 data.humanSummary?.verdict ||
                 'Evaluation complete';
+
+            // S3-B: Delta Sentence (progress feedback)
+            const deltaSentenceEl = document.getElementById('delta-sentence');
+            if (data.delta && isReEvaluation) {{
+                const delta = data.delta;
+                let deltaText = '';
+                
+                if (delta.legs_removed > 0 || delta.legs_added > 0) {{
+                    if (delta.legs_removed > 0 && delta.legs_added === 0) {{
+                        deltaText = `You removed ${{delta.legs_removed}} leg${{delta.legs_removed > 1 ? 's' : ''}}. `;
+                    }} else if (delta.legs_added > 0 && delta.legs_removed === 0) {{
+                        deltaText = `You added ${{delta.legs_added}} leg${{delta.legs_added > 1 ? 's' : ''}}. `;
+                    }} else {{
+                        deltaText = `You traded ${{delta.legs_removed}} for ${{delta.legs_added}}. `;
+                    }}
+                }}
+                
+                // Add structural direction
+                if (delta.correlation_delta !== 0) {{
+                    if (delta.correlation_delta < 0) {{
+                        deltaText += 'Structure tightened.';
+                    }} else {{
+                        deltaText += 'Structure loosened.';
+                    }}
+                }}
+                
+                if (deltaText) {{
+                    deltaSentenceEl.textContent = deltaText.trim();
+                    deltaSentenceEl.classList.remove('hidden');
+                }} else {{
+                    deltaSentenceEl.classList.add('hidden');
+                }}
+            }} else {{
+                deltaSentenceEl.classList.add('hidden');
+            }}
 
             // Risks
             const risksList = document.getElementById('risks-list');

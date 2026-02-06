@@ -1705,14 +1705,14 @@ class TestTicket35InlineRefineLoop:
         assert response.status_code == 200
         html = response.text
         assert "refine-hint" in html, "refine-hint CSS should exist"
-        assert "Remove or lock legs above" in html, "Hint text should exist"
+        assert "Adjust structure above, then test" in html, "Hint text should exist"
 
     def test_edit_in_builder_button_exists(self, client):
-        """Part D: Edit in Builder button should exist."""
+        """Part D: Refine Structure button should exist."""
         response = client.get("/app")
         assert response.status_code == 200
         html = response.text
-        assert "Edit in Builder" in html, "'Edit in Builder' button text should exist"
+        assert "Refine Structure" in html, "'Edit in Builder' button text should exist"
 
     def test_lock_icons_in_code(self, client):
         """Part D: Lock/unlock icons should be in code."""
