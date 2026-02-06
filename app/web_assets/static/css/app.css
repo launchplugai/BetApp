@@ -1,5 +1,5 @@
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        :root {{
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
             --bg: #0a0a0a;
             --surface: #141414;
             --surface-hover: #1a1a1a;
@@ -12,48 +12,48 @@
             --yellow: #eab308;
             --red: #ef4444;
             --radius: 8px;
-        }}
-        body {{
+        }
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
             padding: 16px;
             line-height: 1.5;
-        }}
-        .container {{
+        }
+        .container {
             max-width: 600px;
             margin: 0 auto;
-        }}
-        header {{
+        }
+        header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
             border-bottom: 1px solid var(--border);
-        }}
-        h1 {{
+        }
+        h1 {
             font-size: 20px;
             font-weight: 600;
-        }}
-        .version-info {{
+        }
+        .version-info {
             text-align: right;
-        }}
-        .version-badge {{
+        }
+        .version-badge {
             font-size: 12px;
             font-weight: 600;
             color: var(--accent);
             font-family: monospace;
-        }}
-        .deploy-proof {{
+        }
+        .deploy-proof {
             font-size: 10px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-top: 2px;
-        }}
-        .copy-debug-btn {{
+        }
+        .copy-debug-btn {
             margin-left: 8px;
             padding: 2px 6px;
             font-size: 9px;
@@ -64,48 +64,48 @@
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }}
-        .copy-debug-btn:hover {{
+        }
+        .copy-debug-btn:hover {
             background: var(--surface-hover);
             color: var(--accent);
-        }}
+        }
         /* S5-A: What's New Section */
-        .whats-new {{
+        .whats-new {
             margin: 12px 0;
             padding: 12px 14px;
             background: rgba(59, 130, 246, 0.05);
             border: 1px solid rgba(59, 130, 246, 0.2);
             border-left-width: 3px;
             border-radius: var(--radius);
-        }}
-        .whats-new-title {{
+        }
+        .whats-new-title {
             font-size: 12px;
             font-weight: 600;
             color: var(--accent);
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }}
-        .whats-new-list {{
+        }
+        .whats-new-list {
             list-style: none;
             padding: 0;
             margin: 0;
-        }}
-        .whats-new-list li {{
+        }
+        .whats-new-list li {
             font-size: 12px;
             color: var(--text);
             padding: 3px 0;
             padding-left: 12px;
             position: relative;
-        }}
-        .whats-new-list li:before {{
+        }
+        .whats-new-list li:before {
             content: "•";
             position: absolute;
             left: 0;
             color: var(--accent);
-        }}
+        }
         /* Ticket 32 Part B: Session Bar */
-        .session-bar {{
+        .session-bar {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -115,11 +115,11 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             font-size: 12px;
-        }}
-        .session-label {{
+        }
+        .session-label {
             color: var(--text-muted);
-        }}
-        .session-name-input {{
+        }
+        .session-name-input {
             flex: 1;
             padding: 4px 8px;
             background: var(--bg);
@@ -128,91 +128,91 @@
             color: var(--text);
             font-size: 12px;
             min-width: 0;
-        }}
-        .session-name-input:focus {{
+        }
+        .session-name-input:focus {
             outline: none;
             border-color: var(--accent);
-        }}
-        .session-name-input::placeholder {{
+        }
+        .session-name-input::placeholder {
             color: var(--text-muted);
-        }}
-        .session-history {{
+        }
+        .session-history {
             color: var(--text-muted);
             white-space: nowrap;
             font-family: monospace;
-        }}
+        }
         /* Ticket 32 Part D: Workbench Layout */
-        .workbench {{
+        .workbench {
             display: flex;
             flex-direction: column;
             gap: 16px;
-        }}
-        .workbench-panel {{
+        }
+        .workbench-panel {
             flex: 1;
-        }}
-        .workbench-panel-header {{
+        }
+        .workbench-panel-header {
             padding: 8px 0;
             margin-bottom: 8px;
             border-bottom: 1px solid var(--border);
-        }}
-        .workbench-panel-title {{
+        }
+        .workbench-panel-title {
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--accent);
-        }}
-        .workbench-results .workbench-panel-title {{
+        }
+        .workbench-results .workbench-panel-title {
             color: var(--green);
-        }}
+        }
         /* Desktop: Side-by-side layout */
-        @media (min-width: 768px) {{
-            .workbench {{
+        @media (min-width: 768px) {
+            .workbench {
                 flex-direction: row;
                 align-items: flex-start;
-            }}
-            .workbench-input {{
+            }
+            .workbench-input {
                 flex: 0 0 45%;
                 max-width: 45%;
                 position: sticky;
                 top: 16px;
-            }}
-            .workbench-results {{
+            }
+            .workbench-results {
                 flex: 0 0 55%;
                 max-width: 55%;
-            }}
-        }}
+            }
+        }
         /* Sticky action bar */
-        .sticky-actions {{
+        .sticky-actions {
             position: sticky;
             bottom: 0;
             background: var(--bg);
             padding: 12px 0;
             border-top: 1px solid var(--border);
             margin-top: 16px;
-        }}
-        @media (min-width: 768px) {{
-            .sticky-actions {{
+        }
+        @media (min-width: 768px) {
+            .sticky-actions {
                 position: static;
                 border-top: none;
                 margin-top: 16px;
-            }}
-        }}
-        .card {{
+            }
+        }
+        .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 16px;
             margin-bottom: 16px;
-        }}
-        label {{
+        }
+        label {
             display: block;
             font-size: 13px;
             font-weight: 500;
             margin-bottom: 8px;
             color: var(--text-muted);
-        }}
-        textarea {{
+        }
+        textarea {
             width: 100%;
             min-height: 120px;
             padding: 12px;
@@ -223,20 +223,20 @@
             font-size: 14px;
             font-family: inherit;
             resize: vertical;
-        }}
-        textarea:focus {{
+        }
+        textarea:focus {
             outline: none;
             border-color: var(--accent);
-        }}
-        textarea::placeholder {{
+        }
+        textarea::placeholder {
             color: var(--text-muted);
-        }}
-        .tier-selector {{
+        }
+        .tier-selector {
             display: flex;
             gap: 8px;
             margin: 16px 0;
-        }}
-        .tier-btn {{
+        }
+        .tier-btn {
             flex: 1;
             padding: 10px 8px;
             background: var(--bg);
@@ -247,16 +247,16 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.15s;
-        }}
-        .tier-btn:hover {{
+        }
+        .tier-btn:hover {
             background: var(--surface-hover);
-        }}
-        .tier-btn.active {{
+        }
+        .tier-btn.active {
             background: var(--accent);
             border-color: var(--accent);
             color: white;
-        }}
-        .submit-btn {{
+        }
+        .submit-btn {
             width: 100%;
             padding: 14px;
             background: var(--accent);
@@ -267,24 +267,24 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.15s;
-        }}
-        .submit-btn:hover {{
+        }
+        .submit-btn:hover {
             background: var(--accent-hover);
-        }}
-        .submit-btn:disabled {{
+        }
+        .submit-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-        }}
-        .loading {{
+        }
+        .loading {
             display: none;
             text-align: center;
             padding: 32px;
             color: var(--text-muted);
-        }}
-        .loading.active {{
+        }
+        .loading.active {
             display: block;
-        }}
-        .spinner {{
+        }
+        .spinner {
             width: 24px;
             height: 24px;
             border: 2px solid var(--border);
@@ -292,11 +292,11 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 12px;
-        }}
-        @keyframes spin {{
-            to {{ transform: rotate(360deg); }}
-        }}
-        .error-panel {{
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .error-panel {
             display: none;
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid var(--red);
@@ -305,17 +305,17 @@
             margin-bottom: 16px;
             color: var(--red);
             font-size: 14px;
-        }}
-        .error-panel.active {{
+        }
+        .error-panel.active {
             display: block;
-        }}
-        .results {{
+        }
+        .results {
             display: none;
-        }}
-        .results.active {{
+        }
+        .results.active {
             display: block;
-        }}
-        .grade {{
+        }
+        .grade {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -324,8 +324,8 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             margin-bottom: 16px;
-        }}
-        .grade-signal {{
+        }
+        .grade-signal {
             width: 48px;
             height: 48px;
             border-radius: 50%;
@@ -334,28 +334,28 @@
             justify-content: center;
             font-size: 20px;
             font-weight: 700;
-        }}
-        .grade-signal.blue {{ background: rgba(59, 130, 246, 0.2); color: #3b82f6; }}
-        .grade-signal.green {{ background: rgba(34, 197, 94, 0.2); color: #22c55e; }}
-        .grade-signal.yellow {{ background: rgba(234, 179, 8, 0.2); color: #eab308; }}
-        .grade-signal.red {{ background: rgba(239, 68, 68, 0.2); color: #ef4444; }}
-        .grade-info h2 {{
+        }
+        .grade-signal.blue { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .grade-signal.green { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .grade-signal.yellow { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .grade-signal.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .grade-info h2 {
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 4px;
-        }}
-        .grade-info p {{
+        }
+        .grade-info p {
             font-size: 13px;
             color: var(--text-muted);
-        }}
+        }
         /* Ticket 32 Part C: Sherlock/DNA Analysis Badges */
-        .analysis-badges {{
+        .analysis-badges {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             margin: 12px 0;
-        }}
-        .analysis-badge {{
+        }
+        .analysis-badge {
             display: flex;
             align-items: center;
             gap: 6px;
@@ -365,93 +365,93 @@
             border-radius: var(--radius);
             font-size: 11px;
             cursor: help;
-        }}
-        .badge-icon {{
+        }
+        .badge-icon {
             font-size: 14px;
-        }}
-        .badge-text {{
+        }
+        .badge-text {
             color: var(--text);
             font-weight: 500;
-        }}
-        .badge-qualifier {{
+        }
+        .badge-qualifier {
             color: var(--text-muted);
             font-size: 10px;
-        }}
-        .sherlock-badge {{
+        }
+        .sherlock-badge {
             border-left: 3px solid var(--accent);
-        }}
-        .dna-badge {{
+        }
+        .dna-badge {
             border-left: 3px solid var(--green);
-        }}
-        .section-title {{
+        }
+        .section-title {
             font-size: 12px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
             margin-bottom: 8px;
-        }}
-        .risks-list {{
+        }
+        .risks-list {
             list-style: none;
-        }}
-        .risks-list li {{
+        }
+        .risks-list li {
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
             font-size: 14px;
-        }}
-        .risks-list li:last-child {{
+        }
+        .risks-list li:last-child {
             border-bottom: none;
-        }}
-        .artifacts-header {{
+        }
+        .artifacts-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
-        }}
-        .artifact-count {{
+        }
+        .artifact-count {
             font-size: 12px;
             color: var(--text-muted);
             font-family: monospace;
-        }}
-        .artifacts-list {{
+        }
+        .artifacts-list {
             list-style: none;
-        }}
-        .artifact-item {{
+        }
+        .artifact-item {
             padding: 10px;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             margin-bottom: 8px;
             font-size: 13px;
-        }}
-        .artifact-label {{
+        }
+        .artifact-label {
             font-weight: 500;
             color: var(--text);
             margin-bottom: 4px;
-        }}
-        .artifact-text {{
+        }
+        .artifact-text {
             color: var(--text-muted);
             font-size: 12px;
-        }}
-        .artifact-type-weight {{ border-left: 3px solid var(--accent); }}
-        .artifact-type-constraint {{ border-left: 3px solid var(--yellow); }}
-        .artifact-type-audit_note {{ border-left: 3px solid var(--green); }}
-        .artifact-type-unknown {{ border-left: 3px solid var(--text-muted); }}
-        .debug-section {{
+        }
+        .artifact-type-weight { border-left: 3px solid var(--accent); }
+        .artifact-type-constraint { border-left: 3px solid var(--yellow); }
+        .artifact-type-audit_note { border-left: 3px solid var(--green); }
+        .artifact-type-unknown { border-left: 3px solid var(--text-muted); }
+        .debug-section {
             display: none;
             margin-top: 16px;
-        }}
-        .debug-section.active {{
+        }
+        .debug-section.active {
             display: block;
-        }}
-        .debug-header {{
+        }
+        .debug-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
             padding: 8px 0;
-        }}
-        .debug-content {{
+        }
+        .debug-content {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
@@ -462,22 +462,22 @@
             word-break: break-all;
             max-height: 400px;
             overflow: auto;
-        }}
-        .contract-status {{
+        }
+        .contract-status {
             font-size: 11px;
             padding: 4px 8px;
             border-radius: 4px;
             font-family: monospace;
-        }}
-        .contract-status.pass {{
+        }
+        .contract-status.pass {
             background: rgba(34, 197, 94, 0.2);
             color: var(--green);
-        }}
-        .contract-status.fail {{
+        }
+        .contract-status.fail {
             background: rgba(239, 68, 68, 0.2);
             color: var(--red);
-        }}
-        .reset-btn {{
+        }
+        .reset-btn {
             display: none;
             width: 100%;
             padding: 12px;
@@ -488,29 +488,29 @@
             font-size: 14px;
             cursor: pointer;
             margin-top: 16px;
-        }}
-        .reset-btn:hover {{
+        }
+        .reset-btn:hover {
             background: var(--surface);
-        }}
-        .reset-btn.active {{
+        }
+        .reset-btn.active {
             display: block;
-        }}
+        }
         /* Ticket 25: Evaluated Parlay Receipt */
-        .parlay-receipt {{
+        .parlay-receipt {
             background: var(--surface);
-        }}
-        .parlay-label {{
+        }
+        .parlay-label {
             font-size: 14px;
             font-weight: 500;
             color: var(--text);
             margin-bottom: 8px;
-        }}
-        .parlay-legs {{
+        }
+        .parlay-legs {
             list-style: none;
             padding: 0;
             margin: 0;
-        }}
-        .parlay-legs li {{
+        }
+        .parlay-legs li {
             padding: 10px 8px;
             border-bottom: 1px solid var(--border);
             font-size: 13px;
@@ -518,37 +518,37 @@
             display: flex;
             align-items: flex-start;
             gap: 8px;
-        }}
-        .parlay-legs li:last-child {{
+        }
+        .parlay-legs li:last-child {
             border-bottom: none;
-        }}
-        .parlay-legs .leg-type {{
+        }
+        .parlay-legs .leg-type {
             font-size: 10px;
             color: var(--text-muted);
             margin-left: 8px;
             text-transform: uppercase;
-        }}
+        }
         /* Ticket 35: Leg Controls in Results */
-        .result-leg-num {{
+        .result-leg-num {
             font-weight: 600;
             color: var(--text-muted);
             min-width: 20px;
             flex-shrink: 0;
-        }}
-        .result-leg-content {{
+        }
+        .result-leg-content {
             flex: 1;
             min-width: 0;
-        }}
-        .result-leg-text {{
+        }
+        .result-leg-text {
             word-break: break-word;
-        }}
-        .result-leg-controls {{
+        }
+        .result-leg-controls {
             display: flex;
             align-items: center;
             gap: 6px;
             flex-shrink: 0;
-        }}
-        .leg-lock-btn {{
+        }
+        .leg-lock-btn {
             background: none;
             border: none;
             cursor: pointer;
@@ -557,19 +557,19 @@
             color: var(--text-muted);
             border-radius: 4px;
             transition: all 0.15s ease;
-        }}
-        .leg-lock-btn:hover {{
+        }
+        .leg-lock-btn:hover {
             background: var(--surface);
             color: var(--text);
-        }}
-        .leg-lock-btn.locked {{
+        }
+        .leg-lock-btn.locked {
             color: var(--accent);
-        }}
-        .leg-lock-btn.locked:hover {{
+        }
+        .leg-lock-btn.locked:hover {
             color: var(--accent);
             background: rgba(99, 102, 241, 0.1);
-        }}
-        .leg-remove-btn {{
+        }
+        .leg-remove-btn {
             background: none;
             border: 1px solid var(--border);
             cursor: pointer;
@@ -578,28 +578,28 @@
             color: var(--text-muted);
             border-radius: 4px;
             transition: all 0.15s ease;
-        }}
-        .leg-remove-btn:hover {{
+        }
+        .leg-remove-btn:hover {
             background: rgba(239, 68, 68, 0.1);
             border-color: var(--red);
             color: var(--red);
-        }}
-        .leg-remove-btn:disabled {{
+        }
+        .leg-remove-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
-        }}
-        .leg-remove-btn:disabled:hover {{
+        }
+        .leg-remove-btn:disabled:hover {
             background: none;
             border-color: var(--border);
             color: var(--text-muted);
-        }}
-        .parlay-legs li.locked {{
+        }
+        .parlay-legs li.locked {
             background: rgba(99, 102, 241, 0.05);
             border-left: 2px solid var(--accent);
             padding-left: 6px;
-        }}
+        }
         /* Ticket 35: Re-evaluate Button */
-        .reevaluate-btn {{
+        .reevaluate-btn {
             background: var(--accent);
             border: none;
             color: white;
@@ -609,126 +609,126 @@
             font-weight: 500;
             cursor: pointer;
             flex: 1;
-        }}
-        .reevaluate-btn:hover {{
+        }
+        .reevaluate-btn:hover {
             opacity: 0.9;
-        }}
-        .reevaluate-btn:disabled {{
+        }
+        .reevaluate-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }}
-        .refine-actions-row {{
+        }
+        .refine-actions-row {
             display: flex;
             gap: 8px;
             margin-bottom: 8px;
-        }}
-        .refine-hint {{
+        }
+        .refine-hint {
             font-size: 11px;
             color: var(--text-muted);
             text-align: center;
             margin-top: 4px;
-        }}
+        }
         /* Ticket 26 Part A: Leg Interpretation */
-        .leg-interpretation {{
+        .leg-interpretation {
             font-size: 11px;
             color: var(--text-muted);
             margin-top: 4px;
             font-style: italic;
             padding-left: 0;
-        }}
+        }
         /* Ticket 25: Notable Legs */
-        .notable-legs-list {{
+        .notable-legs-list {
             list-style: none;
             padding: 0;
             margin: 0;
-        }}
-        .notable-leg {{
+        }
+        .notable-leg {
             padding: 10px;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             margin-bottom: 8px;
-        }}
-        .notable-leg-text {{
+        }
+        .notable-leg-text {
             font-size: 13px;
             font-weight: 500;
             color: var(--text);
             margin-bottom: 4px;
-        }}
-        .notable-leg-reason {{
+        }
+        .notable-leg-reason {
             font-size: 12px;
             color: var(--text-muted);
-        }}
+        }
         /* Ticket 25: Final Verdict */
-        .verdict-section {{
+        .verdict-section {
             background: var(--surface);
             border-left: 3px solid var(--accent);
-        }}
-        .verdict-text {{
+        }
+        .verdict-text {
             font-size: 14px;
             line-height: 1.6;
             color: var(--text);
             margin: 0;
-        }}
-        .verdict-section.tone-positive {{
+        }
+        .verdict-section.tone-positive {
             border-left-color: var(--green);
-        }}
-        .verdict-section.tone-mixed {{
+        }
+        .verdict-section.tone-mixed {
             border-left-color: var(--yellow);
-        }}
-        .verdict-section.tone-cautious {{
+        }
+        .verdict-section.tone-cautious {
             border-left-color: var(--red);
-        }}
+        }
         /* Ticket 26 Part C: Gentle Guidance */
-        .guidance-section {{
+        .guidance-section {
             margin-top: 12px;
             padding: 14px;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-        }}
-        .guidance-header {{
+        }
+        .guidance-header {
             font-size: 13px;
             color: var(--text-muted);
             margin-bottom: 10px;
             font-weight: 500;
-        }}
-        .guidance-list {{
+        }
+        .guidance-list {
             list-style: none;
             padding: 0;
             margin: 0;
-        }}
-        .guidance-list li {{
+        }
+        .guidance-list li {
             padding: 6px 0;
             font-size: 13px;
             color: var(--text);
             border-bottom: 1px dashed var(--border);
-        }}
-        .guidance-list li:last-child {{
+        }
+        .guidance-list li:last-child {
             border-bottom: none;
-        }}
+        }
         /* Ticket 27 Part D: Grounding Warnings */
-        .grounding-warnings {{
+        .grounding-warnings {
             margin-top: 12px;
             padding: 10px 14px;
             background: var(--bg);
             border: 1px solid var(--yellow);
             border-left-width: 3px;
             border-radius: var(--radius);
-        }}
-        .grounding-warnings-list {{
+        }
+        .grounding-warnings-list {
             list-style: none;
             padding: 0;
             margin: 0;
-        }}
-        .grounding-warnings-list li {{
+        }
+        .grounding-warnings-list li {
             font-size: 12px;
             color: var(--text-muted);
             padding: 3px 0;
             font-style: italic;
-        }}
+        }
         /* Ticket 38B-C1: Delta Sentence & Snapshot Panel */
-        .delta-sentence {{
+        .delta-sentence {
             margin: 12px 0;
             padding: 10px 14px;
             background: var(--bg);
@@ -737,79 +737,79 @@
             border-radius: var(--radius);
             font-size: 13px;
             color: var(--text);
-        }}
-        .delta-sentence.hidden {{
+        }
+        .delta-sentence.hidden {
             display: none;
-        }}
+        }
         /* Ticket D1 / 38B-C3: Grounding Score Display */
-        .grounding-score-panel {{
+        .grounding-score-panel {
             margin-top: 12px;
-        }}
-        .grounding-score-header {{
+        }
+        .grounding-score-header {
             font-size: 13px;
             font-weight: 600;
             color: var(--text);
             margin-bottom: 10px;
-        }}
-        .grounding-score-narrative {{
+        }
+        .grounding-score-narrative {
             font-size: 13px;
             line-height: 1.5;
             color: var(--text);
             margin-bottom: 14px;
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
-        }}
-        .grounding-score-breakdown {{
+        }
+        .grounding-score-breakdown {
             display: flex;
             gap: 16px;
             flex-wrap: wrap;
-        }}
-        .grounding-score-item {{
+        }
+        .grounding-score-item {
             display: flex;
             flex-direction: column;
             gap: 4px;
-        }}
-        .grounding-score-label {{
+        }
+        .grounding-score-label {
             font-size: 11px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-        }}
-        .grounding-score-value {{
+        }
+        .grounding-score-value {
             font-size: 16px;
             font-weight: 600;
             color: var(--text);
-        }}
-        .snapshot-panel {{
+        }
+        .snapshot-panel {
             margin: 16px 0;
             padding: 14px;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-        }}
-        .snapshot-panel summary {{
+        }
+        .snapshot-panel summary {
             font-size: 13px;
             font-weight: 600;
             color: var(--text);
             cursor: pointer;
             margin-bottom: 8px;
-        }}
-        .snapshot-content {{
+        }
+        .snapshot-content {
             font-size: 12px;
             color: var(--text-muted);
             line-height: 1.6;
             padding-top: 8px;
-        }}
+        }
         /* Ticket 25: Action Buttons */
-        .action-buttons {{
+        .action-buttons {
             display: none;
             gap: 8px;
             margin-top: 16px;
-        }}
-        .action-buttons.active {{
+        }
+        .action-buttons.active {
             display: flex;
-        }}
-        .refine-btn {{
+        }
+        .refine-btn {
             flex: 1;
             padding: 12px;
             background: var(--accent);
@@ -820,25 +820,25 @@
             font-weight: 500;
             cursor: pointer;
             transition: background 0.15s;
-        }}
-        .refine-btn:hover {{
+        }
+        .refine-btn:hover {
             background: var(--accent-hover);
-        }}
-        .action-buttons .reset-btn {{
+        }
+        .action-buttons .reset-btn {
             flex: 1;
             display: block;
             margin-top: 0;
-        }}
+        }
         /* Ticket 23: Parlay Builder Styles */
-        .mode-toggle {{
+        .mode-toggle {
             display: flex;
             gap: 4px;
             margin-bottom: 12px;
             background: var(--bg);
             border-radius: var(--radius);
             padding: 4px;
-        }}
-        .mode-btn {{
+        }
+        .mode-btn {
             flex: 1;
             padding: 8px;
             background: transparent;
@@ -849,32 +849,32 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.15s;
-        }}
-        .mode-btn.active {{
+        }
+        .mode-btn.active {
             background: var(--surface);
             color: var(--text);
-        }}
-        .builder-section {{
+        }
+        .builder-section {
             display: none;
-        }}
-        .builder-section.active {{
+        }
+        .builder-section.active {
             display: block;
-        }}
-        .paste-section {{
+        }
+        .paste-section {
             display: none;
-        }}
-        .paste-section.active {{
+        }
+        .paste-section.active {
             display: block;
-        }}
+        }
         /* Ticket 32 Part A: Image Upload Styles */
-        .image-upload-section {{
+        .image-upload-section {
             margin: 16px 0;
             text-align: center;
-        }}
-        .image-upload-label {{
+        }
+        .image-upload-label {
             cursor: pointer;
-        }}
-        .image-upload-btn {{
+        }
+        .image-upload-btn {
             display: inline-block;
             padding: 10px 16px;
             background: var(--surface);
@@ -883,27 +883,27 @@
             color: var(--text);
             font-size: 13px;
             transition: all 0.2s;
-        }}
-        .image-upload-btn:hover {{
+        }
+        .image-upload-btn:hover {
             border-color: var(--accent);
             background: var(--surface-hover);
-        }}
-        .image-status {{
+        }
+        .image-status {
             margin-top: 8px;
             font-size: 12px;
             color: var(--text-muted);
-        }}
-        .image-status.loading {{
+        }
+        .image-status.loading {
             color: var(--accent);
-        }}
-        .image-status.error {{
+        }
+        .image-status.error {
             color: var(--red);
-        }}
-        .ocr-result {{
+        }
+        .ocr-result {
             margin-top: 12px;
             text-align: left;
-        }}
-        .ocr-warning-banner {{
+        }
+        .ocr-warning-banner {
             display: flex;
             align-items: flex-start;
             gap: 8px;
@@ -912,23 +912,23 @@
             background: rgba(234, 179, 8, 0.1);
             border: 1px solid var(--yellow);
             border-radius: var(--radius);
-        }}
-        .ocr-warning-icon {{
+        }
+        .ocr-warning-icon {
             color: var(--yellow);
             font-size: 16px;
-        }}
-        .ocr-warning-text {{
+        }
+        .ocr-warning-text {
             font-size: 12px;
             color: var(--text);
             line-height: 1.4;
-        }}
-        .ocr-result label {{
+        }
+        .ocr-result label {
             display: block;
             font-size: 12px;
             color: var(--text-muted);
             margin-bottom: 4px;
-        }}
-        .ocr-result textarea {{
+        }
+        .ocr-result textarea {
             width: 100%;
             min-height: 60px;
             padding: 8px;
@@ -939,8 +939,8 @@
             font-size: 12px;
             font-family: monospace;
             resize: vertical;
-        }}
-        .use-ocr-btn {{
+        }
+        .use-ocr-btn {
             margin-top: 8px;
             padding: 8px 16px;
             background: var(--green);
@@ -950,19 +950,19 @@
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-        }}
-        .use-ocr-btn:hover {{
+        }
+        .use-ocr-btn:hover {
             opacity: 0.9;
-        }}
-        .builder-row {{
+        }
+        .builder-row {
             display: flex;
             gap: 8px;
             margin-bottom: 8px;
-        }}
-        .builder-row > * {{
+        }
+        .builder-row > * {
             flex: 1;
-        }}
-        .builder-select, .builder-input {{
+        }
+        .builder-select, .builder-input {
             padding: 10px;
             background: var(--bg);
             border: 1px solid var(--border);
@@ -970,30 +970,30 @@
             color: var(--text);
             font-size: 13px;
             font-family: inherit;
-        }}
-        .builder-select:focus, .builder-input:focus {{
+        }
+        .builder-select:focus, .builder-input:focus {
             outline: none;
             border-color: var(--accent);
-        }}
-        .builder-input::placeholder {{
+        }
+        .builder-input::placeholder {
             color: var(--text-muted);
-        }}
-        .builder-sign {{
+        }
+        .builder-sign {
             width: 60px;
             flex-shrink: 0;
             text-align: center;
             font-weight: 600;
-        }}
-        .builder-line-value {{
+        }
+        .builder-line-value {
             flex: 1;
-        }}
-        #line-row {{
+        }
+        #line-row {
             display: none;
-        }}
-        #line-row.active {{
+        }
+        #line-row.active {
             display: flex;
-        }}
-        .add-leg-btn {{
+        }
+        .add-leg-btn {
             width: 100%;
             padding: 10px;
             background: var(--surface);
@@ -1005,15 +1005,15 @@
             cursor: pointer;
             margin-top: 8px;
             transition: all 0.15s;
-        }}
-        .add-leg-btn:hover {{
+        }
+        .add-leg-btn:hover {
             background: var(--surface-hover);
             border-color: var(--accent);
-        }}
-        .legs-list {{
+        }
+        .legs-list {
             margin-top: 12px;
-        }}
-        .leg-item {{
+        }
+        .leg-item {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1023,19 +1023,19 @@
             border-radius: var(--radius);
             margin-bottom: 6px;
             font-size: 13px;
-        }}
-        .leg-item .leg-text {{
+        }
+        .leg-item .leg-text {
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-        }}
-        .leg-item .leg-num {{
+        }
+        .leg-item .leg-num {
             color: var(--text-muted);
             font-size: 11px;
             min-width: 20px;
-        }}
-        .remove-leg-btn {{
+        }
+        .remove-leg-btn {
             padding: 4px 8px;
             background: transparent;
             border: 1px solid var(--border);
@@ -1043,23 +1043,23 @@
             color: var(--red);
             font-size: 11px;
             cursor: pointer;
-        }}
-        .remove-leg-btn:hover {{
+        }
+        .remove-leg-btn:hover {
             background: rgba(239, 68, 68, 0.1);
-        }}
-        .builder-empty {{
+        }
+        .builder-empty {
             text-align: center;
             padding: 20px;
             color: var(--text-muted);
             font-size: 13px;
-        }}
-        .quick-chips {{
+        }
+        .quick-chips {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
             margin-bottom: 12px;
-        }}
-        .quick-chip {{
+        }
+        .quick-chip {
             padding: 6px 10px;
             background: var(--bg);
             border: 1px solid var(--border);
@@ -1068,22 +1068,22 @@
             font-size: 11px;
             cursor: pointer;
             transition: all 0.15s;
-        }}
-        .quick-chip:hover {{
+        }
+        .quick-chip:hover {
             border-color: var(--accent);
             color: var(--text);
-        }}
-        .builder-warning {{
+        }
+        .builder-warning {
             font-size: 12px;
             color: var(--yellow);
             margin-top: 4px;
             display: none;
-        }}
-        .builder-warning.active {{
+        }
+        .builder-warning.active {
             display: block;
-        }}
+        }
         /* Ticket 34: OCR Leg Clarity Indicators */
-        .leg-clarity {{
+        .leg-clarity {
             display: flex;
             align-items: center;
             gap: 4px;
@@ -1091,42 +1091,42 @@
             padding: 2px 6px;
             border-radius: 4px;
             white-space: nowrap;
-        }}
-        .leg-clarity.clear {{
+        }
+        .leg-clarity.clear {
             background: rgba(34, 197, 94, 0.15);
             color: var(--green);
-        }}
-        .leg-clarity.review {{
+        }
+        .leg-clarity.review {
             background: rgba(234, 179, 8, 0.15);
             color: var(--yellow);
-        }}
-        .leg-clarity.ambiguous {{
+        }
+        .leg-clarity.ambiguous {
             background: rgba(239, 68, 68, 0.15);
             color: var(--red);
-        }}
-        .leg-source-tag {{
+        }
+        .leg-source-tag {
             font-size: 10px;
             color: var(--text-muted);
             background: var(--surface);
             padding: 2px 6px;
             border-radius: 4px;
             margin-left: auto;
-        }}
-        .leg-item.ocr-leg {{
+        }
+        .leg-item.ocr-leg {
             border-left: 2px solid var(--accent);
-        }}
-        .leg-item.ocr-leg.editable {{
+        }
+        .leg-item.ocr-leg.editable {
             cursor: pointer;
-        }}
-        .leg-item.ocr-leg.editable:hover {{
+        }
+        .leg-item.ocr-leg.editable:hover {
             background: var(--surface);
-        }}
-        .leg-item.editing {{
+        }
+        .leg-item.editing {
             flex-direction: column;
             align-items: stretch;
             gap: 8px;
-        }}
-        .leg-edit-input {{
+        }
+        .leg-edit-input {
             flex: 1;
             padding: 8px;
             background: var(--bg);
@@ -1135,32 +1135,32 @@
             color: var(--text);
             font-size: 13px;
             font-family: inherit;
-        }}
-        .leg-edit-input:focus {{
+        }
+        .leg-edit-input:focus {
             outline: none;
-        }}
-        .leg-edit-actions {{
+        }
+        .leg-edit-actions {
             display: flex;
             gap: 6px;
-        }}
-        .leg-edit-btn {{
+        }
+        .leg-edit-btn {
             padding: 4px 10px;
             font-size: 11px;
             border-radius: 4px;
             cursor: pointer;
-        }}
-        .leg-edit-save {{
+        }
+        .leg-edit-save {
             background: var(--accent);
             border: none;
             color: white;
-        }}
-        .leg-edit-cancel {{
+        }
+        .leg-edit-cancel {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-muted);
-        }}
+        }
         /* Ticket 34: OCR Info Box */
-        .ocr-info-box {{
+        .ocr-info-box {
             display: none;
             margin: 12px 0;
             padding: 14px;
@@ -1168,26 +1168,26 @@
             border: 1px solid var(--border);
             border-left: 3px solid var(--accent);
             border-radius: var(--radius);
-        }}
-        .ocr-info-box.active {{
+        }
+        .ocr-info-box.active {
             display: block;
-        }}
-        .ocr-info-title {{
+        }
+        .ocr-info-title {
             font-size: 13px;
             font-weight: 600;
             color: var(--text);
             margin-bottom: 8px;
-        }}
-        .ocr-info-text {{
+        }
+        .ocr-info-text {
             font-size: 12px;
             color: var(--text-muted);
             line-height: 1.5;
-        }}
-        .ocr-info-text p {{
+        }
+        .ocr-info-text p {
             margin: 4px 0;
-        }}
+        }
         /* Ticket 34: OCR Review Soft Gate */
-        .ocr-review-gate {{
+        .ocr-review-gate {
             display: none;
             position: fixed;
             top: 0;
@@ -1199,55 +1199,55 @@
             align-items: center;
             justify-content: center;
             padding: 16px;
-        }}
-        .ocr-review-gate.active {{
+        }
+        .ocr-review-gate.active {
             display: flex;
-        }}
-        .ocr-review-gate-content {{
+        }
+        .ocr-review-gate-content {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 24px;
             max-width: 400px;
             width: 100%;
-        }}
-        .ocr-review-gate-title {{
+        }
+        .ocr-review-gate-title {
             font-size: 15px;
             font-weight: 600;
             color: var(--text);
             margin-bottom: 12px;
-        }}
-        .ocr-review-gate-message {{
+        }
+        .ocr-review-gate-message {
             font-size: 13px;
             color: var(--text-muted);
             margin-bottom: 20px;
             line-height: 1.5;
-        }}
-        .ocr-review-gate-actions {{
+        }
+        .ocr-review-gate-actions {
             display: flex;
             gap: 10px;
-        }}
-        .ocr-review-gate-btn {{
+        }
+        .ocr-review-gate-btn {
             flex: 1;
             padding: 10px;
             border-radius: var(--radius);
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-        }}
-        .ocr-review-gate-btn.primary {{
+        }
+        .ocr-review-gate-btn.primary {
             background: var(--accent);
             border: none;
             color: white;
-        }}
-        .ocr-review-gate-btn.secondary {{
+        }
+        .ocr-review-gate-btn.secondary {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text);
-        }}
-        .leg-meta {{
+        }
+        .leg-meta {
             display: flex;
             align-items: center;
             gap: 6px;
             margin-left: auto;
-        }}
+        }
