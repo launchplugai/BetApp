@@ -186,7 +186,7 @@ class TestEvaluateEndpoint:
         assert response.status_code == 200
         data = response.json()
         proof = data.get("proofSummary", {})
-        assert "sample_artifacts" in proof
+        assert "dnaArtifactCounts" in proof
         assert "dna_artifact_counts" in proof
         assert "ui_contract_status" in proof
         assert "ui_contract_version" in proof
@@ -400,7 +400,7 @@ class TestTicket25EvaluationReceipt:
         data = response.json()
         assert "finalVerdict" in data
         verdict = data["finalVerdict"]
-        assert "verdict_text" in verdict
+        assert "verdictText" in verdict
         assert "tone" in verdict
         assert verdict["tone"] in ["positive", "mixed", "cautious"]
         assert "grade" in verdict
@@ -418,7 +418,7 @@ class TestTicket25EvaluationReceipt:
         for leg in legs:
             assert "position" in leg
             assert "text" in leg
-            assert "bet_type" in leg
+            assert "betType" in leg
 
 
 class TestTicket26LegInterpretationAndGuidance:
@@ -452,7 +452,7 @@ class TestTicket26LegInterpretationAndGuidance:
         data = response.json()
         legs = data["evaluatedParlay"]["legs"]
         # At least one leg should have spread interpretation
-        spread_legs = [l for l in legs if l.get("bet_type") == "spread"]
+        spread_legs = [l for l in legs if l.get("betType") == "spread"]
         if spread_legs:
             assert "final margin" in spread_legs[0]["interpretation"].lower()
 
@@ -723,8 +723,8 @@ class TestTicket27BCanonicalContextConsistency:
 
         # Final verdict should use parlay language
         verdict = data.get("finalVerdict", {})
-        if verdict and verdict.get("verdict_text"):
-            verdict_text = verdict["verdict_text"].lower()
+        if verdict and verdict.get("verdictText"):
+            verdict_text = verdict["verdictText"].lower()
             # Should NOT say "this bet" for 3 legs
             assert "single-bet" not in verdict_text
 
@@ -801,7 +801,7 @@ class TestTicket27BCanonicalContextConsistency:
 
         # Check proof summary artifacts for audit notes
         proof = data.get("proofSummary", {})
-        artifacts = proof.get("sample_artifacts", [])
+        artifacts = proof.get("dnaArtifactCounts", [])
 
         import json
         artifacts_text = json.dumps(artifacts)
@@ -876,7 +876,7 @@ class TestTicket28CanonicalContextRepair:
 
         # Final verdict should use "bet" terminology
         verdict = data.get("finalVerdict", {})
-        verdict_text = verdict.get("verdict_text", "").lower()
+        verdict_text = verdict.get("verdictText", "").lower()
         assert "parlay" not in verdict_text, f"Verdict should not use 'parlay' for single leg: {verdict_text}"
 
     def test_language_consistency_multi_leg(self, client):
@@ -918,7 +918,7 @@ class TestTicket28CanonicalContextRepair:
 
         # Check proof summary artifacts
         proof = data.get("proofSummary", {})
-        artifacts = proof.get("sample_artifacts", [])
+        artifacts = proof.get("dnaArtifactCounts", [])
         artifacts_text = json.dumps(artifacts)
 
         # Should reference 3 legs, not 1
@@ -942,7 +942,7 @@ class TestTicket28CanonicalContextRepair:
         data = response.json()
 
         verdict = data.get("finalVerdict", {})
-        verdict_text = verdict.get("verdict_text", "").lower()
+        verdict_text = verdict.get("verdictText", "").lower()
 
         # Should not contain single-bet language for 3-leg parlay
         assert "single-bet" not in verdict_text, f"Verdict contains 'single-bet' for 3-leg parlay: {verdict_text}"
@@ -971,8 +971,8 @@ class TestTicket29GroundedConfidenceUpgrade:
         data = response.json()
 
         evaluated = data.get("evaluatedParlay", {})
-        assert "analysis_depth" in evaluated, "evaluatedParlay should have analysis_depth field"
-        assert evaluated["analysis_depth"] == "structural_only", f"analysis_depth should be 'structural_only', got '{evaluated.get('analysis_depth')}'"
+        assert "analysisDepth" in evaluated, "evaluatedParlay should have analysis_depth field"
+        assert evaluated["analysisDepth"] == "structural_only", f"analysis_depth should be 'structural_only', got '{evaluated.get('analysis_depth')}'"
 
     def test_artifact_why_explanations(self, client):
         """
@@ -991,7 +991,7 @@ class TestTicket29GroundedConfidenceUpgrade:
 
         import json
         proof = data.get("proofSummary", {})
-        artifacts = proof.get("sample_artifacts", [])
+        artifacts = proof.get("dnaArtifactCounts", [])
         artifacts_text = json.dumps(artifacts).lower()
 
         # Artifacts should contain explanatory language
@@ -1039,7 +1039,7 @@ class TestTicket29GroundedConfidenceUpgrade:
         data = response.json()
 
         evaluated = data.get("evaluatedParlay", {})
-        assert evaluated.get("analysis_depth") == "structural_only", \
+        assert evaluated.get("analysisDepth") == "structural_only", \
             "Text-only input should also have analysis_depth='structural_only'"
 
 
