@@ -909,7 +909,11 @@ async def evaluate_from_text(request: TextEvaluateRequest):
 
 async def _parse_bet_slip_image(image_bytes: bytes) -> str:
     """Parse bet slip image to extract bet text using OpenAI Vision API."""
+    logger.info("OCR_PARSE_START image_size=%d", len(image_bytes))
+    
     api_key = os.environ.get("OPENAI_API_KEY")
+    logger.info("OCR_API_KEY_CHECK present=%s", "yes" if api_key else "no")
+    
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1029,7 +1033,10 @@ async def evaluate_from_image(
     session_id: Optional[str] = Form(None),
 ):
     """Evaluate bet slip from uploaded image."""
+    logger.info("OCR_ENDPOINT_HIT")
+    
     if not is_leading_light_enabled():
+        logger.warning("OCR_FEATURE_DISABLED")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
