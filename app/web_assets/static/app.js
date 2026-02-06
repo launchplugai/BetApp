@@ -1365,6 +1365,17 @@ async function evaluateBundle(bundleText) {
             tipsCard.classList.add('hidden');
         }
 
+        // S7-A: NEXT ACTION GUIDANCE (always shown when available)
+        const nextActionCard = document.getElementById('next-action-card');
+        const nextActionText = document.getElementById('next-action-text');
+        const nextAction = data.nextAction;
+        if (nextAction && nextAction.suggestion) {
+            nextActionText.textContent = nextAction.suggestion;
+            nextActionCard.classList.remove('hidden');
+        } else {
+            nextActionCard.classList.add('hidden');
+        }
+
         // ========================================
         // TIER-GATED CARDS (BETTER+ / BEST)
         // ========================================
