@@ -110,10 +110,9 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     client_ip = get_client_ip(raw_request)
 
     # Rate limiting
-    try:
-        rate_limiter.check_rate_limit(client_ip, "evaluate")
-    except Exception as e:
-        raise HTTPException(status_code=429, detail=str(e))
+    allowed, retry_after = rate_limiter.check(client_ip)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Rate limit exceeded. Retry after {retry_after:.1f} seconds")
 
     # Airlock validation
     # Ticket 27: Pass canonical legs if present
@@ -131,12 +130,7 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         raise HTTPException(status_code=400, detail=f"Input validation failed: {str(e)}")
 
     # Run evaluation
-    result = run_evaluation(
-        user_input=normalized["text"],
-        tier=request.tier,
-        user_legs=normalized.get("legs"),
-        request_id=request_id,
-    )
+    result = run_evaluation(normalized)
 
     elapsed = time.perf_counter() - start_time
     result["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
