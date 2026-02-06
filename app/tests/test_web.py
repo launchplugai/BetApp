@@ -596,7 +596,7 @@ class TestTicket27CanonicalLegsAndGrounding:
         })
         assert response.status_code == 200
         data = response.json()
-        assert data["evaluatedParlay"]["leg_count"] == 3
+        assert data["evaluatedParlay"]["legCount"] == 3
         assert len(data["evaluatedParlay"]["legs"]) == 3
 
     def test_response_includes_grounding_warnings(self, client):
@@ -662,7 +662,7 @@ class TestTicket27CanonicalLegsAndGrounding:
         })
         assert response.status_code == 200
         data = response.json()
-        display_label = data["evaluatedParlay"]["display_label"]
+        display_label = data["evaluatedParlay"]["displayLabel"]
         assert display_label == "Single bet"
 
     def test_multi_leg_uses_parlay_terminology(self, client):
@@ -677,7 +677,7 @@ class TestTicket27CanonicalLegsAndGrounding:
         })
         assert response.status_code == 200
         data = response.json()
-        display_label = data["evaluatedParlay"]["display_label"]
+        display_label = data["evaluatedParlay"]["displayLabel"]
         assert display_label == "2-leg parlay"
 
 
@@ -709,9 +709,9 @@ class TestTicket27BCanonicalContextConsistency:
         data = response.json()
 
         # Receipt must show 3 legs
-        assert data["evaluatedParlay"]["leg_count"] == 3
+        assert data["evaluatedParlay"]["legCount"] == 3
         assert len(data["evaluatedParlay"]["legs"]) == 3
-        assert data["evaluatedParlay"]["display_label"] == "3-leg parlay"
+        assert data["evaluatedParlay"]["displayLabel"] == "3-leg parlay"
 
         # Serialize full response to check for inconsistencies
         import json
@@ -746,7 +746,7 @@ class TestTicket27BCanonicalContextConsistency:
         data = response.json()
 
         # Receipt shows canonical leg count
-        assert data["evaluatedParlay"]["leg_count"] == 4
+        assert data["evaluatedParlay"]["legCount"] == 4
         assert data["evaluatedParlay"]["canonical"] is True
 
         # Human summary should reference parlay structure
@@ -841,7 +841,7 @@ class TestTicket28CanonicalContextRepair:
         expected_leg_count = 4
 
         # 1. Receipt leg_count
-        receipt_leg_count = data["evaluatedParlay"]["leg_count"]
+        receipt_leg_count = data["evaluatedParlay"]["legCount"]
         assert receipt_leg_count == expected_leg_count, f"Receipt shows {receipt_leg_count} legs, expected {expected_leg_count}"
 
         # 2. Receipt legs array length
@@ -849,7 +849,7 @@ class TestTicket28CanonicalContextRepair:
         assert legs_array_len == expected_leg_count, f"Legs array has {legs_array_len} items, expected {expected_leg_count}"
 
         # 3. Display label
-        display_label = data["evaluatedParlay"]["display_label"]
+        display_label = data["evaluatedParlay"]["displayLabel"]
         assert f"{expected_leg_count}-leg" in display_label, f"Display label '{display_label}' doesn't match expected leg count"
 
         # 4. Canonical flag should be True for builder mode
@@ -871,7 +871,7 @@ class TestTicket28CanonicalContextRepair:
         data = response.json()
 
         # Display label should say "Single bet", not "1-leg parlay"
-        display_label = data["evaluatedParlay"]["display_label"]
+        display_label = data["evaluatedParlay"]["displayLabel"]
         assert display_label == "Single bet", f"Display label should be 'Single bet', got '{display_label}'"
 
         # Final verdict should use "bet" terminology
@@ -895,7 +895,7 @@ class TestTicket28CanonicalContextRepair:
         data = response.json()
 
         # Display label should say "parlay"
-        display_label = data["evaluatedParlay"]["display_label"]
+        display_label = data["evaluatedParlay"]["displayLabel"]
         assert "parlay" in display_label.lower(), f"Display label '{display_label}' should contain 'parlay'"
 
     def test_artifacts_match_canonical_leg_count(self, client):
