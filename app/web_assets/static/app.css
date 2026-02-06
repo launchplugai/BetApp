@@ -2059,7 +2059,8 @@ header a {
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     padding: var(--sp-4);
-    margin-bottom: var(--sp-3);
+    margin-bottom: var(--sp-4);
+    transition: border-color 0.2s ease;
 }
 .result-card-header {
     font-size: var(--text-xs);
@@ -2075,8 +2076,9 @@ header a {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--sp-4) var(--sp-5);
+    padding: var(--sp-5) var(--sp-6);
     border-width: 2px;
+    margin-bottom: var(--sp-4);
 }
 .signal-bar-card.signal-blue {
     border-color: var(--signal-blue);
@@ -2226,10 +2228,11 @@ header a {
     margin: 0;
 }
 .warnings-list li {
-    padding: var(--sp-2) 0;
+    padding: var(--sp-3) 0;
     border-bottom: 1px solid var(--border-subtle);
     font-size: var(--text-sm);
     color: var(--fg-secondary);
+    line-height: 1.5;
 }
 .warnings-list li:last-child { border-bottom: none; }
 .warnings-list li::before {
@@ -2248,10 +2251,11 @@ header a {
     margin: 0;
 }
 .tips-list li {
-    padding: var(--sp-2) 0;
+    padding: var(--sp-3) 0;
     border-bottom: 1px solid var(--border-subtle);
     font-size: var(--text-sm);
     color: var(--fg-secondary);
+    line-height: 1.5;
 }
 .tips-list li:last-child { border-bottom: none; }
 .tips-list li::before {
@@ -2280,16 +2284,19 @@ header a {
 .confidence-trend {
     font-size: var(--text-xs);
     color: var(--fg-muted);
-    padding: var(--sp-1) 0;
-    margin-top: var(--sp-1);
+    padding: var(--sp-2) 0;
+    margin-top: var(--sp-2);
     text-align: center;
     font-style: italic;
+    opacity: 0.9;
 }
 .confidence-trend.trend-improved {
     color: var(--signal-green);
+    opacity: 1;
 }
 .confidence-trend.trend-softened {
     color: var(--signal-yellow);
+    opacity: 1;
 }
 .confidence-trend.trend-unchanged {
     color: var(--fg-muted);
