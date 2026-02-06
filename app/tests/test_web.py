@@ -37,6 +37,23 @@ def app_js(client):
         return response.text
     return ""
 
+@pytest.fixture
+def app_html(client):
+    """Fetch rendered HTML from /app for template structure tests (S6 refactor)."""
+    response = client.get("/app")
+    if response.status_code == 200:
+        return response.text
+    return ""
+
+
+@pytest.fixture
+def app_css(client):
+    """Fetch CSS from /static/css/app.css for style tests (S6 refactor)."""
+    response = client.get("/static/css/app.css")
+    if response.status_code == 200:
+        return response.text
+    return ""
+
 
 # =============================================================================
 # Tests: Root Redirect
@@ -338,7 +355,7 @@ class TestTicket25EvaluationReceipt:
         """App page contains Refine Parlay button."""
         response = client.get("/app")
         assert 'id="refine-btn"' in response.text
-        assert "Refine Parlay" in response.text
+        assert "Refine Structure" in response.text
         assert "refineParlay()" in response.text
 
     def test_evaluation_includes_evaluated_parlay(self, client):
