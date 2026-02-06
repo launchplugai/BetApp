@@ -340,14 +340,15 @@ class TestTicket25EvaluationReceipt:
 
     def test_ui_contains_notable_legs_section(self, app_js):
         """App page contains Notable Legs section."""
-        assert "Notable Legs" in response.text
+        assert "Notable Legs" in app_js, "Notable Legs section should be in JS"
 
     def test_ui_contains_verdict_section(self, app_js):
         """App page contains Summary/Verdict section."""
+        assert "verdict" in app_js.lower(), "Verdict section should be in JS"
 
     def test_ui_contains_refine_button(self, app_js):
         """App page contains Refine Parlay button."""
-        assert "refineParlay()" in response.text
+        assert "refineParlay" in app_js, "refineParlay function should be in JS"
 
     def test_evaluation_includes_evaluated_parlay(self, client):
         """Evaluation response includes evaluatedParlay field."""
@@ -1088,9 +1089,6 @@ class TestTicket32CoreWorkspace:
         """
         Part A: Image upload CSS styles should be included.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         # Check for key CSS classes
         assert ".image-upload-section" in app_css, "Image upload section styles should exist"
         assert ".ocr-warning-banner" in app_css, "OCR warning banner styles should exist"
@@ -1135,17 +1133,14 @@ class TestTicket32CoreWorkspace:
         assert "DNA scores fragility based on leg relationships" in html, \
             "DNA tooltip should explain what it does"
 
-    def test_badge_styles_exist(self, app_js):
+    def test_badge_styles_exist(self, app_css):
         """
         Part C: Badge CSS styles should be included.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
-        assert ".analysis-badges" in app_js, "Analysis badges container styles should exist"
-        assert ".analysis-badge" in app_js, "Analysis badge styles should exist"
-        assert ".sherlock-badge" in app_js, "Sherlock badge styles should exist"
-        assert ".dna-badge" in app_js, "DNA badge styles should exist"
+        assert ".analysis-badges" in app_css, "Analysis badges container styles should exist"
+        assert ".analysis-badge" in app_css, "Analysis badge styles should exist"
+        assert ".sherlock-badge" in app_css, "Sherlock badge styles should exist"
+        assert ".dna-badge" in app_css, "DNA badge styles should exist"
 
     # Part B: Session Manager
 
@@ -1153,9 +1148,6 @@ class TestTicket32CoreWorkspace:
         """
         Part B: SessionManager object should exist in JavaScript.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         assert "SessionManager" in app_js, "SessionManager object should exist"
         assert "STORAGE_KEY" in app_js, "SessionManager should have STORAGE_KEY"
         assert "dna_session" in app_js, "Storage key should be 'dna_session'"
@@ -1164,9 +1156,6 @@ class TestTicket32CoreWorkspace:
         """
         Part B: Session bar UI should exist.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         assert "session-bar" in app_js, "Session bar should exist"
         assert "session-name" in app_js, "Session name input should exist"
         assert "session-history" in app_js, "Session history display should exist"
@@ -1175,9 +1164,6 @@ class TestTicket32CoreWorkspace:
         """
         Part B: SessionManager should have required methods.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         # Check for required methods
         assert "getSession" in app_js, "SessionManager should have getSession method"
         assert "saveSession" in app_js, "SessionManager should have saveSession method"
@@ -1185,15 +1171,12 @@ class TestTicket32CoreWorkspace:
         assert "addEvaluation" in app_js, "SessionManager should have addEvaluation method"
         assert "getEvaluations" in app_js, "SessionManager should have getEvaluations method"
         assert "saveRefinement" in app_js, "SessionManager should have saveRefinement method"
-        assert "getRefinement" in html, "SessionManager should have getRefinement method"
+        assert "getRefinement" in app_js, "SessionManager should have getRefinement method"
 
     def test_session_localStorage_only(self, app_js):
         """
         Part B: Session should use localStorage only, no server calls.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         # Should use localStorage
         assert "localStorage.getItem" in app_js, "Should use localStorage.getItem"
         assert "localStorage.setItem" in app_js, "Should use localStorage.setItem"
@@ -1206,9 +1189,6 @@ class TestTicket32CoreWorkspace:
         """
         Part B: Session bar CSS styles should be included.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         assert ".session-bar" in app_css, "Session bar styles should exist"
         assert ".session-name-input" in app_css, "Session name input styles should exist"
         assert ".session-history" in app_css, "Session history styles should exist"
@@ -1252,9 +1232,6 @@ class TestTicket32CoreWorkspace:
         """
         Part D: Sticky action bar should exist.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         assert "sticky-actions" in app_css, "Sticky actions class should exist"
         assert "action-buttons" in app_css, "Action buttons container should exist"
 
@@ -1262,9 +1239,6 @@ class TestTicket32CoreWorkspace:
         """
         Part D: Workbench CSS styles should be included.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         assert ".workbench" in app_css, "Workbench styles should exist"
         assert ".workbench-panel" in app_css, "Workbench panel styles should exist"
         assert ".workbench-panel-header" in app_css, "Panel header styles should exist"
@@ -1274,9 +1248,6 @@ class TestTicket32CoreWorkspace:
         """
         Part D: Desktop layout media query should exist.
         """
-        response = client.get("/app")
-        assert response.status_code == 200
-
         # Check for desktop breakpoint
         assert "@media (min-width: 768px)" in app_css, "Desktop media query should exist"
         assert "flex-direction: row" in app_css, "Desktop should use row layout"

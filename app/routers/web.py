@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import Optional, List
 
 from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from app.config import load_config
-from app.airlock import airlock_ingest
+from app.airlock import airlock_ingest, AirlockError
 from app.rate_limiter import get_client_ip, get_rate_limiter
 from app.correlation import get_request_id
 
@@ -146,6 +146,12 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             tier=request.tier,
             canonical_legs=canonical_legs,
         )
+    except AirlockError as e:
+        # Return structured error with code for tests
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e), "code": e.code, "detail": str(e)}
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Input validation failed: {str(e)}")
 
@@ -158,6 +164,12 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     from dataclasses import asdict
     result_dict = asdict(result)
     result_dict["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
+    
+    # Add input object for API compatibility (tests expect this)
+    result_dict["input"] = {
+        "bet_text": normalized.input_text,
+        "tier": result.tier,
+    }
     
     # Convert snake_case to camelCase for JS frontend compatibility
     result_dict = convert_keys_to_camel(result_dict)
