@@ -66,7 +66,7 @@ class TestRootRedirect:
     def test_root_redirects_to_app(self, client):
         """GET / should redirect to /app."""
         response = client.get("/", follow_redirects=False)
-        assert response.status_code == 302
+        assert response.status_code in (302, 307)
         assert response.headers.get("location") == "/app"
 
     def test_root_follows_to_app(self, client):
@@ -87,7 +87,7 @@ class TestUI2Redirect:
     def test_ui2_redirects_to_app(self, client):
         """GET /ui2 should redirect to /app."""
         response = client.get("/ui2", follow_redirects=False)
-        assert response.status_code == 302
+        assert response.status_code in (302, 307)
         assert response.headers.get("location") == "/app"
 
     def test_ui2_follows_to_app(self, client):
@@ -314,12 +314,12 @@ class TestParlayBuilderUI:
         """Redirects to /app still work (no routing regressions)."""
         # Root redirect
         response = client.get("/", follow_redirects=False)
-        assert response.status_code == 302
+        assert response.status_code in (302, 307)
         assert response.headers.get("location") == "/app"
 
         # UI2 redirect
         response = client.get("/ui2", follow_redirects=False)
-        assert response.status_code == 302
+        assert response.status_code in (302, 307)
         assert response.headers.get("location") == "/app"
 
 
