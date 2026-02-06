@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DNA Bet Engine</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+    <div class="container">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DNA Bet Engine</h1>
+            <div class="version-info">
+                <div class="version-badge">
+                    v0.2.1 • {{ git_sha }}
+                    <button class="copy-debug-btn" onclick="copyDebugInfo()" title="Copy version + commit to clipboard">Copy</button>
+                </div>
+                <div class="deploy-proof">DEPLOYED: S3 Momentum × Ritual</div>
+            </div>
+        </header>
+
+        <!-- Ticket 32 Part B: Session Indicator -->
+        <div class="session-bar" id="session-bar">
+            <span class="session-label">Session:</span>
+            <input type="text" id="session-name" class="session-name-input" placeholder="Name this session (optional)" maxlength="30">
+            <span class="session-history" id="session-history">0 evaluations</span>
+        </div>
+
+        <!-- Ticket 32 Part D: Workbench Container -->
+        <div class="workbench" id="workbench">
+            <!-- Left Panel: Input/Builder -->
+            <div class="workbench-panel workbench-input" id="workbench-input">
+                <div class="workbench-panel-header">
+                    <span class="workbench-panel-title">Build Your Parlay</span>
+                </div>
+
+        <div id="input-section" class="card">
+            <!-- Ticket 23: Mode Toggle -->
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="builder">Builder</button>
+                <button class="mode-btn" data-mode="paste">Paste Mode</button>
+            </div>
+
+            <!-- Ticket 23: Builder Section -->
+            <div id="builder-section" class="builder-section active">
+                <div class="quick-chips">
+                    <button class="quick-chip" data-market="ML">+ Moneyline</button>
+                    <button class="quick-chip" data-market="Spread">+ Spread</button>
+                    <button class="quick-chip" data-market="Total">+ Over/Under</button>
+                    <button class="quick-chip" data-market="Player Prop">+ Player Prop</button>
+                </div>
+
+                <div class="builder-row">
+                    <select id="builder-sport" class="builder-select" aria-label="Sport">
+                        <option value="">Sport</option>
+                        <option value="NBA">NBA</option>
+                        <option value="NFL">NFL</option>
+                        <option value="MLB">MLB</option>
+                        <option value="NCAA">NCAA</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <select id="builder-market" class="builder-select" aria-label="Market Type">
+                        <option value="">Market Type</option>
+                        <option value="ML">Moneyline</option>
+                        <option value="Spread">Spread</option>
+                        <option value="Total">Over/Under</option>
+                        <option value="Player Prop">Player Prop</option>
+                    </select>
+                </div>
+
+                <div class="builder-row">
+                    <input type="text" id="builder-team" class="builder-input" placeholder="Team or Player" aria-label="Team or Player">
+                </div>
+
+                <div class="builder-row" id="line-row">
+                    <select id="builder-sign" class="builder-select builder-sign" aria-label="Line Sign">
+                        <option value="-">-</option>
+                        <option value="+">+</option>
+                    </select>
+                    <select id="builder-line" class="builder-select builder-line-value" aria-label="Line Value">
+                        <option value="">Value</option>
+                        <option value="0.5">0.5</option>
+                        <option value="1">1</option>
+                        <option value="1.5">1.5</option>
+                        <option value="2">2</option>
+                        <option value="2.5">2.5</option>
+                        <option value="3">3</option>
+                        <option value="3.5">3.5</option>
+                        <option value="4">4</option>
+                        <option value="4.5">4.5</option>
+                        <option value="5">5</option>
+                        <option value="5.5">5.5</option>
+                        <option value="6">6</option>
+                        <option value="6.5">6.5</option>
+                        <option value="7">7</option>
+                        <option value="7.5">7.5</option>
+                        <option value="8">8</option>
+                        <option value="8.5">8.5</option>
+                        <option value="9">9</option>
+                        <option value="9.5">9.5</option>
+                        <option value="10">10</option>
+                        <option value="10.5">10.5</option>
+                        <option value="11">11</option>
+                        <option value="11.5">11.5</option>
+                        <option value="12">12</option>
+                        <option value="12.5">12.5</option>
+                        <option value="13">13</option>
+                        <option value="13.5">13.5</option>
+                        <option value="14">14</option>
+                        <option value="14.5">14.5</option>
+                        <option value="15">15</option>
+                        <option value="16">16</option>
+                        <option value="17">17</option>
+                        <option value="17.5">17.5</option>
+                        <option value="18">18</option>
+                        <option value="19">19</option>
+                        <option value="20">20</option>
+                        <option value="20.5">20.5</option>
+                        <option value="21">21</option>
+                        <option value="22">22</option>
+                        <option value="23">23</option>
+                        <option value="24">24</option>
+                        <option value="25">25</option>
+                        <option value="25.5">25.5</option>
+                        <option value="26">26</option>
+                        <option value="27">27</option>
+                        <option value="28">28</option>
+                        <option value="29">29</option>
+                        <option value="30">30</option>
+                        <option value="35">35</option>
+                        <option value="40">40</option>
+                        <option value="45">45</option>
+                        <option value="50">50</option>
+                        <option value="50.5">50.5</option>
+                    </select>
+                </div>
+
+                <div id="builder-warning" class="builder-warning"></div>
+
+                <button id="add-leg-btn" class="add-leg-btn">Add Leg</button>
+
+                <div id="legs-list" class="legs-list">
+                    <div id="legs-empty" class="builder-empty">No legs added yet. Build your parlay above.</div>
+                </div>
+            </div>
+
+            <!-- Ticket 23: Paste Section (Advanced Mode) -->
+            <div id="paste-section" class="paste-section">
+                <label for="bet-input">Paste or type your bet slip</label>
+                <textarea
+                    id="bet-input"
+                    placeholder="Lakers -5.5&#10;Celtics ML&#10;LeBron over 25.5 points"
+                ></textarea>
+            </div>
+
+            <!-- Ticket 32 Part A: Image Upload Section -->
+            <div id="image-upload-section" class="image-upload-section">
+                <label class="image-upload-label">
+                    <input type="file" id="image-input" accept="image/png,image/jpeg,image/jpg,image/webp" style="display:none">
+                    <span class="image-upload-btn">&#128247; Upload Bet Slip Image</span>
+                </label>
+                <div id="image-status" class="image-status" style="display:none"></div>
+                <div id="ocr-result" class="ocr-result" style="display:none">
+                    <div class="ocr-warning-banner">
+                        <span class="ocr-warning-icon">&#9888;</span>
+                        <span class="ocr-warning-text">Image text extracted. Please review for accuracy before evaluating.</span>
+                    </div>
+                    <label for="ocr-text">Extracted Text:</label>
+                    <textarea id="ocr-text" readonly></textarea>
+                    <button id="use-ocr-text" class="use-ocr-btn">Add to Builder</button>
+                </div>
+            </div>
+
+            <!-- Ticket 34 Part D: OCR Info Box -->
+            <div id="ocr-info-box" class="ocr-info-box">
+                <div class="ocr-info-title">How DNA reads bet slips</div>
+                <div class="ocr-info-text">
+                    <p>DNA analyzes bet structure, not odds or payouts.</p>
+                    <p>Sportsbook parlays (including 6-leg slips) are normal.</p>
+                    <p>Image text may require review before analysis.</p>
+                </div>
+            </div>
+
+            <div class="tier-selector">
+                <button class="tier-btn active" data-tier="good">GOOD</button>
+                <button class="tier-btn" data-tier="better">BETTER</button>
+                <button class="tier-btn" data-tier="best">BEST</button>
+            </div>
+
+            <button id="submit-btn" class="submit-btn">Evaluate Bet</button>
+        </div>
+
+            </div> <!-- End workbench-input panel -->
+
+            <!-- Right Panel: Results/Analysis -->
+            <div class="workbench-panel workbench-results" id="workbench-results">
+                <div class="workbench-panel-header">
+                    <span class="workbench-panel-title">Analysis Results</span>
+                </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div>Analyzing your bet...</div>
+        </div>
+
+        <div id="error-panel" class="error-panel"></div>
+
+        <div id="results" class="results">
+            <!-- Ticket 25: Evaluated Parlay Receipt -->
+            <div id="parlay-receipt" class="card parlay-receipt">
+                <div class="section-title">Evaluated Parlay</div>
+                <div id="parlay-label" class="parlay-label"></div>
+                <ol id="parlay-legs" class="parlay-legs"></ol>
+            </div>
+
+            <div id="grade-panel" class="grade">
+                <div id="grade-signal" class="grade-signal"></div>
+                <div class="grade-info">
+                    <h2 id="grade-title"></h2>
+                    <p id="grade-subtitle"></p>
+                </div>
+            </div>
+
+            <!-- Ticket 38B-C1: Delta Sentence -->
+            <div id="delta-sentence" class="delta-sentence hidden"></div>
+
+            <!-- S5-A: What's New Section -->
+            <div class="whats-new">
+                <div class="whats-new-title">What's New in v0.2.1</div>
+                <ul class="whats-new-list">
+                    <li>Confidence labels now directional (Stable → Composed → Pressured → Fragile)</li>
+                    <li>Re-evaluation rewrites: "Test This Adjustment" replaces "Re-evaluate"</li>
+                    <li>Notable legs rewritten as story: "What's doing the work here?"</li>
+                    <li>Edge framing throughout: calm, confident, assistive tone</li>
+                </ul>
+            </div>
+
+            <!-- Ticket 32 Part C: Sherlock/DNA Analysis Badges -->
+            <div class="analysis-badges">
+                <div class="analysis-badge sherlock-badge" title="Sherlock reads how legs interact—correlations, dependencies, and structure.">
+                    <span class="badge-icon">&#128269;</span>
+                    <span class="badge-text">Analyzed by Sherlock</span>
+                    <span class="badge-qualifier">(Structure)</span>
+                </div>
+                <div class="analysis-badge dna-badge" title="DNA scores fragility based on leg relationships, not teams or odds.">
+                    <span class="badge-icon">&#129516;</span>
+                    <span class="badge-text">DNA Risk Model</span>
+                    <span class="badge-qualifier">(Structure)</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title">Key Risks</div>
+                <ul id="risks-list" class="risks-list"></ul>
+            </div>
+
+            <!-- Ticket 25: Notable Legs -->
+            <div id="notable-legs-section" class="card">
+                <div class="section-title">Notable Legs</div>
+                <ul id="notable-legs-list" class="notable-legs-list"></ul>
+            </div>
+
+            <div class="card">
+                <div class="artifacts-header">
+                    <div class="section-title">Artifacts</div>
+                    <span id="artifact-count" class="artifact-count"></span>
+                </div>
+                <ul id="artifacts-list" class="artifacts-list"></ul>
+            </div>
+
+            <!-- Ticket 25: Final Verdict -->
+            <div id="verdict-section" class="card verdict-section">
+                <div class="section-title">Summary</div>
+                <p id="verdict-text" class="verdict-text"></p>
+            </div>
+
+            <!-- Ticket 26 Part C: Gentle Guidance -->
+            <div id="guidance-section" class="card guidance-section" style="display: none;">
+                <div id="guidance-header" class="guidance-header"></div>
+                <ul id="guidance-list" class="guidance-list"></ul>
+            </div>
+
+            <!-- Ticket 27 Part D: Grounding Warnings -->
+            <div id="grounding-warnings" class="grounding-warnings" style="display: none;">
+                <ul id="grounding-warnings-list" class="grounding-warnings-list"></ul>
+            </div>
+
+            <!-- Ticket D1 / 38B-C3: Grounding Score Display -->
+            <div id="grounding-score-panel" class="card grounding-score-panel" style="display: none;">
+                <div class="grounding-score-header">Analysis Foundation</div>
+                <div id="grounding-score-narrative" class="grounding-score-narrative"></div>
+                <div class="grounding-score-breakdown">
+                    <div class="grounding-score-item">
+                        <span class="grounding-score-label">Structural</span>
+                        <span id="grounding-score-structural" class="grounding-score-value"></span>
+                    </div>
+                    <div class="grounding-score-item">
+                        <span class="grounding-score-label">Heuristics</span>
+                        <span id="grounding-score-heuristics" class="grounding-score-value"></span>
+                    </div>
+                    <div class="grounding-score-item">
+                        <span class="grounding-score-label">Generic</span>
+                        <span id="grounding-score-generic" class="grounding-score-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ticket 38B-C1: Structural Snapshot Panel -->
+            <details class="snapshot-panel" id="snapshot-panel">
+                <summary>Structural Snapshot</summary>
+                <div id="snapshot-content" class="snapshot-content"></div>
+            </details>
+
+            <div id="debug-section" class="debug-section">
+                <div class="card">
+                    <div class="debug-header" onclick="toggleDebug()">
+                        <div class="section-title">Debug Info</div>
+                        <span id="ui-contract-status" class="contract-status"></span>
+                    </div>
+                    <div id="debug-content" class="debug-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ticket 25: Loop Signaling / Ticket 32 Part D: Sticky Action Bar -->
+        <!-- Ticket 35: Added Re-evaluate for inline refinement -->
+        <!-- S3-B: Ritualized Re-evaluation Loop -->
+        <div id="action-buttons" class="action-buttons sticky-actions">
+            <div class="refine-actions-row">
+                <button id="reevaluate-btn" class="reevaluate-btn" onclick="reEvaluateParlay()">Test This Adjustment</button>
+                <button id="refine-btn" class="refine-btn" onclick="refineParlay()">Refine Structure</button>
+            </div>
+            <button id="reset-btn" class="reset-btn" onclick="resetForm()">Evaluate Another</button>
+            <div class="refine-hint">Adjust structure above, then test</div>
+        </div>
+
+            </div> <!-- End workbench-results panel -->
+        </div> <!-- End workbench container -->
+
+        <!-- Ticket 34 Part C: OCR Review Soft Gate -->
+        <div id="ocr-review-gate" class="ocr-review-gate">
+            <div class="ocr-review-gate-content">
+                <div class="ocr-review-gate-title">Review Detected Legs</div>
+                <div class="ocr-review-gate-message">
+                    Some detected legs may need review before analysis. You can edit them in the Builder or proceed anyway.
+                </div>
+                <div class="ocr-review-gate-actions">
+                    <button id="gate-review-btn" class="ocr-review-gate-btn secondary">Review legs</button>
+                    <button id="gate-proceed-btn" class="ocr-review-gate-btn primary">Evaluate anyway</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
