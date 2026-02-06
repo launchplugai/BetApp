@@ -2295,6 +2295,73 @@ header a {
     color: var(--fg-muted);
 }
 
+/* S7-C: Emphasis Rebalancing */
+/* Make results container a flex column for reordering */
+#eval-results-content {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Base order - signal bar always first */
+#signal-bar-card { order: 0; }
+#confidence-trend { order: 1; }
+#delta-sentence { order: 2; }
+#snapshot-panel { order: 3; }
+#pf-card { order: 10; }
+#fix-card { order: 11; }
+#delta-card { order: 12; }
+#warnings-card { order: 20; }
+#tips-card { order: 30; }
+#next-action-card { order: 31; }
+#correlations-card { order: 40; }
+#insights-card { order: 41; }
+#alerts-card { order: 42; }
+#next-step-card { order: 43; }
+
+/* Red emphasis: Risk cards prominent, tips subtle */
+.emphasis-red #pf-card { order: 4; }
+.emphasis-red #fix-card { order: 5; }
+.emphasis-red #pf-card,
+.emphasis-red #fix-card {
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+}
+.emphasis-red #tips-card,
+.emphasis-red #next-action-card {
+    opacity: 0.85;
+}
+
+/* Yellow emphasis: Warnings prominent */
+.emphasis-yellow #warnings-card { order: 4; }
+.emphasis-yellow #pf-card { order: 5; }
+.emphasis-yellow #warnings-card {
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(234, 179, 8, 0.15);
+}
+
+/* Green emphasis: Tips and next action prominent, risk subtle */
+.emphasis-green #tips-card { order: 4; }
+.emphasis-green #next-action-card { order: 5; }
+.emphasis-green #tips-card,
+.emphasis-green #next-action-card {
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(74, 222, 128, 0.15);
+}
+.emphasis-green #pf-card {
+    opacity: 0.85;
+}
+
+/* Blue emphasis: Next action prominent, everything clean */
+.emphasis-blue #next-action-card { order: 4; }
+.emphasis-blue #tips-card { order: 5; }
+.emphasis-blue #next-action-card {
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(74, 158, 255, 0.15);
+}
+.emphasis-blue #pf-card {
+    opacity: 0.8;
+}
+
 /* Tier Badge Indicator */
 .tier-indicator {
     display: inline-block;

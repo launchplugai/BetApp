@@ -1192,6 +1192,11 @@ async function evaluateBundle(bundleText) {
         evalErrorPanel.classList.add('hidden');
         evalResultsContent.classList.remove('hidden');
 
+        // S7-C: Set emphasis class based on signal for section rebalancing
+        const signalForEmphasis = (data.signalInfo && data.signalInfo.signal) || 'yellow';
+        evalResultsContent.classList.remove('emphasis-red', 'emphasis-yellow', 'emphasis-green', 'emphasis-blue');
+        evalResultsContent.classList.add('emphasis-' + signalForEmphasis);
+
         const evaluation = data.evaluation;
         const interpretation = data.interpretation;
         const fragility = interpretation.fragility;
