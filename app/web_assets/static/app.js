@@ -256,7 +256,7 @@
         const banner = document.createElement('div');
         banner.id = 'complexity-banner';
         banner.className = 'complexity-banner hidden';
-        banner.innerHTML = '<span class="complexity-icon">&#9888;</span> <span class="complexity-text">High complexity parlay - correlation risk increases</span>';
+        banner.innerHTML = '<span class="complexity-icon">&#9888;</span> <span class="complexity-text">High complexity parlay</span>';
         // Insert after builder header
         const header = document.querySelector('.builder-header');
         if (header && header.parentNode) {
@@ -270,7 +270,7 @@
         const warning = document.createElement('div');
         warning.id = 'max-parlay-warning';
         warning.className = 'max-parlay-warning hidden';
-        warning.innerHTML = '<span class="max-warning-icon">&#128721;</span> <span class="max-warning-text">Maximum legs reached (6). Remove a leg to add more.</span>';
+        warning.innerHTML = '<span class="max-warning-icon">&#128721;</span> <span class="max-warning-text">Maximum legs reached (6)</span>';
         // Insert after slip leg list header
         const slipList = document.getElementById('slip-leg-list');
         if (slipList) {
@@ -287,7 +287,7 @@
         const badge = document.createElement('div');
         badge.id = 'disclosure-badge';
         badge.className = 'disclosure-badge hidden';
-        badge.innerHTML = '<span class="disclosure-icon">&#128269;</span> <span class="disclosure-text">Structural analysis only - no live odds data</span>';
+        badge.innerHTML = '<span class="disclosure-icon">&#128269;</span> <span class="disclosure-text">Structural analysis only</span>';
         // Insert before fastest fix card
         const fastestFix = document.getElementById('fastest-fix-card');
         if (fastestFix && fastestFix.parentNode) {
@@ -501,7 +501,7 @@
         if (!ff || !ff.action) {
             fastestFixCard.classList.add('disabled');
             fastestFixAction.textContent = 'N/A';
-            fastestFixDescription.textContent = 'No fix recommendation available';
+            fastestFixDescription.textContent = 'No fix available';
             fastestFixReason.textContent = '';
             fastestFixButton.disabled = true;
             fastestFixDisabledReason.classList.add('hidden');
@@ -542,7 +542,7 @@
         } else {
             fastestFixButton.disabled = true;
             fastestFixButton.textContent = 'Apply';
-            fastestFixDisabledReason.textContent = 'Action "' + ff.action + '" requires manual editing';
+            fastestFixDisabledReason.textContent = 'Requires manual editing';
             fastestFixDisabledReason.classList.remove('hidden');
         }
 
