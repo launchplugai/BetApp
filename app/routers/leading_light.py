@@ -940,9 +940,19 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
                     {
                         "type": "text",
                         "text": (
-                            "Extract the bet information from this betting slip image. "
-                            "Return ONLY the bet legs in plain text format, one per line. "
-                            "Format each leg as: Team/Player + Bet Type + Line. "
+                            "You are extracting bet information from a sports betting slip image. "
+                            "CRITICAL: Extract EVERY SINGLE leg shown in the parlay/bet slip. Do not skip any legs. "
+                            "Scan the entire image carefully - bet slips often have multiple player props stacked vertically. "
+                            "\n\n"
+                            "Return format: One leg per line, formatted as:\n"
+                            "Player/Team + Bet Type + Line Value\n"
+                            "\n"
+                            "Examples:\n"
+                            "- Jalen Brunson 8+ assists\n"
+                            "- Lakers ML\n"
+                            "- Cade Cunningham 3+ made threes\n"
+                            "- Knicks -5.5\n"
+                            "\n"
                             "If this is not a betting slip, respond with: NOT_A_BET_SLIP"
                         ),
                     },
@@ -955,7 +965,7 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
                 ],
             }
         ],
-        "max_tokens": 300,
+        "max_tokens": 500,
     }
 
     logger.info("OCR_VISION_API_CALL starting OpenAI Vision API request")
