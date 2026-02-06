@@ -133,6 +133,10 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     result = run_evaluation(normalized)
 
     elapsed = time.perf_counter() - start_time
-    result["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
+    
+    # Convert to dict and add metadata
+    from dataclasses import asdict
+    result_dict = asdict(result)
+    result_dict["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
 
-    return result
+    return result_dict
