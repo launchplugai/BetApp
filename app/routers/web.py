@@ -797,6 +797,45 @@ def _get_canonical_ui_html() -> str:
         .delta-sentence.hidden {{
             display: none;
         }}
+        /* Ticket D1 / 38B-C3: Grounding Score Display */
+        .grounding-score-panel {{
+            margin-top: 12px;
+        }}
+        .grounding-score-header {{
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 10px;
+        }}
+        .grounding-score-narrative {{
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text);
+            margin-bottom: 14px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }}
+        .grounding-score-breakdown {{
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }}
+        .grounding-score-item {{
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }}
+        .grounding-score-label {{
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .grounding-score-value {{
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+        }}
         .snapshot-panel {{
             margin: 16px 0;
             padding: 14px;
@@ -1530,6 +1569,26 @@ def _get_canonical_ui_html() -> str:
             <!-- Ticket 27 Part D: Grounding Warnings -->
             <div id="grounding-warnings" class="grounding-warnings" style="display: none;">
                 <ul id="grounding-warnings-list" class="grounding-warnings-list"></ul>
+            </div>
+
+            <!-- Ticket D1 / 38B-C3: Grounding Score Display -->
+            <div id="grounding-score-panel" class="card grounding-score-panel" style="display: none;">
+                <div class="grounding-score-header">Analysis Foundation</div>
+                <div id="grounding-score-narrative" class="grounding-score-narrative"></div>
+                <div class="grounding-score-breakdown">
+                    <div class="grounding-score-item">
+                        <span class="grounding-score-label">Structural</span>
+                        <span id="grounding-score-structural" class="grounding-score-value"></span>
+                    </div>
+                    <div class="grounding-score-item">
+                        <span class="grounding-score-label">Heuristics</span>
+                        <span id="grounding-score-heuristics" class="grounding-score-value"></span>
+                    </div>
+                    <div class="grounding-score-item">
+                        <span class="grounding-score-label">Generic</span>
+                        <span id="grounding-score-generic" class="grounding-score-value"></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Ticket 38B-C1: Structural Snapshot Panel -->
@@ -2761,6 +2820,42 @@ def _get_canonical_ui_html() -> str:
                 }});
             }} else {{
                 groundingSection.style.display = 'none';
+            }}
+
+            // Ticket D1 / 38B-C3: Grounding Score Display
+            const groundingScore = data.groundingScore;
+            const groundingScorePanel = document.getElementById('grounding-score-panel');
+            if (groundingScore) {{
+                groundingScorePanel.style.display = 'block';
+                
+                // Plain-language narrative (primary signal)
+                const narrative = document.getElementById('grounding-score-narrative');
+                const structural = groundingScore.structural || 0;
+                const heuristics = groundingScore.heuristics || 0;
+                const generic = groundingScore.generic || 0;
+                
+                let narrativeText = '';
+                if (structural >= 50) {{
+                    narrativeText = 'This analysis is grounded mainly by structural features like leg relationships and bet types.';
+                }} else if (heuristics >= 50) {{
+                    narrativeText = 'This analysis relies heavily on bet-type patterns and established heuristics.';
+                }} else if (generic >= 50) {{
+                    narrativeText = 'This analysis uses general guidance with limited structural grounding.';
+                }} else if (structural >= heuristics && structural >= generic) {{
+                    narrativeText = 'This analysis draws primarily from structural features.';
+                }} else if (heuristics >= structural && heuristics >= generic) {{
+                    narrativeText = 'This analysis is more intuition-driven than structural.';
+                }} else {{
+                    narrativeText = 'This analysis blends structural, heuristic, and general insights.';
+                }}
+                narrative.textContent = narrativeText;
+                
+                // Supporting numbers (secondary signal)
+                document.getElementById('grounding-score-structural').textContent = structural + '%';
+                document.getElementById('grounding-score-heuristics').textContent = heuristics + '%';
+                document.getElementById('grounding-score-generic').textContent = generic + '%';
+            }} else {{
+                groundingScorePanel.style.display = 'none';
             }}
 
             // Debug section
