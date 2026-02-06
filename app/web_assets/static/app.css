@@ -3625,3 +3625,103 @@ header a {
     font-size: 10px;
     word-break: break-all;
 }
+
+/* ============================================
+   S7-F: Mobile Responsive (max-width: 640px)
+   ============================================ */
+@media (max-width: 640px) {
+    /* Container padding reduction */
+    .container {
+        padding: var(--sp-3);
+    }
+    
+    /* Signal bar card - stack on mobile */
+    .signal-bar-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--sp-3);
+        padding: var(--sp-4);
+    }
+    .signal-bar-left {
+        width: 100%;
+    }
+    .signal-bar-right {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* Delta card - stack on mobile */
+    .delta-card {
+        flex-direction: column;
+        gap: var(--sp-3);
+    }
+    .delta-state {
+        width: 100%;
+    }
+    .delta-arrow-big {
+        transform: rotate(90deg);
+    }
+    
+    /* Result cards - reduce padding */
+    .result-card {
+        padding: var(--sp-3);
+    }
+    
+    /* Navigation tabs - smaller text */
+    .nav-tab {
+        font-size: var(--text-sm);
+        padding: var(--sp-2) var(--sp-3);
+    }
+    
+    /* Buttons - maintain full width, reduce padding */
+    .submit-btn,
+    .secondary-btn {
+        padding: var(--sp-3);
+    }
+    
+    /* Discover steps - stack on mobile */
+    .discover-steps {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Bundle grid - single column */
+    .bundle-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Mobile text handling */
+@media (max-width: 640px) {
+    /* Prevent text overflow in cards */
+    .pf-card-description,
+    .fix-card-description,
+    .warnings-list li,
+    .tips-list li {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Signal bar badge - smaller on mobile */
+    .signal-bar-badge {
+        font-size: var(--text-base);
+        padding: var(--sp-1) var(--sp-3);
+    }
+    
+    /* Header - reduce spacing */
+    header {
+        padding: var(--sp-3) 0;
+    }
+    h1 {
+        font-size: var(--text-lg);
+    }
+    
+    /* Discover section - reduce spacing */
+    .discover-hero {
+        padding: var(--sp-6) 0;
+    }
+    .discover-hero h2 {
+        font-size: var(--text-xl);
+    }
+}
