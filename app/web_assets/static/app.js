@@ -385,7 +385,7 @@
         slipLegCount.textContent = BuilderStateMachine.getLegCountText(currentLegs.length);
 
         if (currentLegs.length === 0) {
-            slipLegRows.innerHTML = '<div class="slip-empty-state">No legs in slip</div>';
+            slipLegRows.innerHTML = '<div class="slip-empty-state">No legs</div>';
             return;
         }
 
@@ -1306,7 +1306,7 @@ async function evaluateBundle(bundleText) {
         } else {
             pfCard.className = 'result-card pf-card severity-low';
             pfBadge.textContent = 'NO MAJOR ISSUES';
-            pfDesc.textContent = 'This parlay has no critical risk factors identified.';
+            pfDesc.textContent = 'No critical risks identified.';
         }
 
         // Card 3: FASTEST FIX
