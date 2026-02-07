@@ -1251,3 +1251,467 @@
             gap: 6px;
             margin-left: auto;
         }
+   S14: NEXUS INPUT PANEL - Jarvis Style
+   ============================================ */
+.nexus-panel {
+    background: linear-gradient(180deg, var(--surface-raised) 0%, var(--surface-base) 100%);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-6);
+    margin-bottom: var(--sp-6);
+    position: relative;
+    overflow: hidden;
+}
+
+.nexus-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+    opacity: 0.5;
+}
+
+.nexus-header {
+    text-align: center;
+    margin-bottom: var(--sp-5);
+}
+
+.nexus-title {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--fg-primary);
+    margin-bottom: var(--sp-2);
+    letter-spacing: -0.02em;
+}
+
+.nexus-subtitle {
+    font-size: var(--text-base);
+    color: var(--fg-secondary);
+    font-weight: 400;
+}
+
+.nexus-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+.nexus-text-area-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.nexus-text-input {
+    width: 100%;
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: var(--sp-4);
+    color: var(--fg-primary);
+    font-size: var(--text-md);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.nexus-text-input::placeholder {
+    color: var(--fg-muted);
+}
+
+.nexus-text-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+.nexus-analyze-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    width: 100%;
+    padding: var(--sp-4) var(--sp-6);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.nexus-analyze-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+}
+
+.nexus-analyze-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.nexus-btn-icon {
+    font-size: var(--text-lg);
+}
+
+.nexus-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+
+.nexus-option {
+    position: relative;
+}
+
+.nexus-option-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--fg-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-option-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+    color: var(--fg-primary);
+}
+
+.nexus-option-icon {
+    font-size: var(--text-md);
+}
+
+.nexus-option-label {
+    flex: 1;
+    text-align: left;
+}
+
+.nexus-toggle-icon {
+    font-size: var(--text-xs);
+    transition: transform var(--transition-fast);
+}
+
+.nexus-advanced-btn[aria-expanded="true"] .nexus-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.nexus-image-preview {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-top: var(--sp-3);
+    padding: var(--sp-3);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+
+.nexus-image-preview img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+}
+
+.nexus-preview-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+}
+
+.nexus-clear-btn {
+    padding: var(--sp-1) var(--sp-2);
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-clear-btn:hover {
+    border-color: var(--signal-red);
+    color: var(--signal-red);
+}
+
+.nexus-advanced-panel {
+    margin-top: var(--sp-2);
+    padding: var(--sp-4);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+}
+
+.nexus-advanced-hint {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+    margin-bottom: var(--sp-3);
+}
+
+.nexus-open-builder-btn {
+    width: 100%;
+    padding: var(--sp-3);
+    background: var(--surface-hover);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--fg-primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-open-builder-btn:hover {
+    background: var(--surface-overlay);
+    border-color: var(--accent);
+}
+
+/* Detected Legs Section (S14-B) */
+.nexus-detected-legs {
+    margin-top: var(--sp-5);
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--border-default);
+}
+
+.nexus-detected-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--sp-3);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--fg-primary);
+}
+
+.nexus-edit-toggle {
+    padding: var(--sp-1) var(--sp-3);
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-edit-toggle:hover {
+    border-color: var(--accent);
+    background: rgba(74, 158, 255, 0.1);
+}
+
+.nexus-legs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+.nexus-leg-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: 100px;
+    font-size: var(--text-sm);
+    color: var(--fg-primary);
+}
+
+.nexus-leg-pill .leg-type {
+    font-size: var(--text-xs);
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.nexus-leg-pill .leg-remove {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-hover);
+    border: none;
+    border-radius: 50%;
+    color: var(--fg-muted);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-leg-pill .leg-remove:hover {
+    background: var(--signal-red);
+    color: white;
+}
+
+.nexus-edit-controls {
+    margin-top: var(--sp-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+.nexus-add-leg {
+    display: flex;
+    gap: var(--sp-2);
+}
+
+.nexus-add-input {
+    flex: 1;
+    padding: var(--sp-3);
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--fg-primary);
+    font-size: var(--text-sm);
+}
+
+.nexus-add-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.nexus-add-btn {
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface-hover);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--fg-primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-add-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.nexus-reanalyze-btn {
+    width: 100%;
+    padding: var(--sp-3);
+    background: var(--accent-surface);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    color: var(--accent);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nexus-reanalyze-btn:hover {
+    background: var(--accent);
+    color: white;
+}
+
+/* S14-B: Edit mode styling */
+.nexus-leg-pill.edit-mode {
+    border-color: var(--accent);
+    background: var(--accent-surface);
+}
+
+.nexus-leg-pill.edit-mode .leg-text {
+    cursor: text;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--accent);
+}
+
+.nexus-no-legs {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+    font-style: italic;
+    padding: var(--sp-3);
+}
+
+/* Working State */
+.nexus-working {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-8) var(--sp-6);
+    text-align: center;
+}
+
+.nexus-working-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-default);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: nexus-spin 1s linear infinite;
+    margin-bottom: var(--sp-4);
+}
+
+@keyframes nexus-spin {
+    to { transform: rotate(360deg); }
+}
+
+.nexus-working-text {
+    font-size: var(--text-md);
+    font-weight: 500;
+    color: var(--fg-primary);
+    margin-bottom: var(--sp-1);
+}
+
+.nexus-working-subtext {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .nexus-panel {
+        padding: var(--sp-4);
+        margin-bottom: var(--sp-4);
+    }
+    
+    .nexus-title {
+        font-size: var(--text-lg);
+    }
+    
+    .nexus-subtitle {
+        font-size: var(--text-sm);
+    }
+    
+    .nexus-text-input {
+        font-size: var(--text-base);
+        padding: var(--sp-3);
+    }
+    
+    .nexus-analyze-btn {
+        padding: var(--sp-3) var(--sp-4);
+        font-size: var(--text-base);
+    }
+    
+    .nexus-option-btn {
+        padding: var(--sp-3);
+    }
+    
+    .nexus-add-leg {
+        flex-direction: column;
+    }
+    
+    .nexus-add-btn {
+        width: 100%;
+    }
+}

@@ -1568,3 +1568,410 @@
             // via lockedLegIds.has(leg_id) check
             renderResultsLegs();
         }
+// S14: NEXUS INPUT PANEL - Jarvis Experience
+// ============================================================
+(function() {
+    // Nexus elements
+    const nexusTextInput = document.getElementById('nexus-text-input');
+    const nexusAnalyzeBtn = document.getElementById('nexus-analyze-btn');
+    const nexusUploadBtn = document.getElementById('nexus-upload-btn');
+    const nexusFileInput = document.getElementById('nexus-file-input');
+    const nexusImagePreview = document.getElementById('nexus-image-preview');
+    const nexusPreviewThumb = document.getElementById('nexus-preview-thumb');
+    const nexusPreviewName = document.getElementById('nexus-preview-name');
+    const nexusClearImage = document.getElementById('nexus-clear-image');
+    const nexusBuilderToggle = document.getElementById('nexus-builder-toggle');
+    const nexusAdvancedPanel = document.getElementById('nexus-advanced-panel');
+    const nexusWorking = document.getElementById('nexus-working');
+    const nexusDetectedLegs = document.getElementById('nexus-detected-legs');
+    const nexusLegsList = document.getElementById('nexus-legs-list');
+
+    // State
+    let nexusDetectedLegsData = [];
+
+    // A: Text input analyze
+    if (nexusAnalyzeBtn && nexusTextInput) {
+        nexusAnalyzeBtn.addEventListener('click', function() {
+            const text = nexusTextInput.value.trim();
+            if (!text) {
+                showToast('Enter your bet first');
+                return;
+            }
+            // Use existing evaluation pipeline
+            evaluateFromNexus(text);
+        });
+
+        // Enter key to submit
+        nexusTextInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                nexusAnalyzeBtn.click();
+            }
+        });
+    }
+
+    // B: Image upload
+    if (nexusUploadBtn && nexusFileInput) {
+        nexusUploadBtn.addEventListener('click', function() {
+            nexusFileInput.click();
+        });
+
+        nexusFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            handleNexusImage(file);
+        });
+    }
+
+    // Clear image
+    if (nexusClearImage) {
+        nexusClearImage.addEventListener('click', function() {
+            nexusFileInput.value = '';
+            nexusImagePreview.classList.add('hidden');
+        });
+    }
+
+    // C: Toggle advanced builder
+    if (nexusBuilderToggle && nexusAdvancedPanel) {
+        nexusBuilderToggle.addEventListener('click', function() {
+            const isExpanded = !nexusAdvancedPanel.classList.contains('hidden');
+            nexusAdvancedPanel.classList.toggle('hidden');
+            nexusBuilderToggle.setAttribute('aria-expanded', !isExpanded);
+        });
+    }
+
+    // Handle image file
+    function handleNexusImage(file) {
+        // Validate
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            showToast('Please upload PNG, JPG, or WebP');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image must be under 5MB');
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            nexusPreviewThumb.src = e.target.result;
+            nexusPreviewName.textContent = file.name;
+            nexusImagePreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+
+        // Submit for OCR using existing endpoint
+        submitNexusOCR(file);
+    }
+
+    // Submit to OCR (uses existing OCR endpoint)
+    async function submitNexusOCR(file) {
+        showNexusWorking(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/evaluate/ocr', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('OCR failed');
+
+            const data = await response.json();
+            if (data.text) {
+                nexusTextInput.value = data.text;
+                showToast('Text extracted - tap Analyze');
+            }
+        } catch (err) {
+            console.error('OCR error:', err);
+            showToast('Could not read image. Try typing instead.');
+        } finally {
+            showNexusWorking(false);
+        }
+    }
+
+    // Evaluate from Nexus (bridges to existing pipeline)
+    async function evaluateFromNexus(text) {
+        showNexusWorking(true);
+        try {
+            // Use existing evaluation endpoint
+            const tier = document.querySelector('input[name="eval-tier"]:checked')?.value || 'good';
+
+            const response = await fetch('/api/evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, tier: tier })
+            });
+
+            if (!response.ok) throw new Error('Evaluation failed');
+
+            const data = await response.json();
+
+            // Store detected legs for S14-B
+            if (data.legs || data.snapshot?.legs) {
+                nexusDetectedLegsData = data.legs || data.snapshot.legs || [];
+                renderDetectedLegs();
+            }
+
+            // Show results (existing display logic)
+            displayNexusResults(data);
+
+        } catch (err) {
+            console.error('Evaluation error:', err);
+            showToast('Analysis failed. Try again.');
+        } finally {
+            showNexusWorking(false);
+        }
+    }
+
+    // Show/hide working state
+    function showNexusWorking(show) {
+        if (nexusWorking) {
+            nexusWorking.classList.toggle('hidden', !show);
+        }
+        if (nexusAnalyzeBtn) {
+            nexusAnalyzeBtn.disabled = show;
+        }
+    }
+
+    // S14-B: Render detected legs
+    function renderDetectedLegs() {
+        if (!nexusLegsList) return;
+
+        if (!nexusDetectedLegsData.length) {
+            nexusLegsList.innerHTML = '<div class="nexus-no-legs">No legs detected</div>';
+            nexusDetectedLegs.classList.remove('hidden');
+            return;
+        }
+
+        nexusLegsList.innerHTML = nexusDetectedLegsData.map((leg, index) => {
+            const type = leg.bet_type || leg.market || 'PROP';
+            const text = leg.player || leg.team || leg.description || leg.text || `Leg ${index + 1}`;
+            return `
+                <div class="nexus-leg-pill" data-index="${index}">
+                    <span class="leg-text" data-index="${index}">${escapeHtml(text)}</span>
+                    <span class="leg-type">${type}</span>
+                    <button type="button" class="leg-remove" data-index="${index}" title="Remove">×</button>
+                </div>
+            `;
+        }).join('');
+
+        nexusDetectedLegs.classList.remove('hidden');
+
+        // Attach remove handlers
+        nexusLegsList.querySelectorAll('.leg-remove').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.index);
+                removeDetectedLeg(idx);
+            });
+        });
+
+        // Attach edit handlers (when in edit mode)
+        nexusLegsList.querySelectorAll('.leg-text').forEach(span => {
+            span.addEventListener('click', function() {
+                if (nexusEditControls && !nexusEditControls.classList.contains('hidden')) {
+                    const idx = parseInt(this.dataset.index);
+                    editLegText(idx);
+                }
+            });
+        });
+    }
+
+    // Remove a leg
+    function removeDetectedLeg(index) {
+        nexusDetectedLegsData.splice(index, 1);
+        renderDetectedLegs();
+        updateNexusTextFromLegs();
+    }
+
+    // Edit leg text inline
+    function editLegText(index) {
+        const leg = nexusDetectedLegsData[index];
+        if (!leg) return;
+
+        const currentText = leg.player || leg.team || leg.description || leg.text || '';
+        const newText = prompt('Edit leg:', currentText);
+
+        if (newText !== null && newText.trim() !== '') {
+            // Update the leg text
+            if (leg.player) leg.player = newText;
+            else if (leg.team) leg.team = newText;
+            else if (leg.description) leg.description = newText;
+            else leg.text = newText;
+
+            renderDetectedLegs();
+            updateNexusTextFromLegs();
+        }
+    }
+
+    // Update text input from legs data
+    function updateNexusTextFromLegs() {
+        const newText = nexusDetectedLegsData.map(l => {
+            return l.player || l.team || l.description || l.text || '';
+        }).filter(t => t).join(' + ');
+
+        if (nexusTextInput) {
+            nexusTextInput.value = newText;
+        }
+    }
+
+    // S14-B: Edit mode toggle
+    const nexusEditToggle = document.getElementById('nexus-edit-toggle');
+    const nexusEditControls = document.getElementById('nexus-edit-controls');
+    const nexusAddBtn = document.getElementById('nexus-add-btn');
+    const nexusAddInput = document.getElementById('nexus-add-input');
+    const nexusReanalyzeBtn = document.getElementById('nexus-reanalyze-btn');
+
+    let nexusEditMode = false;
+
+    if (nexusEditToggle && nexusEditControls) {
+        nexusEditToggle.addEventListener('click', function() {
+            nexusEditMode = !nexusEditMode;
+            nexusEditControls.classList.toggle('hidden', !nexusEditMode);
+            nexusEditToggle.textContent = nexusEditMode ? 'Done' : 'Edit';
+
+            // Add visual indicator to leg pills in edit mode
+            nexusLegsList.querySelectorAll('.nexus-leg-pill').forEach(pill => {
+                pill.classList.toggle('edit-mode', nexusEditMode);
+            });
+        });
+    }
+
+    // Add new leg
+    if (nexusAddBtn && nexusAddInput) {
+        nexusAddBtn.addEventListener('click', function() {
+            const text = nexusAddInput.value.trim();
+            if (!text) return;
+
+            // Add as generic leg
+            nexusDetectedLegsData.push({
+                text: text,
+                bet_type: 'PROP',
+                market: 'PROP'
+            });
+
+            nexusAddInput.value = '';
+            renderDetectedLegs();
+            updateNexusTextFromLegs();
+        });
+
+        // Enter key to add
+        nexusAddInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                nexusAddBtn.click();
+            }
+        });
+    }
+
+    // Re-analyze with changes
+    if (nexusReanalyzeBtn) {
+        nexusReanalyzeBtn.addEventListener('click', function() {
+            const text = nexusTextInput.value.trim();
+            if (text) {
+                evaluateFromNexus(text);
+            }
+        });
+    }
+
+    // Display results (bridges to existing result display)
+    function displayNexusResults(data) {
+        // S14-C: Show analyst take
+        const analystTakeCard = document.getElementById('analyst-take-card');
+        const analystTakeContent = document.getElementById('analyst-take-content');
+        if (analystTakeCard && analystTakeContent && window.generateAnalystTake) {
+            analystTakeContent.innerHTML = window.generateAnalystTake(data);
+            analystTakeCard.classList.remove('hidden');
+        }
+
+        // Hide Nexus input, show results
+        // This connects to existing result rendering logic
+        if (window.displayEvaluationResults) {
+            window.displayEvaluationResults(data);
+        } else {
+            // Fallback: trigger existing display
+            showToast('Analysis complete');
+        }
+    }
+
+    // Utility: escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Utility: show toast (uses existing toast if available)
+    function showToast(message) {
+        if (window.showToast) {
+            window.showToast(message);
+        } else {
+            console.log('Toast:', message);
+        }
+    }
+
+    // S14-C: Generate reality-anchored narrative
+    function generateAnalystTake(data) {
+        const legs = data.legs || data.snapshot?.legs || [];
+        const correlations = data.correlations || data.snapshot?.correlations || [];
+        const signal = data.signal || 'green';
+        const fragility = data.fragility_score || data.fragilityScore || 0;
+
+        let take = '';
+
+        // Opening: Structure description
+        const propLegs = legs.filter(l => (l.bet_type || l.market) === 'PROP').length;
+        const gameCount = new Set(legs.map(l => l.game_id || l.game)).size;
+
+        if (propLegs > 0 && propLegs === legs.length) {
+            take += `This is a <span class="take-highlight">player prop heavy</span> parlay. `;
+        } else if (propLegs > 0) {
+            take += `This mix combines <span class="take-highlight">player props with team outcomes</span>. `;
+        }
+
+        // Game concentration
+        if (gameCount === 1 && legs.length > 1) {
+            take += `Everything rides on <span class="take-highlight">one game</span>, so late variance could swing everything. `;
+        } else if (gameCount <= 2 && legs.length >= 3) {
+            take += `Most of this is concentrated across just <span class="take-highlight">${gameCount} games</span>. `;
+        }
+
+        // Outcome types
+        if (propLegs >= 2) {
+            take += `Player props are <span class="take-highlight">volume outcomes</span> (stats can accumulate) rather than binary wins/losses. `;
+        }
+
+        // Correlation insight (without claiming real stats)
+        if (correlations.length > 0) {
+            take += `There's <span class="take-highlight">overlap in your legs</span> — if one hits, others might too (or not). `;
+        }
+
+        // Signal-based framing
+        if (signal === 'red' || fragility > 70) {
+            take += `Structure looks <span class="take-highlight">fragile</span> — multiple things need to go right in specific ways.`;
+        } else if (signal === 'yellow' || fragility > 40) {
+            take += `Some <span class="take-highlight">structural tension</span> here — not broken, but worth watching.`;
+        } else if (signal === 'green' || fragility < 30) {
+            take += `Structure looks <span class="take-highlight">balanced</span> — legs aren't fighting each other.`;
+        }
+
+        // Add structure breakdown
+        const structure = [];
+        if (propLegs > 0) structure.push(`${propLegs} player prop${propLegs > 1 ? 's' : ''}`);
+        const mlLegs = legs.filter(l => (l.bet_type || l.market) === 'MONEYLINE').length;
+        if (mlLegs > 0) structure.push(`${mlLegs} moneyline`);
+        const spreadLegs = legs.filter(l => (l.bet_type || l.market) === 'SPREAD').length;
+        if (spreadLegs > 0) structure.push(`${spreadLegs} spread`);
+
+        let html = take;
+        if (structure.length > 0) {
+            html += `<div class="take-structure">Breakdown: ${structure.join(', ')}</div>`;
+        }
+
+        return html || 'Analysis based on your slip structure.';
+    }
+
+    // Make available globally
+    window.generateAnalystTake = generateAnalystTake;
+})();
