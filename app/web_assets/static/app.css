@@ -4286,6 +4286,26 @@ header a {
     color: white;
 }
 
+/* S14-B: Edit mode styling */
+.nexus-leg-pill.edit-mode {
+    border-color: var(--accent);
+    background: var(--accent-surface);
+}
+
+.nexus-leg-pill.edit-mode .leg-text {
+    cursor: text;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--accent);
+}
+
+.nexus-no-legs {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+    font-style: italic;
+    padding: var(--sp-3);
+}
+
 /* Working State */
 .nexus-working {
     display: flex;

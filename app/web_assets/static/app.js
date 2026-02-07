@@ -2169,16 +2169,22 @@ async function evaluateBundle(bundleText) {
 
     // S14-B: Render detected legs
     function renderDetectedLegs() {
-        if (!nexusLegsList || !nexusDetectedLegsData.length) return;
+        if (!nexusLegsList) return;
+
+        if (!nexusDetectedLegsData.length) {
+            nexusLegsList.innerHTML = '<div class="nexus-no-legs">No legs detected</div>';
+            nexusDetectedLegs.classList.remove('hidden');
+            return;
+        }
 
         nexusLegsList.innerHTML = nexusDetectedLegsData.map((leg, index) => {
             const type = leg.bet_type || leg.market || 'PROP';
             const text = leg.player || leg.team || leg.description || leg.text || `Leg ${index + 1}`;
             return `
                 <div class="nexus-leg-pill" data-index="${index}">
-                    <span class="leg-text">${escapeHtml(text)}</span>
+                    <span class="leg-text" data-index="${index}">${escapeHtml(text)}</span>
                     <span class="leg-type">${type}</span>
-                    <button type="button" class="leg-remove" data-index="${index}">×</button>
+                    <button type="button" class="leg-remove" data-index="${index}" title="Remove">×</button>
                 </div>
             `;
         }).join('');
@@ -2192,16 +2198,112 @@ async function evaluateBundle(bundleText) {
                 removeDetectedLeg(idx);
             });
         });
+
+        // Attach edit handlers (when in edit mode)
+        nexusLegsList.querySelectorAll('.leg-text').forEach(span => {
+            span.addEventListener('click', function() {
+                if (nexusEditControls && !nexusEditControls.classList.contains('hidden')) {
+                    const idx = parseInt(this.dataset.index);
+                    editLegText(idx);
+                }
+            });
+        });
     }
 
     // Remove a leg
     function removeDetectedLeg(index) {
         nexusDetectedLegsData.splice(index, 1);
         renderDetectedLegs();
+        updateNexusTextFromLegs();
+    }
 
-        // Reconstruct text and update input
-        const newText = nexusDetectedLegsData.map(l => l.player || l.team || l.text || '').join(' + ');
-        nexusTextInput.value = newText;
+    // Edit leg text inline
+    function editLegText(index) {
+        const leg = nexusDetectedLegsData[index];
+        if (!leg) return;
+
+        const currentText = leg.player || leg.team || leg.description || leg.text || '';
+        const newText = prompt('Edit leg:', currentText);
+
+        if (newText !== null && newText.trim() !== '') {
+            // Update the leg text
+            if (leg.player) leg.player = newText;
+            else if (leg.team) leg.team = newText;
+            else if (leg.description) leg.description = newText;
+            else leg.text = newText;
+
+            renderDetectedLegs();
+            updateNexusTextFromLegs();
+        }
+    }
+
+    // Update text input from legs data
+    function updateNexusTextFromLegs() {
+        const newText = nexusDetectedLegsData.map(l => {
+            return l.player || l.team || l.description || l.text || '';
+        }).filter(t => t).join(' + ');
+
+        if (nexusTextInput) {
+            nexusTextInput.value = newText;
+        }
+    }
+
+    // S14-B: Edit mode toggle
+    const nexusEditToggle = document.getElementById('nexus-edit-toggle');
+    const nexusEditControls = document.getElementById('nexus-edit-controls');
+    const nexusAddBtn = document.getElementById('nexus-add-btn');
+    const nexusAddInput = document.getElementById('nexus-add-input');
+    const nexusReanalyzeBtn = document.getElementById('nexus-reanalyze-btn');
+
+    let nexusEditMode = false;
+
+    if (nexusEditToggle && nexusEditControls) {
+        nexusEditToggle.addEventListener('click', function() {
+            nexusEditMode = !nexusEditMode;
+            nexusEditControls.classList.toggle('hidden', !nexusEditMode);
+            nexusEditToggle.textContent = nexusEditMode ? 'Done' : 'Edit';
+
+            // Add visual indicator to leg pills in edit mode
+            nexusLegsList.querySelectorAll('.nexus-leg-pill').forEach(pill => {
+                pill.classList.toggle('edit-mode', nexusEditMode);
+            });
+        });
+    }
+
+    // Add new leg
+    if (nexusAddBtn && nexusAddInput) {
+        nexusAddBtn.addEventListener('click', function() {
+            const text = nexusAddInput.value.trim();
+            if (!text) return;
+
+            // Add as generic leg
+            nexusDetectedLegsData.push({
+                text: text,
+                bet_type: 'PROP',
+                market: 'PROP'
+            });
+
+            nexusAddInput.value = '';
+            renderDetectedLegs();
+            updateNexusTextFromLegs();
+        });
+
+        // Enter key to add
+        nexusAddInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                nexusAddBtn.click();
+            }
+        });
+    }
+
+    // Re-analyze with changes
+    if (nexusReanalyzeBtn) {
+        nexusReanalyzeBtn.addEventListener('click', function() {
+            const text = nexusTextInput.value.trim();
+            if (text) {
+                evaluateFromNexus(text);
+            }
+        });
     }
 
     // Display results (bridges to existing result display)
