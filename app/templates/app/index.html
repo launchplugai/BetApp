@@ -6,7 +6,7 @@
     <title>DNA Bet Engine</title>
     <link rel="stylesheet" href="/static/css/app.css">
 </head>
-<body>
+<body class="light-theme">
     <div class="container">
         <header>
             <h1>DNA Bet Engine</h1>
@@ -26,74 +26,77 @@
             <span class="session-history" id="session-history">0 evaluations</span>
         </div>
 
-        <!-- S14-A: NEXUS INPUT PANEL -->
-        <div class="nexus-panel" id="nexus-panel">
-            <div class="nexus-header">
-                <h2 class="nexus-title">Drop your slip</h2>
-                <p class="nexus-subtitle">Paste it, snap it, or say it.</p>
+        <!-- S15: MESSAGING-STYLE INPUT -->
+        <div class="chat-container" id="chat-container">
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <div class="chat-avatar">
+                    <span>🎯</span>
+                </div>
+                <div class="chat-title">
+                    <h2>Analyze Bet</h2>
+                    <span class="chat-subtitle">What are you betting on?</span>
+                </div>
             </div>
 
-            <div class="nexus-input-section">
-                <div class="nexus-text-area-wrapper">
-                    <textarea class="nexus-text-input" id="nexus-text-input" placeholder="LeBron O27.5 pts + AD O10.5 reb + Lakers ML…" rows="3"></textarea>
-                    <button type="button" class="nexus-analyze-btn" id="nexus-analyze-btn">
-                        <span class="nexus-btn-icon">⚡</span>
+            <!-- Chat Input Area -->
+            <div class="chat-input-area">
+                <div class="chat-bubble-input">
+                    <textarea 
+                        class="chat-text-field" 
+                        id="chat-text-field" 
+                        placeholder="Paste your bet slip...&#10;LeBron O27.5 pts + Lakers ML"
+                        rows="4"
+                    ></textarea>
+                </div>
+                
+                <!-- Input Toolbar -->
+                <div class="chat-toolbar">
+                    <button type="button" class="chat-tool-btn" id="chat-voice-btn" title="Voice input">
+                        <span>🎙️</span>
+                    </button>
+                    <button type="button" class="chat-tool-btn" id="chat-camera-btn" title="Upload photo">
+                        <span>📷</span>
+                    </button>
+                    <button type="button" class="chat-tool-btn" id="chat-keyboard-btn" title="Type">
+                        <span>⌨️</span>
+                    </button>
+                    <div class="chat-toolbar-spacer"></div>
+                    <button type="button" class="chat-send-btn" id="chat-send-btn">
                         <span>Analyze</span>
                     </button>
                 </div>
+            </div>
 
-                <div class="nexus-options">
-                    <div class="nexus-option" id="nexus-image-option">
-                        <input type="file" id="nexus-file-input" accept="image/png,image/jpeg,image/jpg,image/webp" capture="environment" class="hidden">
-                        <button type="button" class="nexus-option-btn" id="nexus-upload-btn">
-                            <span class="nexus-option-icon">📷</span>
-                            <span class="nexus-option-label">Upload screenshot</span>
-                        </button>
-                        <div class="nexus-image-preview hidden" id="nexus-image-preview">
-                            <img id="nexus-preview-thumb" src="" alt="Preview">
-                            <div class="nexus-preview-info">
-                                <span id="nexus-preview-name"></span>
-                                <button type="button" class="nexus-clear-btn" id="nexus-clear-image">Remove</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="nexus-option nexus-advanced" id="nexus-builder-option">
-                        <button type="button" class="nexus-option-btn nexus-advanced-btn" id="nexus-builder-toggle">
-                            <span class="nexus-option-icon">🔧</span>
-                            <span class="nexus-option-label">Build manually (advanced)</span>
-                            <span class="nexus-toggle-icon">▼</span>
-                        </button>
-                        <div class="nexus-advanced-panel hidden" id="nexus-advanced-panel">
-                            <p class="nexus-advanced-hint">Build your parlay leg by leg</p>
-                            <button type="button" class="nexus-open-builder-btn" onclick="showBuilder()">Open Full Builder</button>
-                        </div>
-                    </div>
+            <!-- Quick Chips -->
+            <div class="quick-chips-section">
+                <h3>Recent</h3>
+                <div class="quick-chips">
+                    <button type="button" class="quick-chip" data-bet="Lakers -5.5 + LeBron O27.5">
+                        <span class="chip-icon">🏀</span>
+                        <span class="chip-label">LAL Parlay</span>
+                    </button>
+                    <button type="button" class="quick-chip" data-bet="Chiefs -3.5 + Mahomes O280">
+                        <span class="chip-icon">🏈</span>
+                        <span class="chip-label">Chiefs</span>
+                    </button>
+                    <button type="button" class="quick-chip" data-bet="Over 220.5">
+                        <span class="chip-icon">📊</span>
+                        <span class="chip-label">Total</span>
+                    </button>
                 </div>
             </div>
 
-            <div class="nexus-detected-legs hidden" id="nexus-detected-legs">
-                <div class="nexus-detected-header">
-                    <span>Detected Legs</span>
-                    <button type="button" class="nexus-edit-toggle" id="nexus-edit-toggle">Edit</button>
-                </div>
-                <div class="nexus-legs-list" id="nexus-legs-list"></div>
-                <div class="nexus-edit-controls hidden" id="nexus-edit-controls">
-                    <div class="nexus-add-leg">
-                        <input type="text" class="nexus-add-input" id="nexus-add-input" placeholder="Add leg (e.g., LeBron O27.5 pts)">
-                        <button type="button" class="nexus-add-btn" id="nexus-add-btn">+ Add</button>
-                    </div>
-                    <button type="button" class="nexus-reanalyze-btn" id="nexus-reanalyze-btn">↻ Re-analyze with changes</button>
-                </div>
+            <!-- Photo Preview -->
+            <div class="chat-photo-preview hidden" id="chat-photo-preview">
+                <img id="chat-preview-img" src="" alt="Preview">
+                <button type="button" class="chat-remove-photo" id="chat-remove-photo">×</button>
             </div>
 
-            <div class="nexus-working hidden" id="nexus-working">
-                <div class="nexus-working-spinner"></div>
-                <div class="nexus-working-text">Analyzing your bet...</div>
-                <div class="nexus-working-subtext">This takes a few seconds</div>
-            </div>
+            <!-- Hidden file input -->
+            <input type="file" id="chat-file-input" accept="image/*" capture="environment" class="hidden">
         </div>
-        <!-- End S14-A: NEXUS INPUT PANEL -->
+        <!-- End S15: MESSAGING-STYLE INPUT -->
 
         <!-- Ticket 32 Part D: Workbench Container -->
         <div class="workbench hidden" id="workbench">
