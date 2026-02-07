@@ -1971,3 +1971,12 @@
         color: #ffffff;
     }
 }
+
+/* Light theme body */
+body.light-theme {
+    background: #f2f2f7;
+}
+
+body.light-theme .container {
+    background: #f2f2f7;
+}
