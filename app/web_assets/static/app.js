@@ -362,7 +362,7 @@
     // Handle blocked add event (show toast, no evaluation)
     function handleBlockedAdd(event) {
         const detail = event.detail || {};
-        showToast('Maximum of 6 legs supported', 'error');
+        showToast('Up to 6 legs work best for this analysis', 'warning');
         // No evaluation triggered - this is enforced by the blocked transition
     }
 
@@ -423,7 +423,7 @@
         slipLegRows.querySelectorAll('.slip-leg-remove').forEach(btn => {
             btn.addEventListener('click', function() {
                 if (!BuilderStateMachine.canRemoveLeg(currentBuilderState)) {
-                    showToast('No legs to remove', 'error');
+                    showToast('Nothing to remove right now', 'info');
                     return;
                 }
                 const idx = parseInt(this.getAttribute('data-leg-index'));
@@ -605,7 +605,7 @@
     function removeLeg(index) {
         // Use state machine to check if removal is allowed (only EMPTY blocks removal)
         if (!BuilderStateMachine.canRemoveLeg(currentBuilderState)) {
-            showToast('No legs to remove', 'error');
+            showToast('Nothing to remove right now', 'info');
             return;
         }
 
@@ -657,7 +657,7 @@
                 // Remove the last prop leg
                 removeLeg(propLegs[propLegs.length - 1].idx);
             } else {
-                showToast('No prop legs to remove', 'error');
+                showToast('No prop legs to adjust', 'info');
             }
         } else if (ff.action === 'split_parlay') {
             // Visual-only: highlight legs that would be split
@@ -667,7 +667,7 @@
                 removeLeg(currentLegs.length - 1);
             }
         } else {
-            showToast('Action not yet supported: ' + ff.action, 'error');
+            showToast('That adjustment is coming soon', 'info');
         }
     }
 
@@ -731,11 +731,11 @@
                 renderLegList(); // Re-render to update affected markers
             } else {
                 console.error('Re-eval failed:', data);
-                showToast('Evaluation failed', 'error');
+                showToast('Having trouble checking that. Try again?', 'warning');
             }
         } catch (err) {
             console.error('Re-eval error:', err);
-            showToast('Network error', 'error');
+            showToast('Connection hiccup. Check and try again?', 'warning');
         } finally {
             builderUpdating.classList.add('hidden');
         }
@@ -746,7 +746,7 @@
     // ============================================================
     async function saveToHistory() {
         if (!currentEvaluationId) {
-            showToast('No evaluation to save', 'error');
+            showToast('Evaluate something first to save it', 'info');
             return;
         }
 
@@ -1251,6 +1251,42 @@ async function evaluateBundle(bundleText) {
         document.getElementById('signal-bar-grade').textContent = si.grade || 'B';
         document.getElementById('signal-bar-score').textContent = 'Fragility: ' + Math.round(si.fragilityScore || fragility.display_value || 0);
 
+        // S8-A: Why This Feels Confident Panel
+        const confidenceExplainer = document.getElementById('confidence-explainer');
+        const confidenceExplainerText = document.getElementById('confidence-explainer-text');
+        const groundingScore = data.groundingScore;
+        if (groundingScore) {
+            const structural = groundingScore.structural || 0;
+            const heuristics = groundingScore.heuristics || 0;
+            const generic = groundingScore.generic || 0;
+            let explainerText = '';
+            if (structural >= heuristics && structural >= generic) {
+                explainerText = 'This confidence comes from how the legs relate structurally.';
+            } else if (heuristics >= structural && heuristics >= generic) {
+                explainerText = 'This assessment leans on familiar bet patterns that tend to behave consistently.';
+            } else {
+                explainerText = 'This version relies on general guidance with limited structural backing.';
+            }
+            confidenceExplainerText.textContent = explainerText;
+            confidenceExplainer.classList.remove('hidden');
+        } else {
+            confidenceExplainer.classList.add('hidden');
+        }
+
+        // S8-B: Signal Consistency Callout
+        const signalConsistency = document.getElementById('signal-consistency');
+        // Show when multiple signals align (signal + grade + primary failure severity)
+        const hasAlignedSignals = si.signal && si.grade && pf && pf.severity;
+        const isConsistent = (si.signal === 'blue' && si.grade === 'A') ||
+                             (si.signal === 'green' && si.grade === 'B') ||
+                             (si.signal === 'yellow' && si.grade === 'C') ||
+                             (si.signal === 'red' && si.grade === 'D');
+        if (hasAlignedSignals && isConsistent) {
+            signalConsistency.classList.remove('hidden');
+        } else {
+            signalConsistency.classList.add('hidden');
+        }
+
         // S7-B: Confidence Trend Indicator
         const confidenceTrend = document.getElementById('confidence-trend');
         const trendData = data.confidenceTrend;
@@ -1305,8 +1341,8 @@ async function evaluateBundle(bundleText) {
             pfDesc.textContent = pf.description;
         } else {
             pfCard.className = 'result-card pf-card severity-low';
-            pfBadge.textContent = 'NO MAJOR ISSUES';
-            pfDesc.textContent = 'No critical risks identified.';
+            pfBadge.textContent = 'LOOKING STABLE';
+            pfDesc.textContent = 'No significant concerns at this level.';
         }
 
         // Card 3: FASTEST FIX
