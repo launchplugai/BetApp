@@ -1672,7 +1672,7 @@
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('/api/evaluate/ocr', {
+            const response = await fetch('/app/evaluate/image', {
                 method: 'POST',
                 body: formData
             });
@@ -1699,7 +1699,7 @@
             // Use existing evaluation endpoint
             const tier = document.querySelector('input[name="eval-tier"]:checked')?.value || 'good';
 
-            const response = await fetch('/api/evaluate', {
+            const response = await fetch('/app/evaluate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: text, tier: tier })
@@ -2076,7 +2076,7 @@
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('/api/evaluate/ocr', {
+            const response = await fetch('/app/evaluate/image', {
                 method: 'POST',
                 body: formData
             });
@@ -2103,7 +2103,7 @@
         chatSendBtn.textContent = 'Analyzing...';
 
         try {
-            const response = await fetch('/api/evaluate', {
+            const response = await fetch('/app/evaluate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: text, tier: 'good' })
@@ -2246,7 +2246,7 @@
 
             try {
                 // Call actual backend API
-                const response = await fetch('/api/evaluate', {
+                const response = await fetch('/app/evaluate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: text, tier: 'good' })
