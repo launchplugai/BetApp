@@ -2918,9 +2918,9 @@ def _get_canonical_ui_html() -> str:
             // Ticket 25: Final Verdict
             const verdict = data.finalVerdict;
             const verdictSection = document.getElementById('verdict-section');
-            if (verdict && verdict.verdict_text) {{
+            if (verdict && (verdict.verdictText || verdict.verdict_text)) {{
                 verdictSection.style.display = 'block';
-                document.getElementById('verdict-text').textContent = verdict.verdict_text;
+                document.getElementById('verdict-text').textContent = verdict.verdictText || verdict.verdict_text;
                 // Apply tone class
                 verdictSection.className = 'card verdict-section';
                 if (verdict.tone) {{
