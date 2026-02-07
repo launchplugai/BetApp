@@ -1997,3 +1997,238 @@ async function evaluateBundle(bundleText) {
         loadHistory();
     }
 })();
+
+// ============================================================
+// S14: NEXUS INPUT PANEL - Jarvis Experience
+// ============================================================
+(function() {
+    // Nexus elements
+    const nexusTextInput = document.getElementById('nexus-text-input');
+    const nexusAnalyzeBtn = document.getElementById('nexus-analyze-btn');
+    const nexusUploadBtn = document.getElementById('nexus-upload-btn');
+    const nexusFileInput = document.getElementById('nexus-file-input');
+    const nexusImagePreview = document.getElementById('nexus-image-preview');
+    const nexusPreviewThumb = document.getElementById('nexus-preview-thumb');
+    const nexusPreviewName = document.getElementById('nexus-preview-name');
+    const nexusClearImage = document.getElementById('nexus-clear-image');
+    const nexusBuilderToggle = document.getElementById('nexus-builder-toggle');
+    const nexusAdvancedPanel = document.getElementById('nexus-advanced-panel');
+    const nexusWorking = document.getElementById('nexus-working');
+    const nexusDetectedLegs = document.getElementById('nexus-detected-legs');
+    const nexusLegsList = document.getElementById('nexus-legs-list');
+
+    // State
+    let nexusDetectedLegsData = [];
+
+    // A: Text input analyze
+    if (nexusAnalyzeBtn && nexusTextInput) {
+        nexusAnalyzeBtn.addEventListener('click', function() {
+            const text = nexusTextInput.value.trim();
+            if (!text) {
+                showToast('Enter your bet first');
+                return;
+            }
+            // Use existing evaluation pipeline
+            evaluateFromNexus(text);
+        });
+
+        // Enter key to submit
+        nexusTextInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                nexusAnalyzeBtn.click();
+            }
+        });
+    }
+
+    // B: Image upload
+    if (nexusUploadBtn && nexusFileInput) {
+        nexusUploadBtn.addEventListener('click', function() {
+            nexusFileInput.click();
+        });
+
+        nexusFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            handleNexusImage(file);
+        });
+    }
+
+    // Clear image
+    if (nexusClearImage) {
+        nexusClearImage.addEventListener('click', function() {
+            nexusFileInput.value = '';
+            nexusImagePreview.classList.add('hidden');
+        });
+    }
+
+    // C: Toggle advanced builder
+    if (nexusBuilderToggle && nexusAdvancedPanel) {
+        nexusBuilderToggle.addEventListener('click', function() {
+            const isExpanded = !nexusAdvancedPanel.classList.contains('hidden');
+            nexusAdvancedPanel.classList.toggle('hidden');
+            nexusBuilderToggle.setAttribute('aria-expanded', !isExpanded);
+        });
+    }
+
+    // Handle image file
+    function handleNexusImage(file) {
+        // Validate
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            showToast('Please upload PNG, JPG, or WebP');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image must be under 5MB');
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            nexusPreviewThumb.src = e.target.result;
+            nexusPreviewName.textContent = file.name;
+            nexusImagePreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+
+        // Submit for OCR using existing endpoint
+        submitNexusOCR(file);
+    }
+
+    // Submit to OCR (uses existing OCR endpoint)
+    async function submitNexusOCR(file) {
+        showNexusWorking(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/evaluate/ocr', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('OCR failed');
+
+            const data = await response.json();
+            if (data.text) {
+                nexusTextInput.value = data.text;
+                showToast('Text extracted - tap Analyze');
+            }
+        } catch (err) {
+            console.error('OCR error:', err);
+            showToast('Could not read image. Try typing instead.');
+        } finally {
+            showNexusWorking(false);
+        }
+    }
+
+    // Evaluate from Nexus (bridges to existing pipeline)
+    async function evaluateFromNexus(text) {
+        showNexusWorking(true);
+        try {
+            // Use existing evaluation endpoint
+            const tier = document.querySelector('input[name="eval-tier"]:checked')?.value || 'good';
+
+            const response = await fetch('/api/evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, tier: tier })
+            });
+
+            if (!response.ok) throw new Error('Evaluation failed');
+
+            const data = await response.json();
+
+            // Store detected legs for S14-B
+            if (data.legs || data.snapshot?.legs) {
+                nexusDetectedLegsData = data.legs || data.snapshot.legs || [];
+                renderDetectedLegs();
+            }
+
+            // Show results (existing display logic)
+            displayNexusResults(data);
+
+        } catch (err) {
+            console.error('Evaluation error:', err);
+            showToast('Analysis failed. Try again.');
+        } finally {
+            showNexusWorking(false);
+        }
+    }
+
+    // Show/hide working state
+    function showNexusWorking(show) {
+        if (nexusWorking) {
+            nexusWorking.classList.toggle('hidden', !show);
+        }
+        if (nexusAnalyzeBtn) {
+            nexusAnalyzeBtn.disabled = show;
+        }
+    }
+
+    // S14-B: Render detected legs
+    function renderDetectedLegs() {
+        if (!nexusLegsList || !nexusDetectedLegsData.length) return;
+
+        nexusLegsList.innerHTML = nexusDetectedLegsData.map((leg, index) => {
+            const type = leg.bet_type || leg.market || 'PROP';
+            const text = leg.player || leg.team || leg.description || leg.text || `Leg ${index + 1}`;
+            return `
+                <div class="nexus-leg-pill" data-index="${index}">
+                    <span class="leg-text">${escapeHtml(text)}</span>
+                    <span class="leg-type">${type}</span>
+                    <button type="button" class="leg-remove" data-index="${index}">×</button>
+                </div>
+            `;
+        }).join('');
+
+        nexusDetectedLegs.classList.remove('hidden');
+
+        // Attach remove handlers
+        nexusLegsList.querySelectorAll('.leg-remove').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.index);
+                removeDetectedLeg(idx);
+            });
+        });
+    }
+
+    // Remove a leg
+    function removeDetectedLeg(index) {
+        nexusDetectedLegsData.splice(index, 1);
+        renderDetectedLegs();
+
+        // Reconstruct text and update input
+        const newText = nexusDetectedLegsData.map(l => l.player || l.team || l.text || '').join(' + ');
+        nexusTextInput.value = newText;
+    }
+
+    // Display results (bridges to existing result display)
+    function displayNexusResults(data) {
+        // Hide Nexus input, show results
+        // This connects to existing result rendering logic
+        if (window.displayEvaluationResults) {
+            window.displayEvaluationResults(data);
+        } else {
+            // Fallback: trigger existing display
+            showToast('Analysis complete');
+        }
+    }
+
+    // Utility: escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Utility: show toast (uses existing toast if available)
+    function showToast(message) {
+        if (window.showToast) {
+            window.showToast(message);
+        } else {
+            console.log('Toast:', message);
+        }
+    }
+})();
