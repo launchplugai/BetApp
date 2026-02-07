@@ -2139,3 +2139,157 @@
         }
     }
 })();
+
+// S15-B: Fix toolbar buttons and backend connection
+(function() {
+    const chatTextField = document.getElementById('chat-text-field');
+    const chatSendBtn = document.getElementById('chat-send-btn');
+    const chatVoiceBtn = document.getElementById('chat-voice-btn');
+    const chatKeyboardBtn = document.getElementById('chat-keyboard-btn');
+    const sportChips = document.querySelectorAll('.sport-chip');
+    const sportSuggestions = document.getElementById('sport-suggestions');
+
+    // Sport-based suggestions
+    const suggestions = {
+        nfl: [
+            { label: 'Spread', text: 'Chiefs -3.5' },
+            { label: 'Total', text: 'Over 47.5' },
+            { label: 'Mahomes', text: 'Mahomes O280 passing yards' },
+            { label: 'Any TD', text: 'Kelley anytime TD' }
+        ],
+        nba: [
+            { label: 'Spread', text: 'Lakers -5.5' },
+            { label: 'LeBron', text: 'LeBron O27.5 pts' },
+            { label: 'Total', text: 'Over 220.5' },
+            { label: 'Rebounds', text: 'AD O10.5 reb' }
+        ],
+        mlb: [
+            { label: 'ML', text: 'Yankees ML' },
+            { label: 'Total', text: 'Over 8.5' },
+            { label: 'Strikeouts', text: 'Cole O6.5 Ks' },
+            { label: 'Hits', text: 'Judge O1.5 hits' }
+        ],
+        nhl: [
+            { label: 'Puck Line', text: 'Rangers -1.5' },
+            { label: 'Total', text: 'Over 5.5' },
+            { label: 'Shots', text: 'Ovechkin O3.5 shots' },
+            { label: 'Goalie Saves', text: 'Shesterkin O28.5 saves' }
+        ]
+    };
+
+    // Sport chip click -> show suggestions
+    sportChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            const sport = this.dataset.sport;
+            const sportSugs = suggestions[sport] || [];
+            
+            // Clear others
+            sportChips.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show suggestions
+            if (sportSuggestions) {
+                sportSuggestions.innerHTML = sportSugs.map(s => 
+                    `<button type="button" class="suggestion-chip" data-text="${s.text}">${s.label}</button>`
+                ).join('');
+                sportSuggestions.classList.remove('hidden');
+                
+                // Add click handlers
+                sportSuggestions.querySelectorAll('.suggestion-chip').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (chatTextField) {
+                            chatTextField.value = this.dataset.text;
+                            chatTextField.focus();
+                        }
+                    });
+                });
+            }
+        });
+    });
+
+    // Voice button (placeholder - web speech API)
+    if (chatVoiceBtn) {
+        chatVoiceBtn.addEventListener('click', function() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                recognition.onresult = function(e) {
+                    const text = e.results[0][0].transcript;
+                    if (chatTextField) chatTextField.value = text;
+                };
+                recognition.start();
+                showToast('Listening...');
+            } else {
+                showToast('Voice not supported on this browser');
+            }
+        });
+    }
+
+    // Keyboard button (just focus the text field)
+    if (chatKeyboardBtn) {
+        chatKeyboardBtn.addEventListener('click', function() {
+            if (chatTextField) chatTextField.focus();
+        });
+    }
+
+    // Send button - connect to actual backend
+    if (chatSendBtn && chatTextField) {
+        chatSendBtn.addEventListener('click', async function() {
+            const text = chatTextField.value.trim();
+            if (!text) {
+                showToast('Enter your bet first');
+                return;
+            }
+
+            chatSendBtn.disabled = true;
+            chatSendBtn.textContent = 'Analyzing...';
+
+            try {
+                // Call actual backend API
+                const response = await fetch('/api/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, tier: 'good' })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Show results
+                if (window.showEvaluationResults) {
+                    window.showEvaluationResults(data);
+                } else if (window.displayResults) {
+                    window.displayResults(data);
+                } else {
+                    // Fallback: show in alert
+                    showToast(`Analysis: ${data.overall_assessment?.verdict || 'Complete'}`);
+                    console.log('Results:', data);
+                }
+
+            } catch (err) {
+                console.error('Analysis error:', err);
+                showToast('Failed to analyze. Check connection.');
+            } finally {
+                chatSendBtn.disabled = false;
+                chatSendBtn.textContent = 'Analyze';
+            }
+        });
+    }
+
+    function showToast(msg) {
+        // Create toast if not exists
+        let toast = document.getElementById('chat-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'chat-toast';
+            toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:12px 20px;border-radius:20px;z-index:9999;';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+})();
