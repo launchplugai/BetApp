@@ -19,6 +19,7 @@ from app.routers import web
 from app.routers import history
 from app.routers import v1_ui
 from app.routers import debug
+from app.routers import metrics
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -99,6 +100,7 @@ app.include_router(voice_router)
 app.include_router(panel.router)
 app.include_router(history.router)
 app.include_router(v1_ui.router)
+app.include_router(metrics.router)
 
 
 @app.get("/health")

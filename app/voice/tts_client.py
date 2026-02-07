@@ -15,6 +15,8 @@ from typing import Dict, Optional, Tuple
 
 import httpx
 
+from app.cost_tracker import record_api_call
+
 
 # =============================================================================
 # Configuration
@@ -221,28 +223,49 @@ async def generate_speech(
         "response_format": "mp3",
     }
 
-    # Make request
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            OPENAI_TTS_ENDPOINT,
-            headers=headers,
-            json=payload,
+    # Make request with timing
+    start_time = time.time()
+    success = False
+    error_code = None
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                OPENAI_TTS_ENDPOINT,
+                headers=headers,
+                json=payload,
+            )
+        
+        if response.status_code == 200:
+            success = True
+        else:
+            error_code = f"HTTP_{response.status_code}"
+            error_detail = response.text
+            try:
+                error_json = response.json()
+                error_detail = error_json.get("error", {}).get("message", response.text)
+            except Exception:
+                pass
+            raise TTSAPIError(
+                f"OpenAI TTS API error: {error_detail}",
+                status_code=response.status_code,
+            )
+        
+        return response.content
+        
+    finally:
+        # Record API call metrics
+        latency_ms = (time.time() - start_time) * 1000
+        record_api_call(
+            endpoint=OPENAI_TTS_ENDPOINT,
+            model=model,
+            latency_ms=latency_ms,
+            success=success,
+            error_code=error_code,
+            char_count=len(text),
+            cached=False,  # This is the actual API call (cache check happens upstream)
+            metadata={"voice": voice, "text_length": len(text)},
         )
-
-    # Handle errors
-    if response.status_code != 200:
-        error_detail = response.text
-        try:
-            error_json = response.json()
-            error_detail = error_json.get("error", {}).get("message", response.text)
-        except Exception:
-            pass
-        raise TTSAPIError(
-            f"OpenAI TTS API error: {error_detail}",
-            status_code=response.status_code,
-        )
-
-    return response.content
 
 
 async def generate_narration(
@@ -272,6 +295,16 @@ async def generate_narration(
     if use_cache:
         cached = get_cached_audio(case_name, voice, model, text)
         if cached is not None:
+            # Record cache hit for metrics
+            record_api_call(
+                endpoint=OPENAI_TTS_ENDPOINT,
+                model=model,
+                latency_ms=0.0,
+                success=True,
+                char_count=len(text),
+                cached=True,
+                metadata={"voice": voice, "text_length": len(text), "cache_hit": True},
+            )
             return cached
 
     # Generate fresh audio

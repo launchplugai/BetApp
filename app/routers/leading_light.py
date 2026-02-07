@@ -34,6 +34,7 @@ from app.schemas.leading_light import (
     ServiceDisabledResponseSchema,
     SuggestedBlockSchema,
 )
+from app.cost_tracker import record_api_call
 
 # Import core types
 from core.models.leading_light import (
@@ -981,6 +982,13 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
 
     logger.info("OCR_VISION_API_CALL starting OpenAI Vision API request")
     
+    # Track API call metrics
+    start_time = time.time()
+    success = False
+    error_code = None
+    input_tokens = None
+    output_tokens = None
+    
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
@@ -989,8 +997,35 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
                 json=payload,
             )
         logger.info("OCR_VISION_API_RESPONSE status=%d", response.status_code)
+        
+        if response.status_code == 200:
+            success = True
+            # Extract token usage if available
+            try:
+                result = response.json()
+                usage = result.get("usage", {})
+                input_tokens = usage.get("prompt_tokens")
+                output_tokens = usage.get("completion_tokens")
+            except Exception:
+                pass
+        else:
+            error_code = f"HTTP_{response.status_code}"
+            
     except Exception as e:
         logger.error("OCR_VISION_API_ERROR exception=%s", str(e))
+        error_code = "REQUEST_EXCEPTION"
+        # Record failure before re-raising
+        latency_ms = (time.time() - start_time) * 1000
+        record_api_call(
+            endpoint="https://api.openai.com/v1/chat/completions",
+            model="gpt-4o",
+            latency_ms=latency_ms,
+            success=False,
+            error_code=error_code,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            metadata={"image_bytes": len(image_bytes), "operation": "vision_ocr"},
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -999,6 +1034,19 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
                 "code": "VISION_API_REQUEST_ERROR",
             },
         )
+
+    # Record metrics
+    latency_ms = (time.time() - start_time) * 1000
+    record_api_call(
+        endpoint="https://api.openai.com/v1/chat/completions",
+        model="gpt-4o",
+        latency_ms=latency_ms,
+        success=success,
+        error_code=error_code,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        metadata={"image_bytes": len(image_bytes), "operation": "vision_ocr"},
+    )
 
     if response.status_code != 200:
         error_detail = response.text
