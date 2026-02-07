@@ -1287,6 +1287,15 @@ async function evaluateBundle(bundleText) {
             signalConsistency.classList.add('hidden');
         }
 
+        // S9-A: Re-Evaluation Framing
+        const reEvalFrame = document.getElementById('re-evaluation-frame');
+        const confidenceTrendData = data.confidenceTrend;
+        if (confidenceTrendData && confidenceTrendData.hasTrend) {
+            reEvalFrame.classList.remove('hidden');
+        } else {
+            reEvalFrame.classList.add('hidden');
+        }
+
         // S7-B: Confidence Trend Indicator
         const confidenceTrend = document.getElementById('confidence-trend');
         const trendData = data.confidenceTrend;
@@ -1298,9 +1307,25 @@ async function evaluateBundle(bundleText) {
             confidenceTrend.classList.add('hidden');
         }
 
+        // S9-B: Change Acknowledgement
+        const changeAck = document.getElementById('change-acknowledgement');
+        const deltaData = data.delta;
+        if (deltaData && deltaData.has_delta && deltaData.changes_detected && deltaData.changes_detected.length > 0) {
+            const changeType = deltaData.changes_detected[0];
+            let changeText = 'You adjusted this';
+            if (changeType.includes('leg')) {
+                changeText = 'You adjusted the legs';
+            } else if (changeType.includes('correlation')) {
+                changeText = 'You changed how these legs relate';
+            }
+            changeAck.textContent = changeText + " — here's how that shifted things.";
+            changeAck.classList.remove('hidden');
+        } else {
+            changeAck.classList.add('hidden');
+        }
+
         // Ticket 38B-C1: Delta Sentence (shown when has_delta is true)
         const deltaSentence = document.getElementById('delta-sentence');
-        const deltaData = data.delta;
         if (deltaData && deltaData.has_delta && deltaData.delta_sentence) {
             deltaSentence.textContent = deltaData.delta_sentence;
             deltaSentence.classList.remove('hidden');
@@ -1512,6 +1537,14 @@ async function evaluateBundle(bundleText) {
         } else {
             improveBtn.disabled = true;
             improveBtn.onclick = null;
+        }
+
+        // S9-C: Completion Closure
+        const completionClosure = document.getElementById('completion-closure');
+        if (si && si.signal) {
+            completionClosure.classList.remove('hidden');
+        } else {
+            completionClosure.classList.add('hidden');
         }
 
         // ========================================
