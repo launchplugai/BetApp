@@ -207,22 +207,22 @@
                         <div class="bet-slip-card-header">
                             <span class="bet-slip-icon">&#128179;</span>
                             <div>
-                                <div class="bet-slip-title">Bet Slip</div>
-                                <div class="bet-slip-subtitle">Upload an image or paste your bet text</div>
+                                <div class="bet-slip-title">Your Bet</div>
+                                <div class="bet-slip-subtitle">Type, paste, or snap a photo of your ticket</div>
                             </div>
                         </div>
 
                         <!-- Step 1: Provide bet -->
                         <div class="eval-step-indicator">
                             <span class="eval-step-number">1</span>
-                            <span class="eval-step-label">Provide bet</span>
+                            <span class="eval-step-label">What are you betting?</span>
                         </div>
 
                         <!-- Input Type Tabs -->
                         <div class="input-tabs">
-                            <div class="input-tab active" data-input="text">Paste Text</div>
-                            <div class="input-tab" data-input="image">Upload Image</div>
-                            <div class="input-tab" data-input="bundle">Build</div>
+                            <div class="input-tab active" data-input="text">Type or Paste</div>
+                            <div class="input-tab" data-input="image">Take a Photo</div>
+                            <div class="input-tab" data-input="bundle">Build From Scratch</div>
                         </div>
 
                         <!-- Text Input Panel -->
@@ -236,8 +236,8 @@
                                 <input type="file" id="file-input" accept="image/png,image/jpeg,image/jpg,image/webp" capture="environment">
                                 <div class="file-upload-icon" id="file-upload-icon">&#128247;</div>
                                 <div class="file-upload-text" id="file-upload-text">
-                                    Click to upload or take a photo<br>
-                                    <span class="file-types">PNG, JPG, or WebP (max 5MB)</span>
+                                    Tap to upload or take a photo<br>
+                                    <span class="file-types">We read PNG, JPG, or WebP images up to 5MB</span>
                                 </div>
                                 <div class="file-selected hidden" id="file-selected">
                                     <div class="file-selected-icon">&#9989;</div>
@@ -283,28 +283,28 @@
                         <!-- Tier Selection: Choose depth -->
                         <div class="eval-step-indicator" style="margin-top: var(--sp-4); margin-bottom: var(--sp-2);">
                             <span class="eval-step-number">2</span>
-                            <span class="eval-step-label">Choose depth</span>
+                            <span class="eval-step-label">How much detail do you want?</span>
                         </div>
                         <div class="tier-selector">
                             <div class="tier-option">
                                 <input type="radio" name="eval-tier" id="eval-tier-good" value="good" checked>
                                 <label for="eval-tier-good">
-                                    <div class="tier-name">GOOD</div>
-                                    <div class="tier-desc">Signal + Verdict</div>
+                                    <div class="tier-name">Essential</div>
+                                    <div class="tier-desc">Quick signal & verdict</div>
                                 </label>
                             </div>
                             <div class="tier-option">
                                 <input type="radio" name="eval-tier" id="eval-tier-better" value="better">
                                 <label for="eval-tier-better">
-                                    <div class="tier-name">BETTER</div>
-                                    <div class="tier-desc">+ Correlations</div>
+                                    <div class="tier-name">Detailed</div>
+                                    <div class="tier-desc">See how legs connect</div>
                                 </label>
                             </div>
                             <div class="tier-option">
                                 <input type="radio" name="eval-tier" id="eval-tier-best" value="best">
                                 <label for="eval-tier-best">
-                                    <div class="tier-name">BEST</div>
-                                    <div class="tier-desc">+ Alerts</div>
+                                    <div class="tier-name">Complete</div>
+                                    <div class="tier-desc">Live conditions & alerts</div>
                                 </label>
                             </div>
                         </div>
@@ -312,7 +312,7 @@
                         <!-- Step 3: Analyze -->
                         <div class="eval-step-indicator" style="margin-top: var(--sp-4); margin-bottom: var(--sp-2);">
                             <span class="eval-step-number">3</span>
-                            <span class="eval-step-label">Analyze</span>
+                            <span class="eval-step-label">Get your analysis</span>
                         </div>
 
                         <!-- Submit Button -->
@@ -341,7 +341,7 @@
                     </div>
 
                     <div id="eval-results-placeholder" class="results-placeholder">
-                        <p>Add your bet to get started</p>
+                        <p>Enter your bet above, then tap Evaluate</p>
                     </div>
 
                     <div id="eval-results-content" class="hidden">
@@ -431,16 +431,17 @@
 
                         <!-- Card 2: PRIMARY FAILURE (always shown) -->
                         <div class="result-card pf-card" id="pf-card">
-                            <div class="result-card-header">Main Concern</div>
+                            <div class="result-card-header">Worth a Look</div>
                             <span class="pf-card-badge" id="pf-card-badge"></span>
                             <div class="pf-card-description" id="pf-card-description"></div>
                         </div>
 
                         <!-- Card 3: FASTEST FIX (always shown if available) -->
                         <div class="result-card fix-card hidden" id="fix-card">
-                            <div class="result-card-header">Quick Fix <span class="fix-card-arrow">&rarr;</span></div>
+                            <div class="result-card-header">Simple Adjustment <span class="fix-card-arrow">&rarr;</span></div>
                             <div class="fix-card-action" id="fix-card-action"></div>
                             <div class="fix-card-description" id="fix-card-description"></div>
+                            <div class="fix-card-microcopy" style="font-size: var(--text-xs); color: var(--fg-muted); margin-top: var(--sp-2); font-style: italic;">Tap to see how this changes things</div>
                         </div>
 
                         <!-- Card 4: DELTA PREVIEW (shown if fix available) -->
@@ -460,13 +461,13 @@
 
                         <!-- Card 5: WARNINGS (always shown if any) -->
                         <div class="result-card warnings-card hidden" id="warnings-card">
-                            <div class="result-card-header">Heads Up</div>
+                            <div class="result-card-header">Things to Know</div>
                             <ul class="warnings-list" id="warnings-list"></ul>
                         </div>
 
                         <!-- Card 6: TIPS (always shown if any) -->
                         <div class="result-card tips-card hidden" id="tips-card">
-                            <div class="result-card-header">Suggestions</div>
+                            <div class="result-card-header">Ways to Adjust</div>
                             <ul class="tips-list" id="tips-list"></ul>
                         </div>
 
@@ -507,8 +508,9 @@
 
                         <!-- IMPROVE IN BUILDER Button -->
                         <button type="button" class="improve-btn" id="improve-btn" disabled>
-                            Improve
+                            Open in Builder
                         </button>
+                        <div class="improve-microcopy" style="font-size: var(--text-xs); color: var(--fg-muted); text-align: center; margin-top: var(--sp-2);">Adjust legs, test changes, save versions</div>
 
                         <!-- Expandable Details (raw data) -->
                         <details class="eval-details-accordion" id="eval-details-accordion" style="margin-top: var(--sp-3);">
