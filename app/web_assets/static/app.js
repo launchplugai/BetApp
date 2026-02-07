@@ -385,7 +385,7 @@
         slipLegCount.textContent = BuilderStateMachine.getLegCountText(currentLegs.length);
 
         if (currentLegs.length === 0) {
-            slipLegRows.innerHTML = '<div class="slip-empty-state">No legs</div>';
+            slipLegRows.innerHTML = '<div class="slip-empty-state">Add legs to build your parlay</div>';
             return;
         }
 
@@ -549,7 +549,7 @@
         // Check for empty case using state machine (SINGLE_BET allows removal per spec)
         if (!BuilderStateMachine.canRemoveLeg(currentBuilderState) && ff.action === 'remove_leg') {
             fastestFixButton.disabled = true;
-            fastestFixDisabledReason.textContent = 'No legs to remove';
+            fastestFixDisabledReason.textContent = 'Nothing to adjust right now';
             fastestFixDisabledReason.classList.remove('hidden');
         }
     }
@@ -1987,7 +1987,7 @@ async function evaluateBundle(bundleText) {
 
         } catch (err) {
             console.error('Failed to load history:', err);
-            historyContent.innerHTML = "<div class='history-empty-state'><p>Failed to load history</p></div>";
+            historyContent.innerHTML = "<div class='history-empty-state'><p>Couldn't load your history. Try refreshing?</p></div>";
         }
     };
 

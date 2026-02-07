@@ -2385,6 +2385,37 @@ header a {
 #change-acknowledgement { order: 1.9; }
 #completion-closure { order: 44; }
 
+/* S10-B: Visual Rhythm Tightening */
+/* Tighter spacing on result cards for better flow */
+.result-card {
+    margin: var(--sp-3) 0;
+    padding: var(--sp-3);
+}
+
+/* More prominent signal bar */
+.signal-bar-card {
+    padding: var(--sp-4);
+    margin: var(--sp-2) 0 var(--sp-4);
+}
+
+/* Subtle separator between related cards */
+#pf-card + #fix-card {
+    margin-top: var(--sp-2);
+}
+
+/* Emphasize primary cards, de-emphasize supporting detail */
+#signal-bar-card,
+#pf-card {
+    border-left-width: 4px;
+}
+
+#warnings-card,
+#tips-card,
+#snapshot-panel {
+    border-left-width: 2px;
+    opacity: 0.95;
+}
+
 /* S7-C: Emphasis Rebalancing */
 /* Make results container a flex column for reordering */
 #eval-results-content {
