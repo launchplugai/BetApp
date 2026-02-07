@@ -2329,6 +2329,31 @@ header a {
     font-style: italic;
 }
 
+/* S14-C: Reality-Anchored Analyst Take */
+.analyst-take-card {
+    border-left: 4px solid var(--accent);
+    background: linear-gradient(135deg, rgba(74, 158, 255, 0.05) 0%, transparent 100%);
+}
+
+.analyst-take-content {
+    font-size: var(--text-base);
+    line-height: 1.7;
+    color: var(--fg-primary);
+}
+
+.analyst-take-content .take-highlight {
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.analyst-take-content .take-structure {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--border-subtle);
+    font-size: var(--text-sm);
+    color: var(--fg-secondary);
+}
+
 /* S8-B: Signal Consistency Callout */
 .signal-consistency {
     font-size: var(--text-xs);

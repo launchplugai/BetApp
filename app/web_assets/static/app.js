@@ -2206,6 +2206,14 @@ async function evaluateBundle(bundleText) {
 
     // Display results (bridges to existing result display)
     function displayNexusResults(data) {
+        // S14-C: Show analyst take
+        const analystTakeCard = document.getElementById('analyst-take-card');
+        const analystTakeContent = document.getElementById('analyst-take-content');
+        if (analystTakeCard && analystTakeContent && window.generateAnalystTake) {
+            analystTakeContent.innerHTML = window.generateAnalystTake(data);
+            analystTakeCard.classList.remove('hidden');
+        }
+
         // Hide Nexus input, show results
         // This connects to existing result rendering logic
         if (window.displayEvaluationResults) {
@@ -2231,4 +2239,68 @@ async function evaluateBundle(bundleText) {
             console.log('Toast:', message);
         }
     }
+
+    // S14-C: Generate reality-anchored narrative
+    function generateAnalystTake(data) {
+        const legs = data.legs || data.snapshot?.legs || [];
+        const correlations = data.correlations || data.snapshot?.correlations || [];
+        const signal = data.signal || 'green';
+        const fragility = data.fragility_score || data.fragilityScore || 0;
+
+        let take = '';
+
+        // Opening: Structure description
+        const propLegs = legs.filter(l => (l.bet_type || l.market) === 'PROP').length;
+        const gameCount = new Set(legs.map(l => l.game_id || l.game)).size;
+
+        if (propLegs > 0 && propLegs === legs.length) {
+            take += `This is a <span class="take-highlight">player prop heavy</span> parlay. `;
+        } else if (propLegs > 0) {
+            take += `This mix combines <span class="take-highlight">player props with team outcomes</span>. `;
+        }
+
+        // Game concentration
+        if (gameCount === 1 && legs.length > 1) {
+            take += `Everything rides on <span class="take-highlight">one game</span>, so late variance could swing everything. `;
+        } else if (gameCount <= 2 && legs.length >= 3) {
+            take += `Most of this is concentrated across just <span class="take-highlight">${gameCount} games</span>. `;
+        }
+
+        // Outcome types
+        if (propLegs >= 2) {
+            take += `Player props are <span class="take-highlight">volume outcomes</span> (stats can accumulate) rather than binary wins/losses. `;
+        }
+
+        // Correlation insight (without claiming real stats)
+        if (correlations.length > 0) {
+            take += `There's <span class="take-highlight">overlap in your legs</span> — if one hits, others might too (or not). `;
+        }
+
+        // Signal-based framing
+        if (signal === 'red' || fragility > 70) {
+            take += `Structure looks <span class="take-highlight">fragile</span> — multiple things need to go right in specific ways.`;
+        } else if (signal === 'yellow' || fragility > 40) {
+            take += `Some <span class="take-highlight">structural tension</span> here — not broken, but worth watching.`;
+        } else if (signal === 'green' || fragility < 30) {
+            take += `Structure looks <span class="take-highlight">balanced</span> — legs aren't fighting each other.`;
+        }
+
+        // Add structure breakdown
+        const structure = [];
+        if (propLegs > 0) structure.push(`${propLegs} player prop${propLegs > 1 ? 's' : ''}`);
+        const mlLegs = legs.filter(l => (l.bet_type || l.market) === 'MONEYLINE').length;
+        if (mlLegs > 0) structure.push(`${mlLegs} moneyline`);
+        const spreadLegs = legs.filter(l => (l.bet_type || l.market) === 'SPREAD').length;
+        if (spreadLegs > 0) structure.push(`${spreadLegs} spread`);
+
+        let html = take;
+        if (structure.length > 0) {
+            html += `<div class="take-structure">Breakdown: ${structure.join(', ')}</div>`;
+        }
+
+        return html || 'Analysis based on your slip structure.';
+    }
+
+    // Make available globally
+    window.generateAnalystTake = generateAnalystTake;
 })();
