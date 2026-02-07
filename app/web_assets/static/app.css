@@ -2329,6 +2329,11 @@ header a {
     font-style: italic;
 }
 
+/* S14: Hide old builder UI - Nexus is now default */
+#bet-slip-card {
+    display: none !important;
+}
+
 /* S14-D: Builder Relegation - Advanced tab styling */
 .nav-tab-advanced {
     font-size: var(--text-xs);
