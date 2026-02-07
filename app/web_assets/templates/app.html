@@ -251,7 +251,7 @@
                                     <img id="image-preview-thumb" class="image-preview-thumb" src="" alt="Preview">
                                     <div class="image-preview-info">
                                         <div class="image-preview-name" id="image-preview-name"></div>
-                                        <div class="image-preview-status" id="image-preview-status">Ready to extract</div>
+                                        <div class="image-preview-status" id="image-preview-status">✓ Image received — ready to read</div>
                                     </div>
                                 </div>
                             </div>
@@ -260,8 +260,8 @@
                             <div class="extracted-text-container hidden" id="extracted-text-container">
                                 <!-- OCR Accuracy Warning Banner (Ticket 32 Part A) -->
                                 <div class="ocr-warning-banner" id="ocr-warning-banner">
-                                    <span class="ocr-warning-icon">&#9888;</span>
-                                    <span class="ocr-warning-text">Text extracted. Review before evaluating.</span>
+                                    <span class="ocr-warning-icon">✓</span>
+                                    <span class="ocr-warning-text">Text extracted. Check it looks right before evaluating.</span>
                                 </div>
                                 <div class="extracted-text-header">
                                     <span class="extracted-text-label">Extracted Slip Text</span>
@@ -328,7 +328,8 @@
                         <!-- Working Overlay -->
                         <div class="working-overlay hidden" id="working-overlay">
                             <div class="working-spinner"></div>
-                            <div class="working-text" id="working-text">Working...</div>
+                            <div class="working-text" id="working-text">Analyzing your bet...</div>
+                            <div class="working-subtext" style="font-size: var(--text-xs); color: var(--fg-muted); margin-top: var(--sp-1);">This takes a few seconds</div>
                         </div>
                     </div>
                 </div>
@@ -345,6 +346,12 @@
                     </div>
 
                     <div id="eval-results-content" class="hidden">
+                        <!-- S12: ANALYSIS READY RITUAL (shown when results first appear) -->
+                        <div class="analysis-ready-banner" id="analysis-ready-banner" style="background: rgba(74, 158, 255, 0.08); border-left: 3px solid var(--accent); padding: var(--sp-3); margin-bottom: var(--sp-3); border-radius: 4px;">
+                            <div style="font-weight: 600; font-size: var(--text-base); color: var(--fg-primary); margin-bottom: var(--sp-1);">Analysis Complete</div>
+                            <div style="font-size: var(--text-sm); color: var(--fg-secondary);">Here's what we found in your bet</div>
+                        </div>
+                        
                         <!-- VC-3: PAYOFF BANNER (shows after apply-fix) -->
                         <div class="payoff-banner hidden" id="payoff-banner">
                             <div class="payoff-header">
@@ -387,8 +394,9 @@
                         </div>
 
                         <!-- S9-A: Re-Evaluation Framing -->
-                        <div class="re-evaluation-frame hidden" id="re-evaluation-frame">
-                            This builds on your previous version.
+                        <div class="re-evaluation-frame hidden" id="re-evaluation-frame" style="margin: var(--sp-3) 0; padding: var(--sp-3); background: rgba(139, 92, 246, 0.05); border-left: 3px solid #8b5cf6; border-radius: 4px;">
+                            <div style="font-weight: 600; font-size: var(--text-sm); color: var(--fg-primary); margin-bottom: var(--sp-1);">↻ Refining Your Bet</div>
+                            <div style="font-size: var(--text-sm); color: var(--fg-secondary);">This analysis builds on your previous version</div>
                         </div>
 
                         <!-- S8-A: Why This Feels Confident Panel -->
@@ -502,8 +510,9 @@
                         </div>
 
                         <!-- S9-C: Completion Closure -->
-                        <div class="completion-closure hidden" id="completion-closure">
-                            This version is internally consistent.
+                        <div class="completion-closure hidden" id="completion-closure" style="margin: var(--sp-4) 0; padding: var(--sp-3); background: rgba(34, 197, 94, 0.05); border-left: 3px solid var(--signal-green); border-radius: 4px;">
+                            <div style="font-weight: 600; font-size: var(--text-sm); color: var(--fg-primary); margin-bottom: var(--sp-1);">✓ Analysis Complete</div>
+                            <div style="font-size: var(--text-sm); color: var(--fg-secondary);">Your bet structure has been fully reviewed</div>
                         </div>
 
                         <!-- IMPROVE IN BUILDER Button -->
