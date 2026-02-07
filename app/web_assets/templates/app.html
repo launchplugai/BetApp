@@ -22,7 +22,7 @@
         <nav class="nav-tabs">
             <a class="nav-tab {discover_active}" data-tab="discover">Discover</a>
             <a class="nav-tab {evaluate_active}" data-tab="evaluate">Evaluate</a>
-            <a class="nav-tab {builder_active}" data-tab="builder">Builder</a>
+            <a class="nav-tab {builder_active} nav-tab-advanced" data-tab="builder">Advanced</a>
             <a class="nav-tab {history_active}" data-tab="history">History</a>
         </nav>
 
@@ -109,8 +109,12 @@
             </div>
         </div> <!-- End tab-discover -->
 
-        <!-- Builder Tab Content (Ticket 9: Builder Improvement Workbench) -->
+        <!-- S14-D: Advanced Builder Tab -->
         <div class="tab-content {builder_active}" id="tab-builder">
+            <div class="advanced-builder-header">
+                <h2>Advanced Builder</h2>
+                <p>Build leg-by-leg for precise control. Most users prefer the Evaluate tab.</p>
+            </div>
             <!-- BLOCKED STATE: No evaluation context -->
             <div class="fix-blocked" id="fix-blocked">
                 <div class="fix-blocked-icon">🛠️</div>

@@ -2329,6 +2329,36 @@ header a {
     font-style: italic;
 }
 
+/* S14-D: Builder Relegation - Advanced tab styling */
+.nav-tab-advanced {
+    font-size: var(--text-xs);
+    opacity: 0.7;
+    order: 99; /* Move to end */
+}
+
+.nav-tab-advanced:hover {
+    opacity: 1;
+}
+
+.advanced-builder-header {
+    text-align: center;
+    padding: var(--sp-6) var(--sp-4);
+    margin-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.advanced-builder-header h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--fg-primary);
+    margin-bottom: var(--sp-2);
+}
+
+.advanced-builder-header p {
+    font-size: var(--text-sm);
+    color: var(--fg-muted);
+}
+
 /* S14-C: Reality-Anchored Analyst Take */
 .analyst-take-card {
     border-left: 4px solid var(--accent);
