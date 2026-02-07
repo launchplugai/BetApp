@@ -1975,3 +1975,167 @@
     // Make available globally
     window.generateAnalystTake = generateAnalystTake;
 })();
+
+// ============================================================
+// S15: MESSAGING-STYLE INPUT HANDLERS
+// ============================================================
+(function() {
+    // Elements
+    const chatTextField = document.getElementById('chat-text-field');
+    const chatSendBtn = document.getElementById('chat-send-btn');
+    const chatCameraBtn = document.getElementById('chat-camera-btn');
+    const chatFileInput = document.getElementById('chat-file-input');
+    const chatPhotoPreview = document.getElementById('chat-photo-preview');
+    const chatPreviewImg = document.getElementById('chat-preview-img');
+    const chatRemovePhoto = document.getElementById('chat-remove-photo');
+    const quickChips = document.querySelectorAll('.quick-chip');
+
+    // Send/Analyze
+    if (chatSendBtn && chatTextField) {
+        chatSendBtn.addEventListener('click', function() {
+            const text = chatTextField.value.trim();
+            if (!text) {
+                showToast('Enter your bet first');
+                return;
+            }
+            analyzeBet(text);
+        });
+
+        // Enter key to submit
+        chatTextField.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatSendBtn.click();
+            }
+        });
+    }
+
+    // Camera/Photo upload
+    if (chatCameraBtn && chatFileInput) {
+        chatCameraBtn.addEventListener('click', function() {
+            chatFileInput.click();
+        });
+
+        chatFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            handlePhoto(file);
+        });
+    }
+
+    // Remove photo
+    if (chatRemovePhoto) {
+        chatRemovePhoto.addEventListener('click', function() {
+            chatFileInput.value = '';
+            chatPhotoPreview.classList.add('hidden');
+        });
+    }
+
+    // Quick chips
+    quickChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+            const bet = this.dataset.bet;
+            if (bet && chatTextField) {
+                chatTextField.value = bet;
+                chatTextField.focus();
+            }
+        });
+    });
+
+    // Handle photo
+    function handlePhoto(file) {
+        // Validate
+        const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            showToast('Please upload PNG, JPG, or WebP');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Image must be under 5MB');
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            chatPreviewImg.src = e.target.result;
+            chatPhotoPreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+
+        // Submit for OCR
+        submitOCR(file);
+    }
+
+    // Submit OCR
+    async function submitOCR(file) {
+        chatSendBtn.disabled = true;
+        chatSendBtn.textContent = 'Reading...';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/evaluate/ocr', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('OCR failed');
+
+            const data = await response.json();
+            if (data.text) {
+                chatTextField.value = data.text;
+                showToast('Text extracted - tap Analyze');
+            }
+        } catch (err) {
+            console.error('OCR error:', err);
+            showToast('Could not read image. Try typing.');
+        } finally {
+            chatSendBtn.disabled = false;
+            chatSendBtn.textContent = 'Analyze';
+        }
+    }
+
+    // Analyze bet
+    async function analyzeBet(text) {
+        chatSendBtn.disabled = true;
+        chatSendBtn.textContent = 'Analyzing...';
+
+        try {
+            const response = await fetch('/api/evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, tier: 'good' })
+            });
+
+            if (!response.ok) throw new Error('Analysis failed');
+
+            const data = await response.json();
+            
+            // Show results (existing display logic)
+            if (window.showEvaluationResults) {
+                window.showEvaluationResults(data);
+            } else {
+                showToast('Analysis complete');
+            }
+
+        } catch (err) {
+            console.error('Analysis error:', err);
+            showToast('Analysis failed. Try again.');
+        } finally {
+            chatSendBtn.disabled = false;
+            chatSendBtn.textContent = 'Analyze';
+        }
+    }
+
+    // Utility
+    function showToast(message) {
+        // Use existing toast or console
+        if (window.showToast) {
+            window.showToast(message);
+        } else {
+            console.log('Toast:', message);
+        }
+    }
+})();
