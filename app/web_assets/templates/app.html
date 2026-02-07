@@ -113,43 +113,46 @@
         <div class="tab-content {builder_active}" id="tab-builder">
             <!-- BLOCKED STATE: No evaluation context -->
             <div class="fix-blocked" id="fix-blocked">
-                <div class="fix-blocked-icon">&#128683;</div>
-                <div class="fix-blocked-message">Builder requires an evaluation.</div>
-                <div class="fix-blocked-hint">Evaluate a parlay to get recommendations</div>
-                <button type="button" class="fix-blocked-cta" onclick="switchToTab('evaluate')">Go to Evaluate</button>
+                <div class="fix-blocked-icon">🛠️</div>
+                <div class="fix-blocked-message">Builder is ready when you are</div>
+                <div class="fix-blocked-hint">Evaluate a bet first, then come back to test changes</div>
+                <button type="button" class="fix-blocked-cta" onclick="switchToTab('evaluate')">Start with Evaluate</button>
             </div>
 
             <!-- WORKBENCH MODE: Active when evaluation context exists -->
             <div class="builder-workbench hidden" id="builder-workbench">
                 <!-- Header with updating indicator -->
                 <div class="builder-header">
-                    <div class="builder-title">Improve Your Slip</div>
+                    <div class="builder-title">Let's Adjust This</div>
+                    <div class="builder-subtitle" style="font-size: var(--text-sm); color: var(--fg-muted); margin-top: var(--sp-1);">Test changes and see how they affect your bet</div>
                     <div class="builder-updating hidden" id="builder-updating">
                         <div class="builder-updating-dot"></div>
-                        <span>Updating...</span>
+                        <span>Recalculating...</span>
                     </div>
                 </div>
 
                 <!-- A. FASTEST FIX CARD (at top) -->
                 <div class="fastest-fix-card" id="fastest-fix-card">
                     <div class="fastest-fix-header">
-                        <span class="fastest-fix-label">Fastest Fix</span>
+                        <span class="fastest-fix-label">Suggested Adjustment</span>
                         <span class="fastest-fix-action" id="fastest-fix-action"></span>
                     </div>
                     <div class="fastest-fix-description" id="fastest-fix-description"></div>
                     <div class="fastest-fix-reason" id="fastest-fix-reason"></div>
                     <button type="button" class="fastest-fix-button" id="fastest-fix-button">
-                        Apply Fix
+                        Try This Change
                     </button>
+                    <div class="fastest-fix-microcopy" style="font-size: var(--text-xs); color: var(--fg-muted); margin-top: var(--sp-2); text-align: center; font-style: italic;">You can always undo or tweak further</div>
                     <div class="fastest-fix-disabled-reason hidden" id="fastest-fix-disabled-reason"></div>
                 </div>
 
                 <!-- B. SLIP LEG LIST -->
                 <div class="slip-leg-list" id="slip-leg-list">
                     <div class="slip-leg-list-header">
-                        <span class="slip-leg-list-title">Your Slip</span>
+                        <span class="slip-leg-list-title">Working Version</span>
                         <span class="slip-leg-count" id="slip-leg-count">0 legs</span>
                     </div>
+                    <div class="slip-leg-microcopy" style="font-size: var(--text-xs); color: var(--fg-muted); margin: var(--sp-1) 0 var(--sp-2) 0;">Edit, add, or remove legs — the score updates as you go</div>
                     <div id="slip-leg-rows">
                         <!-- Legs populated dynamically -->
                     </div>
@@ -157,27 +160,28 @@
 
                 <!-- C. LIVE DELTA PANEL -->
                 <div class="delta-panel" id="delta-panel">
-                    <div class="delta-panel-header">Before vs After</div>
+                    <div class="delta-panel-header">How It Changes</div>
+                    <div class="delta-panel-subheader" style="font-size: var(--text-xs); color: var(--fg-muted); margin-top: var(--sp-1);">See the impact of your adjustments</div>
                     <div class="delta-panel-grid">
                         <div class="delta-panel-state before">
-                            <div class="delta-panel-label">Before</div>
+                            <div class="delta-panel-label">Original</div>
                             <div class="delta-panel-signal" id="delta-before-signal-wb"></div>
                             <div class="delta-panel-score" id="delta-before-score-wb"></div>
                         </div>
                         <div class="delta-panel-arrow" id="delta-arrow">&rarr;</div>
                         <div class="delta-panel-state after">
-                            <div class="delta-panel-label">After</div>
+                            <div class="delta-panel-label">Updated</div>
                             <div class="delta-panel-signal" id="delta-after-signal-wb"></div>
                             <div class="delta-panel-score" id="delta-after-score-wb"></div>
                         </div>
                     </div>
                     <div class="delta-change-indicators" id="delta-change-indicators">
                         <div class="delta-change-item">
-                            <span>Signal:</span>
+                            <span>Overall Signal:</span>
                             <span id="delta-signal-arrow" class="arrow-same">&mdash;</span>
                         </div>
                         <div class="delta-change-item">
-                            <span>Fragility:</span>
+                            <span>Structure Risk:</span>
                             <span id="delta-fragility-arrow" class="arrow-same">&mdash;</span>
                         </div>
                     </div>
@@ -186,12 +190,13 @@
                 <!-- D. ACTION BAR -->
                 <div class="builder-action-bar">
                     <button type="button" class="builder-save-btn" id="builder-save-btn" disabled>
-                        Save
+                        Save This Version
                     </button>
                     <button type="button" class="builder-back-btn" id="builder-back-btn">
-                        Back
+                        Back to Results
                     </button>
                 </div>
+                <div class="builder-action-microcopy" style="font-size: var(--text-xs); color: var(--fg-muted); text-align: center; margin-top: var(--sp-2);">Changes are live — experiment freely</div>
             </div>
         </div> <!-- End tab-builder -->
 
