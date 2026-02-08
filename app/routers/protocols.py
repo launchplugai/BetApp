@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from app.services.protocol_tracker import tracker
+from app.services.suggestion_engine import suggestion_engine, DNASuggestion
 from app.providers import ProviderFactory
 
 router = APIRouter(prefix="/api/protocols", tags=["protocols"])
@@ -111,26 +112,35 @@ async def refresh_protocol(protocol_id: str):
     """
     Refresh odds and score for a protocol.
     
-    Fetches latest data from providers.
+    Fetches latest data from providers and generates suggestions.
     """
     protocol = tracker.get_protocol(protocol_id)
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
+    old_odds = protocol.current_odds
+    old_score = protocol.current_score
+    
     # Refresh odds
     if "spread" in protocol.markets_watched or "total" in protocol.markets_watched:
         odds_provider = ProviderFactory.get_odds_provider("mock")
         try:
-            odds = await odds_provider.get_odds(protocol.game_id)
-            tracker.update_odds(protocol_id, odds)
+            new_odds = await odds_provider.get_odds(protocol.game_id)
+            tracker.update_odds(protocol_id, new_odds)
+            
+            # Analyze odds changes
+            suggestion_engine.analyze_odds_change(protocol_id, old_odds, new_odds)
         except Exception as e:
             print(f"Failed to refresh odds: {e}")
     
     # Refresh score
     score_provider = ProviderFactory.get_score_provider("mock")
     try:
-        score = await score_provider.get_score(protocol.game_id)
-        tracker.update_score(protocol_id, score)
+        new_score = await score_provider.get_score(protocol.game_id)
+        tracker.update_score(protocol_id, new_score)
+        
+        # Analyze score changes
+        suggestion_engine.analyze_score_change(protocol_id, old_score, new_score)
     except Exception as e:
         print(f"Failed to refresh score: {e}")
     
@@ -172,3 +182,42 @@ async def cleanup_expired(max_age_hours: int = 24):
     """Manually trigger cleanup of expired protocols."""
     expired_count = tracker.expire_old_protocols(max_age_hours)
     return {"expired_count": expired_count, "max_age_hours": max_age_hours}
+
+
+# S17-C: Suggestion Endpoints
+
+@router.get("/{protocol_id}/suggestions")
+async def get_suggestions(protocol_id: str, unacknowledged_only: bool = False):
+    """
+    Get suggestions for a protocol.
+    
+    Args:
+        protocol_id: Protocol ID
+        unacknowledged_only: If true, only return unacknowledged suggestions
+    """
+    # Verify protocol exists
+    protocol = tracker.get_protocol(protocol_id)
+    if not protocol:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+    
+    suggestions = suggestion_engine.get_suggestions(protocol_id, unacknowledged_only)
+    
+    return {
+        "protocol_id": protocol_id,
+        "suggestions": [s.model_dump() for s in suggestions],
+        "count": len(suggestions)
+    }
+
+
+@router.post("/suggestions/{suggestion_id}/acknowledge")
+async def acknowledge_suggestion(suggestion_id: str):
+    """
+    Acknowledge (dismiss) a suggestion.
+    
+    User has seen and acted on (or ignored) the suggestion.
+    """
+    success = suggestion_engine.acknowledge_suggestion(suggestion_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    
+    return {"status": "acknowledged", "suggestion_id": suggestion_id}
