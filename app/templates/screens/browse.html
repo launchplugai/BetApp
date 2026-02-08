@@ -243,6 +243,11 @@
 
     async function loadProtocols(league) {
       const list = document.getElementById('protocols-list');
+      if (!list) {
+        console.error('protocols-list element not found');
+        return;
+      }
+      
       list.innerHTML = `
         <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
           <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING ${league.toUpperCase()} TARGETS...</div>
@@ -250,11 +255,19 @@
       `;
 
       try {
+        console.log('Fetching protocols for league:', league);
         const response = await fetch(`${API_BASE}/protocols/available?league=${league}`);
-        if (!response.ok) throw new Error('Failed to load protocols');
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
         const data = await response.json();
+        console.log('Protocols data:', data);
+        
         protocolsData = data.protocols || [];
+        console.log('Protocols count:', protocolsData.length);
         
         renderProtocols(protocolsData);
         
@@ -266,8 +279,10 @@
       } catch (err) {
         console.error('Failed to load protocols:', err);
         list.innerHTML = `
-          <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
+          <div class="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center gap-4">
             <div class="text-red-500 font-tanker text-xl tracking-wider">CONNECTION FAILED</div>
+            <div class="text-gray-500 text-sm">${err.message}</div>
+            <button onclick="loadProtocols('${league}')" class="px-4 py-2 bg-neon-red rounded text-white font-bold">RETRY</button>
           </div>
         `;
       }
