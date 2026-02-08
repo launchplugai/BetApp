@@ -398,13 +398,24 @@ async function analyzeWithDNA() {
 }
 
 function displayResults(data) {
-    console.log('DNA Result data:', JSON.stringify(data, null, 2));
+    console.log('DNA Result data:', data);
     
     const resultsSection = document.getElementById('results-section');
     const verdictBadge = document.getElementById('verdict-badge');
     const confidenceScore = document.getElementById('confidence-score');
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
+
+    // Debug: Show raw data if we can't parse it
+    if (!data || typeof data !== 'object') {
+        verdictBadge.textContent = 'ERROR';
+        verdictBadge.className = 'px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider bg-red-500/20 text-red-400 border border-red-500/30';
+        confidenceScore.textContent = '0%';
+        summaryText.innerHTML = `<pre class="text-xs overflow-auto">${JSON.stringify(data, null, 2)}</pre>`;
+        legsBreakdown.innerHTML = '';
+        resultsSection.classList.remove('hidden');
+        return;
+    }
 
     // Extract verdict - handle both camelCase and snake_case
     const verdict = data.overallAssessment?.verdict || 
@@ -413,9 +424,10 @@ function displayResults(data) {
                    data.overall_assessment?.verdict ||
                    data.tier ||
                    data.result?.verdict ||
-                   'ANALYZING';
+                   (data.assessment && data.assessment.verdict) ||
+                   'UNKNOWN';
     
-    console.log('Extracted verdict:', verdict);
+    console.log('Extracted verdict:', verdict, 'from keys:', Object.keys(data));
     
     // Verdict styling
     const verdictColors = {
