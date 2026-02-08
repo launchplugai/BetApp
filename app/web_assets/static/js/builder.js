@@ -398,17 +398,24 @@ async function analyzeWithDNA() {
 }
 
 function displayResults(data) {
+    console.log('DNA Result data:', JSON.stringify(data, null, 2));
+    
     const resultsSection = document.getElementById('results-section');
     const verdictBadge = document.getElementById('verdict-badge');
     const confidenceScore = document.getElementById('confidence-score');
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
 
-    // Extract verdict
+    // Extract verdict - handle both camelCase and snake_case
     const verdict = data.overallAssessment?.verdict || 
+                   data.overallAssessment?.tier ||
                    data.verdict || 
-                   data.overall_assessment?.verdict || 
+                   data.overall_assessment?.verdict ||
+                   data.tier ||
+                   data.result?.verdict ||
                    'ANALYZING';
+    
+    console.log('Extracted verdict:', verdict);
     
     // Verdict styling
     const verdictColors = {
@@ -424,19 +431,24 @@ function displayResults(data) {
     verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
     verdictBadge.textContent = verdict;
 
-    // Confidence score
+    // Confidence score - handle both camelCase and snake_case
     const confidence = data.overallAssessment?.confidenceScore || 
+                      data.overallAssessment?.confidence ||
                       data.confidence_score || 
                       data.overall_assessment?.confidence_score ||
+                      data.confidence ||
+                      data.result?.confidence ||
                       0;
     const confidencePercent = Math.round(confidence * 100);
     confidenceScore.textContent = `${confidencePercent}%`;
     confidenceScore.className = `font-tanker text-xl ${confidencePercent >= 70 ? 'text-green-400' : confidencePercent >= 50 ? 'text-yellow-400' : 'text-red-400'}`;
 
-    // Summary
+    // Summary - handle both camelCase and snake_case
     const summary = data.overallAssessment?.summary || 
                    data.summary || 
                    data.overall_assessment?.summary ||
+                   data.result?.summary ||
+                   data.analysis?.summary ||
                    'Analysis complete.';
     summaryText.textContent = summary;
 
