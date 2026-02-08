@@ -1,216 +1,317 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Bet Engine</title>
-    <link rel="stylesheet" href="/static/css/neon-theme.css">
-    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNA Bet Engine - Bet Placement</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@300,400,500,700,900&display=swap');
+
+    :root {
+      --neon-red: #ff1744;
+      --bg-dark: #050505;
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-bg: rgba(255, 255, 255, 0.03);
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: white;
+      font-family: 'Satoshi', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .font-tanker {
+      font-family: 'Tanker', sans-serif;
+    }
+
+    .text-neon-red {
+      color: var(--neon-red);
+      text-shadow: 0 0 10px rgba(255, 23, 68, 0.6);
+    }
+
+    .border-neon-red {
+      border-color: var(--neon-red);
+      box-shadow: 0 0 15px rgba(255, 23, 68, 0.3), inset 0 0 10px rgba(255, 23, 68, 0.1);
+    }
+
+    .glow-bg {
+      background: radial-gradient(circle at 50% -20%, rgba(255, 23, 68, 0.15), transparent 60%);
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+    }
+
+    .grid-bg {
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+    }
+
+    /* Hide scrollbar */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'neon-red': '#ff1744',
+            'dark-bg': '#050505',
+            'card-bg': '#0a0a0a',
+          },
+          fontFamily: {
+            tanker: ['Tanker', 'sans-serif'],
+            satoshi: ['Satoshi', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
 </head>
 <body>
-<div class="ambient-glow-tr"></div>
-<div class="app-container grid-bg">
+  <div class="w-full h-screen flex flex-col relative overflow-hidden">
+    <!-- Background Effects -->
+    <div class="absolute inset-0 grid-bg pointer-events-none z-0"></div>
+    <div class="absolute top-0 left-0 right-0 h-[400px] glow-bg pointer-events-none z-0"></div>
+
     <!-- Header -->
-    <header class="app-header" style="padding-top: 56px; background: rgba(5, 5, 5, 0.8); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--glass-border);">
-        <button class="btn-icon btn-ghost">←</button>
-        <h1 class="font-tanker" style="font-size: 20px; letter-spacing: 0.1em;">NEW BET PROTOCOL</h1>
-        <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); animation: pulse 1.5s infinite;"></div>
+    <header class="shrink-0 pt-14 pb-4 px-6 flex items-center justify-between z-20 sticky top-0 bg-[#050505]/80 backdrop-blur-md border-b border-white/5">
+      <button class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-transform">
+        <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-300"></iconify-icon>
+      </button>
+      <h1 class="font-tanker text-2xl tracking-wide pt-1 text-white">NEW BET PROTOCOL</h1>
+      <div class="w-10 flex justify-end">
+        <div class="w-2 h-2 rounded-full bg-neon-red shadow-[0_0_10px_#ff1744] animate-pulse"></div>
+      </div>
     </header>
 
-    <main class="main-content" style="padding: 24px 24px 120px;">
-        <!-- Sport Selection -->
-        <section class="mb-4">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
-                <h2 class="font-tanker" style="font-size: 18px; color: var(--text-secondary); letter-spacing: 0.1em;">SELECT LEAGUE</h2>
-                <span class="neon-text" style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em;">LIVE FEED ACTIVE</span>
-            </div>
-            <div class="sport-grid">
-                <button class="sport-chip active" onclick="selectSport('nba')">
-                    <span style="position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; background: var(--neon-red); border-radius: 50%; box-shadow: 0 0 8px var(--neon-red);"></span>
-                    <span class="sport-icon">🏀</span>
-                    <span class="font-tanker sport-name">NBA</span>
-                </button>
-                <button class="sport-chip" onclick="selectSport('nfl')">
-                    <span class="sport-icon">🏈</span>
-                    <span class="font-tanker sport-name">NFL</span>
-                </button>
-                <button class="sport-chip" onclick="selectSport('mlb')">
-                    <span class="sport-icon">⚾</span>
-                    <span class="font-tanker sport-name">MLB</span>
-                </button>
-                <button class="sport-chip" onclick="selectSport('nhl')">
-                    <span class="sport-icon">🏒</span>
-                    <span class="font-tanker sport-name">NHL</span>
-                </button>
-                <button class="sport-chip" onclick="selectSport('soccer')">
-                    <span class="sport-icon">⚽</span>
-                    <span class="font-tanker sport-name">SOCCER</span>
-                </button>
-                <button class="sport-chip" onclick="selectSport('mma')">
-                    <span class="sport-icon">🥊</span>
-                    <span class="font-tanker sport-name">MMA</span>
-                </button>
-            </div>
-        </section>
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto no-scrollbar pb-[100px] z-10">
+      
+      <!-- Sport Selection Grid -->
+      <section class="px-6 py-6">
+        <div class="flex justify-between items-end mb-4">
+          <h2 class="font-tanker text-lg text-gray-400 tracking-wider">SELECT LEAGUE</h2>
+          <span class="text-xs text-neon-red font-bold tracking-widest">LIVE FEED ACTIVE</span>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-3">
+          <!-- Active Item -->
+          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 border-neon-red relative group transition-all">
+            <div class="absolute top-2 right-2 w-1.5 h-1.5 bg-neon-red rounded-full shadow-[0_0_8px_#ff1744]"></div>
+            <iconify-icon icon="emojione-monotone:basketball" class="text-3xl text-neon-red drop-shadow-[0_0_5px_rgba(255,23,68,0.8)]"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide text-white">NBA</span>
+          </button>
 
-        <!-- Featured Events -->
-        <section class="mt-4">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
-                <h2 class="font-tanker" style="font-size: 18px; color: var(--text-secondary); letter-spacing: 0.1em;">FEATURED TARGETS</h2>
-                <a href="#" style="font-size: 12px; color: var(--text-muted); text-decoration: none; font-weight: 700; letter-spacing: 0.05em;">View All ›</a>
-            </div>
+          <!-- Inactive Items -->
+          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
+            <iconify-icon icon="fluent:sport-american-football-24-regular" class="text-3xl text-gray-500 group-hover:text-white transition-colors"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide text-gray-500">NFL</span>
+          </button>
 
-            <!-- Game Card 1 (LIVE) -->
-            <div class="game-card">
-                <div class="game-header">
-                    <div class="game-meta">
-                        <span>🏀</span> Regular Season
-                    </div>
-                    <div class="live-badge">
-                        <span class="live-dot"></span>
-                        LIVE • Q3 8:42
-                    </div>
-                </div>
+          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
+            <iconify-icon icon="guidance:baseball" class="text-3xl text-gray-500"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide text-gray-500">MLB</span>
+          </button>
 
-                <div class="teams-row">
-                    <div class="team">
-                        <span class="font-tanker team-name">LAKERS</span>
-                        <span class="team-record">Los Angeles</span>
-                        <span class="font-tanker" style="font-size: 20px; margin-top: 8px;">88</span>
-                    </div>
-                    <div class="vs-divider">
-                        <span class="vs-text">VS</span>
-                        <div style="width: 32px; height: 1px; background: var(--text-muted); margin-top: 4px;"></div>
-                    </div>
-                    <div class="team" style="align-items: flex-end;">
-                        <span class="font-tanker team-name" style="color: var(--text-secondary);">WARRIORS</span>
-                        <span class="team-record">Golden State</span>
-                        <span class="font-tanker" style="font-size: 20px; margin-top: 8px; color: var(--text-secondary);">82</span>
-                    </div>
-                </div>
+          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
+            <iconify-icon icon="ph:hockey-light" class="text-3xl text-gray-500"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide text-gray-500">NHL</span>
+          </button>
 
-                <!-- Quick Odds -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
-                    <button class="odds-cell">
-                        <span class="odds-label">Spread</span>
-                        <span class="odds-value">-4.5</span>
-                        <span class="odds-odds">-110</span>
-                    </button>
-                    <button class="odds-cell">
-                        <span class="odds-label">Total</span>
-                        <span class="odds-value">O 224.5</span>
-                        <span class="odds-odds">-108</span>
-                    </button>
-                    <button class="odds-cell">
-                        <span class="odds-label">Money</span>
-                        <span class="odds-value">-190</span>
-                        <span class="odds-odds">LIVE</span>
-                    </button>
-                </div>
+          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
+            <iconify-icon icon="ph:soccer-ball-light" class="text-3xl text-gray-500"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide text-gray-500">SOCCER</span>
+          </button>
 
-                <a href="/app?screen=builder" class="btn neon-btn w-full" style="font-family: 'Tanker', sans-serif; letter-spacing: 0.1em;">
-                    SELECT EVENT TARGET →
-                </a>
+          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
+            <iconify-icon icon="game-icons:boxing-glove" class="text-3xl text-gray-500"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide text-gray-500">MMA</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Featured Events -->
+      <section class="px-6 pt-2">
+        <div class="flex justify-between items-end mb-4">
+          <h2 class="font-tanker text-lg text-gray-400 tracking-wider">FEATURED TARGETS</h2>
+          <button class="text-xs text-white/60 hover:text-white transition-colors uppercase font-bold tracking-wider">View All ></button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          
+          <!-- Event Card 1 -->
+          <div class="glass-panel rounded-2xl p-4 relative overflow-hidden group">
+            <!-- Card Header -->
+            <div class="flex justify-between items-start mb-6">
+              <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
+                <iconify-icon icon="emojione-monotone:basketball" class="text-base"></iconify-icon>
+                <span>Regular Season</span>
+              </div>
+              <div class="flex items-center gap-2 bg-neon-red/10 px-2 py-1 rounded border border-neon-red/30">
+                <div class="w-1.5 h-1.5 bg-neon-red rounded-full animate-pulse"></div>
+                <span class="text-neon-red text-xs font-bold tracking-wider">LIVE • Q3 8:42</span>
+              </div>
             </div>
 
-            <!-- Game Card 2 (Upcoming) -->
-            <div class="game-card">
-                <div class="game-header">
-                    <div class="game-meta">
-                        <span>🏀</span> NBA • Tomorrow
-                    </div>
-                    <span style="font-size: 12px; color: var(--text-muted); font-family: monospace;">20:30 EST</span>
-                </div>
+            <!-- Teams Matchup -->
+            <div class="flex justify-between items-center mb-6">
+              <div class="flex flex-col items-start">
+                <span class="font-tanker text-2xl leading-none text-white">LAKERS</span>
+                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider">Los Angeles</span>
+                <span class="font-satoshi text-xl font-bold mt-2 text-white">88</span>
+              </div>
+              
+              <div class="flex flex-col items-center">
+                <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
+                <div class="w-8 h-[1px] bg-gray-700"></div>
+              </div>
 
-                <div class="teams-row">
-                    <div class="team">
-                        <span class="font-tanker team-name">CELTICS</span>
-                        <span class="team-record">Boston</span>
-                    </div>
-                    <div class="vs-divider">
-                        <span class="vs-text">VS</span>
-                        <div style="width: 32px; height: 1px; background: var(--text-muted); margin-top: 4px;"></div>
-                    </div>
-                    <div class="team" style="align-items: flex-end;">
-                        <span class="font-tanker team-name" style="color: var(--text-secondary);">HEAT</span>
-                        <span class="team-record">Miami</span>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
-                    <button class="odds-cell">
-                        <span class="odds-label">Spread</span>
-                        <span class="odds-value">-2.5</span>
-                        <span style="font-size: 12px; color: var(--text-muted);">-110</span>
-                    </button>
-                    <button class="odds-cell">
-                        <span class="odds-label">Total</span>
-                        <span class="odds-value">O 212</span>
-                        <span style="font-size: 12px; color: var(--text-muted);">-110</span>
-                    </button>
-                    <button class="odds-cell">
-                        <span class="odds-label">Money</span>
-                        <span class="odds-value">-145</span>
-                        <span style="font-size: 12px; color: var(--text-muted);">+125</span>
-                    </button>
-                </div>
-
-                <a href="/app?screen=builder" class="btn btn-ghost w-full" style="font-family: 'Tanker', sans-serif; letter-spacing: 0.1em;">
-                    VIEW MARKETS
-                </a>
+              <div class="flex flex-col items-end">
+                <span class="font-tanker text-2xl leading-none text-right text-gray-300">WARRIORS</span>
+                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider text-right">Golden State</span>
+                <span class="font-satoshi text-xl font-bold mt-2 text-gray-400">82</span>
+              </div>
             </div>
-        </section>
 
-        <!-- AI Insight Banner -->
-        <section class="mt-4">
-            <div style="width: 100%; height: 1px; background: linear-gradient(90deg, transparent, var(--neon-red), transparent); opacity: 0.3;"></div>
-            <div style="padding: 16px 0; display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <div class="neon-text" style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 4px;">AI INSIGHT</div>
-                    <div style="font-size: 14px; color: var(--text-secondary);">Lakers spread has <span style="color: white; font-weight: 700;">82% probability</span></div>
-                </div>
-                <button style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--neon-red); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <span class="neon-text">⚡</span>
-                </button>
+            <!-- Odds Actions -->
+            <div class="grid grid-cols-3 gap-2 mb-4">
+              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
+                <span class="text-sm font-bold text-white">-4.5</span>
+                <span class="text-[10px] text-neon-red">-110</span>
+              </button>
+              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
+                <span class="text-sm font-bold text-white">O 224.5</span>
+                <span class="text-[10px] text-neon-red">-108</span>
+              </button>
+              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Money</span>
+                <span class="text-sm font-bold text-white">-190</span>
+                <span class="text-[10px] text-neon-red">LIVE</span>
+              </button>
             </div>
-        </section>
+
+            <!-- CTA -->
+            <button class="w-full py-3 bg-gradient-to-r from-neon-red to-rose-600 text-white font-tanker text-lg tracking-wider rounded border border-white/20 shadow-[0_0_15px_rgba(255,23,68,0.4)] hover:shadow-[0_0_25px_rgba(255,23,68,0.6)] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              <span>SELECT EVENT TARGET</span>
+              <iconify-icon icon="lucide:arrow-right" class="text-lg"></iconify-icon>
+            </button>
+          </div>
+
+          <!-- Event Card 2 -->
+          <div class="glass-panel rounded-2xl p-4 relative overflow-hidden">
+            <!-- Card Header -->
+            <div class="flex justify-between items-start mb-6">
+              <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
+                <iconify-icon icon="emojione-monotone:basketball" class="text-base"></iconify-icon>
+                <span>NBA • Tomorrow</span>
+              </div>
+              <div class="text-xs text-gray-500 font-mono">20:30 EST</div>
+            </div>
+
+            <!-- Teams Matchup -->
+            <div class="flex justify-between items-center mb-6">
+              <div class="flex flex-col items-start">
+                <span class="font-tanker text-2xl leading-none text-white">CELTICS</span>
+                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider">Boston</span>
+              </div>
+              
+              <div class="flex flex-col items-center">
+                <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
+                <div class="w-8 h-[1px] bg-gray-700"></div>
+              </div>
+
+              <div class="flex flex-col items-end">
+                <span class="font-tanker text-2xl leading-none text-right text-gray-300">HEAT</span>
+                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider text-right">Miami</span>
+              </div>
+            </div>
+
+            <!-- Odds Actions -->
+            <div class="grid grid-cols-3 gap-2 mb-4">
+              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
+                <span class="text-sm font-bold text-white">-2.5</span>
+                <span class="text-[10px] text-gray-400">-110</span>
+              </button>
+              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
+                <span class="text-sm font-bold text-white">O 212</span>
+                <span class="text-[10px] text-gray-400">-110</span>
+              </button>
+              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Money</span>
+                <span class="text-sm font-bold text-white">-145</span>
+                <span class="text-[10px] text-gray-400">+125</span>
+              </button>
+            </div>
+
+             <!-- CTA -->
+            <button class="w-full py-3 bg-white/5 text-gray-300 hover:text-white font-tanker text-lg tracking-wider rounded border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2">
+              <span>VIEW MARKETS</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Analysis Promo -->
+      <section class="px-6 mt-6 mb-6">
+        <div class="w-full p-px bg-gradient-to-r from-transparent via-neon-red to-transparent opacity-30"></div>
+        <div class="py-4 flex items-center justify-between">
+           <div>
+              <div class="text-xs text-neon-red font-bold tracking-widest mb-1">AI INSIGHT</div>
+              <div class="text-sm text-gray-300">Lakers spread has <span class="text-white font-bold">82% probability</span></div>
+           </div>
+           <button class="w-8 h-8 rounded-full border border-neon-red flex items-center justify-center">
+              <iconify-icon icon="lucide:zap" class="text-neon-red text-sm"></iconify-icon>
+           </button>
+        </div>
+      </section>
     </main>
 
     <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-        <a href="/app?screen=dashboard" class="nav-item">
-            <span style="font-size: 24px;">🏠</span>
-            <span class="nav-label">Home</span>
-        </a>
-        <a href="/app?screen=browse" class="nav-item active">
-            <div style="position: relative;">
-                <span style="font-size: 24px;">🔍</span>
-                <div style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background: var(--neon-red); border-radius: 50%;"></div>
-            </div>
-            <span class="nav-label">Bet</span>
-        </a>
-        <a href="#" class="nav-item">
-            <span style="font-size: 24px;">🎫</span>
-            <span class="nav-label">Slips</span>
-        </a>
-        <a href="#" class="nav-item">
-            <span style="font-size: 24px;">👤</span>
-            <span class="nav-label">Profile</span>
-        </a>
-    </nav>
-</div>
-
-<script>
-function selectSport(sport) {
-    document.querySelectorAll('.sport-chip').forEach(c => c.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-}
-</script>
-
-<style>
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-</style>
-</body></html>
+    <footer class="shrink-0 h-[84px] pb-[34px] px-6 bg-[#050505]/90 backdrop-blur-xl border-t border-white/5 fixed bottom-0 w-full z-30">
+      <div class="h-full flex items-center justify-between">
+        <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
+          <span class="text-[10px] font-medium">Home</span>
+        </button>
+        
+        <button class="flex flex-col items-center gap-1 w-12 text-neon-red drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]">
+          <iconify-icon icon="lucide:search" class="text-2xl"></iconify-icon>
+          <span class="text-[10px] font-medium">Bet</span>
+        </button>
+        
+        <!-- Floating Action Button effect for middle? No, keep standard nav for now but maybe make center highlight -->
+        
+        <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:ticket" class="text-2xl"></iconify-icon>
+          <span class="text-[10px] font-medium">Slips</span>
+        </button>
+        
+        <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
+          <iconify-icon icon="lucide:user" class="text-2xl"></iconify-icon>
+          <span class="text-[10px] font-medium">Profile</span>
+        </button>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

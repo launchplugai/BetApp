@@ -1,234 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Bet Engine - Parlay Intelligence</title>
-    <link rel="stylesheet" href="/static/css/neon-theme.css">
-    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-red: #ff1744;
+      --bg-dark: #050505;
+    }
+    body {
+      font-family: 'Satoshi', sans-serif;
+      background-color: var(--bg-dark);
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .font-tanker {
+      font-family: 'Tanker', sans-serif;
+    }
+    .neon-glow-red {
+      text-shadow: 0 0 15px #ff1744, 0 0 30px #ff1744, 0 0 50px rgba(255, 23, 68, 0.6);
+      animation: neon-pulse 3s infinite alternate;
+    }
+    @keyframes neon-pulse {
+      from { text-shadow: 0 0 15px #ff1744, 0 0 30px #ff1744, 0 0 45px rgba(255, 23, 68, 0.5); }
+      to { text-shadow: 0 0 20px #ff1744, 0 0 45px #ff1744, 0 0 65px rgba(255, 23, 68, 0.8); }
+    }
+    .neon-border-glow {
+      box-shadow: 0 0 20px rgba(255, 23, 68, 0.2);
+      border: 1px solid rgba(255, 23, 68, 0.5);
+    }
+    .neon-btn {
+      box-shadow: 0 0 25px rgba(255, 23, 68, 0.5), inset 0 0 10px rgba(255, 23, 68, 0.3);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .neon-btn:hover {
+      box-shadow: 0 0 45px rgba(255, 23, 68, 0.8), inset 0 0 15px rgba(255, 23, 68, 0.5);
+      transform: translateY(-2px) scale(1.02);
+    }
+    
+    /* DNA HELIX ANIMATION */
+    .helix-viewport {
+      perspective: 1200px;
+      width: 100%;
+      height: 280px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .helix-container {
+      width: 40px;
+      height: 240px;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: revolve 10s linear infinite;
+    }
+    .dot {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background-color: var(--neon-red);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--neon-red);
+    }
+    .base-pair {
+      position: absolute;
+      height: 1px;
+      width: 120px;
+      left: 50%;
+      margin-left: -60px;
+      background: linear-gradient(90deg, var(--neon-red), rgba(255, 23, 68, 0.1) 50%, var(--neon-red));
+      transform-style: preserve-3d;
+      opacity: 0.4;
+    }
+
+    @keyframes revolve {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
+    }
+  </style>
 </head>
 <body>
-    <div class="ambient-glow-tr"></div>
-    <div class="app-container grid-bg">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="logo">
-                <div class="logo-icon">
-                    🧬
-                </div>
-                <span class="logo-text">DNA BET</span>
+  <div class="w-full min-h-screen flex flex-col bg-[#050505]">
+    <!-- Header -->
+    <header class="shrink-0 pt-8 px-6 flex justify-between items-center z-50">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full border border-[#ff1744] flex items-center justify-center shadow-[0_0_10px_rgba(255,23,68,0.5)]">
+          <iconify-icon icon="lucide:dna" class="text-[#ff1744] text-xl"></iconify-icon>
+        </div>
+        <span class="font-tanker text-xl tracking-wider text-white">DNA BET</span>
+      </div>
+      <button id="nav-menu-btn" class="w-10 h-10 flex items-center justify-center text-white">
+        <iconify-icon icon="lucide:menu" class="text-2xl"></iconify-icon>
+      </button>
+    </header>
+
+    <main class="flex-1">
+      <!-- Hero Section -->
+      <section class="px-6 pt-6 pb-12 flex flex-col">
+        <div class="mb-2">
+          <span class="text-[#ff1744] font-bold tracking-[0.2em] text-xs uppercase">The Genetic Edge</span>
+        </div>
+        <h1 class="font-tanker text-6xl leading-[0.9] text-white flex flex-col">
+          <span>PARLAY</span>
+          <span class="text-[#ff1744] neon-glow-red">INTELLIGENCE</span>
+        </h1>
+        <p class="mt-6 text-gray-400 text-lg max-w-[85%] font-medium leading-relaxed">
+          The first genetic-algorithm engine for hyper-optimized betting strategies. Evolution in every wager.
+        </p>
+
+        <!-- 3D Helix Placeholder/Container -->
+        <div class="helix-viewport mt-6">
+          <div class="helix-container">
+            <!-- Step 0 (0 deg, 0px) -->
+            <div class="base-pair" style="transform: rotateY(90deg) translateY(0px);"></div>
+            <div class="dot" style="transform: rotateY(0deg) translateZ(60px) translateY(0px);"></div>
+            <div class="dot" style="transform: rotateY(180deg) translateZ(60px) translateY(0px); opacity: 0.8;"></div>
+            
+            <!-- Step 1 (30 deg, 20px) -->
+            <div class="base-pair" style="transform: rotateY(120deg) translateY(20px);"></div>
+            <div class="dot" style="transform: rotateY(30deg) translateZ(60px) translateY(20px);"></div>
+            <div class="dot" style="transform: rotateY(210deg) translateZ(60px) translateY(20px); opacity: 0.8;"></div>
+            
+            <!-- Step 2 (60 deg, 40px) -->
+            <div class="base-pair" style="transform: rotateY(150deg) translateY(40px);"></div>
+            <div class="dot" style="transform: rotateY(60deg) translateZ(60px) translateY(40px);"></div>
+            <div class="dot" style="transform: rotateY(240deg) translateZ(60px) translateY(40px); opacity: 0.8;"></div>
+            
+            <!-- Step 3 (90 deg, 60px) -->
+            <div class="base-pair" style="transform: rotateY(180deg) translateY(60px);"></div>
+            <div class="dot" style="transform: rotateY(90deg) translateZ(60px) translateY(60px);"></div>
+            <div class="dot" style="transform: rotateY(270deg) translateZ(60px) translateY(60px); opacity: 0.8;"></div>
+            
+            <!-- Step 4 (120 deg, 80px) -->
+            <div class="base-pair" style="transform: rotateY(210deg) translateY(80px);"></div>
+            <div class="dot" style="transform: rotateY(120deg) translateZ(60px) translateY(80px);"></div>
+            <div class="dot" style="transform: rotateY(300deg) translateZ(60px) translateY(80px); opacity: 0.8;"></div>
+            
+            <!-- Step 5 (150 deg, 100px) -->
+            <div class="base-pair" style="transform: rotateY(240deg) translateY(100px);"></div>
+            <div class="dot" style="transform: rotateY(150deg) translateZ(60px) translateY(100px);"></div>
+            <div class="dot" style="transform: rotateY(330deg) translateZ(60px) translateY(100px); opacity: 0.8;"></div>
+            
+            <!-- Step 6 (180 deg, 120px) -->
+            <div class="base-pair" style="transform: rotateY(270deg) translateY(120px);"></div>
+            <div class="dot" style="transform: rotateY(180deg) translateZ(60px) translateY(120px);"></div>
+            <div class="dot" style="transform: rotateY(360deg) translateZ(60px) translateY(120px); opacity: 0.8;"></div>
+            
+            <!-- Step 7 (210 deg, 140px) -->
+            <div class="base-pair" style="transform: rotateY(300deg) translateY(140px);"></div>
+            <div class="dot" style="transform: rotateY(210deg) translateZ(60px) translateY(140px);"></div>
+            <div class="dot" style="transform: rotateY(390deg) translateZ(60px) translateY(140px); opacity: 0.8;"></div>
+            
+            <!-- Step 8 (240 deg, 160px) -->
+            <div class="base-pair" style="transform: rotateY(330deg) translateY(160px);"></div>
+            <div class="dot" style="transform: rotateY(240deg) translateZ(60px) translateY(160px);"></div>
+            <div class="dot" style="transform: rotateY(420deg) translateZ(60px) translateY(160px); opacity: 0.8;"></div>
+            
+            <!-- Step 9 (270 deg, 180px) -->
+            <div class="base-pair" style="transform: rotateY(360deg) translateY(180px);"></div>
+            <div class="dot" style="transform: rotateY(270deg) translateZ(60px) translateY(180px);"></div>
+            <div class="dot" style="transform: rotateY(450deg) translateZ(60px) translateY(180px); opacity: 0.8;"></div>
+            
+            <!-- Step 10 (300 deg, 200px) -->
+            <div class="base-pair" style="transform: rotateY(390deg) translateY(200px);"></div>
+            <div class="dot" style="transform: rotateY(300deg) translateZ(60px) translateY(200px);"></div>
+            <div class="dot" style="transform: rotateY(480deg) translateZ(60px) translateY(200px); opacity: 0.8;"></div>
+            
+            <!-- Step 11 (330 deg, 220px) -->
+            <div class="base-pair" style="transform: rotateY(420deg) translateY(220px);"></div>
+            <div class="dot" style="transform: rotateY(330deg) translateZ(60px) translateY(220px);"></div>
+            <div class="dot" style="transform: rotateY(510deg) translateZ(60px) translateY(220px); opacity: 0.8;"></div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <a href="#" id="hero-cta-btn" class="neon-btn inline-block w-full py-5 bg-[#ff1744] text-white text-center font-bold tracking-[0.25em] text-sm rounded-none uppercase shadow-[0_0_35px_rgba(255,23,68,0.6)]">
+            Get Started
+          </a>
+        </div>
+      </section>
+
+      <!-- How It Works Section -->
+      <section class="px-6 py-16 border-t border-gray-800">
+        <h2 class="font-tanker text-3xl mb-10 text-white tracking-wide">HOW IT WORKS</h2>
+        <div class="space-y-8">
+          <div class="flex gap-6">
+            <div class="font-tanker text-4xl text-[#ff1744] opacity-40">01</div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Input DNA Data</h3>
+              <p class="text-gray-400">Feed your betting history and preference vectors into the engine core.</p>
             </div>
-            <a href="/app?screen=dashboard" class="btn btn-ghost btn-icon">
-                ☰
-            </a>
-        </header>
-
-        <main class="main-content" style="padding: 24px;">
-            <!-- Hero Section -->
-            <section class="mb-4" style="padding-bottom: 48px;">
-                <div class="mb-2">
-                    <span class="neon-text" style="font-weight: 700; letter-spacing: 0.2em; font-size: 12px; text-transform: uppercase;">The Genetic Edge</span>
-                </div>
-                <h1 class="font-tanker" style="font-size: 48px; line-height: 0.9; margin-bottom: 24px;">
-                    <div>PARLAY</div>
-                    <div class="neon-text" style="animation: neon-pulse 3s infinite alternate;">INTELLIGENCE</div>
-                </h1>
-                <p style="color: var(--text-secondary); font-size: 18px; max-width: 85%; line-height: 1.6;">
-                    The first genetic-algorithm engine for hyper-optimized betting strategies. Evolution in every wager.
-                </p>
-
-                <!-- DNA Helix Placeholder -->
-                <div style="height: 280px; display: flex; align-items: center; justify-content: center; margin: 24px 0;">
-                    <div style="font-size: 80px; opacity: 0.3; animation: spin 20s linear infinite;">
-                        🧬
-                    </div>
-                </div>
-
-                <a href="/app?screen=dashboard" class="btn btn-primary w-full" style="padding: 20px; font-family: 'Tanker', sans-serif; font-size: 14px; letter-spacing: 0.25em;">
-                    GET STARTED
-                </a>
-            </section>
-
-            <!-- How It Works -->
-            <section class="mb-4" style="padding: 64px 0; border-top: 1px solid var(--glass-border);">
-                <h2 class="section-title" style="font-size: 24px; margin-bottom: 40px;">HOW IT WORKS</h2>
-                <div style="display: flex; flex-direction: column; gap: 32px;">
-                    <div style="display: flex; gap: 24px;">
-                        <div class="font-tanker" style="font-size: 36px; color: var(--neon-red); opacity: 0.4;">01</div>
-                        <div>
-                            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Input DNA Data</h3>
-                            <p style="color: var(--text-secondary);">Feed your betting history and preference vectors into the engine core.</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 24px;">
-                        <div class="font-tanker" style="font-size: 36px; color: var(--neon-red); opacity: 0.4;">02</div>
-                        <div>
-                            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Evolutionary Search</h3>
-                            <p style="color: var(--text-secondary);">Our genetic algorithm simulates millions of outcomes to find the strongest strategy.</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 24px;">
-                        <div class="font-tanker" style="font-size: 36px; color: var(--neon-red); opacity: 0.4;">03</div>
-                        <div>
-                            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Optimal Execution</h3>
-                            <p style="color: var(--text-secondary);">Receive real-time alerts for bets that fit your specific success genome.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Core Protocols -->
-            <section class="mb-4" style="padding: 64px 0; background: var(--bg-elevated); margin: 0 -24px; padding-left: 24px; padding-right: 24px;">
-                <h2 class="section-title" style="font-size: 24px; margin-bottom: 40px;">CORE PROTOCOLS</h2>
-                <div class="stat-grid">
-                    <div class="stat-card">
-                        <div style="font-size: 36px; margin-bottom: 16px;">🔒</div>
-                        <h4 class="stat-label">Accuracy</h4>
-                        <p style="font-size: 12px; color: var(--text-muted);">98.4% predictive precision.</p>
-                    </div>
-                    <div class="stat-card">
-                        <div style="font-size: 36px; margin-bottom: 16px;">⚡</div>
-                        <h4 class="stat-label">Speed</h4>
-                        <p style="font-size: 12px; color: var(--text-muted);">Real-time latency parsing.</p>
-                    </div>
-                    <div class="stat-card">
-                        <div style="font-size: 36px; margin-bottom: 16px;">🛡️</div>
-                        <h4 class="stat-label">Risk</h4>
-                        <p style="font-size: 12px; color: var(--text-muted);">Dynamic bankroll hedging.</p>
-                    </div>
-                    <div class="stat-card">
-                        <div style="font-size: 36px; margin-bottom: 16px;">🎓</div>
-                        <h4 class="stat-label">Learning</h4>
-                        <p style="font-size: 12px; color: var(--text-muted);">Autonomous self-refinement.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Access Tiers -->
-            <section class="mb-4" style="padding: 64px 0;">
-                <h2 class="section-title" style="font-size: 24px; margin-bottom: 40px;">ACCESS TIERS</h2>
-                <div style="display: flex; flex-direction: column; gap: 24px;">
-                    <!-- Recruit Tier -->
-                    <div class="card" style="padding: 32px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
-                            <div>
-                                <h3 class="font-tanker" style="font-size: 24px;">RECRUIT</h3>
-                                <p class="neon-text" style="font-size: 12px; text-transform: uppercase; font-weight: 700; margin-top: 4px;">Foundational</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span class="font-tanker" style="font-size: 32px;">$49</span>
-                                <span style="display: block; font-size: 12px; color: var(--text-muted);">/mo</span>
-                            </div>
-                        </div>
-                        <ul style="list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px;">
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Standard Engine Access
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Weekly Optimization
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Email Support
-                            </li>
-                        </ul>
-                        <a href="#" class="btn btn-secondary w-full" style="padding: 16px; font-size: 12px; letter-spacing: 0.15em;">SELECT TIER</a>
-                    </div>
-
-                    <!-- Elite Tier (Popular) -->
-                    <div class="card-neon" style="padding: 32px; position: relative;">
-                        <div style="position: absolute; top: 8px; right: 8px; background: var(--neon-red); color: white; font-size: 10px; font-weight: 900; padding: 4px 16px; transform: rotate(2deg); text-transform: uppercase;">Popular</div>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
-                            <div>
-                                <h3 class="font-tanker" style="font-size: 24px;">ELITE</h3>
-                                <p class="neon-text" style="font-size: 12px; text-transform: uppercase; font-weight: 700; margin-top: 4px;">Advanced Pulse</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span class="font-tanker" style="font-size: 32px;">$99</span>
-                                <span style="display: block; font-size: 12px; color: var(--text-muted);">/mo</span>
-                            </div>
-                        </div>
-                        <ul style="list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px;">
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> High-Frequency Analysis
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Daily Strategy Updates
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Priority Support
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Risk/Reward Calculator
-                            </li>
-                        </ul>
-                        <a href="#" class="btn btn-primary w-full" style="padding: 16px; font-size: 12px; letter-spacing: 0.15em;">SELECT TIER</a>
-                    </div>
-
-                    <!-- Exome Tier -->
-                    <div class="card" style="padding: 32px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
-                            <div>
-                                <h3 class="font-tanker" style="font-size: 24px;">EXOME</h3>
-                                <p class="neon-text" style="font-size: 12px; text-transform: uppercase; font-weight: 700; margin-top: 4px;">Total Dominion</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <span class="font-tanker" style="font-size: 32px;">$249</span>
-                                <span style="display: block; font-size: 12px; color: var(--text-muted);">/mo</span>
-                            </div>
-                        </div>
-                        <ul style="list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 12px;">
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Full API Access
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Custom Neural Parameters
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> 1-on-1 Strategy Review
-                            </li>
-                            <li style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
-                                <span class="neon-text">✓</span> Multi-Platform Support
-                            </li>
-                        </ul>
-                        <a href="#" class="btn btn-secondary w-full" style="padding: 16px; font-size: 12px; letter-spacing: 0.15em;">SELECT TIER</a>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Footer -->
-        <footer style="padding: 48px 24px 80px; border-top: 1px solid var(--glass-border); background: var(--bg-elevated);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
-                <div class="logo" style="opacity: 0.5;">
-                    <span style="font-size: 20px;">🧬</span>
-                    <span class="font-tanker" style="font-size: 14px;">DNA BET ENGINE</span>
-                </div>
-                <div style="display: flex; gap: 16px;">
-                    <a href="#" style="color: var(--text-muted); font-size: 20px;">𝕏</a>
-                    <a href="#" style="color: var(--text-muted); font-size: 20px;">💬</a>
-                </div>
+          </div>
+          <div class="flex gap-6">
+            <div class="font-tanker text-4xl text-[#ff1744] opacity-40">02</div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Evolutionary Search</h3>
+              <p class="text-gray-400">Our genetic algorithm simulates millions of outcomes to find the strongest strategy.</p>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 40px;">
-                <a href="#" style="color: inherit; text-decoration: none;">Privacy</a>
-                <a href="#" style="color: inherit; text-decoration: none;">Terms</a>
-                <a href="#" style="color: inherit; text-decoration: none;">FAQ</a>
-                <a href="#" style="color: inherit; text-decoration: none;">Contact</a>
+          </div>
+          <div class="flex gap-6">
+            <div class="font-tanker text-4xl text-[#ff1744] opacity-40">03</div>
+            <div>
+              <h3 class="text-xl font-bold mb-2">Optimal Execution</h3>
+              <p class="text-gray-400">Receive real-time alerts for bets that fit your specific success genome.</p>
             </div>
-            <div style="font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em;">
-                © 2024 DNA BET ENGINE. BIOLOGICALLY SUPERIOR BETTING SYSTEMS. ALL RIGHTS RESERVED.
-            </div>
-        </footer>
-    </div>
+          </div>
+        </div>
+      </section>
 
-    <style>
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        @keyframes neon-pulse {
-            from { text-shadow: 0 0 15px rgba(255, 23, 68, 0.6); }
-            to { text-shadow: 0 0 30px rgba(255, 23, 68, 0.9); }
-        }
-    </style>
+      <!-- Core Protocols -->
+      <section class="px-6 py-16 bg-[#0a0a0a]">
+        <h2 class="font-tanker text-3xl mb-10 text-white tracking-wide">CORE PROTOCOLS</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="neon-border-glow p-5 bg-[#0f0f0f]">
+            <iconify-icon icon="lucide:fingerprint" class="text-3xl text-[#ff1744] mb-4"></iconify-icon>
+            <h4 class="text-sm font-bold uppercase tracking-wider mb-2">Accuracy</h4>
+            <p class="text-xs text-gray-500">98.4% predictive precision.</p>
+          </div>
+          <div class="neon-border-glow p-5 bg-[#0f0f0f]">
+            <iconify-icon icon="lucide:zap" class="text-3xl text-[#ff1744] mb-4"></iconify-icon>
+            <h4 class="text-sm font-bold uppercase tracking-wider mb-2">Speed</h4>
+            <p class="text-xs text-gray-500">Real-time latency parsing.</p>
+          </div>
+          <div class="neon-border-glow p-5 bg-[#0f0f0f]">
+            <iconify-icon icon="lucide:shield-check" class="text-3xl text-[#ff1744] mb-4"></iconify-icon>
+            <h4 class="text-sm font-bold uppercase tracking-wider mb-2">Risk</h4>
+            <p class="text-xs text-gray-500">Dynamic bankroll hedging.</p>
+          </div>
+          <div class="neon-border-glow p-5 bg-[#0f0f0f]">
+            <iconify-icon icon="lucide:graduation-cap" class="text-3xl text-[#ff1744] mb-4"></iconify-icon>
+            <h4 class="text-sm font-bold uppercase tracking-wider mb-2">Learning</h4>
+            <p class="text-xs text-gray-500">Autonomous self-refinement.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Access Tiers -->
+      <section class="px-6 py-16">
+        <h2 class="font-tanker text-3xl mb-10 text-white tracking-wide">ACCESS TIERS</h2>
+        <div class="space-y-6">
+          <!-- Tier 1 -->
+          <div class="p-8 bg-[#111] border border-gray-800">
+            <div class="flex justify-between items-start mb-6">
+              <div>
+                <h3 class="text-2xl font-bold">RECRUIT</h3>
+                <p class="text-[#ff1744] text-sm uppercase font-bold mt-1">Foundational</p>
+              </div>
+              <div class="text-right">
+                <span class="text-3xl font-black">$49</span>
+                <span class="text-gray-500 text-sm block">/mo</span>
+              </div>
+            </div>
+            <ul class="space-y-3 mb-8 text-gray-400 text-sm">
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Standard Engine Access</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Weekly Optimization</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Email Support</li>
+            </ul>
+            <a href="#" id="pricing-tier-1-btn" class="block w-full py-4 border border-[#ff1744] text-[#ff1744] text-center font-bold text-sm uppercase tracking-widest">Select Tier</a>
+          </div>
+
+          <!-- Tier 2 (Popular) -->
+          <div class="p-8 bg-[#0f0f0f] neon-border-glow relative overflow-hidden">
+            <div class="absolute top-0 right-0 bg-[#ff1744] text-white text-[10px] font-black px-4 py-1 rotate-45 translate-x-4 translate-y-2 uppercase">Popular</div>
+            <div class="flex justify-between items-start mb-6">
+              <div>
+                <h3 class="text-2xl font-bold">ELITE</h3>
+                <p class="text-[#ff1744] text-sm uppercase font-bold mt-1">Advanced Pulse</p>
+              </div>
+              <div class="text-right">
+                <span class="text-3xl font-black">$99</span>
+                <span class="text-gray-500 text-sm block">/mo</span>
+              </div>
+            </div>
+            <ul class="space-y-3 mb-8 text-gray-300 text-sm">
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> High-Frequency Analysis</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Daily Strategy Updates</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Priority Support</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Risk/Reward Calculator</li>
+            </ul>
+            <a href="#" id="pricing-tier-2-btn" class="block w-full py-4 bg-[#ff1744] text-white text-center font-bold text-sm uppercase tracking-widest shadow-[0_0_15px_rgba(255,23,68,0.4)]">Select Tier</a>
+          </div>
+
+          <!-- Tier 3 -->
+          <div class="p-8 bg="#111" border border-gray-800">
+            <div class="flex justify-between items-start mb-6">
+              <div>
+                <h3 class="text-2xl font-bold">EXOME</h3>
+                <p class="text-[#ff1744] text-sm uppercase font-bold mt-1">Total Dominion</p>
+              </div>
+              <div class="text-right">
+                <span class="text-3xl font-black">$249</span>
+                <span class="text-gray-500 text-sm block">/mo</span>
+              </div>
+            </div>
+            <ul class="space-y-3 mb-8 text-gray-400 text-sm">
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Full API Access</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Custom Neural Parameters</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> 1-on-1 Strategy Review</li>
+              <li class="flex items-center gap-2"><iconify-icon icon="lucide:check-circle" class="text-[#ff1744]"></iconify-icon> Multi-Platform Support</li>
+            </ul>
+            <a href="#" id="pricing-tier-3-btn" class="block w-full py-4 border border-[#ff1744] text-[#ff1744] text-center font-bold text-sm uppercase tracking-widest">Select Tier</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="shrink-0 px-6 pt-12 pb-[34px] border-t border-gray-800 bg-[#0a0a0a]">
+      <div class="flex justify-between items-center mb-10">
+        <div class="flex items-center gap-2 opacity-50">
+          <iconify-icon icon="lucide:dna" class="text-white text-xl"></iconify-icon>
+          <span class="font-tanker text-sm text-white">DNA BET ENGINE</span>
+        </div>
+        <div class="flex gap-4">
+          <a href="#" id="footer-social-twitter" class="text-gray-500 hover:text-[#ff1744]"><iconify-icon icon="ri:twitter-x-line" class="text-xl"></iconify-icon></a>
+          <a href="#" id="footer-social-discord" class="text-gray-500 hover:text-[#ff1744]"><iconify-icon icon="ri:discord-line" class="text-xl"></iconify-icon></a>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-y-6 text-xs font-bold tracking-widest uppercase text-gray-600 mb-10">
+        <a href="#" id="footer-link-privacy">Privacy</a>
+        <a href="#" id="footer-link-terms">Terms</a>
+        <a href="#" id="footer-link-faq">FAQ</a>
+        <a href="#" id="footer-link-contact">Contact</a>
+      </div>
+      <div class="text-[10px] text-gray-700 tracking-wider">
+        &copy; 2024 DNA BET ENGINE. BIOLOGICALLY SUPERIOR BETTING SYSTEMS. ALL RIGHTS RESERVED.
+      </div>
+    </footer>
+  </div>
 </body>
 </html>
