@@ -175,3 +175,26 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     result_dict = convert_keys_to_camel(result_dict)
 
     return result_dict
+
+# S16: Neon UI Routes
+@router.get("/new", response_class=HTMLResponse)
+async def new_ui(screen: str = "dashboard"):
+    """Serve the new neon-themed UI screens."""
+    from fastapi.responses import HTMLResponse
+    from pathlib import Path
+    
+    # Map screen names to template files
+    screens = {
+        "landing": "screens/landing.html",
+        "dashboard": "screens/dashboard.html", 
+        "browse": "screens/browse.html",
+        "builder": "screens/builder.html"
+    }
+    
+    template_name = screens.get(screen, "screens/dashboard.html")
+    template_path = Path(__file__).parent.parent / "templates" / template_name
+    
+    if not template_path.exists():
+        return HTMLResponse(content="<h1>Screen not found</h1>", status_code=404)
+    
+    return HTMLResponse(content=template_path.read_text())

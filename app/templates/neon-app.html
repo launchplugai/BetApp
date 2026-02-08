@@ -1,0 +1,24 @@
+<!-- This will be the router template that loads the correct screen -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Bet Engine</title>
+    <link rel="stylesheet" href="/static/css/neon-theme.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% if screen == 'landing' %}
+        {% include 'screens/landing.html' %}
+    {% elif screen == 'dashboard' %}
+        {% include 'screens/dashboard.html' %}
+    {% elif screen == 'browse' %}
+        {% include 'screens/browse.html' %}
+    {% elif screen == 'builder' %}
+        {% include 'screens/builder.html' %}
+    {% else %}
+        {% include 'screens/dashboard.html' %}
+    {% endif %}
+</body>
+</html>
