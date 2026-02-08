@@ -20,6 +20,7 @@ from app.routers import history
 from app.routers import v1_ui
 from app.routers import debug
 from app.routers import metrics
+from app.routers import mock_api
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -95,6 +96,7 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # Include routers
 # Web router first (handles / and /app)
 app.include_router(web.router)
+app.include_router(mock_api.router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)
