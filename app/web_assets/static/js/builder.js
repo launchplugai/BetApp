@@ -375,17 +375,103 @@ async function analyzeWithDNA() {
         const result = await response.json();
         console.log('DNA response:', result);
 
-        // Store result and navigate to results (or show inline)
+        // Store result
         sessionStorage.setItem('dna_analysis_result', JSON.stringify(result));
-        alert('Analysis complete! (Results display coming in S16-C)');
+
+        // Display results
+        displayResults(result);
 
     } catch (err) {
         console.error('DNA analysis failed:', err);
-        alert('Analysis failed. Please try again.');
+        showError('Analysis failed. Please try again.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<span>ANALYZE WITH DNA</span><iconify-icon icon="lucide:zap"></iconify-icon>';
     }
+}
+
+function displayResults(data) {
+    const resultsSection = document.getElementById('results-section');
+    const verdictBadge = document.getElementById('verdict-badge');
+    const confidenceScore = document.getElementById('confidence-score');
+    const summaryText = document.getElementById('summary-text');
+    const legsBreakdown = document.getElementById('legs-breakdown');
+
+    // Extract verdict
+    const verdict = data.overallAssessment?.verdict || 
+                   data.verdict || 
+                   data.overall_assessment?.verdict || 
+                   'ANALYZING';
+    
+    // Verdict styling
+    const verdictColors = {
+        'GOOD': 'bg-green-500/20 text-green-400 border border-green-500/30',
+        'BETTER': 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+        'BEST': 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+        'RISKY': 'bg-red-500/20 text-red-400 border border-red-500/30',
+        'CAUTION': 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+        'PASS': 'bg-red-500/20 text-red-400 border border-red-500/30',
+        'ANALYZING': 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+    };
+    
+    verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
+    verdictBadge.textContent = verdict;
+
+    // Confidence score
+    const confidence = data.overallAssessment?.confidenceScore || 
+                      data.confidence_score || 
+                      data.overall_assessment?.confidence_score ||
+                      0;
+    const confidencePercent = Math.round(confidence * 100);
+    confidenceScore.textContent = `${confidencePercent}%`;
+    confidenceScore.className = `font-tanker text-xl ${confidencePercent >= 70 ? 'text-green-400' : confidencePercent >= 50 ? 'text-yellow-400' : 'text-red-400'}`;
+
+    // Summary
+    const summary = data.overallAssessment?.summary || 
+                   data.summary || 
+                   data.overall_assessment?.summary ||
+                   'Analysis complete.';
+    summaryText.textContent = summary;
+
+    // Legs breakdown
+    const legResults = data.legs || data.leg_results || [];
+    if (legResults.length > 0) {
+        legsBreakdown.innerHTML = `
+            <h4 class="font-tanker text-sm text-gray-400 mb-3">LEG BREAKDOWN</h4>
+            ${legResults.map(leg => {
+                const signal = leg.signal || leg.verdict || '—';
+                const signalColor = signal.toLowerCase().includes('good') || signal.toLowerCase().includes('pass') ? 'text-green-400' : 
+                                   signal.toLowerCase().includes('risk') || signal.toLowerCase().includes('caution') ? 'text-red-400' : 'text-gray-400';
+                return `
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                        <span class="text-sm">${leg.player || leg.team || leg.selection || 'Leg'}</span>
+                        <span class="text-xs font-bold ${signalColor}">${signal}</span>
+                    </div>
+                `;
+            }).join('')}
+        `;
+    } else {
+        legsBreakdown.innerHTML = '';
+    }
+
+    // Show results section
+    resultsSection.classList.remove('hidden');
+    
+    // Scroll to results
+    resultsSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeResults() {
+    document.getElementById('results-section').classList.add('hidden');
+}
+
+function showError(message) {
+    // Simple error toast
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-red-500/90 text-white px-6 py-3 rounded-lg z-50 font-bold';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 function navigateTo(screen) {

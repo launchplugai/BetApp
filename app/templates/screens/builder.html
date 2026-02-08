@@ -116,6 +116,38 @@
                     <iconify-icon icon="lucide:zap"></iconify-icon>
                 </button>
             </section>
+
+            <!-- DNA Results Panel (hidden by default) -->
+            <section id="results-section" class="px-4 mt-8 mb-8 hidden">
+                <div class="glass-panel rounded-2xl p-6 border border-neon/30">
+                    <div class="flex items-center gap-3 mb-6">
+                        <iconify-icon icon="lucide:dna" class="text-2xl text-neon"></iconify-icon>
+                        <h3 class="font-tanker text-xl">DNA ANALYSIS</h3>
+                    </div>
+
+                    <!-- Verdict Badge -->
+                    <div id="verdict-container" class="flex justify-center mb-6">
+                        <div id="verdict-badge" class="px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider"></div>
+                    </div>
+
+                    <!-- Confidence Score -->
+                    <div class="flex justify-between items-center mb-6 p-4 bg-white/5 rounded-lg">
+                        <span class="text-sm text-gray-400">Confidence Score</span>
+                        <span id="confidence-score" class="font-tanker text-xl"></span>
+                    </div>
+
+                    <!-- Summary -->
+                    <div id="summary-text" class="text-sm text-gray-300 mb-6 p-4 bg-white/5 rounded-lg"></div>
+
+                    <!-- Legs Breakdown -->
+                    <div id="legs-breakdown" class="space-y-3"></div>
+
+                    <!-- Close Button -->
+                    <button onclick="closeResults()" class="w-full mt-6 py-3 border border-white/20 rounded-lg text-gray-400 hover:text-white hover:border-white/40 transition-colors font-bold uppercase text-sm">
+                        Close Analysis
+                    </button>
+                </div>
+            </section>
         </main>
 
         <!-- Bottom Nav -->
