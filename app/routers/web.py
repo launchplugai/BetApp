@@ -102,17 +102,27 @@ async def redirect_ui2():
 
 
 @router.get("/app", response_class=HTMLResponse)
-async def canonical_app(request: Request):
+async def canonical_app(request: Request, screen: str = "dashboard"):
     """
-    Canonical UI - Single source of truth for all UI interactions.
-
-    S6-REFACTOR: Now serves Jinja2 template with external CSS/JS.
+    S16: Neon UI - Complete redesign with dark theme.
     """
-    return templates.TemplateResponse(
-        request=request,
-        name="app/index.html",
-        context={"git_sha": git_sha}
-    )
+    from fastapi.responses import HTMLResponse
+    from pathlib import Path
+    
+    screens = {
+        "landing": "screens/landing.html",
+        "dashboard": "screens/dashboard.html",
+        "browse": "screens/browse.html",
+        "builder": "screens/builder.html"
+    }
+    
+    template_name = screens.get(screen, "screens/dashboard.html")
+    template_path = Path(__file__).parent.parent / "templates" / template_name
+    
+    if not template_path.exists():
+        return HTMLResponse(content="<h1>Screen not found</h1>", status_code=404)
+    
+    return HTMLResponse(content=template_path.read_text())
 
 
 @router.post("/app/evaluate")
@@ -176,25 +186,9 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
 
     return result_dict
 
-# S16: Neon UI Routes
-@router.get("/new", response_class=HTMLResponse)
-async def new_ui(screen: str = "dashboard"):
-    """Serve the new neon-themed UI screens."""
-    from fastapi.responses import HTMLResponse
-    from pathlib import Path
-    
-    # Map screen names to template files
-    screens = {
-        "landing": "screens/landing.html",
-        "dashboard": "screens/dashboard.html", 
-        "browse": "screens/browse.html",
-        "builder": "screens/builder.html"
-    }
-    
-    template_name = screens.get(screen, "screens/dashboard.html")
-    template_path = Path(__file__).parent.parent / "templates" / template_name
-    
-    if not template_path.exists():
-        return HTMLResponse(content="<h1>Screen not found</h1>", status_code=404)
-    
-    return HTMLResponse(content=template_path.read_text())
+# S16: Legacy route redirects
+@router.get("/new")
+async def redirect_new(screen: str = "dashboard"):
+    """Redirect old /new routes to /app"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/app?screen={screen}")
