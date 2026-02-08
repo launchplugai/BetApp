@@ -350,14 +350,12 @@ async function analyzeWithDNA() {
         // Build input text
         const inputText = legs.map(l => l.selection).join(' + ');
 
-        // Build legs array for DNA
+        // Build legs array for DNA (CanonicalLeg format)
         const dnaLegs = legs.map(l => ({
+            entity: l.player || l.team || 'Unknown',
             market: l.market,
-            team: l.team,
-            player: l.player,
-            prop: l.prop,
-            line: l.line,
-            odds: l.odds
+            value: l.line ? String(l.line) : l.selection,
+            raw: l.selection
         }));
 
         const response = await fetch('/app/evaluate', {
