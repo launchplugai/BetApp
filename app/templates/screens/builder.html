@@ -1,0 +1,268 @@
+<div class="ambient-glow-tr"></div>
+<div class="app-container">
+    <!-- Header -->
+    <header class="app-header" style="padding-top: 56px; background: rgba(5, 5, 5, 0.8); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--glass-border);">
+        <a href="/app?screen=browse" class="btn-icon btn-ghost">←</a>
+        <h1 class="font-tanker" style="font-size: 20px; letter-spacing: 0.1em;">BUILD PARLAY</h1>
+        <button class="btn-icon btn-ghost">⋯</button>
+    </header>
+
+    <main class="main-content" style="padding: 24px 16px 200px;">
+        <!-- Game Matchup -->
+        <section class="glass-panel" style="border-radius: 20px; padding: 20px; position: relative; overflow: hidden; margin-bottom: 24px;">
+            <div style="position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: linear-gradient(180deg, var(--neon-red), transparent);"></div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-secondary); text-transform: uppercase;">NBA • Tonight 7:30 PM</span>
+                <div style="display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 4px;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #ff4444; animation: pulse 1.5s infinite;"></span>
+                    <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em;">Live Odds</span>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 33%;">
+                    <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; border: 1px solid var(--glass-border); font-size: 32px;">
+                        💜
+                    </div>
+                    <h2 class="font-tanker" style="font-size: 24px;">LAL</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Lakers</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; padding-top: 8px;">
+                    <span class="font-tanker" style="font-size: 24px; color: var(--text-muted);">VS</span>
+                    <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Crypto.com</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; width: 33%;">
+                    <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; border: 1px solid var(--glass-border); font-size: 32px;">
+                        💛
+                    </div>
+                    <h2 class="font-tanker" style="font-size: 24px;">GSW</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Warriors</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Market Tabs -->
+        <section class="mb-4">
+            <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;">
+                <button class="btn btn-primary" style="flex-shrink: 0; font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px;">MAIN LINES</button>
+                <button class="btn btn-ghost" style="flex-shrink: 0; font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px;">PLAYER PROPS</button>
+                <button class="btn btn-ghost" style="flex-shrink: 0; font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px;">QUARTERS</button>
+                <button class="btn btn-ghost" style="flex-shrink: 0; font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px;">HALVES</button>
+            </div>
+        </section>
+
+        <!-- Odds Grid Header -->
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr 2fr; gap: 8px; margin-bottom: 12px; text-align: center;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; text-align: left; padding-left: 8px;">Team</div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;">Spread</div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;">Total</div>
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase;">Money</div>
+        </div>
+
+        <!-- Lakers Row -->
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr 2fr; gap: 8px; margin-bottom: 12px; align-items: center;">
+            <div class="font-tanker" style="font-size: 18px; padding-left: 8px;">LAKERS</div>
+            <button class="odds-cell selected" onclick="toggleLeg(this, 'spread', 'lakers')">
+                <span style="font-size: 14px; font-weight: 700;">-4.5</span>
+                <span class="odds-odds">-110</span>
+            </button>
+            <button class="odds-cell" onclick="toggleLeg(this, 'total', 'over')">
+                <span style="font-size: 12px; font-weight: 500;">O 224</span>
+            </button>
+            <button class="odds-cell" onclick="toggleLeg(this, 'ml', 'lakers')">
+                <span style="font-size: 14px; font-weight: 500;">-190</span>
+            </button>
+        </div>
+
+        <!-- Warriors Row -->
+        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr 2fr; gap: 8px; margin-bottom: 24px; align-items: center;">
+            <div class="font-tanker" style="font-size: 18px; color: var(--text-secondary); padding-left: 8px;">WARRIORS</div>
+            <button class="odds-cell" onclick="toggleLeg(this, 'spread', 'warriors')">
+                <span style="font-size: 14px; font-weight: 500;">+4.5</span>
+                <span style="font-size: 12px; color: var(--text-muted);">-110</span>
+            </button>
+            <button class="odds-cell" onclick="toggleLeg(this, 'total', 'under')">
+                <span style="font-size: 12px; font-weight: 500;">U 224</span>
+            </button>
+            <button class="odds-cell" onclick="toggleLeg(this, 'ml', 'warriors')">
+                <span style="font-size: 14px; font-weight: 500;">+158</span>
+            </button>
+        </div>
+
+        <!-- Parlay Slip -->
+        <section class="mt-4">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
+                <h3 class="font-tanker" style="font-size: 20px; display: flex; align-items: center; gap: 8px;">
+                    PARLAY SLIP
+                    <span id="leg-count" style="font-size: 12px; font-family: 'Satoshi', sans-serif; font-weight: 700; background: var(--neon-red); color: white; padding: 2px 8px; border-radius: 4px;">2</span>
+                </h3>
+                <button onclick="clearSlip()" class="neon-text" style="font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; background: none; border: none; cursor: pointer;">Clear All</button>
+            </div>
+
+            <div id="slip-items">
+                <!-- Slip Item 1 -->
+                <div class="slip-item">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span class="neon-text" style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Spread</span>
+                            <div style="height: 12px; width: 1px; background: var(--glass-border);"></div>
+                            <span style="font-size: 12px; color: var(--text-secondary);">Lakers vs Warriors</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div class="font-tanker" style="font-size: 18px; letter-spacing: 0.05em;">Lakers -4.5</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">Main Lines</div>
+                            </div>
+                            <div style="font-weight: 700;">-110</div>
+                        </div>
+                    </div>
+                    <button class="slip-remove" onclick="removeLeg(this)">✕</button>
+                </div>
+
+                <!-- Slip Item 2 -->
+                <div class="slip-item" style="border-left-color: #9c27b0;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="color: #9c27b0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">Player Points</span>
+                            <div style="height: 12px; width: 1px; background: var(--glass-border);"></div>
+                            <span style="font-size: 12px; color: var(--text-secondary);">Lakers vs Warriors</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div class="font-tanker" style="font-size: 18px; letter-spacing: 0.05em;">L. James Over 25.5</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">Player Props</div>
+                            </div>
+                            <div style="font-weight: 700;">-115</div>
+                        </div>
+                    </div>
+                    <button class="slip-remove" onclick="removeLeg(this)">✕</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wager Summary -->
+        <section class="card" style="margin-top: 24px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span style="font-size: 14px; color: var(--text-secondary);">Total Odds</span>
+                <span class="font-tanker neon-text" style="font-size: 20px;">+264</span>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 8px;">Wager Amount</label>
+                <div style="display: flex; align-items: center; background: var(--bg-dark); border: 1px solid var(--glass-border); border-radius: 12px; overflow: hidden;">
+                    <span class="font-tanker" style="padding: 0 16px; font-size: 20px; color: var(--text-muted);">$</span>
+                    <input type="number" id="wager-input" value="50" style="flex: 1; background: transparent; border: none; color: white; font-family: 'Tanker', sans-serif; font-size: 24px; padding: 12px 0; outline: none;" oninput="updatePayout()">
+                    <button style="margin-right: 8px; font-size: 10px; font-weight: 700; background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); padding: 4px 8px; border-radius: 4px; border: none; cursor: pointer;">MAX</button>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--glass-border);">
+                <span style="font-size: 14px; font-weight: 500;">Est. Payout</span>
+                <div style="text-align: right;">
+                    <span id="payout-value" class="font-tanker" style="font-size: 32px; color: #00ff9d;">$182.00</span>
+                    <p style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Incl. Wager</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Place Bet Button -->
+        <button onclick="placeBet()" class="btn neon-btn w-full mt-4" style="padding: 20px; font-family: 'Tanker', sans-serif; font-size: 24px; letter-spacing: 0.1em;">
+            PLACE BET →
+        </button>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="/app?screen=dashboard" class="nav-item">
+            <span style="font-size: 24px;">🏠</span>
+            <span class="nav-label">Home</span>
+        </a>
+        <a href="/app?screen=browse" class="nav-item">
+            <span style="font-size: 24px;">🔍</span>
+            <span class="nav-label">Search</span>
+        </a>
+        <a href="/app?screen=builder" class="nav-item active">
+            <div style="width: 48px; height: 48px; margin-top: -32px; background: var(--bg-card); border: 1px solid var(--neon-red); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(255, 23, 68, 0.3);">
+                <span class="neon-text" style="font-size: 24px;">➕</span>
+            </div>
+            <span class="nav-label neon-text" style="margin-top: 4px;">Build</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span style="font-size: 24px;">🎫</span>
+            <span class="nav-label">My Bets</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span style="font-size: 24px;">👤</span>
+            <span class="nav-label">Profile</span>
+        </a>
+    </nav>
+</div>
+
+<script>
+function toggleLeg(el, market, selection) {
+    el.classList.toggle('selected');
+    updateLegCount();
+}
+
+function removeLeg(btn) {
+    btn.parentElement.remove();
+    updateLegCount();
+}
+
+function clearSlip() {
+    document.getElementById('slip-items').innerHTML = '';
+    updateLegCount();
+}
+
+function updateLegCount() {
+    const count = document.querySelectorAll('.slip-item').length;
+    document.getElementById('leg-count').textContent = count;
+}
+
+function updatePayout() {
+    const wager = parseFloat(document.getElementById('wager-input').value) || 0;
+    const odds = 264; // Placeholder
+    const payout = wager + (wager * (odds / 100));
+    document.getElementById('payout-value').textContent = '$' + payout.toFixed(2);
+}
+
+async function placeBet() {
+    const legs = [];
+    document.querySelectorAll('.slip-item').forEach((item, i) => {
+        legs.push({
+            id: 'leg_' + i,
+            text: item.querySelector('.font-tanker').textContent
+        });
+    });
+    
+    const wager = document.getElementById('wager-input').value;
+    
+    // Call backend
+    try {
+        const betText = legs.map(l => l.text).join(' + ');
+        const response = await fetch('/app/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input: betText, tier: 'good' })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert('Analysis: ' + (result.overallAssessment?.verdict || 'Complete'));
+        } else {
+            alert('Analysis failed. Please try again.');
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Connection error. Please check your network.');
+    }
+}
+</script>
+
+<style>
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+</style>
