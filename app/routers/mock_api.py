@@ -5,6 +5,8 @@ Replace with real database queries as backend is built.
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 
+from app.providers import ProviderFactory
+
 router = APIRouter(prefix="/api/mock", tags=["mock"])
 
 from app.mock_data import MOCK_GAMES, MOCK_ODDS, MOCK_USER, SPORTS, MOCK_PROTOCOLS
@@ -40,10 +42,24 @@ async def get_game(game_id: str):
 
 @router.get("/odds/{game_id}")
 async def get_odds(game_id: str):
-    """Get odds for a specific game."""
-    if game_id in MOCK_ODDS:
-        return {"game_id": game_id, "odds": MOCK_ODDS[game_id]}
-    raise HTTPException(status_code=404, detail="Odds not found")
+    """Get odds for a specific game using provider."""
+    provider = ProviderFactory.get_odds_provider("mock")
+    try:
+        odds = await provider.get_odds(game_id)
+        return {"game_id": game_id, "odds": MOCK_ODDS[game_id], "normalized": odds.model_dump()}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/scores/{game_id}")
+async def get_score(game_id: str):
+    """Get live score for a specific game."""
+    provider = ProviderFactory.get_score_provider("mock")
+    try:
+        score = await provider.get_score(game_id)
+        return score.model_dump()
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/slip/calculate")
 async def calculate_slip(legs: List[dict]):
