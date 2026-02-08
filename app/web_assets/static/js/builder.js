@@ -358,17 +358,26 @@ async function analyzeWithDNA() {
             raw: l.selection
         }));
 
+        const requestBody = {
+            input: inputText,
+            tier: 'good',
+            legs: dnaLegs
+        };
+        console.log('Sending DNA request:', requestBody);
+        
         const response = await fetch('/app/evaluate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                input: inputText,
-                tier: 'good',
-                legs: dnaLegs
-            })
+            body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
 
         const result = await response.json();
         console.log('DNA response:', result);
@@ -381,7 +390,7 @@ async function analyzeWithDNA() {
 
     } catch (err) {
         console.error('DNA analysis failed:', err);
-        showError('Analysis failed. Please try again.');
+        showError(`Analysis failed: ${err.message}`);
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<span>ANALYZE WITH DNA</span><iconify-icon icon="lucide:zap"></iconify-icon>';
