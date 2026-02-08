@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DNA Bet Engine - Bet Placement</title>
+  <title>DNA Bet Engine - Protocol Selection</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
   <style>
@@ -55,6 +55,29 @@
       mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
     }
 
+    .sport-chip-active {
+      border-color: var(--neon-red);
+      box-shadow: 0 0 15px rgba(255, 23, 68, 0.3), inset 0 0 10px rgba(255, 23, 68, 0.1);
+    }
+
+    .sport-chip-active .sport-icon {
+      color: var(--neon-red);
+      filter: drop-shadow(0 0 5px rgba(255, 23, 68, 0.8));
+    }
+
+    .sport-chip-active .sport-label {
+      color: white;
+    }
+
+    .loading-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
     /* Hide scrollbar */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -90,12 +113,12 @@
 
     <!-- Header -->
     <header class="shrink-0 pt-14 pb-4 px-6 flex items-center justify-between z-20 sticky top-0 bg-[#050505]/80 backdrop-blur-md border-b border-white/5">
-      <button class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-transform">
+      <button onclick="goBack()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-transform">
         <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-300"></iconify-icon>
       </button>
       <h1 class="font-tanker text-2xl tracking-wide pt-1 text-white">NEW BET PROTOCOL</h1>
       <div class="w-10 flex justify-end">
-        <div class="w-2 h-2 rounded-full bg-neon-red shadow-[0_0_10px_#ff1744] animate-pulse"></div>
+        <div id="connection-status" class="w-2 h-2 rounded-full bg-neon-red shadow-[0_0_10px_#ff1744] animate-pulse"></div>
       </div>
     </header>
 
@@ -109,175 +132,33 @@
           <span class="text-xs text-neon-red font-bold tracking-widest">LIVE FEED ACTIVE</span>
         </div>
         
-        <div class="grid grid-cols-3 gap-3">
-          <!-- Active Item -->
-          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 border-neon-red relative group transition-all">
-            <div class="absolute top-2 right-2 w-1.5 h-1.5 bg-neon-red rounded-full shadow-[0_0_8px_#ff1744]"></div>
-            <iconify-icon icon="emojione-monotone:basketball" class="text-3xl text-neon-red drop-shadow-[0_0_5px_rgba(255,23,68,0.8)]"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide text-white">NBA</span>
-          </button>
-
-          <!-- Inactive Items -->
-          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
-            <iconify-icon icon="fluent:sport-american-football-24-regular" class="text-3xl text-gray-500 group-hover:text-white transition-colors"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide text-gray-500">NFL</span>
-          </button>
-
-          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
-            <iconify-icon icon="guidance:baseball" class="text-3xl text-gray-500"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide text-gray-500">MLB</span>
-          </button>
-
-          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
-            <iconify-icon icon="ph:hockey-light" class="text-3xl text-gray-500"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide text-gray-500">NHL</span>
-          </button>
-
-          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
-            <iconify-icon icon="ph:soccer-ball-light" class="text-3xl text-gray-500"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide text-gray-500">SOCCER</span>
-          </button>
-
-          <button class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-all">
-            <iconify-icon icon="game-icons:boxing-glove" class="text-3xl text-gray-500"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide text-gray-500">MMA</span>
-          </button>
+        <div id="sport-grid" class="grid grid-cols-3 gap-3">
+          <!-- Populated by JS -->
         </div>
       </section>
 
       <!-- Featured Events -->
       <section class="px-6 pt-2">
         <div class="flex justify-between items-end mb-4">
-          <h2 class="font-tanker text-lg text-gray-400 tracking-wider">FEATURED TARGETS</h2>
+          <h2 id="events-header" class="font-tanker text-lg text-gray-400 tracking-wider">FEATURED TARGETS</h2>
           <button class="text-xs text-white/60 hover:text-white transition-colors uppercase font-bold tracking-wider">View All ></button>
         </div>
 
-        <div class="flex flex-col gap-4">
-          
-          <!-- Event Card 1 -->
-          <div class="glass-panel rounded-2xl p-4 relative overflow-hidden group">
-            <!-- Card Header -->
-            <div class="flex justify-between items-start mb-6">
-              <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
-                <iconify-icon icon="emojione-monotone:basketball" class="text-base"></iconify-icon>
-                <span>Regular Season</span>
-              </div>
-              <div class="flex items-center gap-2 bg-neon-red/10 px-2 py-1 rounded border border-neon-red/30">
-                <div class="w-1.5 h-1.5 bg-neon-red rounded-full animate-pulse"></div>
-                <span class="text-neon-red text-xs font-bold tracking-wider">LIVE • Q3 8:42</span>
-              </div>
-            </div>
-
-            <!-- Teams Matchup -->
-            <div class="flex justify-between items-center mb-6">
-              <div class="flex flex-col items-start">
-                <span class="font-tanker text-2xl leading-none text-white">LAKERS</span>
-                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider">Los Angeles</span>
-                <span class="font-satoshi text-xl font-bold mt-2 text-white">88</span>
-              </div>
-              
-              <div class="flex flex-col items-center">
-                <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
-                <div class="w-8 h-[1px] bg-gray-700"></div>
-              </div>
-
-              <div class="flex flex-col items-end">
-                <span class="font-tanker text-2xl leading-none text-right text-gray-300">WARRIORS</span>
-                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider text-right">Golden State</span>
-                <span class="font-satoshi text-xl font-bold mt-2 text-gray-400">82</span>
-              </div>
-            </div>
-
-            <!-- Odds Actions -->
-            <div class="grid grid-cols-3 gap-2 mb-4">
-              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
-                <span class="text-sm font-bold text-white">-4.5</span>
-                <span class="text-[10px] text-neon-red">-110</span>
-              </button>
-              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
-                <span class="text-sm font-bold text-white">O 224.5</span>
-                <span class="text-[10px] text-neon-red">-108</span>
-              </button>
-              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Money</span>
-                <span class="text-sm font-bold text-white">-190</span>
-                <span class="text-[10px] text-neon-red">LIVE</span>
-              </button>
-            </div>
-
-            <!-- CTA -->
-            <button class="w-full py-3 bg-gradient-to-r from-neon-red to-rose-600 text-white font-tanker text-lg tracking-wider rounded border border-white/20 shadow-[0_0_15px_rgba(255,23,68,0.4)] hover:shadow-[0_0_25px_rgba(255,23,68,0.6)] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              <span>SELECT EVENT TARGET</span>
-              <iconify-icon icon="lucide:arrow-right" class="text-lg"></iconify-icon>
-            </button>
+        <div id="protocols-list" class="flex flex-col gap-4">
+          <!-- Loading state -->
+          <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
+            <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING TARGETS...</div>
           </div>
-
-          <!-- Event Card 2 -->
-          <div class="glass-panel rounded-2xl p-4 relative overflow-hidden">
-            <!-- Card Header -->
-            <div class="flex justify-between items-start mb-6">
-              <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
-                <iconify-icon icon="emojione-monotone:basketball" class="text-base"></iconify-icon>
-                <span>NBA • Tomorrow</span>
-              </div>
-              <div class="text-xs text-gray-500 font-mono">20:30 EST</div>
-            </div>
-
-            <!-- Teams Matchup -->
-            <div class="flex justify-between items-center mb-6">
-              <div class="flex flex-col items-start">
-                <span class="font-tanker text-2xl leading-none text-white">CELTICS</span>
-                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider">Boston</span>
-              </div>
-              
-              <div class="flex flex-col items-center">
-                <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
-                <div class="w-8 h-[1px] bg-gray-700"></div>
-              </div>
-
-              <div class="flex flex-col items-end">
-                <span class="font-tanker text-2xl leading-none text-right text-gray-300">HEAT</span>
-                <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider text-right">Miami</span>
-              </div>
-            </div>
-
-            <!-- Odds Actions -->
-            <div class="grid grid-cols-3 gap-2 mb-4">
-              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
-                <span class="text-sm font-bold text-white">-2.5</span>
-                <span class="text-[10px] text-gray-400">-110</span>
-              </button>
-              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
-                <span class="text-sm font-bold text-white">O 212</span>
-                <span class="text-[10px] text-gray-400">-110</span>
-              </button>
-              <button class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center hover:bg-white/10 transition-colors">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Money</span>
-                <span class="text-sm font-bold text-white">-145</span>
-                <span class="text-[10px] text-gray-400">+125</span>
-              </button>
-            </div>
-
-             <!-- CTA -->
-            <button class="w-full py-3 bg-white/5 text-gray-300 hover:text-white font-tanker text-lg tracking-wider rounded border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2">
-              <span>VIEW MARKETS</span>
-            </button>
-          </div>
-
         </div>
       </section>
 
-      <!-- Analysis Promo -->
-      <section class="px-6 mt-6 mb-6">
+      <!-- AI Insight -->
+      <section id="ai-insight-section" class="px-6 mt-6 mb-6 hidden">
         <div class="w-full p-px bg-gradient-to-r from-transparent via-neon-red to-transparent opacity-30"></div>
         <div class="py-4 flex items-center justify-between">
            <div>
               <div class="text-xs text-neon-red font-bold tracking-widest mb-1">AI INSIGHT</div>
-              <div class="text-sm text-gray-300">Lakers spread has <span class="text-white font-bold">82% probability</span></div>
+              <div id="ai-insight-text" class="text-sm text-gray-300">Loading...</div>
            </div>
            <button class="w-8 h-8 rounded-full border border-neon-red flex items-center justify-center">
               <iconify-icon icon="lucide:zap" class="text-neon-red text-sm"></iconify-icon>
@@ -289,7 +170,7 @@
     <!-- Bottom Navigation -->
     <footer class="shrink-0 h-[84px] pb-[34px] px-6 bg-[#050505]/90 backdrop-blur-xl border-t border-white/5 fixed bottom-0 w-full z-30">
       <div class="h-full flex items-center justify-between">
-        <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
+        <button onclick="navigateTo('dashboard')" class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
           <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
           <span class="text-[10px] font-medium">Home</span>
         </button>
@@ -299,9 +180,7 @@
           <span class="text-[10px] font-medium">Bet</span>
         </button>
         
-        <!-- Floating Action Button effect for middle? No, keep standard nav for now but maybe make center highlight -->
-        
-        <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
+        <button onclick="navigateTo('builder')" class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
           <iconify-icon icon="lucide:ticket" class="text-2xl"></iconify-icon>
           <span class="text-[10px] font-medium">Slips</span>
         </button>
@@ -313,5 +192,203 @@
       </div>
     </footer>
   </div>
+
+  <script>
+    // S16 Protocol Selection Logic
+    const API_BASE = '/api/mock';
+    let currentLeague = 'nba';
+    let protocolsData = [];
+
+    const SPORTS = [
+      { id: 'nba', name: 'NBA', icon: 'emojione-monotone:basketball', active: true },
+      { id: 'nfl', name: 'NFL', icon: 'fluent:sport-american-football-24-regular', active: true },
+      { id: 'mlb', name: 'MLB', icon: 'guidance:baseball', active: false },
+      { id: 'nhl', name: 'NHL', icon: 'ph:hockey-light', active: true },
+      { id: 'soccer', name: 'Soccer', icon: 'ph:soccer-ball-light', active: false },
+      { id: 'mma', name: 'MMA', icon: 'game-icons:boxing-glove', active: false }
+    ];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      renderSportGrid();
+      loadProtocols(currentLeague);
+    });
+
+    function renderSportGrid() {
+      const grid = document.getElementById('sport-grid');
+      grid.innerHTML = SPORTS.map(sport => {
+        const isActive = sport.id === currentLeague;
+        const isDisabled = !sport.active;
+        return `
+          <button 
+            onclick="${isDisabled ? '' : `selectLeague('${sport.id}')`}"
+            class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 relative transition-all ${
+              isActive ? 'sport-chip-active' : ''
+            } ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'}"
+            ${isDisabled ? 'disabled' : ''}
+          >
+            ${isActive ? '<div class="absolute top-2 right-2 w-1.5 h-1.5 bg-neon-red rounded-full shadow-[0_0_8px_#ff1744]"></div>' : ''}
+            <iconify-icon icon="${sport.icon}" class="text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide ${isActive ? 'sport-label text-white' : 'text-gray-500'}">${sport.name}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectLeague(league) {
+      currentLeague = league;
+      renderSportGrid();
+      loadProtocols(league);
+    }
+
+    async function loadProtocols(league) {
+      const list = document.getElementById('protocols-list');
+      list.innerHTML = `
+        <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
+          <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING ${league.toUpperCase()} TARGETS...</div>
+        </div>
+      `;
+
+      try {
+        const response = await fetch(`${API_BASE}/protocols/available?league=${league}`);
+        if (!response.ok) throw new Error('Failed to load protocols');
+        
+        const data = await response.json();
+        protocolsData = data.protocols || [];
+        
+        renderProtocols(protocolsData);
+        
+        // Show AI insight if featured protocol exists
+        const featured = protocolsData.find(p => p.featured);
+        if (featured && featured.aiInsight) {
+          showAiInsight(featured.aiInsight);
+        }
+      } catch (err) {
+        console.error('Failed to load protocols:', err);
+        list.innerHTML = `
+          <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
+            <div class="text-red-500 font-tanker text-xl tracking-wider">CONNECTION FAILED</div>
+          </div>
+        `;
+      }
+    }
+
+    function renderProtocols(protocols) {
+      const list = document.getElementById('protocols-list');
+      
+      if (protocols.length === 0) {
+        list.innerHTML = `
+          <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
+            <div class="text-gray-500 font-tanker text-xl tracking-wider">NO TARGETS AVAILABLE</div>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = protocols.map(protocol => renderProtocolCard(protocol)).join('');
+    }
+
+    function renderProtocolCard(protocol) {
+      const isLive = protocol.status === 'LIVE';
+      const isFeatured = protocol.featured;
+      const [homeTeam, awayTeam] = protocol.teams;
+      const score = protocol.score;
+      
+      return `
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden ${isFeatured ? 'border-neon-red' : ''}">
+          <!-- Card Header -->
+          <div class="flex justify-between items-start mb-6">
+            <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
+              <iconify-icon icon="emojione-monotone:basketball" class="text-base"></iconify-icon>
+              <span>${protocol.league} • ${isLive ? 'Live' : 'Upcoming'}</span>
+            </div>
+            ${isLive ? `
+              <div class="flex items-center gap-2 bg-neon-red/10 px-2 py-1 rounded border border-neon-red/30">
+                <div class="w-1.5 h-1.5 bg-neon-red rounded-full animate-pulse"></div>
+                <span class="text-neon-red text-xs font-bold tracking-wider">LIVE • ${protocol.clock}</span>
+              </div>
+            ` : `
+              <div class="text-xs text-gray-500 font-mono">Upcoming</div>
+            `}
+          </div>
+
+          <!-- Teams Matchup -->
+          <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col items-start">
+              <span class="font-tanker text-2xl leading-none text-white">${homeTeam.toUpperCase()}</span>
+              <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider">Home</span>
+              ${score ? `<span class="font-satoshi text-xl font-bold mt-2 text-white">${score.home}</span>` : ''}
+            </div>
+            
+            <div class="flex flex-col items-center">
+              <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
+              <div class="w-8 h-[1px] bg-gray-700"></div>
+            </div>
+
+            <div class="flex flex-col items-end">
+              <span class="font-tanker text-2xl leading-none text-right text-gray-300">${awayTeam.toUpperCase()}</span>
+              <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider text-right">Away</span>
+              ${score ? `<span class="font-satoshi text-xl font-bold mt-2 text-gray-400">${score.away}</span>` : ''}
+            </div>
+          </div>
+
+          <!-- Markets Preview -->
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
+              <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
+              <span class="text-sm font-bold text-white">Available</span>
+            </div>
+            <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
+              <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
+              <span class="text-sm font-bold text-white">Available</span>
+            </div>
+            <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
+              <span class="text-[10px] text-gray-500 uppercase font-bold">Props</span>
+              <span class="text-sm font-bold text-white">${protocol.marketsAvailable.includes('player_props') ? 'Live' : '—'}</span>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <button 
+            onclick="selectProtocol('${protocol.protocolId}')"
+            class="w-full py-3 ${isFeatured ? 'bg-gradient-to-r from-neon-red to-rose-600 text-white border-white/20 shadow-[0_0_15px_rgba(255,23,68,0.4)] hover:shadow-[0_0_25px_rgba(255,23,68,0.6)]' : 'bg-white/5 text-gray-300 hover:text-white border-white/10 hover:border-white/30'} font-tanker text-lg tracking-wider rounded border active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          >
+            <span>SELECT EVENT TARGET</span>
+            <iconify-icon icon="lucide:arrow-right" class="text-lg"></iconify-icon>
+          </button>
+        </div>
+      `;
+    }
+
+    function showAiInsight(text) {
+      const section = document.getElementById('ai-insight-section');
+      const textEl = document.getElementById('ai-insight-text');
+      textEl.innerHTML = text;
+      section.classList.remove('hidden');
+    }
+
+    function selectProtocol(protocolId) {
+      const protocol = protocolsData.find(p => p.protocolId === protocolId);
+      if (!protocol) {
+        console.error('Protocol not found:', protocolId);
+        return;
+      }
+
+      // Store in sessionStorage
+      sessionStorage.setItem('dna_protocol_context', JSON.stringify(protocol));
+      console.log('ProtocolContext stored:', protocol);
+
+      // Navigate to builder
+      window.location.href = `/new?screen=builder&protocolId=${protocolId}`;
+    }
+
+    function navigateTo(screen) {
+      window.location.href = `/new?screen=${screen}`;
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+  </script>
 </body>
 </html>

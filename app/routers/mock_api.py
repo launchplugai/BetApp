@@ -7,7 +7,7 @@ from typing import Optional, List
 
 router = APIRouter(prefix="/api/mock", tags=["mock"])
 
-from app.mock_data import MOCK_GAMES, MOCK_ODDS, MOCK_USER, SPORTS
+from app.mock_data import MOCK_GAMES, MOCK_ODDS, MOCK_USER, SPORTS, MOCK_PROTOCOLS
 
 @router.get("/sports")
 async def get_sports():
@@ -90,4 +90,61 @@ async def get_user_stats():
         "win_rate": MOCK_USER["win_rate"],
         "total_bets": MOCK_USER["total_bets"],
         "balance": MOCK_USER["balance"]
+    }
+
+
+# S16: Protocol endpoints
+
+@router.get("/protocols/available")
+async def get_available_protocols(league: Optional[str] = None):
+    """Get available protocols for event selection.
+    
+    Returns ProtocolContext objects for games available to bet on.
+    """
+    protocols = []
+    
+    if league and league.lower() in MOCK_PROTOCOLS:
+        protocols = MOCK_PROTOCOLS[league.lower()]
+    else:
+        # Return all protocols if no league specified
+        for league_protocols in MOCK_PROTOCOLS.values():
+            protocols.extend(league_protocols)
+    
+    return {
+        "protocols": protocols,
+        "count": len(protocols),
+        "league": league
+    }
+
+
+@router.get("/protocols/{protocol_id}")
+async def get_protocol(protocol_id: str):
+    """Get specific protocol by ID."""
+    for league_protocols in MOCK_PROTOCOLS.values():
+        for protocol in league_protocols:
+            if protocol["protocolId"] == protocol_id:
+                return protocol
+    raise HTTPException(status_code=404, detail="Protocol not found")
+
+
+@router.get("/markets/{game_id}")
+async def get_markets(game_id: str):
+    """Get betting markets for a specific game.
+    
+    Used by parlay builder to display available bets.
+    """
+    # Map game_id to odds key
+    odds_key = None
+    for sport, games in MOCK_GAMES.items():
+        for game in games:
+            if game["id"] == game_id:
+                odds_key = game_id
+                break
+    
+    if not odds_key or odds_key not in MOCK_ODDS:
+        raise HTTPException(status_code=404, detail="Markets not found")
+    
+    return {
+        "game_id": game_id,
+        "markets": MOCK_ODDS[odds_key]
     }

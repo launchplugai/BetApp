@@ -1,6 +1,95 @@
 # Mock Data for DNA Bet Engine UI
 # S16: Placeholder data until backend APIs are ready
 
+import uuid
+from datetime import datetime, timedelta
+
+def generate_protocol_id():
+    """Generate a unique protocol ID."""
+    return f"proto_{uuid.uuid4().hex[:8]}"
+
+# ProtocolContext schema for S16
+# {
+#   "protocolId": "uuid",
+#   "league": "NBA",
+#   "gameId": "lal-gsw-2026-02-08",
+#   "teams": ["Lakers", "Warriors"],
+#   "status": "LIVE",
+#   "clock": "Q3 8:42",
+#   "score": {"home": 88, "away": 82},
+#   "marketsAvailable": ["spread", "total", "player_props"]
+# }
+
+MOCK_PROTOCOLS = {
+    "nba": [
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NBA",
+            "gameId": "lal-gsw-2026-02-08",
+            "teams": ["Lakers", "Warriors"],
+            "status": "LIVE",
+            "clock": "Q3 8:42",
+            "score": {"home": 88, "away": 82},
+            "marketsAvailable": ["spread", "total", "moneyline", "player_props"],
+            "featured": True,
+            "aiInsight": "Lakers spread has 82% probability"
+        },
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NBA",
+            "gameId": "bos-mia-2026-02-09",
+            "teams": ["Celtics", "Heat"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline"],
+            "featured": False,
+            "aiInsight": "Celtics strong home advantage"
+        },
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NBA",
+            "gameId": "den-phx-2026-02-09",
+            "teams": ["Nuggets", "Suns"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline", "player_props"],
+            "featured": False,
+            "aiInsight": "High total expected"
+        }
+    ],
+    "nfl": [
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NFL",
+            "gameId": "kc-buf-2026-02-11",
+            "teams": ["Chiefs", "Bills"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline", "player_props"],
+            "featured": True,
+            "aiInsight": "Chiefs home field advantage significant"
+        }
+    ],
+    "nhl": [
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NHL",
+            "gameId": "nyr-bos-2026-02-08",
+            "teams": ["Rangers", "Bruins"],
+            "status": "LIVE",
+            "clock": "2nd 14:32",
+            "score": {"home": 2, "away": 1},
+            "marketsAvailable": ["puck_line", "total", "moneyline"],
+            "featured": False,
+            "aiInsight": "Low scoring game developing"
+        }
+    ]
+}
+
+# Legacy games data (kept for compatibility)
 MOCK_GAMES = {
     "nba": [
         {
