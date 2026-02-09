@@ -127,7 +127,7 @@
             </div>
 
             <!-- Active Bets Section -->
-            <section class="mt-10">
+            <section class="mt-10" id="active-protocols-section">
                 <div class="flex justify-between items-end mb-5">
                     <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
@@ -136,81 +136,10 @@
                     <a href="#" class="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider font-bold">View All</a>
                 </div>
 
-                <!-- Bet Card 1 -->
-                <div class="neon-border-glow bg-[#0a0a0a] rounded-xl p-5 mb-4 relative group">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-                                <iconify-icon icon="mdi:basketball" class="text-xl text-gray-400"></iconify-icon>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-bold text-sm text-white">Lakers vs. Heat</h4>
-                                    <span class="text-[10px] bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded border border-red-900/50">LIVE</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-0.5">NBA • 4th Quarter</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                             <span class="block font-tanker text-xl text-[#ff1744]">+240</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Divider -->
-                    <div class="h-px w-full bg-gradient-to-r from-transparent via-gray-800 to-transparent my-3"></div>
-
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Wager</p>
-                            <p class="font-tanker text-lg">$50.00</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Payout</p>
-                            <p class="font-tanker text-lg text-[#00ff9d]">$170.00</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3 pt-2">
-                        <div class="flex justify-between text-xs mb-1">
-                            <span class="text-gray-400">Spread -4.5</span>
-                            <span class="text-[#ff1744]">Winning</span>
-                        </div>
-                        <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-[#ff1744] h-full rounded-full w-[85%] shadow-[0_0_10px_rgba(255,23,68,0.5)]"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bet Card 2 -->
-                <div class="glass-panel border-l-2 border-l-gray-600 rounded-xl p-5 mb-4 relative group hover:border-l-[#ff1744] transition-colors">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-                                <iconify-icon icon="mdi:football" class="text-xl text-gray-400"></iconify-icon>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-bold text-sm text-white">Chiefs vs. Bills</h4>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-0.5">NFL • Starts in 2h</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                             <span class="block font-tanker text-xl text-white">-110</span>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-gray-800/50 rounded-lg p-3 flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase">Total Points</p>
-                            <p class="font-bold text-sm">Over 48.5</p>
-                        </div>
-                        <div class="h-6 w-px bg-gray-700"></div>
-                        <div class="text-right">
-                            <p class="text-[10px] text-gray-400 uppercase">Wager</p>
-                            <p class="font-bold text-sm">$100.00</p>
-                        </div>
-                    </div>
+                <!-- Loading state - will be replaced by JS -->
+                <div id="protocols-loading" class="glass-panel rounded-xl p-8 text-center text-gray-500">
+                    <iconify-icon icon="lucide:loader-2" class="text-4xl mb-2 animate-spin"></iconify-icon>
+                    <p>Loading active protocols...</p>
                 </div>
             </section>
             
@@ -304,21 +233,45 @@
         }
 
         function updateActiveProtocols(protocols) {
-            const section = document.querySelector('section.mt-10');
+            const loadingEl = document.getElementById('protocols-loading');
+            if (!loadingEl) return;
+
             if (!protocols || protocols.length === 0) {
-                section.innerHTML = `
-                    <div class="flex justify-between items-end mb-5">
-                        <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
-                            ACTIVE PROTOCOLS
-                        </h3>
-                    </div>
-                    <div class="glass-panel rounded-xl p-8 text-center text-gray-500">
-                        <iconify-icon icon="lucide:activity" class="text-4xl mb-2"></iconify-icon>
-                        <p>No active protocols</p>
-                        <a href="/app?screen=browse" class="text-[#ff1744] text-sm mt-2 inline-block">Start a new bet →</a>
-                    </div>
+                loadingEl.innerHTML = `
+                    <iconify-icon icon="lucide:activity" class="text-4xl mb-2"></iconify-icon>
+                    <p>No active protocols</p>
+                    <a href="/app?screen=browse" class="text-[#ff1744] text-sm mt-2 inline-block">Start a new bet →</a>
                 `;
+            } else {
+                // Replace loading with actual protocol cards
+                loadingEl.outerHTML = protocols.map(protocol => `
+                    <div class="neon-border-glow bg-[#0a0a0a] rounded-xl p-5 mb-4 relative group">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
+                                    <iconify-icon icon="lucide:activity" class="text-xl text-gray-400"></iconify-icon>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm text-white">${protocol.name || 'Active Bet'}</h4>
+                                    <p class="text-xs text-gray-500 mt-0.5">${protocol.status || 'Active'}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-tanker text-xl text-[#ff1744]">${protocol.odds || '+100'}</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Wager</p>
+                                <p class="font-tanker text-lg">${formatCurrency(protocol.wager || 0)}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Payout</p>
+                                <p class="font-tanker text-lg text-[#00ff9d]">${formatCurrency(protocol.payout || 0)}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
             }
         }
 

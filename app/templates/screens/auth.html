@@ -129,7 +129,7 @@
 
     <!-- Demo Mode Link -->
     <div class="mt-6 text-center">
-      <a href="/new?screen=browse" class="text-sm text-gray-500 hover:text-white transition-colors">
+      <a href="/app?screen=browse" class="text-sm text-gray-500 hover:text-white transition-colors">
         Continue without account
       </a>
     </div>
@@ -184,7 +184,7 @@
         if (data.success && data.token) {
           sessionStorage.setItem('dna_auth_token', data.token);
           sessionStorage.setItem('dna_user', JSON.stringify(data.user));
-          window.location.href = '/new?screen=dashboard';
+          window.location.href = '/app?screen=dashboard';
         } else {
           errorEl.textContent = data.error || 'Login failed';
           errorEl.classList.remove('hidden');
@@ -224,7 +224,7 @@
         if (data.success && data.token) {
           sessionStorage.setItem('dna_auth_token', data.token);
           sessionStorage.setItem('dna_user', JSON.stringify(data.user));
-          window.location.href = '/new?screen=dashboard';
+          window.location.href = '/app?screen=dashboard';
         } else {
           errorEl.textContent = data.error || 'Registration failed';
           errorEl.classList.remove('hidden');
@@ -240,7 +240,7 @@
 
     // Check if already logged in
     if (sessionStorage.getItem('dna_auth_token')) {
-      window.location.href = '/new?screen=dashboard';
+      window.location.href = '/app?screen=dashboard';
     }
   </script>
 </body>
