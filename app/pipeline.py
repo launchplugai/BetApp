@@ -2476,6 +2476,22 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         normalized.input_text,
         correlation_id=str(evaluation.parlay_id),
     )
+    
+    # Step 4.5: Enrich with NBA heuristics (rest, injury, tank, playoff)
+    nba_context = None
+    try:
+        from app.nba_context_hook import inject_nba_context
+        nba_context = inject_nba_context(
+            bet_text=normalized.input_text,
+            parsed_legs=blocks,
+            tier=normalized.tier
+        )
+        if nba_context and context_data:
+            context_data['nba_heuristics'] = nba_context
+        elif nba_context:
+            context_data = {'nba_heuristics': nba_context}
+    except Exception as e:
+        _logger.warning(f"NBA heuristics enrichment failed: {e}")
 
     # Step 5: Generate plain-English interpretation
     interpretation = {
