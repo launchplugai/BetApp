@@ -85,15 +85,12 @@
             <section class="mt-6">
                 <div class="flex items-baseline gap-2 mb-1">
                     <span class="text-gray-400 text-sm font-medium">Total Balance</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 uppercase tracking-wider">Pro Tier</span>
+                    <span id="user-tier" class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 uppercase tracking-wider">Pro Tier</span>
                 </div>
                 <div class="flex items-center justify-between">
-                    <h2 class="font-tanker text-[42px] leading-none text-white">$12,840<span class="text-gray-500 text-2xl">.50</span></h2>
+                    <h2 class="font-tanker text-[42px] leading-none text-white"><span id="user-balance">$0.00</span></h2>
                     <div class="flex flex-col items-end">
-                        <span class="text-[#00ff9d] text-sm font-bold flex items-center gap-1">
-                            <iconify-icon icon="lucide:trending-up"></iconify-icon> +12.4%
-                        </span>
-                        <span class="text-gray-600 text-xs">this week</span>
+                        <span id="user-name" class="text-white text-sm font-bold">Loading...</span>
                     </div>
                 </div>
             </section>
@@ -113,7 +110,7 @@
                     </div>
                     <span class="text-gray-400 text-xs uppercase tracking-wider font-bold">Win Rate</span>
                     <div>
-                        <span class="font-tanker text-3xl text-white">68.5</span>
+                        <span id="stat-win-rate" class="font-tanker text-3xl text-white">-</span>
                         <span class="font-tanker text-lg text-[#ff1744]">%</span>
                     </div>
                 </div>
@@ -123,7 +120,7 @@
                     </div>
                     <span class="text-gray-400 text-xs uppercase tracking-wider font-bold">Total Parlays</span>
                     <div>
-                        <span class="font-tanker text-3xl text-white">142</span>
+                        <span id="stat-total" class="font-tanker text-3xl text-white">-</span>
                         <span class="text-xs text-gray-500 font-medium ml-1">Lifetime</span>
                     </div>
                 </div>
@@ -251,5 +248,105 @@
             </div>
         </nav>
     </div>
+
+    <script>
+        // Auth token handling
+        const token = sessionStorage.getItem('dna_auth_token');
+        const user = JSON.parse(sessionStorage.getItem('dna_user') || '{}');
+
+        // Redirect to auth if not logged in
+        if (!token) {
+            window.location.href = '/app?screen=auth';
+        }
+
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount || 0);
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/dashboard/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    // Token expired, redirect to login
+                    sessionStorage.clear();
+                    window.location.href = '/app?screen=auth';
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Update user info
+                document.getElementById('user-name').textContent = data.user?.name || 'User';
+                document.getElementById('user-tier').textContent = data.user?.tier || 'GOOD';
+                document.getElementById('user-balance').textContent = formatCurrency(data.user?.balance || 0);
+
+                // Update stats
+                document.getElementById('stat-win-rate').textContent = data.stats?.win_rate?.toFixed(1) || '0.0';
+                document.getElementById('stat-total').textContent = data.stats?.total_bets || 0;
+
+                // Update active protocols section
+                updateActiveProtocols(data.active_protocols);
+
+                // Update recent bets
+                updateRecentBets(data.recent_bets);
+
+            } catch (err) {
+                console.error('Failed to load dashboard:', err);
+            }
+        }
+
+        function updateActiveProtocols(protocols) {
+            const section = document.querySelector('section.mt-10');
+            if (!protocols || protocols.length === 0) {
+                section.innerHTML = `
+                    <div class="flex justify-between items-end mb-5">
+                        <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
+                            ACTIVE PROTOCOLS
+                        </h3>
+                    </div>
+                    <div class="glass-panel rounded-xl p-8 text-center text-gray-500">
+                        <iconify-icon icon="lucide:activity" class="text-4xl mb-2"></iconify-icon>
+                        <p>No active protocols</p>
+                        <a href="/app?screen=browse" class="text-[#ff1744] text-sm mt-2 inline-block">Start a new bet →</a>
+                    </div>
+                `;
+            }
+        }
+
+        function updateRecentBets(bets) {
+            // For now, bets display on dashboard is limited
+            // Full history can be on separate screen
+        }
+
+        // Navigation handlers
+        document.getElementById('nav-search')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = '/app?screen=browse';
+        });
+
+        document.getElementById('nav-home')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.reload();
+        });
+
+        // Start new bet button
+        document.querySelector('.neon-btn')?.addEventListener('click', () => {
+            window.location.href = '/app?screen=browse';
+        });
+
+        // Load data on page load
+        loadDashboard();
+    </script>
 </body>
 </html>
