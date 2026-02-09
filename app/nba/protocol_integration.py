@@ -61,6 +61,9 @@ class NBAProtocolIntegration:
             ).first()
             if team:
                 team_ids.append(team.team_id)
+            else:
+                # Debug: log missing team
+                print(f"DEBUG: Team not found: {abbrev.upper()}")
         
         if len(team_ids) < 2:
             return self._empty_response("Teams not found in database")
