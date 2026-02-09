@@ -113,8 +113,12 @@ function renderMarket() {
         container.innerHTML = renderMainLines();
     } else if (currentMarket === 'props') {
         container.innerHTML = renderPlayerProps();
+    } else if (currentMarket === 'quarters') {
+        container.innerHTML = renderQuarters();
+    } else if (currentMarket === 'halves') {
+        container.innerHTML = renderHalves();
     } else {
-        container.innerHTML = '<div class="text-center text-gray-500 py-8">Coming soon</div>';
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">Market not available</div>';
     }
 }
 
@@ -627,6 +631,120 @@ async function submitBet() {
             submitBtn.innerHTML = '<span>SUBMIT BET</span>';
         }
     }
+}
+
+function renderQuarters() {
+    const [home, away] = protocol.teams;
+    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+    
+    // Use main game lines as fallback for quarters (simplified)
+    const spread = markets.spread || { home: { line: '-4.5', odds: -110 }, away: { line: '+4.5', odds: -110 } };
+    const total = markets.total || { over: { line: '220.5', odds: -110 }, under: { line: '220.5', odds: -110 } };
+    
+    let html = '<div class="space-y-4">';
+    
+    quarters.forEach(q => {
+        html += `
+            <div class="bg-card rounded-xl p-4 border border-white/5">
+                <h4 class="font-tanker text-lg mb-3 text-neon">${q} LINES</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="text-xs text-gray-500 mb-2">${home.toUpperCase()}</p>
+                        <div class="flex gap-2">
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                ${spread.home.line} (${spread.home.odds})
+                            </button>
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                O ${total.over.line}
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-2">${away.toUpperCase()}</p>
+                        <div class="flex gap-2">
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                ${spread.away.line} (${spread.away.odds})
+                            </button>
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                U ${total.under.line}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+function renderHalves() {
+    const [home, away] = protocol.teams;
+    const halves = ['1st Half', '2nd Half'];
+    
+    // Use main game lines as fallback for halves (simplified)
+    const spread = markets.spread || { home: { line: '-4.5', odds: -110 }, away: { line: '+4.5', odds: -110 } };
+    const total = markets.total || { over: { line: '220.5', odds: -110 }, under: { line: '220.5', odds: -110 } };
+    const moneyline = markets.moneyline || { home: { odds: -150 }, away: { odds: +130 } };
+    
+    let html = '<div class="space-y-4">';
+    
+    halves.forEach((half, idx) => {
+        const halfCode = idx === 0 ? '1H' : '2H';
+        html += `
+            <div class="bg-card rounded-xl p-4 border border-white/5">
+                <h4 class="font-tanker text-lg mb-3 text-neon">${half.toUpperCase()}</h4>
+                <div class="grid grid-cols-7 gap-2 mb-3 text-[10px] font-bold text-gray-500 uppercase text-center">
+                    <div class="col-span-2 text-left pl-2">Team</div>
+                    <div class="col-span-2">Spread</div>
+                    <div class="col-span-2">Total</div>
+                    <div class="col-span-1">ML</div>
+                </div>
+                <div class="grid grid-cols-7 gap-2 mb-2">
+                    <div class="col-span-2 flex items-center">
+                        <span class="font-tanker text-sm">${home.toUpperCase()}</span>
+                    </div>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${halfCode}"})' 
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                        ${spread.home.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${halfCode}"})' 
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                        O ${total.over.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${home}",odds:${moneyline.home.odds},selection:"${home} ML ${halfCode}"})' 
+                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                        ${moneyline.home.odds}
+                    </button>
+                </div>
+                <div class="grid grid-cols-7 gap-2">
+                    <div class="col-span-2 flex items-center">
+                        <span class="font-tanker text-sm text-gray-400">${away.toUpperCase()}</span>
+                    </div>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${halfCode}"})' 
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                        ${spread.away.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${halfCode}"})' 
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                        U ${total.under.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${away}",odds:${moneyline.away.odds},selection:"${away} ML ${halfCode}"})' 
+                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                        ${moneyline.away.odds}
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
 }
 
 function showSuccess(message) {
