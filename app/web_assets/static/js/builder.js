@@ -417,15 +417,26 @@ function displayResults(data) {
         return;
     }
 
-    // Extract verdict - handle both camelCase and snake_case
-    const verdict = data.overallAssessment?.verdict || 
-                   data.overallAssessment?.tier ||
-                   data.verdict || 
-                   data.overall_assessment?.verdict ||
-                   data.tier ||
-                   data.result?.verdict ||
-                   (data.assessment && data.assessment.verdict) ||
-                   'UNKNOWN';
+    // Extract verdict from DNA engine response
+    // Response structure: { evaluation: { dna: { verdict }, recommendation: { action } } }
+    let verdict = 'UNKNOWN';
+    
+    if (data.evaluation?.dna?.verdict) {
+        verdict = data.evaluation.dna.verdict;
+    } else if (data.evaluation?.recommendation?.action) {
+        // Map action to verdict
+        const action = data.evaluation.recommendation.action;
+        verdict = action === 'accept' ? 'GOOD' : 
+                  action === 'reduce' ? 'RISKY' : 
+                  action === 'avoid' ? 'PASS' : 'UNKNOWN';
+    } else if (data.dna?.verdict) {
+        verdict = data.dna.verdict;
+    } else if (data.recommendation?.action) {
+        const action = data.recommendation.action;
+        verdict = action === 'accept' ? 'GOOD' : 
+                  action === 'reduce' ? 'RISKY' : 
+                  action === 'avoid' ? 'PASS' : 'UNKNOWN';
+    }
     
     console.log('Extracted verdict:', verdict, 'from keys:', Object.keys(data));
     
@@ -443,25 +454,33 @@ function displayResults(data) {
     verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
     verdictBadge.textContent = verdict;
 
-    // Confidence score - handle both camelCase and snake_case
-    const confidence = data.overallAssessment?.confidenceScore || 
-                      data.overallAssessment?.confidence ||
-                      data.confidence_score || 
-                      data.overall_assessment?.confidence_score ||
-                      data.confidence ||
-                      data.result?.confidence ||
-                      0;
+    // Confidence score from DNA engine
+    let confidence = 0;
+    if (data.evaluation?.dna?.fragility !== undefined) {
+        // Convert fragility to confidence (inverse)
+        confidence = 1 - (data.evaluation.dna.fragility / 100);
+    } else if (data.evaluation?.metrics?.confidence) {
+        confidence = data.evaluation.metrics.confidence;
+    } else if (data.dna?.fragility !== undefined) {
+        confidence = 1 - (data.dna.fragility / 100);
+    } else if (data.metrics?.confidence) {
+        confidence = data.metrics.confidence;
+    }
     const confidencePercent = Math.round(confidence * 100);
     confidenceScore.textContent = `${confidencePercent}%`;
     confidenceScore.className = `font-tanker text-xl ${confidencePercent >= 70 ? 'text-green-400' : confidencePercent >= 50 ? 'text-yellow-400' : 'text-red-400'}`;
 
-    // Summary - handle both camelCase and snake_case
-    const summary = data.overallAssessment?.summary || 
-                   data.summary || 
-                   data.overall_assessment?.summary ||
-                   data.result?.summary ||
-                   data.analysis?.summary ||
-                   'Analysis complete.';
+    // Summary from DNA engine
+    let summary = 'Analysis complete.';
+    if (data.evaluation?.recommendation?.reason) {
+        summary = data.evaluation.recommendation.reason;
+    } else if (data.evaluation?.interpretation?.summary) {
+        summary = data.evaluation.interpretation.summary;
+    } else if (data.recommendation?.reason) {
+        summary = data.recommendation.reason;
+    } else if (data.interpretation?.summary) {
+        summary = data.interpretation.summary;
+    }
     summaryText.textContent = summary;
 
     // Legs breakdown
