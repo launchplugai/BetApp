@@ -439,13 +439,44 @@ function displayResults(data) {
     verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
     verdictBadge.textContent = verdict;
 
+    // Debug: Log all possible fragility locations
+    console.log('Debug fragility fields:', {
+        'data.fragilityScore': data.fragilityScore,
+        'data.evaluation?.fragilityScore': data.evaluation?.fragilityScore,
+        'data.metrics?.finalFragility': data.metrics?.finalFragility,
+        'data.metrics?.rawFragility': data.metrics?.rawFragility,
+        'data.fragility': data.fragility,
+        'data.fragility_score': data.fragility_score,
+        'data.finalFragility': data.finalFragility,
+        'data.rawFragility': data.rawFragility,
+        'data.evaluation?.fragility': data.evaluation?.fragility,
+        'data.evaluation?.finalFragility': data.evaluation?.finalFragility
+    });
+    
     // Confidence score from DNA engine (100 - fragilityScore)
     let confidence = 0;
-    const fragilityScore = data.fragilityScore ?? 
+    let fragilityScore = data.fragilityScore ?? 
                           data.evaluation?.fragilityScore ??
                           data.metrics?.finalFragility ?? 
-                          data.metrics?.rawFragility;
-    console.log('Raw fragilityScore:', fragilityScore, 'from data.fragilityScore:', data.fragilityScore);
+                          data.metrics?.rawFragility ??
+                          data.fragility ??
+                          data.fragility_score ??
+                          data.finalFragility ??
+                          data.rawFragility ??
+                          data.evaluation?.fragility ??
+                          data.evaluation?.finalFragility;
+    
+    // Search recursively for any fragility-related field
+    if (fragilityScore === undefined) {
+        const jsonStr = JSON.stringify(data);
+        const match = jsonStr.match(/"fragility[_\w]*":\s*(\d+\.?\d*)/i);
+        if (match) {
+            fragilityScore = parseFloat(match[1]);
+            console.log('Found fragility via regex:', fragilityScore);
+        }
+    }
+    
+    console.log('Final fragilityScore:', fragilityScore);
     if (fragilityScore !== undefined && fragilityScore !== null && !isNaN(fragilityScore)) {
         confidence = Math.max(0, Math.min(1, (100 - Number(fragilityScore)) / 100));
     }
