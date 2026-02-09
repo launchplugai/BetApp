@@ -439,14 +439,14 @@ function displayResults(data) {
     verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
     verdictBadge.textContent = verdict;
 
-    // Confidence score from DNA engine (1 - finalFragility/100)
+    // Confidence score from DNA engine (100 - fragilityScore)
     let confidence = 0;
-    const finalFragility = data.evaluation?.metrics?.finalFragility ?? 
-                          data.evaluation?.metrics?.rawFragility ??
+    const fragilityScore = data.fragilityScore ?? 
+                          data.evaluation?.fragilityScore ??
                           data.metrics?.finalFragility ?? 
                           data.metrics?.rawFragility;
-    if (finalFragility !== undefined && finalFragility !== null) {
-        confidence = Math.max(0, Math.min(1, 1 - (finalFragility / 100)));
+    if (fragilityScore !== undefined && fragilityScore !== null) {
+        confidence = Math.max(0, Math.min(1, (100 - fragilityScore) / 100));
     }
     const confidencePercent = Math.round(confidence * 100);
     confidenceScore.textContent = `${confidencePercent}%`;
