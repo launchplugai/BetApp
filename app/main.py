@@ -25,6 +25,7 @@ from app.routers import protocols
 from app.routers import auth
 from app.routers import dashboard as dashboard_router
 from app.routers import bets
+from app.routers import odds
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -105,6 +106,7 @@ app.include_router(protocols.router)
 app.include_router(auth.router)
 app.include_router(dashboard_router.router)
 app.include_router(bets.router)
+app.include_router(odds.router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)
