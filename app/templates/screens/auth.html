@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNA Bet Engine - Sign In</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #050505;
+      font-family: 'Satoshi', sans-serif;
+    }
+    .font-tanker {
+      font-family: 'Tanker', sans-serif;
+    }
+    .glass-panel {
+      background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen text-white">
+  
+  <div class="w-full max-w-md px-6">
+    <!-- Logo/Brand -->
+    <div class="text-center mb-8">
+      <h1 class="font-tanker text-4xl mb-2" style="color: #ff1744;">DNA</h1>
+      <p class="text-gray-400 text-sm">Parlay Intelligence</p>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="flex gap-2 mb-6">
+      <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-3 rounded-lg font-bold bg-[#ff1744] text-white">
+        Sign In
+      </button>
+      <button id="tab-register" onclick="switchTab('register')" class="flex-1 py-3 rounded-lg font-bold bg-white/5 text-gray-400">
+        Create Account
+      </button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="form-login" class="glass-panel rounded-2xl p-6">
+      <form onsubmit="handleLogin(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Email</label>
+          <input
+            type="email"
+            id="login-email"
+            required
+            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
+            placeholder="you@example.com"
+          >
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-2">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            required
+            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
+            placeholder="••••••••"
+          >
+        </div>
+
+        <button
+          type="submit"
+          id="login-btn"
+          class="w-full py-3 rounded-lg font-tanker text-lg tracking-wider bg-[#ff1744] hover:bg-[#ff1744]/80 transition-colors"
+        >
+          SIGN IN
+        </button>
+
+        <p id="login-error" class="mt-4 text-red-500 text-sm text-center hidden"></p>
+      </form>
+    </div>
+
+    <!-- Register Form -->
+    <div id="form-register" class="glass-panel rounded-2xl p-6 hidden">
+      <form onsubmit="handleRegister(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Name</label>
+          <input
+            type="text"
+            id="register-name"
+            required
+            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
+            placeholder="Your name"
+          >
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Email</label>
+          <input
+            type="email"
+            id="register-email"
+            required
+            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
+            placeholder="you@example.com"
+          >
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-medium mb-2">Password</label>
+          <input
+            type="password"
+            id="register-password"
+            required
+            minlength="8"
+            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
+            placeholder="At least 8 characters"
+          >
+          <p class="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+        </div>
+
+        <button
+          type="submit"
+          id="register-btn"
+          class="w-full py-3 rounded-lg font-tanker text-lg tracking-wider bg-[#ff1744] hover:bg-[#ff1744]/80 transition-colors"
+        >
+          CREATE ACCOUNT
+        </button>
+
+        <p id="register-error" class="mt-4 text-red-500 text-sm text-center hidden"></p>
+      </form>
+    </div>
+
+    <!-- Demo Mode Link -->
+    <div class="mt-6 text-center">
+      <a href="/new?screen=browse" class="text-sm text-gray-500 hover:text-white transition-colors">
+        Continue without account
+      </a>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      const loginTab = document.getElementById('tab-login');
+      const registerTab = document.getElementById('tab-register');
+      const loginForm = document.getElementById('form-login');
+      const registerForm = document.getElementById('form-register');
+
+      if (tab === 'login') {
+        loginTab.classList.add('bg-[#ff1744]', 'text-white');
+        loginTab.classList.remove('bg-white/5', 'text-gray-400');
+        registerTab.classList.add('bg-white/5', 'text-gray-400');
+        registerTab.classList.remove('bg-[#ff1744]', 'text-white');
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+      } else {
+        registerTab.classList.add('bg-[#ff1744]', 'text-white');
+        registerTab.classList.remove('bg-white/5', 'text-gray-400');
+        loginTab.classList.add('bg-white/5', 'text-gray-400');
+        loginTab.classList.remove('bg-[#ff1744]', 'text-white');
+        registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+      }
+    }
+
+    async function handleLogin(event) {
+      event.preventDefault();
+      
+      const btn = document.getElementById('login-btn');
+      const errorEl = document.getElementById('login-error');
+      
+      btn.disabled = true;
+      btn.textContent = 'SIGNING IN...';
+      errorEl.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('login-email').value,
+            password: document.getElementById('login-password').value
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.token) {
+          sessionStorage.setItem('dna_auth_token', data.token);
+          sessionStorage.setItem('dna_user', JSON.stringify(data.user));
+          window.location.href = '/new?screen=dashboard';
+        } else {
+          errorEl.textContent = data.error || 'Login failed';
+          errorEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'SIGN IN';
+      }
+    }
+
+    async function handleRegister(event) {
+      event.preventDefault();
+      
+      const btn = document.getElementById('register-btn');
+      const errorEl = document.getElementById('register-error');
+      
+      btn.disabled = true;
+      btn.textContent = 'CREATING ACCOUNT...';
+      errorEl.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('register-name').value,
+            email: document.getElementById('register-email').value,
+            password: document.getElementById('register-password').value
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.token) {
+          sessionStorage.setItem('dna_auth_token', data.token);
+          sessionStorage.setItem('dna_user', JSON.stringify(data.user));
+          window.location.href = '/new?screen=dashboard';
+        } else {
+          errorEl.textContent = data.error || 'Registration failed';
+          errorEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorEl.textContent = 'Network error. Please try again.';
+        errorEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'CREATE ACCOUNT';
+      }
+    }
+
+    // Check if already logged in
+    if (sessionStorage.getItem('dna_auth_token')) {
+      window.location.href = '/new?screen=dashboard';
+    }
+  </script>
+</body>
+</html>

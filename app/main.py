@@ -22,6 +22,7 @@ from app.routers import debug
 from app.routers import metrics
 from app.routers import mock_api
 from app.routers import protocols
+from app.routers import auth
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -99,12 +100,22 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 app.include_router(web.router)
 app.include_router(mock_api.router)
 app.include_router(protocols.router)
+app.include_router(auth.router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)
 app.include_router(history.router)
 app.include_router(v1_ui.router)
 app.include_router(metrics.router)
+
+
+# S18: Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables."""
+    from app.models import init_db
+    init_db()
+    print("✅ Database initialized")
 
 
 @app.get("/health")

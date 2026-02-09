@@ -113,7 +113,8 @@ async def canonical_app(request: Request, screen: str = "dashboard"):
         "landing": "screens/landing.html",
         "dashboard": "screens/dashboard.html",
         "browse": "screens/browse.html",
-        "builder": "screens/builder.html"
+        "builder": "screens/builder.html",
+        "auth": "screens/auth.html"
     }
     
     template_name = screens.get(screen, "screens/dashboard.html")
