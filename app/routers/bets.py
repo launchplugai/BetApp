@@ -1,7 +1,8 @@
 """
-Bets API for S18-D: Bet History Persistence.
+Bets API for S18-D: Bet History Persistence + Submission.
 """
 
+import logging
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
@@ -9,6 +10,8 @@ from pydantic import BaseModel
 
 from app.services.auth import get_current_user_from_token
 from app.models import Bet, get_session
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/bets", tags=["bets"])
 security = HTTPBearer()
@@ -150,3 +153,133 @@ async def get_bet_detail(
         raise HTTPException(status_code=404, detail="Bet not found")
     
     return bet.to_dict()
+
+
+# =============================================================================
+# Bet Submission (Priority 1)
+# =============================================================================
+
+class BetLegInput(BaseModel):
+    """Input schema for a bet leg."""
+    entity: str
+    market: str
+    value: Optional[str] = None
+    odds: int
+    selection: str
+
+
+class CreateBetRequest(BaseModel):
+    """Request schema for creating a bet."""
+    input_text: str
+    legs: List[BetLegInput]
+    wager: int  # Amount in cents (e.g., 10000 = $100.00)
+    total_odds: Optional[int] = None
+    potential_payout: Optional[int] = None
+    # Optional: include DNA analysis results
+    verdict: Optional[str] = None
+    confidence: Optional[int] = None
+
+
+class CreateBetResponse(BaseModel):
+    """Response schema for bet creation."""
+    success: bool
+    bet_id: Optional[str] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+
+@router.post("/", response_model=CreateBetResponse)
+async def create_bet(
+    request: CreateBetRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Create a new bet (Priority 1 - Core Loop).
+    
+    Stores bet in database with "pending" status.
+    Returns bet ID for tracking.
+    """
+    user = get_current_user_from_token(credentials.credentials)
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    # Validate wager
+    if request.wager <= 0:
+        return CreateBetResponse(
+            success=False,
+            error="Wager must be greater than 0"
+        )
+    
+    if request.wager > 1000000:  # Max $10,000
+        return CreateBetResponse(
+            success=False,
+            error="Wager exceeds maximum allowed ($10,000)"
+        )
+    
+    # Validate legs
+    if not request.legs or len(request.legs) == 0:
+        return CreateBetResponse(
+            success=False,
+            error="Bet must have at least one leg"
+        )
+    
+    if len(request.legs) > 10:  # Max 10 legs
+        return CreateBetResponse(
+            success=False,
+            error="Maximum 10 legs allowed per bet"
+        )
+    
+    # Calculate payout if not provided
+    potential_payout = request.potential_payout
+    if potential_payout is None and request.total_odds:
+        # Simple payout calculation: wager * (odds/100 + 1) for positive odds
+        # This is simplified - real sportsbooks have complex calculations
+        if request.total_odds > 0:
+            potential_payout = int(request.wager * (request.total_odds / 100 + 1))
+        else:
+            potential_payout = int(request.wager * (100 / abs(request.total_odds) + 1))
+    
+    # Create bet
+    db = get_session()
+    
+    try:
+        bet = Bet(
+            user_id=user.id,
+            input_text=request.input_text,
+            legs=[leg.dict() for leg in request.legs],
+            wager=request.wager,
+            total_odds=request.total_odds,
+            potential_payout=potential_payout or request.wager,
+            status="pending",
+            verdict=request.verdict,
+            confidence=request.confidence
+        )
+        
+        db.add(bet)
+        db.commit()
+        db.refresh(bet)
+        
+        log.info(
+            "BET_CREATED",
+            extra={
+                "bet_id": bet.id,
+                "user_id": user.id,
+                "wager": request.wager,
+                "legs_count": len(request.legs),
+            }
+        )
+        
+        return CreateBetResponse(
+            success=True,
+            bet_id=bet.id,
+            message=f"Bet created successfully. ID: {bet.id}"
+        )
+        
+    except Exception as e:
+        db.rollback()
+        log.error("BET_CREATION_FAILED", extra={"error": str(e), "user_id": user.id})
+        return CreateBetResponse(
+            success=False,
+            error=f"Failed to create bet: {str(e)}"
+        )

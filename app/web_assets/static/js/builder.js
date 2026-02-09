@@ -270,6 +270,7 @@ function renderLegs() {
     const container = document.getElementById('legs-list');
     const countEl = document.getElementById('leg-count');
     const analyzeBtn = document.getElementById('analyze-btn');
+    const submitBtn = document.getElementById('submit-bet-btn');
     
     countEl.textContent = legs.length;
     
@@ -278,12 +279,24 @@ function renderLegs() {
         analyzeBtn.disabled = true;
         analyzeBtn.classList.add('bg-neon/50', 'cursor-not-allowed');
         analyzeBtn.classList.remove('bg-neon', 'cursor-pointer', 'hover:shadow-[0_0_30px_rgba(255,23,68,0.6)]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('cursor-not-allowed', 'opacity-50');
+            submitBtn.classList.remove('cursor-pointer', 'hover:bg-neon/20');
+        }
         return;
     }
 
     analyzeBtn.disabled = false;
     analyzeBtn.classList.remove('bg-neon/50', 'cursor-not-allowed');
     analyzeBtn.classList.add('bg-neon', 'cursor-pointer', 'hover:shadow-[0_0_30px_rgba(255,23,68,0.6)]');
+    
+    // Enable submit button when legs are added
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('cursor-not-allowed', 'opacity-50');
+        submitBtn.classList.add('cursor-pointer', 'hover:bg-neon/20');
+    }
 
     container.innerHTML = legs.map((leg, index) => {
         const marketColors = {
@@ -507,6 +520,121 @@ function displayResults(data) {
 
 function closeResults() {
     document.getElementById('results-section').classList.add('hidden');
+}
+
+// S18-E + Priority 1: Submit bet to backend
+async function submitBet() {
+    if (legs.length === 0) {
+        showError('Add at least one leg to submit bet');
+        return;
+    }
+
+    const wagerInput = document.getElementById('wager-input');
+    const wager = parseInt(wagerInput.value) * 100; // Convert to cents
+
+    if (isNaN(wager) || wager <= 0) {
+        showError('Enter a valid wager amount');
+        return;
+    }
+
+    // Build input text
+    const inputText = legs.map(l => l.selection).join(' + ');
+
+    // Get DNA analysis result if available
+    const dnaResult = JSON.parse(sessionStorage.getItem('dna_analysis_result') || '{}');
+
+    // Calculate total odds
+    let totalOdds = 0;
+    legs.forEach(leg => {
+        if (leg.odds > 0) {
+            totalOdds += leg.odds;
+        } else {
+            totalOdds -= 10000 / leg.odds; // Convert negative odds
+        }
+    });
+
+    // Calculate payout
+    let potentialPayout = wager;
+    if (totalOdds > 0) {
+        potentialPayout = Math.floor(wager * (totalOdds / 100 + 1));
+    } else {
+        potentialPayout = Math.floor(wager * (100 / Math.abs(totalOdds) + 1));
+    }
+
+    // Get auth token
+    const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+    if (!token) {
+        showError('Please log in to submit bet');
+        setTimeout(() => window.location.href = '/app?screen=auth', 2000);
+        return;
+    }
+
+    const submitBtn = document.getElementById('submit-bet-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>SUBMITTING...</span>';
+    }
+
+    try {
+        const requestBody = {
+            input_text: inputText,
+            legs: legs.map(l => ({
+                entity: l.player || l.team || 'Unknown',
+                market: l.market,
+                value: l.line ? String(l.line) : null,
+                odds: l.odds,
+                selection: l.selection
+            })),
+            wager: wager,
+            total_odds: Math.round(totalOdds),
+            potential_payout: potentialPayout,
+            verdict: dnaResult.verdict,
+            confidence: dnaResult.confidence
+        };
+
+        console.log('Submitting bet:', requestBody);
+
+        const response = await fetch('/api/bets/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+        console.log('Bet submission result:', result);
+
+        if (result.success) {
+            showSuccess(`Bet submitted! ID: ${result.bet_id}`);
+            // Clear legs after successful submission
+            legs = [];
+            renderLegs();
+            recalculate();
+            closeResults();
+            // Redirect to history after 2 seconds
+            setTimeout(() => window.location.href = '/app?screen=history', 2000);
+        } else {
+            showError(result.error || 'Failed to submit bet');
+        }
+    } catch (err) {
+        console.error('Bet submission failed:', err);
+        showError('Network error. Please try again.');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>SUBMIT BET</span>';
+        }
+    }
+}
+
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-500/90 text-white px-6 py-3 rounded-lg z-50 font-bold';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 function showError(message) {
