@@ -2478,20 +2478,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     )
     
     # Step 4.5: Enrich with NBA heuristics (rest, injury, tank, playoff)
-    nba_context = None
-    try:
-        from app.nba_context_hook import inject_nba_context
-        nba_context = inject_nba_context(
-            bet_text=normalized.input_text,
-            parsed_legs=blocks,
-            tier=normalized.tier
-        )
-        if nba_context and context_data:
-            context_data['nba_heuristics'] = nba_context
-        elif nba_context:
-            context_data = {'nba_heuristics': nba_context}
-    except Exception as e:
-        _logger.warning(f"NBA heuristics enrichment failed: {e}")
+    # Applied later in pipeline after result construction
 
     # Step 5: Generate plain-English interpretation
     interpretation = {
@@ -2696,30 +2683,53 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Store current signal for next evaluation
     store_signal_for_session(session_id, signal_info)
 
-    return PipelineResponse(
-        evaluation=evaluation,
-        interpretation=interpretation,
-        explain=explain_filtered,
-        context=context_data,
-        primary_failure=primary_failure,
-        delta_preview=delta_preview,
-        signal_info=signal_info,
-        entities=entities_public,
-        secondary_factors=secondary_factors,
-        human_summary=human_summary,
-        evaluated_parlay=evaluated_parlay,
-        notable_legs=notable_legs,
-        final_verdict=final_verdict,
-        gentle_guidance=gentle_guidance,
-        next_action=next_action,
-        confidence_trend=confidence_trend,
-        grounding_warnings=grounding_warnings if grounding_warnings else None,
-        sherlock_result=sherlock_result,
-        debug_explainability=debug_explainability,
-        proof_summary=proof_summary,
-        structure=structure_snapshot.to_dict(),  # Ticket 38B-A: Structural snapshot
-        delta=delta_result.to_dict() if delta_result else None,  # Ticket 38B-B: Change delta
-        grounding_score=grounding_score_result.to_dict(),  # Ticket 38B-C2: Grounding score
-        leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
-        tier=normalized.tier.value,
+    # Build result dict for NBA context injection
+    result = {
+        "evaluation": evaluation,
+        "interpretation": interpretation,
+        "explain": explain_filtered,
+        "context": context_data,
+        "primary_failure": primary_failure,
+        "delta_preview": delta_preview,
+        "signal_info": signal_info,
+        "entities": entities_public,
+        "secondary_factors": secondary_factors,
+        "human_summary": human_summary,
+        "evaluated_parlay": evaluated_parlay,
+        "notable_legs": notable_legs,
+        "final_verdict": final_verdict,
+        "gentle_guidance": gentle_guidance,
+        "next_action": next_action,
+        "confidence_trend": confidence_trend,
+        "grounding_warnings": grounding_warnings if grounding_warnings else None,
+        "sherlock_result": sherlock_result,
+        "debug_explainability": debug_explainability,
+        "proof_summary": proof_summary,
+        "structure": structure_snapshot.to_dict(),
+        "delta": delta_result.to_dict() if delta_result else None,
+        "grounding_score": grounding_score_result.to_dict(),
+        "leg_count": eval_ctx.leg_count,
+        "tier": normalized.tier.value,
+    }
+    
+    # Step 29: Apply NBA heuristics (clean, defensive integration)
+    # Extract NBA teams from entities for context injection
+    teams_mentioned = entities.get("teams_mentioned", [])
+    sport_guess = entities.get("sport_guess", "")
+    
+    # Only apply NBA context if sport is NBA or likely NBA
+    is_nba_bet = (
+        sport_guess == "nba" or
+        "nba" in normalized.input_text.lower() or
+        any(team in _NBA_TEAMS.values() for team in teams_mentioned)
     )
+    
+    if is_nba_bet and teams_mentioned and len(teams_mentioned) >= 2:
+        from app.pipeline_nba_hook import apply_nba_context
+        result = apply_nba_context(
+            bet_input=normalized.input_text,
+            teams=teams_mentioned[:2],  # Take first two teams
+            result=result
+        )
+    
+    return PipelineResponse(**result)
