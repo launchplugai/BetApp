@@ -79,6 +79,62 @@ class Bet(Base):
         }
 
 
+class RefreshToken(Base):
+    """Refresh tokens for session management."""
+    __tablename__ = "refresh_tokens"
+    
+    id = Column(String, primary_key=True, default=lambda: f"rt_{uuid.uuid4().hex[:8]}")
+    token_hash = Column(String, nullable=False, index=True)  # SHA256 hash of token
+    user_id = Column(String, nullable=False, index=True)
+    
+    # Session metadata
+    device_info = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    last_used_at = Column(DateTime, nullable=True)
+    
+    # Status
+    is_revoked = Column(Integer, default=0)  # 0 = active, 1 = revoked
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "device_info": self.device_info,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "is_revoked": bool(self.is_revoked)
+        }
+
+
+class TokenBlacklist(Base):
+    """Blacklisted access tokens (for logout)."""
+    __tablename__ = "token_blacklist"
+    
+    id = Column(String, primary_key=True, default=lambda: f"bl_{uuid.uuid4().hex[:8]}")
+    token_jti = Column(String, nullable=False, index=True, unique=True)  # JWT ID
+    user_id = Column(String, nullable=False, index=True)
+    
+    # Blacklist metadata
+    blacklisted_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)  # When token naturally expires
+    reason = Column(String, default="logout")  # logout, revoke, etc.
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "token_jti": self.token_jti,
+            "user_id": self.user_id,
+            "blacklisted_at": self.blacklisted_at.isoformat() if self.blacklisted_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "reason": self.reason
+        }
+
+
 # Database setup
 _engine = None
 _SessionLocal = None
