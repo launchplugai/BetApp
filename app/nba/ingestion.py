@@ -116,16 +116,27 @@ class NBADataIngestion:
     # GAMES & BOX SCORES (Daily ETL)
     # =========================================================================
     
-    def fetch_games_for_date(self, game_date: date) -> List[Dict]:
-        """Fetch all games for a specific date."""
+    def fetch_games_for_date(self, game_date: date, retries: int = 3) -> List[Dict]:
+        """Fetch all games for a specific date with retry logic."""
         logger.info(f"Fetching games for {game_date}")
         
-        scoreboard = scoreboardv2.ScoreboardV2(
-            game_date=game_date.strftime("%Y-%m-%d")
-        )
-        
-        games = scoreboard.get_normalized_dict()['GameHeader']
-        return games
+        for attempt in range(retries):
+            try:
+                scoreboard = scoreboardv2.ScoreboardV2(
+                    game_date=game_date.strftime("%Y-%m-%d"),
+                    timeout=60
+                )
+                games = scoreboard.get_normalized_dict()['GameHeader']
+                logger.info(f"Fetched {len(games)} games")
+                return games
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1}/{retries} failed: {e}")
+                if attempt < retries - 1:
+                    import time
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    logger.error(f"All retries failed for {game_date}")
+                    raise
     
     def ingest_game(self, game_data: Dict, season: str) -> DimGame:
         """
