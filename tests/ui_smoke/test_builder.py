@@ -136,7 +136,7 @@ async def test_analyze_button_enables():
         await page.wait_for_timeout(2000)
         
         # Check analyze button initially disabled
-        analyze_btn = await page.locator('#analyze-btn')
+        analyze_btn = page.locator('#analyze-btn')
         is_disabled = await analyze_btn.is_disabled()
         assert is_disabled, "Analyze should be disabled with no legs"
         
