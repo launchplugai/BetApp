@@ -70,6 +70,7 @@ class AppConfig:
 
     # API keys (OPTIONAL - features disabled without them)
     openai_api_key_present: bool = False
+    the_odds_api_key: Optional[str] = None
 
     # Warnings collected during config load
     warnings: list = field(default_factory=list)
@@ -169,6 +170,9 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     # API key presence (OPTIONAL - check presence, don't store value)
     openai_key = os.environ.get("OPENAI_API_KEY")
     openai_api_key_present = bool(openai_key and len(openai_key) > 0)
+    
+    # The Odds API key (for live data)
+    the_odds_api_key = os.environ.get("THE_ODDS_API_KEY")
 
     # Warn if features enabled but API key missing
     if (leading_light_enabled or voice_enabled) and not openai_api_key_present:
@@ -191,6 +195,7 @@ def load_config(fail_fast: bool = True) -> AppConfig:
         sherlock_enabled=sherlock_enabled,
         dna_recording_enabled=dna_recording_enabled,
         openai_api_key_present=openai_api_key_present,
+        the_odds_api_key=the_odds_api_key,
         warnings=warnings,
     )
 

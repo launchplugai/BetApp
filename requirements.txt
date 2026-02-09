@@ -1,5 +1,5 @@
 # Core
-# (no external dependencies for core models yet)
+python-dotenv>=1.0.0  # Environment variable loading
 
 # Testing
 pytest>=8.0.0,<10.0.0

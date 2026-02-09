@@ -116,24 +116,32 @@ class ProviderFactory:
     """Factory for creating provider instances."""
     
     @staticmethod
-    def get_odds_provider(provider_type: str = "mock"):
+    def get_odds_provider(provider_type: str = "mock", api_key: Optional[str] = None):
         """Get odds provider instance."""
         from app.providers.mock_provider import MockOddsProvider
         from app.providers.live_provider import LiveOddsProvider
+        from app.providers.odds_api import OddsApiProvider
         
-        if provider_type == "live":
+        if provider_type == "live" and api_key:
+            config = ProviderConfig(provider_type="live", api_key=api_key)
+            return OddsApiProvider(config)
+        elif provider_type == "live":
             config = ProviderConfig(provider_type="live", api_key=None)
             return LiveOddsProvider(config)
         else:
             return MockOddsProvider()
     
     @staticmethod
-    def get_score_provider(provider_type: str = "mock"):
+    def get_score_provider(provider_type: str = "mock", api_key: Optional[str] = None):
         """Get score provider instance."""
         from app.providers.mock_provider import MockScoreProvider
         from app.providers.live_provider import LiveScoreProvider
+        from app.providers.odds_api import OddsApiProvider
         
-        if provider_type == "live":
+        if provider_type == "live" and api_key:
+            config = ProviderConfig(provider_type="live", api_key=api_key)
+            return OddsApiProvider(config)
+        elif provider_type == "live":
             config = ProviderConfig(provider_type="live", api_key=None)
             return LiveScoreProvider(config)
         else:
