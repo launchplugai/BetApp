@@ -406,8 +406,8 @@ function displayResults(data) {
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
 
-    // Always show raw data in summary for debugging (expanded by default)
-    const rawDataHtml = `<details class="mt-4" open><summary class="text-xs text-gray-500 cursor-pointer">Debug: Raw Response (click to collapse)</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 3000)}</pre></details>`;
+    // Debug: hidden by default
+    const rawDataHtml = `<details class="mt-4"><summary class="text-xs text-gray-500 cursor-pointer">Debug</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 1000)}</pre></details>`;
 
     // Extract verdict from DNA engine response
     // Response: { evaluation: { recommendation: { action: 'ACCEPT'|'REDUCE'|'AVOID' } } }
@@ -439,51 +439,22 @@ function displayResults(data) {
     verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
     verdictBadge.textContent = verdict;
 
-    // Debug: Log all possible fragility locations
-    console.log('Debug fragility fields:', {
-        'data.fragilityScore': data.fragilityScore,
-        'data.evaluation?.fragilityScore': data.evaluation?.fragilityScore,
-        'data.metrics?.finalFragility': data.metrics?.finalFragility,
-        'data.metrics?.rawFragility': data.metrics?.rawFragility,
-        'data.fragility': data.fragility,
-        'data.fragility_score': data.fragility_score,
-        'data.finalFragility': data.finalFragility,
-        'data.rawFragility': data.rawFragility,
-        'data.evaluation?.fragility': data.evaluation?.fragility,
-        'data.evaluation?.finalFragility': data.evaluation?.finalFragility
-    });
-    
     // Confidence score from DNA engine (100 - fragilityScore)
     let confidence = 0;
-    let fragilityScore = data.fragilityScore ?? 
-                          data.evaluation?.fragilityScore ??
-                          data.metrics?.finalFragility ?? 
-                          data.metrics?.rawFragility ??
-                          data.fragility ??
-                          data.fragility_score ??
-                          data.finalFragility ??
-                          data.rawFragility ??
-                          data.evaluation?.fragility ??
-                          data.evaluation?.finalFragility;
+    let fragilityScore = data.fragilityScore ?? data.evaluation?.fragilityScore;
     
-    // Search recursively for any fragility-related field
+    // Fallback: search for fragility in response
     if (fragilityScore === undefined) {
         const jsonStr = JSON.stringify(data);
         const match = jsonStr.match(/"fragility[_\w]*":\s*(\d+\.?\d*)/i);
-        if (match) {
-            fragilityScore = parseFloat(match[1]);
-            console.log('Found fragility via regex:', fragilityScore);
-        }
+        if (match) fragilityScore = parseFloat(match[1]);
     }
     
-    console.log('Final fragilityScore:', fragilityScore);
-    if (fragilityScore !== undefined && fragilityScore !== null && !isNaN(fragilityScore)) {
+    if (fragilityScore !== undefined && !isNaN(fragilityScore)) {
         confidence = Math.max(0, Math.min(1, (100 - Number(fragilityScore)) / 100));
     }
-    console.log('Calculated confidence:', confidence);
     const confidencePercent = Math.round(confidence * 100);
-    console.log('Confidence percent:', confidencePercent);
-    confidenceScore.textContent = `${confidencePercent}% (fragility: ${fragilityScore})`;
+    confidenceScore.textContent = `${confidencePercent}%`;
     confidenceScore.className = `font-tanker text-xl ${confidencePercent >= 70 ? 'text-green-400' : confidencePercent >= 50 ? 'text-yellow-400' : 'text-red-400'}`;
 
     // Summary from DNA engine
