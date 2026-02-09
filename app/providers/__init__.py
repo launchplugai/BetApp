@@ -56,6 +56,15 @@ class LiveScore(BaseModel):
 
 
 # =============================================================================
+# Legacy Type Aliases (for backward compatibility)
+# =============================================================================
+
+# Type aliases for old code that expects these names
+OddsResponse = List[MarketOdds]
+ScoreResponse = LiveScore
+
+
+# =============================================================================
 # Provider Interfaces
 # =============================================================================
 
@@ -97,6 +106,38 @@ class ScoreProvider(ABC):
     def get_score(self, game_id: str) -> Optional[LiveScore]:
         """Get live score for a game."""
         pass
+
+
+# =============================================================================
+# Provider Factory (for backward compatibility)
+# =============================================================================
+
+class ProviderFactory:
+    """Factory for creating provider instances."""
+    
+    @staticmethod
+    def get_odds_provider(provider_type: str = "mock"):
+        """Get odds provider instance."""
+        from app.providers.mock_provider import MockOddsProvider
+        from app.providers.live_provider import LiveOddsProvider
+        
+        if provider_type == "live":
+            config = ProviderConfig(provider_type="live", api_key=None)
+            return LiveOddsProvider(config)
+        else:
+            return MockOddsProvider()
+    
+    @staticmethod
+    def get_score_provider(provider_type: str = "mock"):
+        """Get score provider instance."""
+        from app.providers.mock_provider import MockScoreProvider
+        from app.providers.live_provider import LiveScoreProvider
+        
+        if provider_type == "live":
+            config = ProviderConfig(provider_type="live", api_key=None)
+            return LiveScoreProvider(config)
+        else:
+            return MockScoreProvider()
 
 
 # =============================================================================
