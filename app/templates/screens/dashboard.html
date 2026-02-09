@@ -221,7 +221,7 @@
         <!-- Bottom Navigation -->
         <nav class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5 z-50">
             <div class="flex justify-around items-center px-4">
-                <a href="#" id="nav-home" class="flex flex-col items-center gap-1 group">
+                <a href="/app?screen=dashboard" id="nav-home" class="flex flex-col items-center gap-1 group">
                     <div class="relative">
                         <iconify-icon icon="lucide:layout-dashboard" class="text-2xl text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]"></iconify-icon>
                         <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
@@ -229,21 +229,19 @@
                     <span class="text-[10px] font-medium text-white">Home</span>
                 </a>
                 
-                <a href="#" id="nav-search" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity">
+                <a href="/app?screen=browse" id="nav-browse" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity">
                     <iconify-icon icon="lucide:search" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
                     <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Browse</span>
                 </a>
 
-                <!-- Center FAB placeholder for spacing if needed, but we have top CTA -->
-                
-                <a href="#" id="nav-activity" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity">
-                    <iconify-icon icon="lucide:activity" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Activity</span>
+                <a href="/app?screen=builder" id="nav-builder" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity">
+                    <iconify-icon icon="lucide:plus-circle" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Build</span>
                 </a>
 
-                <a href="#" id="nav-profile" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity">
-                    <iconify-icon icon="lucide:user" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Profile</span>
+                <a href="#" id="nav-profile" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity" onclick="handleLogout(); return false;">
+                    <iconify-icon icon="lucide:log-out" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Logout</span>
                 </a>
             </div>
         </nav>
@@ -329,21 +327,19 @@
             // Full history can be on separate screen
         }
 
-        // Navigation handlers
-        document.getElementById('nav-search')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = '/app?screen=browse';
-        });
+        // Logout handler
+        function handleLogout() {
+            sessionStorage.clear();
+            window.location.href = '/app?screen=auth';
+        }
 
-        document.getElementById('nav-home')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.reload();
-        });
-
-        // Start new bet button
-        document.querySelector('.neon-btn')?.addEventListener('click', () => {
-            window.location.href = '/app?screen=browse';
-        });
+        // Start new bet button (attach to first neon-btn)
+        const startBtn = document.querySelector('.neon-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                window.location.href = '/app?screen=browse';
+            });
+        }
 
         // Load data on page load
         loadDashboard();
