@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Bet Engine - Bet History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-red: #ff1744;
+            --bg-dark: #050505;
+            --card-bg: #0f0f0f;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+        }
+        .font-tanker {
+            font-family: 'Tanker', sans-serif;
+        }
+        .font-satoshi {
+            font-family: 'Satoshi', sans-serif;
+        }
+        .neon-text-glow {
+            text-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
+        }
+        .neon-border-glow {
+            border: 1px solid rgba(255, 23, 68, 0.4);
+            box-shadow: 0 0 20px rgba(255, 23, 68, 0.15), inset 0 0 20px rgba(255, 23, 68, 0.05);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .bg-grid-pattern {
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .status-pending { color: #fbbf24; }
+        .status-won { color: #00ff9d; }
+        .status-lost { color: #ff1744; }
+        .status-void { color: #9ca3af; }
+        .filter-active {
+            background: #ff1744;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="w-full min-h-screen bg-[#050505] font-satoshi flex flex-col relative overflow-hidden bg-grid-pattern">
+        
+        <!-- Ambient Red Glow Top Right -->
+        <div class="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-[#ff1744] rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
+        
+        <!-- Header -->
+        <header class="pt-14 pb-2 px-6 flex justify-between items-center z-10 shrink-0">
+            <button onclick="goBack()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-transform">
+                <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-300"></iconify-icon>
+            </button>
+            <div class="flex flex-col items-center">
+                <span class="text-xs tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
+                <h1 class="font-tanker text-2xl tracking-wide leading-none">BET HISTORY</h1>
+            </div>
+            <div class="w-10"></div>
+        </header>
+
+        <!-- Filter Tabs -->
+        <section class="px-6 mt-4">
+            <div class="flex gap-2 overflow-x-auto no-scrollbar" id="filter-tabs">
+                <button onclick="filterBets('all')" id="filter-all" class="filter-active px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all">
+                    All
+                </button>
+                <button onclick="filterBets('pending')" id="filter-pending" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 bg-white/5 whitespace-nowrap transition-all hover:bg-white/10">
+                    Active
+                </button>
+                <button onclick="filterBets('won')" id="filter-won" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 bg-white/5 whitespace-nowrap transition-all hover:bg-white/10">
+                    Won
+                </button>
+                <button onclick="filterBets('lost')" id="filter-lost" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-400 bg-white/5 whitespace-nowrap transition-all hover:bg-white/10">
+                    Lost
+                </button>
+            </div>
+        </section>
+
+        <!-- Stats Summary -->
+        <section class="px-6 mt-6">
+            <div class="grid grid-cols-3 gap-3">
+                <div class="glass-panel p-4 rounded-xl text-center">
+                    <span id="stat-total" class="font-tanker text-2xl text-white">-</span>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Total Bets</p>
+                </div>
+                <div class="glass-panel p-4 rounded-xl text-center">
+                    <span id="stat-won" class="font-tanker text-2xl text-[#00ff9d]">-</span>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Won</p>
+                </div>
+                <div class="glass-panel p-4 rounded-xl text-center">
+                    <span id="stat-pending" class="font-tanker text-2xl text-[#fbbf24]">-</span>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-1">Active</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Scroll Area -->
+        <main class="flex-1 overflow-y-auto px-6 pb-32 z-10 no-scrollbar mt-6">
+            
+            <!-- Loading State -->
+            <div id="loading-state" class="flex flex-col items-center justify-center py-12">
+                <iconify-icon icon="lucide:loader-2" class="text-4xl text-[#ff1744] animate-spin mb-4"></iconify-icon>
+                <p class="text-gray-500 text-sm">Loading bet history...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-12">
+                <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                    <iconify-icon icon="lucide:clipboard-list" class="text-3xl text-gray-500"></iconify-icon>
+                </div>
+                <h3 class="font-tanker text-xl text-white mb-2">No Bets Yet</h3>
+                <p class="text-gray-500 text-sm text-center mb-6">Start building your first parlay to see it here.</p>
+                <a href="/app?screen=browse" class="px-6 py-3 bg-[#ff1744] rounded-xl font-tanker text-lg tracking-wide">
+                    START BETTING
+                </a>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="hidden flex flex-col items-center justify-center py-12">
+                <div class="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                    <iconify-icon icon="lucide:alert-circle" class="text-3xl text-[#ff1744]"></iconify-icon>
+                </div>
+                <h3 class="font-tanker text-xl text-white mb-2">Failed to Load</h3>
+                <p id="error-message" class="text-gray-500 text-sm text-center mb-6">Something went wrong.</p>
+                <button onclick="loadHistory()" class="px-6 py-3 bg-white/10 border border-white/20 rounded-xl font-bold text-sm">
+                    TRY AGAIN
+                </button>
+            </div>
+
+            <!-- Bets List -->
+            <div id="bets-list" class="space-y-4 hidden"></div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="hidden flex justify-center gap-2 mt-6">
+                <button onclick="prevPage()" id="prev-btn" class="px-4 py-2 rounded-lg bg-white/5 text-gray-400 disabled:opacity-30">
+                    <iconify-icon icon="lucide:chevron-left"></iconify-icon>
+                </button>
+                <span id="page-info" class="px-4 py-2 text-sm text-gray-400">Page 1</span>
+                <button onclick="nextPage()" id="next-btn" class="px-4 py-2 rounded-lg bg-white/5 text-gray-400 disabled:opacity-30">
+                    <iconify-icon icon="lucide:chevron-right"></iconify-icon>
+                </button>
+            </div>
+            
+            <!-- Spacer for bottom nav -->
+            <div class="h-8"></div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5" style="z-index: 9999;">
+            <div class="flex justify-around items-center px-4 pointer-events-auto">
+                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
+                    <iconify-icon icon="lucide:layout-dashboard" class="text-2xl text-gray-400"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400">Home</span>
+                </a>
+                
+                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
+                    <iconify-icon icon="lucide:search" class="text-2xl text-gray-400"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400">Browse</span>
+                </a>
+
+                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
+                    <iconify-icon icon="lucide:plus-circle" class="text-2xl text-gray-400"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400">Build</span>
+                </a>
+
+                <a href="/app?screen=history" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
+                    <div class="relative">
+                        <iconify-icon icon="lucide:history" class="text-2xl text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]"></iconify-icon>
+                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
+                    </div>
+                    <span class="text-[10px] font-medium text-white">History</span>
+                </a>
+
+                <a href="#" onclick="handleLogout(); return false;" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
+                    <iconify-icon icon="lucide:log-out" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Logout</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <script>
+        // Auth token handling
+        const token = sessionStorage.getItem('dna_auth_token');
+        let currentFilter = 'all';
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // Redirect to auth if not logged in
+        if (!token) {
+            window.location.href = '/app?screen=auth';
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format((amount || 0) / 100);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+            });
+        }
+
+        function getStatusIcon(status) {
+            switch(status) {
+                case 'won': return 'lucide:check-circle';
+                case 'lost': return 'lucide:x-circle';
+                case 'pending': return 'lucide:clock';
+                case 'void': return 'lucide:minus-circle';
+                default: return 'lucide:help-circle';
+            }
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'won': return 'status-won';
+                case 'lost': return 'status-lost';
+                case 'pending': return 'status-pending';
+                case 'void': return 'status-void';
+                default: return 'text-gray-400';
+            }
+        }
+
+        async function loadHistory() {
+            const loadingEl = document.getElementById('loading-state');
+            const emptyEl = document.getElementById('empty-state');
+            const errorEl = document.getElementById('error-state');
+            const listEl = document.getElementById('bets-list');
+            const paginationEl = document.getElementById('pagination');
+
+            // Show loading
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+            listEl.classList.add('hidden');
+            paginationEl.classList.add('hidden');
+
+            try {
+                const statusParam = currentFilter !== 'all' ? `&status=${currentFilter}` : '';
+                const response = await fetch(`/api/bets/history?page=${currentPage}&per_page=10${statusParam}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    sessionStorage.clear();
+                    window.location.href = '/app?screen=auth';
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Update stats
+                updateStats(data);
+
+                if (data.bets.length === 0) {
+                    loadingEl.classList.add('hidden');
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                // Render bets
+                listEl.innerHTML = data.bets.map(bet => renderBetCard(bet)).join('');
+                
+                // Update pagination
+                totalPages = Math.ceil(data.total / data.per_page);
+                document.getElementById('page-info').textContent = `Page ${data.page} of ${totalPages || 1}`;
+                document.getElementById('prev-btn').disabled = data.page <= 1;
+                document.getElementById('next-btn').disabled = data.page >= totalPages;
+
+                loadingEl.classList.add('hidden');
+                listEl.classList.remove('hidden');
+                paginationEl.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Failed to load history:', err);
+                loadingEl.classList.add('hidden');
+                document.getElementById('error-message').textContent = err.message || 'Network error';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function updateStats(data) {
+            // Calculate stats from all bets (not paginated)
+            // For now, just show totals from the response if available
+            // In a real implementation, we'd have a separate stats endpoint
+            document.getElementById('stat-total').textContent = data.total || 0;
+            
+            // These would need a separate stats call or be included in the response
+            document.getElementById('stat-won').textContent = '-'; // TODO: Add to API
+            document.getElementById('stat-pending').textContent = '-'; // TODO: Add to API
+        }
+
+        function renderBetCard(bet) {
+            const legsSummary = bet.legs && bet.legs.length > 0 
+                ? bet.legs.map(l => l.entity).join(', ')
+                : bet.input_text.substring(0, 50) + '...';
+
+            const oddsDisplay = bet.total_odds 
+                ? (bet.total_odds > 0 ? `+${bet.total_odds}` : bet.total_odds)
+                : '—';
+
+            return `
+                <div class="glass-panel rounded-xl p-4 relative group hover:bg-white/5 transition-colors cursor-pointer" onclick="viewBet('${bet.id}')">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-2">
+                            <iconify-icon icon="${getStatusIcon(bet.status)}" class="text-xl ${getStatusColor(bet.status)}"></iconify-icon>
+                            <span class="text-xs uppercase tracking-wider font-bold ${getStatusColor(bet.status)}">${bet.status}</span>
+                        </div>
+                        <span class="text-xs text-gray-500">${formatDate(bet.created_at)}</span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-300 mb-3 line-clamp-2">${legsSummary}</p>
+                    
+                    <div class="flex justify-between items-center pt-3 border-t border-white/5">
+                        <div>
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wider">Wager</span>
+                            <p class="font-tanker text-lg">${formatCurrency(bet.wager)}</p>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wider">Odds</span>
+                            <p class="font-tanker text-lg">${oddsDisplay}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-gray-500 uppercase tracking-wider">${bet.status === 'won' ? 'Won' : 'Potential'}</span>
+                            <p class="font-tanker text-lg ${bet.status === 'won' ? 'text-[#00ff9d]' : 'text-gray-400'}">
+                                ${formatCurrency(bet.status === 'won' ? bet.actual_payout : bet.potential_payout)}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    ${bet.confidence ? `
+                        <div class="mt-3 pt-2 border-t border-white/5">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-500">DNA Confidence</span>
+                                <span class="text-[#ff1744]">${bet.confidence}%</span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-1 rounded-full overflow-hidden">
+                                <div class="bg-[#ff1744] h-full rounded-full" style="width: ${bet.confidence}%"></div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function filterBets(status) {
+            currentFilter = status;
+            currentPage = 1;
+            
+            // Update UI
+            document.querySelectorAll('#filter-tabs button').forEach(btn => {
+                btn.classList.remove('filter-active');
+                btn.classList.add('text-gray-400', 'bg-white/5');
+            });
+            document.getElementById(`filter-${status}`).classList.add('filter-active');
+            document.getElementById(`filter-${status}`).classList.remove('text-gray-400', 'bg-white/5');
+            
+            loadHistory();
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadHistory();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadHistory();
+            }
+        }
+
+        function viewBet(betId) {
+            // TODO: Navigate to bet detail view
+            console.log('View bet:', betId);
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function handleLogout() {
+            sessionStorage.clear();
+            window.location.href = '/app?screen=auth';
+        }
+
+        // Load on page load
+        loadHistory();
+    </script>
+</body>
+</html>
