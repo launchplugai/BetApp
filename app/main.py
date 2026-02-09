@@ -30,6 +30,7 @@ from app.routers import dashboard as dashboard_router
 from app.routers import bets
 from app.routers import odds
 from app.nba.router import router as nba_router
+from app.admin.router import router as admin_router
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -112,6 +113,7 @@ app.include_router(dashboard_router.router)
 app.include_router(bets.router)
 app.include_router(odds.router)
 app.include_router(nba_router)
+app.include_router(admin_router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)

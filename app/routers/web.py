@@ -194,3 +194,11 @@ async def redirect_new(screen: str = "dashboard"):
     """Redirect old /new routes to /app"""
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"/app?screen={screen}")
+
+
+@router.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard():
+    """Admin control panel."""
+    from pathlib import Path
+    template_path = Path(__file__).parent.parent / "templates" / "admin" / "dashboard.html"
+    return HTMLResponse(content=template_path.read_text())
