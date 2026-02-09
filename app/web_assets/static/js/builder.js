@@ -445,11 +445,14 @@ function displayResults(data) {
                           data.evaluation?.fragilityScore ??
                           data.metrics?.finalFragility ?? 
                           data.metrics?.rawFragility;
-    if (fragilityScore !== undefined && fragilityScore !== null) {
-        confidence = Math.max(0, Math.min(1, (100 - fragilityScore) / 100));
+    console.log('Raw fragilityScore:', fragilityScore, 'from data.fragilityScore:', data.fragilityScore);
+    if (fragilityScore !== undefined && fragilityScore !== null && !isNaN(fragilityScore)) {
+        confidence = Math.max(0, Math.min(1, (100 - Number(fragilityScore)) / 100));
     }
+    console.log('Calculated confidence:', confidence);
     const confidencePercent = Math.round(confidence * 100);
-    confidenceScore.textContent = `${confidencePercent}%`;
+    console.log('Confidence percent:', confidencePercent);
+    confidenceScore.textContent = `${confidencePercent}% (fragility: ${fragilityScore})`;
     confidenceScore.className = `font-tanker text-xl ${confidencePercent >= 70 ? 'text-green-400' : confidencePercent >= 50 ? 'text-yellow-400' : 'text-red-400'}`;
 
     // Summary from DNA engine
