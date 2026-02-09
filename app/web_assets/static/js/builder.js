@@ -406,8 +406,8 @@ function displayResults(data) {
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
 
-    // Always show raw data in summary for debugging
-    const rawDataHtml = `<details class="mt-4"><summary class="text-xs text-gray-500 cursor-pointer">Debug: Raw Response</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 2000)}</pre></details>`;
+    // Always show raw data in summary for debugging (expanded by default)
+    const rawDataHtml = `<details class="mt-4" open><summary class="text-xs text-gray-500 cursor-pointer">Debug: Raw Response (click to collapse)</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 3000)}</pre></details>`;
 
     // Extract verdict from DNA engine response
     // Response structure: { evaluation: { dna: { verdict }, recommendation: { action } } }
