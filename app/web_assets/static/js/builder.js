@@ -410,27 +410,20 @@ function displayResults(data) {
     const rawDataHtml = `<details class="mt-4" open><summary class="text-xs text-gray-500 cursor-pointer">Debug: Raw Response (click to collapse)</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 3000)}</pre></details>`;
 
     // Extract verdict from DNA engine response
-    // Response structure: { evaluation: { dna: { verdict }, recommendation: { action } } }
+    // Response: { evaluation: { recommendation: { action: 'ACCEPT'|'REDUCE'|'AVOID' } } }
     let verdict = 'UNKNOWN';
     
-    if (data.evaluation?.dna?.verdict) {
-        verdict = data.evaluation.dna.verdict;
-    } else if (data.evaluation?.recommendation?.action) {
-        // Map action to verdict
-        const action = data.evaluation.recommendation.action;
-        verdict = action === 'accept' ? 'GOOD' : 
-                  action === 'reduce' ? 'RISKY' : 
-                  action === 'avoid' ? 'PASS' : 'UNKNOWN';
-    } else if (data.dna?.verdict) {
-        verdict = data.dna.verdict;
-    } else if (data.recommendation?.action) {
-        const action = data.recommendation.action;
-        verdict = action === 'accept' ? 'GOOD' : 
-                  action === 'reduce' ? 'RISKY' : 
-                  action === 'avoid' ? 'PASS' : 'UNKNOWN';
+    const action = data.evaluation?.recommendation?.action ?? 
+                   data.recommendation?.action;
+    
+    if (action) {
+        const actionUpper = String(action).toUpperCase();
+        verdict = actionUpper === 'ACCEPT' ? 'GOOD' : 
+                  actionUpper === 'REDUCE' ? 'RISKY' : 
+                  actionUpper === 'AVOID' ? 'PASS' : 'UNKNOWN';
     }
     
-    console.log('Extracted verdict:', verdict, 'from keys:', Object.keys(data));
+    console.log('Extracted verdict:', verdict, 'action:', action);
     
     // Verdict styling
     const verdictColors = {
@@ -446,17 +439,14 @@ function displayResults(data) {
     verdictBadge.className = `px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider ${verdictColors[verdict] || verdictColors['ANALYZING']}`;
     verdictBadge.textContent = verdict;
 
-    // Confidence score from DNA engine
+    // Confidence score from DNA engine (1 - finalFragility/100)
     let confidence = 0;
-    if (data.evaluation?.dna?.fragility !== undefined) {
-        // Convert fragility to confidence (inverse)
-        confidence = 1 - (data.evaluation.dna.fragility / 100);
-    } else if (data.evaluation?.metrics?.confidence) {
-        confidence = data.evaluation.metrics.confidence;
-    } else if (data.dna?.fragility !== undefined) {
-        confidence = 1 - (data.dna.fragility / 100);
-    } else if (data.metrics?.confidence) {
-        confidence = data.metrics.confidence;
+    const finalFragility = data.evaluation?.metrics?.finalFragility ?? 
+                          data.evaluation?.metrics?.rawFragility ??
+                          data.metrics?.finalFragility ?? 
+                          data.metrics?.rawFragility;
+    if (finalFragility !== undefined && finalFragility !== null) {
+        confidence = Math.max(0, Math.min(1, 1 - (finalFragility / 100)));
     }
     const confidencePercent = Math.round(confidence * 100);
     confidenceScore.textContent = `${confidencePercent}%`;
