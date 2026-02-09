@@ -40,18 +40,88 @@ async function loadMarkets() {
         // S19-D: Use new /api/odds endpoint
         const gameId = protocol.gameId || protocol.protocolId || 'lal-gsw-2026-02-09';
         const response = await fetch(`${API_BASE}/odds/${gameId}`);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        
-        // New API returns array directly, not {odds: [...]}
-        markets = await response.json();
-        console.log('Markets loaded:', markets);
+
+        // API returns array, transform to expected structure
+        const marketsArray = await response.json();
+        console.log('Markets loaded:', marketsArray);
+
+        // Transform array to object structure expected by renderer
+        markets = {
+            spread: { home: {}, away: {} },
+            total: { over: {}, under: {} },
+            moneyline: { home: {}, away: {} },
+            player_props: []
+        };
+
+        if (Array.isArray(marketsArray)) {
+            marketsArray.forEach(m => {
+                if (m.market === 'spread' && m.selections) {
+                    m.selections.forEach(sel => {
+                        if (sel.label && sel.label.includes(' -')) {
+                            markets.spread.home = { line: sel.line || '-4.5', odds: sel.odds || -110 };
+                        } else if (sel.label && sel.label.includes(' +')) {
+                            markets.spread.away = { line: sel.line || '+4.5', odds: sel.odds || -110 };
+                        }
+                    });
+                } else if (m.market === 'total' && m.selections) {
+                    m.selections.forEach(sel => {
+                        if (sel.label && sel.label.includes('Over')) {
+                            markets.total.over = { line: sel.line || '220.5', odds: sel.odds || -110 };
+                        } else if (sel.label && sel.label.includes('Under')) {
+                            markets.total.under = { line: sel.line || '220.5', odds: sel.odds || -110 };
+                        }
+                    });
+                } else if (m.market === 'moneyline' && m.selections) {
+                    m.selections.forEach(sel => {
+                        if (sel.label && !sel.label.includes('ML')) {
+                            // First selection is usually home
+                            if (!markets.moneyline.home.odds) {
+                                markets.moneyline.home = { odds: sel.odds || -150 };
+                            } else {
+                                markets.moneyline.away = { odds: sel.odds || +130 };
+                            }
+                        }
+                    });
+                } else if (m.market && m.market.includes('player_prop')) {
+                    markets.player_props.push({
+                        player: m.selections?.[0]?.player || 'Player',
+                        prop: m.market.replace('player_prop_', ''),
+                        line: m.selections?.[0]?.line || 20.5,
+                        over_odds: m.selections?.[0]?.odds || -110,
+                        under_odds: m.selections?.[1]?.odds || -110
+                    });
+                }
+            });
+        }
+
+        // Ensure we have defaults if API didn't return expected structure
+        if (!markets.spread.home.line) {
+            markets.spread.home = { line: '-4.5', odds: -110 };
+            markets.spread.away = { line: '+4.5', odds: -110 };
+        }
+        if (!markets.total.over.line) {
+            markets.total.over = { line: '220.5', odds: -110 };
+            markets.total.under = { line: '220.5', odds: -110 };
+        }
+        if (!markets.moneyline.home.odds) {
+            markets.moneyline.home = { odds: -150 };
+            markets.moneyline.away = { odds: +130 };
+        }
+
+        console.log('Transformed markets:', markets);
     } catch (err) {
         console.error('Failed to load markets:', err);
-        // Fallback to empty markets for graceful degradation
-        markets = [];
+        // Fallback to default markets
+        markets = {
+            spread: { home: { line: '-4.5', odds: -110 }, away: { line: '+4.5', odds: -110 } },
+            total: { over: { line: '220.5', odds: -110 }, under: { line: '220.5', odds: -110 } },
+            moneyline: { home: { odds: -150 }, away: { odds: +130 } },
+            player_props: []
+        };
     }
 }
 
@@ -214,6 +284,10 @@ function renderPlayerProps() {
 
 function isLegSelected(market, identifier) {
     return legs.some(leg => {
+        // Handle quarter markets (q1_spread, q2_total, etc.)
+        if (market.includes('_')) {
+            return leg.market === market && leg.selection === identifier;
+        }
         if (market === 'spread' || market === 'moneyline') {
             return leg.market === market && leg.team === identifier;
         }
