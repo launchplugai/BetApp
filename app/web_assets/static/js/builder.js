@@ -406,16 +406,8 @@ function displayResults(data) {
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
 
-    // Debug: Show raw data if we can't parse it
-    if (!data || typeof data !== 'object') {
-        verdictBadge.textContent = 'ERROR';
-        verdictBadge.className = 'px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider bg-red-500/20 text-red-400 border border-red-500/30';
-        confidenceScore.textContent = '0%';
-        summaryText.innerHTML = `<pre class="text-xs overflow-auto">${JSON.stringify(data, null, 2)}</pre>`;
-        legsBreakdown.innerHTML = '';
-        resultsSection.classList.remove('hidden');
-        return;
-    }
+    // Always show raw data in summary for debugging
+    const rawDataHtml = `<details class="mt-4"><summary class="text-xs text-gray-500 cursor-pointer">Debug: Raw Response</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 2000)}</pre></details>`;
 
     // Extract verdict from DNA engine response
     // Response structure: { evaluation: { dna: { verdict }, recommendation: { action } } }
@@ -481,7 +473,7 @@ function displayResults(data) {
     } else if (data.interpretation?.summary) {
         summary = data.interpretation.summary;
     }
-    summaryText.textContent = summary;
+    summaryText.innerHTML = `<div class="mb-2">${summary}</div>${rawDataHtml}`;
 
     // Legs breakdown
     const legResults = data.legs || data.leg_results || [];

@@ -153,28 +153,28 @@
         <!-- Bottom Nav -->
         <footer class="shrink-0 bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-[34px] pt-4 px-6">
             <nav class="flex justify-between items-center">
-                <a onclick="navigateTo('dashboard')" class="flex flex-col items-center gap-1 cursor-pointer">
+                <button onclick="window.location.href='/new?screen=dashboard'" class="flex flex-col items-center gap-1 bg-transparent border-0">
                     <iconify-icon icon="lucide:home" class="text-xl text-gray-500"></iconify-icon>
                     <span class="text-[10px] text-gray-500">Home</span>
-                </a>
-                <a onclick="navigateTo('browse')" class="flex flex-col items-center gap-1 cursor-pointer">
+                </button>
+                <button onclick="window.location.href='/new?screen=browse'" class="flex flex-col items-center gap-1 bg-transparent border-0">
                     <iconify-icon icon="lucide:search" class="text-xl text-gray-500"></iconify-icon>
                     <span class="text-[10px] text-gray-500">Search</span>
-                </a>
-                <a class="flex flex-col items-center gap-1">
+                </button>
+                <button class="flex flex-col items-center gap-1 bg-transparent border-0">
                     <div class="w-12 h-12 -mt-8 bg-card border border-neon rounded-full flex items-center justify-center">
                         <iconify-icon icon="lucide:plus" class="text-2xl text-neon"></iconify-icon>
                     </div>
                     <span class="text-[10px] font-bold text-neon mt-1">Build</span>
-                </a>
-                <a class="flex flex-col items-center gap-1">
+                </button>
+                <button onclick="window.location.href='/new?screen=builder'" class="flex flex-col items-center gap-1 bg-transparent border-0">
                     <iconify-icon icon="lucide:ticket" class="text-xl text-gray-500"></iconify-icon>
                     <span class="text-[10px] text-gray-500">My Bets</span>
-                </a>
-                <a class="flex flex-col items-center gap-1">
+                </button>
+                <button class="flex flex-col items-center gap-1 bg-transparent border-0">
                     <iconify-icon icon="lucide:user" class="text-xl text-gray-500"></iconify-icon>
                     <span class="text-[10px] text-gray-500">Profile</span>
-                </a>
+                </button>
             </nav>
         </footer>
     </div>
