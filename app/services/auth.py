@@ -116,6 +116,7 @@ def authenticate_user(email: str, password: str) -> Tuple[Optional[User], Option
     # Update last login
     user.last_login = datetime.utcnow()
     db.commit()
+    db.refresh(user)
     
     return user, None
 

@@ -20,7 +20,10 @@ httpx>=0.27.0
 openai>=1.0.0
 
 # Authentication
-bcrypt>=4.1.0
+bcrypt>=4.1.0,<5.0.0  # Pin for passlib compatibility
+passlib>=1.7.4
+python-jose[cryptography]>=3.3.0
+sqlalchemy>=2.0.0
 
 # Billing
 stripe>=7.0.0
