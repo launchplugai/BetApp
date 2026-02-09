@@ -194,31 +194,61 @@
   </div>
 
   <script>
-    // S16 Protocol Selection Logic
-    const API_BASE = '/api/mock';
-    let currentLeague = 'nba';
+    // S19-D: Protocol Selection Logic (using new /api/games endpoint)
+    const API_BASE = '/api';
+    let currentLeague = 'NBA';
     let protocolsData = [];
+    let sportsData = [];
 
-    const SPORTS = [
-      { id: 'nba', name: 'NBA', icon: 'emojione-monotone:basketball', active: true },
-      { id: 'nfl', name: 'NFL', icon: 'fluent:sport-american-football-24-regular', active: true },
-      { id: 'mlb', name: 'MLB', icon: 'guidance:baseball', active: false },
-      { id: 'nhl', name: 'NHL', icon: 'ph:hockey-light', active: true },
-      { id: 'soccer', name: 'Soccer', icon: 'ph:soccer-ball-light', active: false },
-      { id: 'mma', name: 'MMA', icon: 'game-icons:boxing-glove', active: false }
-    ];
+    // Icon map for sport types
+    const SPORT_ICONS = {
+      'NBA': 'emojione-monotone:basketball',
+      'NFL': 'fluent:sport-american-football-24-regular',
+      'MLB': 'guidance:baseball',
+      'NHL': 'ph:hockey-light',
+      'SOCCER': 'ph:soccer-ball-light',
+      'MMA': 'game-icons:boxing-glove'
+    };
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
+    // Initialize - fetch sports from API then load games
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadSports();
       renderSportGrid();
-      loadProtocols(currentLeague);
+      loadGames(currentLeague);
     });
+
+    async function loadSports() {
+      try {
+        const response = await fetch(`${API_BASE}/sports`);
+        if (response.ok) {
+          sportsData = await response.json();
+        }
+      } catch (err) {
+        console.error('Failed to load sports:', err);
+        // Use fallback sports
+        sportsData = [
+          { id: 'NBA', label: 'NBA', active: true },
+          { id: 'NFL', label: 'NFL', active: true },
+          { id: 'NHL', label: 'NHL', active: true }
+        ];
+      }
+    }
 
     function renderSportGrid() {
       const grid = document.getElementById('sport-grid');
-      grid.innerHTML = SPORTS.map(sport => {
+      
+      // Use API sports or fallback
+      const sports = sportsData.length > 0 ? sportsData : [
+        { id: 'NBA', label: 'NBA', active: true },
+        { id: 'NFL', label: 'NFL', active: true },
+        { id: 'NHL', label: 'NHL', active: true }
+      ];
+      
+      grid.innerHTML = sports.map(sport => {
         const isActive = sport.id === currentLeague;
         const isDisabled = !sport.active;
+        const icon = SPORT_ICONS[sport.id] || 'lucide:trophy';
+        
         return `
           <button 
             onclick="${isDisabled ? '' : `selectLeague('${sport.id}')`}"
@@ -228,8 +258,8 @@
             ${isDisabled ? 'disabled' : ''}
           >
             ${isActive ? '<div class="absolute top-2 right-2 w-1.5 h-1.5 bg-neon-red rounded-full shadow-[0_0_8px_#ff1744]"></div>' : ''}
-            <iconify-icon icon="${sport.icon}" class="text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>
-            <span class="font-tanker text-lg tracking-wide ${isActive ? 'sport-label text-white' : 'text-gray-500'}">${sport.name}</span>
+            <iconify-icon icon="${icon}" class="text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide ${isActive ? 'sport-label text-white' : 'text-gray-500'}">${sport.label}</span>
           </button>
         `;
       }).join('');
@@ -238,10 +268,10 @@
     function selectLeague(league) {
       currentLeague = league;
       renderSportGrid();
-      loadProtocols(league);
+      loadGames(league);
     }
 
-    async function loadProtocols(league) {
+    async function loadGames(sport) {
       const list = document.getElementById('protocols-list');
       if (!list) {
         console.error('protocols-list element not found');
@@ -250,42 +280,53 @@
       
       list.innerHTML = `
         <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
-          <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING ${league.toUpperCase()} TARGETS...</div>
+          <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING ${sport.toUpperCase()} TARGETS...</div>
         </div>
       `;
 
       try {
-        console.log('Fetching protocols for league:', league);
-        const response = await fetch(`${API_BASE}/protocols/available?league=${league}`);
+        console.log('Fetching games for sport:', sport);
+        const response = await fetch(`${API_BASE}/games?sport=${sport}`);
         console.log('Response status:', response.status);
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const data = await response.json();
-        console.log('Protocols data:', data);
+        const games = await response.json();
+        console.log('Games data:', games);
         
-        protocolsData = data.protocols || [];
+        // Transform games to protocol format for rendering
+        protocolsData = games.map(game => ({
+          protocolId: game.id,
+          gameId: game.id,
+          league: game.league,
+          teams: [game.home, game.away],
+          status: game.status,
+          startTime: game.start_time,
+          featured: false,
+          marketsAvailable: ['spread', 'moneyline', 'total'],
+          clock: game.status === 'LIVE' ? 'Live' : null
+        }));
+        
         console.log('Protocols count:', protocolsData.length);
         
         renderProtocols(protocolsData);
-        
-        // Show AI insight if featured protocol exists
-        const featured = protocolsData.find(p => p.featured);
-        if (featured && featured.aiInsight) {
-          showAiInsight(featured.aiInsight);
-        }
       } catch (err) {
-        console.error('Failed to load protocols:', err);
+        console.error('Failed to load games:', err);
         list.innerHTML = `
           <div class="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center gap-4">
             <div class="text-red-500 font-tanker text-xl tracking-wider">CONNECTION FAILED</div>
             <div class="text-gray-500 text-sm">${err.message}</div>
-            <button onclick="loadProtocols('${league}')" class="px-4 py-2 bg-neon-red rounded text-white font-bold">RETRY</button>
+            <button onclick="loadGames('${sport}')" class="px-4 py-2 bg-neon-red rounded text-white font-bold">RETRY</button>
           </div>
         `;
       }
+    }
+
+    // Legacy alias for compatibility
+    function loadProtocols(league) {
+      return loadGames(league);
     }
 
     function renderProtocols(protocols) {
