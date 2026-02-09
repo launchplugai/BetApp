@@ -29,6 +29,7 @@ from app.routers import auth
 from app.routers import dashboard as dashboard_router
 from app.routers import bets
 from app.routers import odds
+from app.nba.router import router as nba_router
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -110,6 +111,7 @@ app.include_router(auth.router)
 app.include_router(dashboard_router.router)
 app.include_router(bets.router)
 app.include_router(odds.router)
+app.include_router(nba_router)
 app.include_router(leading_light.router)
 app.include_router(voice_router)
 app.include_router(panel.router)
@@ -124,7 +126,12 @@ async def startup_event():
     """Initialize database tables."""
     from app.models import init_db
     init_db()
-    print("✅ Database initialized")
+    print("✅ User database initialized")
+    
+    # Initialize NBA analytics database
+    from app.nba.database import init_database as init_nba_db
+    init_nba_db()
+    print("✅ NBA analytics database initialized")
 
 
 @app.get("/health")

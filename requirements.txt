@@ -1,5 +1,6 @@
 # Core
 python-dotenv>=1.0.0  # Environment variable loading
+nba-api>=1.7.0  # Official NBA stats (free)
 
 # Testing
 pytest>=8.0.0,<10.0.0
