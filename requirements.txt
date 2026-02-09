@@ -24,6 +24,7 @@ bcrypt>=4.1.0,<5.0.0  # Pin for passlib compatibility
 passlib>=1.7.4
 python-jose[cryptography]>=3.3.0
 sqlalchemy>=2.0.0
+email-validator>=2.0.0
 
 # Billing
 stripe>=7.0.0
