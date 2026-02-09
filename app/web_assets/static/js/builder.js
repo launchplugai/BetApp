@@ -1,5 +1,5 @@
-// S16-B: Parlay Builder Logic
-const API_BASE = '/api/mock';
+// S19-D: Parlay Builder Logic (using new /api/odds endpoint)
+const API_BASE = '/api';
 let protocol = null;
 let markets = null;
 let legs = [];
@@ -23,9 +23,9 @@ async function loadProtocol() {
         console.warn('No protocol in sessionStorage');
         // Fallback for testing
         protocol = {
-            protocolId: 'test',
+            protocolId: 'lal-gsw-2026-02-09',
             league: 'NBA',
-            gameId: 'nba_001',
+            gameId: 'lal-gsw-2026-02-09',
             teams: ['Lakers', 'Warriors'],
             status: 'LIVE',
             clock: 'Q3 8:42',
@@ -37,14 +37,21 @@ async function loadProtocol() {
 async function loadMarkets() {
     if (!protocol) return;
     try {
-        // Use the gameId from protocol, or fallback to nba_001
-        const gameId = protocol.gameId.includes('_') ? protocol.gameId : 'nba_001';
+        // S19-D: Use new /api/odds endpoint
+        const gameId = protocol.gameId || protocol.protocolId || 'lal-gsw-2026-02-09';
         const response = await fetch(`${API_BASE}/odds/${gameId}`);
-        const data = await response.json();
-        markets = data.odds;
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        // New API returns array directly, not {odds: [...]}
+        markets = await response.json();
         console.log('Markets loaded:', markets);
     } catch (err) {
         console.error('Failed to load markets:', err);
+        // Fallback to empty markets for graceful degradation
+        markets = [];
     }
 }
 

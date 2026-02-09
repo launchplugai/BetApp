@@ -68,9 +68,8 @@
                 <h1 class="font-tanker text-2xl tracking-wide leading-none">DASHBOARD</h1>
             </div>
             <div class="flex items-center gap-4">
-                <button class="relative p-2 rounded-full hover:bg-white/5 transition-colors">
-                    <iconify-icon icon="lucide:bell" class="text-xl text-gray-300"></iconify-icon>
-                    <span class="absolute top-2 right-2 w-2 h-2 bg-[#ff1744] rounded-full shadow-[0_0_8px_#ff1744]"></span>
+                <button onclick="AUTH.logout()" class="p-2 rounded-full hover:bg-white/5 transition-colors" title="Logout">
+                    <iconify-icon icon="lucide:log-out" class="text-xl text-gray-300"></iconify-icon>
                 </button>
                 <div class="w-10 h-10 rounded-full border border-gray-700 bg-gray-800 overflow-hidden relative">
                     <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop" alt="Profile" class="w-full h-full object-cover opacity-80">
@@ -176,15 +175,14 @@
         </nav>
     </div>
 
+    <script src="/static/js/auth.js"></script>
     <script>
-        // Auth token handling
-        const token = sessionStorage.getItem('dna_auth_token');
-        const user = JSON.parse(sessionStorage.getItem('dna_user') || '{}');
-
-        // Redirect to auth if not logged in
-        if (!token) {
-            window.location.href = '/app?screen=auth';
+        // S18-E: Auth guard - redirect if not authenticated
+        if (!AUTH.requireAuth()) {
+            throw new Error('Authentication required');
         }
+        
+        const user = JSON.parse(sessionStorage.getItem('dna_user') || '{}');
 
         // Format currency
         function formatCurrency(amount) {
@@ -194,19 +192,14 @@
             }).format(amount || 0);
         }
 
-        // Load dashboard data
+        // Load dashboard data (S18-E: uses AUTH.fetch for auto-refresh)
         async function loadDashboard() {
             try {
-                const response = await fetch('/api/dashboard/', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const response = await AUTH.fetch('/api/dashboard/');
 
                 if (response.status === 401) {
-                    // Token expired, redirect to login
-                    sessionStorage.clear();
-                    window.location.href = '/app?screen=auth';
+                    // Token refresh failed, logout
+                    AUTH.logout();
                     return;
                 }
 

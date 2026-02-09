@@ -74,7 +74,9 @@
                 <span class="text-xs tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
                 <h1 class="font-tanker text-2xl tracking-wide leading-none">BET HISTORY</h1>
             </div>
-            <div class="w-10"></div>
+            <button onclick="AUTH.logout()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10" title="Logout">
+                <iconify-icon icon="lucide:log-out" class="text-xl text-gray-300"></iconify-icon>
+            </button>
         </header>
 
         <!-- Filter Tabs -->
@@ -199,15 +201,14 @@
     </div>
 
     <script>
-        // Auth token handling
-        const token = sessionStorage.getItem('dna_auth_token');
+        // S18-E: Use AUTH utilities
         let currentFilter = 'all';
         let currentPage = 1;
         let totalPages = 1;
 
-        // Redirect to auth if not logged in
-        if (!token) {
-            window.location.href = '/app?screen=auth';
+        // Auth guard - redirect if not authenticated
+        if (!AUTH.requireAuth()) {
+            throw new Error('Authentication required');
         }
 
         function formatCurrency(amount) {
@@ -263,15 +264,12 @@
 
             try {
                 const statusParam = currentFilter !== 'all' ? `&status=${currentFilter}` : '';
-                const response = await fetch(`/api/bets/history?page=${currentPage}&per_page=10${statusParam}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                // S18-E: Use AUTH.fetch for automatic token refresh
+                const response = await AUTH.fetch(`/api/bets/history?page=${currentPage}&per_page=10${statusParam}`);
 
                 if (response.status === 401) {
-                    sessionStorage.clear();
-                    window.location.href = '/app?screen=auth';
+                    // Token refresh failed, logout
+                    AUTH.logout();
                     return;
                 }
 
@@ -409,13 +407,9 @@
             window.history.back();
         }
 
-        function handleLogout() {
-            sessionStorage.clear();
-            window.location.href = '/app?screen=auth';
-        }
-
         // Load on page load
         loadHistory();
     </script>
+    <script src="/static/js/auth.js"></script>
 </body>
 </html>
