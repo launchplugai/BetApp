@@ -127,6 +127,9 @@ class PipelineResponse:
     # Context impact (Sprint 3 - additive only, does not modify engine)
     context: Optional[dict] = None
 
+    # NBA heuristics (rest, injury, tank, playoff context)
+    nba_heuristics: Optional[dict] = None
+
     # Primary failure diagnosis + delta preview (Ticket 4)
     primary_failure: Optional[dict] = None
     delta_preview: Optional[dict] = None
@@ -2724,12 +2727,44 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         any(team in _NBA_TEAMS.values() for team in teams_mentioned)
     )
     
+    nba_heuristics = None
     if is_nba_bet and teams_mentioned and len(teams_mentioned) >= 2:
         from app.pipeline_nba_hook import apply_nba_context
-        result = apply_nba_context(
+        # apply_nba_context modifies result in place and returns nba_heuristics
+        nba_context_result = apply_nba_context(
             bet_input=normalized.input_text,
             teams=teams_mentioned[:2],  # Take first two teams
             result=result
         )
+        nba_heuristics = nba_context_result.get("nba_heuristics")
+        # Update confidence from result
+        result["confidence"] = nba_context_result.get("confidence", result.get("confidence"))
     
-    return PipelineResponse(**result)
+    return PipelineResponse(
+        evaluation=result["evaluation"],
+        interpretation=result["interpretation"],
+        explain=result["explain"],
+        context=result["context"],
+        nba_heuristics=nba_heuristics,
+        primary_failure=result["primary_failure"],
+        delta_preview=result["delta_preview"],
+        signal_info=result["signal_info"],
+        entities=result["entities"],
+        secondary_factors=result["secondary_factors"],
+        human_summary=result["human_summary"],
+        evaluated_parlay=result["evaluated_parlay"],
+        notable_legs=result["notable_legs"],
+        final_verdict=result["final_verdict"],
+        gentle_guidance=result["gentle_guidance"],
+        next_action=result["next_action"],
+        confidence_trend=result["confidence_trend"],
+        grounding_warnings=result.get("grounding_warnings"),
+        sherlock_result=result.get("sherlock_result"),
+        debug_explainability=result.get("debug_explainability"),
+        proof_summary=result.get("proof_summary"),
+        structure=result["structure"],
+        delta=result["delta"],
+        grounding_score=result["grounding_score"],
+        leg_count=result["leg_count"],
+        tier=result["tier"],
+    )

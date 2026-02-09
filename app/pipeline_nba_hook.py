@@ -31,10 +31,15 @@ def apply_nba_context(bet_input: str, teams: List[str], result: Dict) -> Dict:
         nba_context = enhance_nba_bet(bet_input, teams)
         adjustment = nba_context["confidence_adjustments"]["total_adjustment"]
         
+        # Get current confidence from explain or default to 50
+        current_confidence = result.get("explain", {}).get("confidence", 50)
+        
         # Apply adjustment with bounds
-        result["confidence"] = max(
-            0, min(100, result["confidence"] + adjustment)
-        )
+        new_confidence = max(0, min(100, current_confidence + adjustment))
+        
+        # Update in explain
+        if "explain" in result:
+            result["explain"]["confidence"] = new_confidence
         
         result["nba_heuristics"] = {
             "confidence_adjustment": adjustment,
@@ -49,7 +54,7 @@ def apply_nba_context(bet_input: str, teams: List[str], result: Dict) -> Dict:
                 "bet_input": bet_input[:50],
                 "teams": teams,
                 "adjustment": adjustment,
-                "new_confidence": result["confidence"],
+                "new_confidence": new_confidence,
             }
         )
         
