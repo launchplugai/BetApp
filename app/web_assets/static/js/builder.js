@@ -726,11 +726,11 @@ function renderQuarters() {
                         <p class="text-xs text-gray-500 mb-2">${home.toUpperCase()}</p>
                         <div class="flex gap-2">
                             <button onclick='addLeg({market:"${q.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${q}"})' 
-                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_spread', home + ' ' + spread.home.line + ' ' + q) ? 'leg-selected' : ''}">
                                 ${spread.home.line} (${spread.home.odds})
                             </button>
                             <button onclick='addLeg({market:"${q.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${q}"})' 
-                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_total', 'Over ' + total.over.line + ' ' + q) ? 'leg-selected' : ''}">
                                 O ${total.over.line}
                             </button>
                         </div>
@@ -739,11 +739,11 @@ function renderQuarters() {
                         <p class="text-xs text-gray-500 mb-2">${away.toUpperCase()}</p>
                         <div class="flex gap-2">
                             <button onclick='addLeg({market:"${q.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${q}"})' 
-                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_spread', away + ' ' + spread.away.line + ' ' + q) ? 'leg-selected' : ''}">
                                 ${spread.away.line} (${spread.away.odds})
                             </button>
                             <button onclick='addLeg({market:"${q.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${q}"})' 
-                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10">
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_total', 'Under ' + total.under.line + ' ' + q) ? 'leg-selected' : ''}">
                                 U ${total.under.line}
                             </button>
                         </div>
@@ -783,16 +783,16 @@ function renderHalves() {
                     <div class="col-span-2 flex items-center">
                         <span class="font-tanker text-sm">${home.toUpperCase()}</span>
                     </div>
-                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${halfCode}"})' 
-                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_spread', home + ' ' + spread.home.line + ' ' + halfCode) ? 'leg-selected' : ''}">
                         ${spread.home.line}
                     </button>
-                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${halfCode}"})' 
-                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_total', 'Over ' + total.over.line + ' ' + halfCode) ? 'leg-selected' : ''}">
                         O ${total.over.line}
                     </button>
-                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${home}",odds:${moneyline.home.odds},selection:"${home} ML ${halfCode}"})' 
-                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${home}",odds:${moneyline.home.odds},selection:"${home} ML ${halfCode}"})'
+                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_moneyline', home + ' ML ' + halfCode) ? 'leg-selected' : ''}">
                         ${moneyline.home.odds}
                     </button>
                 </div>
@@ -800,16 +800,16 @@ function renderHalves() {
                     <div class="col-span-2 flex items-center">
                         <span class="font-tanker text-sm text-gray-400">${away.toUpperCase()}</span>
                     </div>
-                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${halfCode}"})' 
-                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_spread', away + ' ' + spread.away.line + ' ' + halfCode) ? 'leg-selected' : ''}">
                         ${spread.away.line}
                     </button>
-                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${halfCode}"})' 
-                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_total', 'Under ' + total.under.line + ' ' + halfCode) ? 'leg-selected' : ''}">
                         U ${total.under.line}
                     </button>
-                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${away}",odds:${moneyline.away.odds},selection:"${away} ML ${halfCode}"})' 
-                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs">
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${away}",odds:${moneyline.away.odds},selection:"${away} ML ${halfCode}"})'
+                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_moneyline', away + ' ML ' + halfCode) ? 'leg-selected' : ''}">
                         ${moneyline.away.odds}
                     </button>
                 </div>
