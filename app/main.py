@@ -24,7 +24,7 @@ from app.routers import v1_ui
 from app.routers import debug
 from app.routers import metrics
 from app.routers import mock_api
-from app.routers import protocols
+from app.protocol import router as protocol_router
 from app.routers import auth
 from app.routers import dashboard as dashboard_router
 from app.routers import bets
@@ -107,7 +107,7 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # Web router first (handles / and /app)
 app.include_router(web.router)
 app.include_router(mock_api.router)
-app.include_router(protocols.router)
+app.include_router(protocol_router.router)
 app.include_router(auth.router)
 app.include_router(dashboard_router.router)
 app.include_router(bets.router)
@@ -126,6 +126,9 @@ app.include_router(metrics.router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables."""
+    # Import protocol models to register with Base.metadata
+    from app.protocol.models import Protocol, ProtocolItem, ProtocolTarget
+    
     from app.models import init_db
     init_db()
     print("✅ User database initialized")
