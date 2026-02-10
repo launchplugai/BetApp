@@ -167,9 +167,9 @@
                     <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Build</span>
                 </a>
 
-                <a href="#" id="nav-logout" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;" onclick="handleLogout(); return false;">
-                    <iconify-icon icon="lucide:log-out" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Logout</span>
+                <a href="/app?screen=history" id="nav-history" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
+                    <iconify-icon icon="lucide:ticket" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
+                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">My Bets</span>
                 </a>
             </div>
         </nav>
@@ -298,6 +298,12 @@
             window.location.href = '/app?screen=dashboard';
         });
 
+        document.getElementById('nav-history')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = '/app?screen=history';
+        });
+
         // Load data on page load
         loadDashboard();
 
@@ -306,7 +312,7 @@
             home: !!document.getElementById('nav-home'),
             browse: !!document.getElementById('nav-browse'),
             builder: !!document.getElementById('nav-builder'),
-            logout: !!document.getElementById('nav-logout')
+            history: !!document.getElementById('nav-history')
         });
     </script>
 </body>
