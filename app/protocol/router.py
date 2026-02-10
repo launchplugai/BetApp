@@ -12,7 +12,7 @@ from app.models import get_session
 from app.protocol.models import Protocol
 from app.protocol import schemas
 from app.protocol import service
-from app.protocol.nba_integration import generate_natural_language_summary
+from app.protocol.sports_integration import generate_natural_language_summary
 
 router = APIRouter(prefix="/api/protocols", tags=["protocols"])
 security = HTTPBearer()

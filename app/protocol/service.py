@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from app.protocol.models import Protocol, ProtocolItem, ProtocolTarget
-from app.protocol.nba_integration import get_protocol_snapshot, generate_natural_language_summary
+from app.protocol.sports_integration import get_protocol_snapshot, generate_natural_language_summary
 
 
 def create_protocol(
