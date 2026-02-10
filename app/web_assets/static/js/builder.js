@@ -259,6 +259,7 @@ function renderMainLines() {
 
 function renderPlayerProps() {
     const props = markets.player_props || [];
+    console.log('DEBUG: Rendering player props, count:', props.length, 'props:', props);
     if (props.length === 0) {
         return '<div class="text-center text-gray-500 py-8">No player props available</div>';
     }
