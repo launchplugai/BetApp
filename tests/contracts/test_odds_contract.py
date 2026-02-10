@@ -63,7 +63,10 @@ class TestOddsContract:
         assert "spread" in markets, "Missing 'spread' market"
         assert "total" in markets, "Missing 'total' market"
         assert "moneyline" in markets, "Missing 'moneyline' market"
-        assert "player_prop" in markets, "Missing 'player_prop' market"
+        # Player props broken out by type
+        assert "player_points" in markets, "Missing 'player_points' market"
+        assert "player_rebounds" in markets, "Missing 'player_rebounds' market"
+        assert "player_assists" in markets, "Missing 'player_assists' market"
     
     def test_player_prop_structure(self):
         """
@@ -73,17 +76,25 @@ class TestOddsContract:
         assert response.status_code == 200
         
         data = response.json()
-        player_prop = next((m for m in data if m["market"] == "player_prop"), None)
-        assert player_prop is not None, "player_prop market missing"
         
-        # Should have multiple selections
-        assert len(player_prop["selections"]) >= 2, "Need at least 2 player prop selections"
+        # Check specific player prop markets
+        player_markets = ["player_points", "player_rebounds", "player_assists", "player_threes"]
+        found_props = False
         
-        # Each selection should have proper label format
-        for sel in player_prop["selections"]:
-            label = sel["label"]
-            # Format: "Player Name O##.5 STAT" or "Player Name U##.5 STAT"
-            assert "O" in label or "U" in label, f"Label '{label}' missing O/U indicator"
+        for market_name in player_markets:
+            market = next((m for m in data if m["market"] == market_name), None)
+            if market:
+                found_props = True
+                # Should have multiple selections
+                assert len(market["selections"]) >= 2, f"Need at least 2 selections in {market_name}"
+                
+                # Each selection should have proper label format
+                for sel in market["selections"]:
+                    label = sel["label"]
+                    # Format: "Player Name O##.5 STAT" or "Player Name U##.5 STAT"
+                    assert "O" in label or "U" in label, f"Label '{label}' missing O/U indicator"
+        
+        assert found_props, "No player prop markets found"
     
     def test_odds_game_not_found(self):
         """
@@ -113,7 +124,8 @@ class TestProviderSelection:
         data = response.json()
         markets = [m["market"] for m in data]
         assert "spread" in markets
-        assert "player_prop" in markets  # Mock has player props
+        assert "moneyline" in markets
+        assert "total" in markets
 
 
 class TestDiagnostics:
