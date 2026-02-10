@@ -95,10 +95,29 @@
         </div>
         <span class="font-tanker text-xl tracking-wider text-white">DNA BET</span>
       </div>
-      <button id="nav-menu-btn" class="w-10 h-10 flex items-center justify-center text-white">
-        <iconify-icon icon="lucide:menu" class="text-2xl"></iconify-icon>
+      <button id="nav-menu-btn" class="w-10 h-10 flex items-center justify-center text-white" onclick="toggleMobileMenu()">
+        <iconify-icon icon="lucide:menu" class="text-2xl" id="menu-icon"></iconify-icon>
       </button>
     </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="fixed inset-0 bg-[#050505]/95 backdrop-blur-xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+      <div class="flex justify-between items-center p-6 border-b border-white/10">
+        <span class="font-tanker text-xl tracking-wider text-white">MENU</span>
+        <button onclick="toggleMobileMenu()" class="w-10 h-10 flex items-center justify-center text-white">
+          <iconify-icon icon="lucide:x" class="text-2xl"></iconify-icon>
+        </button>
+      </div>
+      <nav class="flex-1 flex flex-col p-6 gap-6">
+        <a href="/app" class="font-tanker text-3xl text-white hover:text-[#ff1744] transition-colors" onclick="toggleMobileMenu()">Launch App</a>
+        <a href="#how-it-works" class="font-tanker text-3xl text-white hover:text-[#ff1744] transition-colors" onclick="toggleMobileMenu()">How It Works</a>
+        <a href="#pricing" class="font-tanker text-3xl text-white hover:text-[#ff1744] transition-colors" onclick="toggleMobileMenu()">Pricing</a>
+        <a href="#features" class="font-tanker text-3xl text-white hover:text-[#ff1744] transition-colors" onclick="toggleMobileMenu()">Features</a>
+      </nav>
+      <div class="p-6 border-t border-white/10">
+        <a href="/app?screen=auth" class="block w-full py-4 bg-[#ff1744] text-white text-center font-bold text-sm uppercase tracking-widest" onclick="toggleMobileMenu()">Get Started</a>
+      </div>
+    </div>
 
     <main class="flex-1">
       <!-- Hero Section -->
@@ -334,5 +353,24 @@
       </div>
     </footer>
   </div>
+
+  <script>
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      const icon = document.getElementById('menu-icon');
+      
+      if (menu.classList.contains('translate-x-full')) {
+        // Open menu
+        menu.classList.remove('translate-x-full');
+        icon.setAttribute('icon', 'lucide:x');
+        document.body.style.overflow = 'hidden';
+      } else {
+        // Close menu
+        menu.classList.add('translate-x-full');
+        icon.setAttribute('icon', 'lucide:menu');
+        document.body.style.overflow = '';
+      }
+    }
+  </script>
 </body>
 </html>
