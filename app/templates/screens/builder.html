@@ -94,12 +94,20 @@
                         <span id="total-odds" class="font-tanker text-xl text-neon">—</span>
                     </div>
                     
-                    <div class="relative mb-5">
+                    <div class="relative mb-3">
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Wager Amount</label>
                         <div class="flex items-center bg-dark border border-white/10 rounded-lg">
                             <div class="pl-4 pr-2 text-gray-400 font-tanker text-xl">$</div>
                             <input type="number" id="wager-input" value="100" min="1" class="w-full bg-transparent py-3 text-white font-tanker text-2xl outline-none" oninput="recalculate()">
                         </div>
+                    </div>
+
+                    <!-- Quick Bet Shortcuts -->
+                    <div class="grid grid-cols-4 gap-2 mb-5">
+                        <button type="button" onclick="setWager(10)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$10</button>
+                        <button type="button" onclick="setWager(50)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$50</button>
+                        <button type="button" onclick="setWager(100)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$100</button>
+                        <button type="button" onclick="setWager(500)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$500</button>
                     </div>
 
                     <div class="flex justify-between items-center pt-4 border-t border-white/5">

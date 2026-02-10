@@ -437,6 +437,18 @@ function recalculate() {
     document.getElementById('est-payout').textContent = `$${payout.toFixed(2)}`;
 }
 
+function setWager(amount) {
+    const input = document.getElementById('wager-input');
+    input.value = amount;
+    recalculate();
+    
+    // Visual feedback - brief highlight
+    input.parentElement.classList.add('border-neon');
+    setTimeout(() => {
+        input.parentElement.classList.remove('border-neon');
+    }, 300);
+}
+
 async function analyzeWithDNA() {
     if (legs.length === 0) return;
 
