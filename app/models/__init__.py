@@ -81,6 +81,36 @@ class Bet(Base):
         }
 
 
+class Transaction(Base):
+    """Transaction log for balance changes (wagers, payouts, refunds)."""
+    __tablename__ = "transactions"
+    
+    id = Column(String, primary_key=True, default=lambda: f"txn_{uuid.uuid4().hex[:8]}")
+    user_id = Column(String, nullable=False, index=True)
+    bet_id = Column(String, nullable=True, index=True)  # Optional - null for non-bet transactions
+    
+    type = Column(String, nullable=False)  # wager, payout, refund
+    amount = Column(Integer, nullable=False)  # Always positive - context determines direction
+    balance_before = Column(Integer, nullable=False)
+    balance_after = Column(Integer, nullable=False)
+    
+    description = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "bet_id": self.bet_id,
+            "type": self.type,
+            "amount": self.amount,
+            "balance_before": self.balance_before,
+            "balance_after": self.balance_after,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class RefreshToken(Base):
     """Refresh tokens for session management."""
     __tablename__ = "refresh_tokens"
