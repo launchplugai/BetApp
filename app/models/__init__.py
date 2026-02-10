@@ -111,6 +111,59 @@ class Transaction(Base):
         }
 
 
+class Protocol(Base):
+    """Saved protocol for tracking games and receiving suggestions."""
+    __tablename__ = "protocols"
+    
+    id = Column(String, primary_key=True, default=lambda: f"proto_{uuid.uuid4().hex[:8]}")
+    user_id = Column(String, nullable=False, index=True)
+    
+    # Game identification
+    game_id = Column(String, nullable=False, index=True)
+    league = Column(String, nullable=False)
+    home_team = Column(String, nullable=False)
+    away_team = Column(String, nullable=False)
+    
+    # Protocol configuration
+    name = Column(String, nullable=True)  # User-defined name
+    markets_watched = Column(JSON, default=list)  # ["spread", "total", "player_props"]
+    legs_snapshot = Column(JSON, nullable=True)  # Initial legs if created from builder
+    
+    # Status
+    is_active = Column(Integer, default=1)  # 1 = active, 0 = archived
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "game_id": self.game_id,
+            "league": self.league,
+            "home_team": self.home_team,
+            "away_team": self.away_team,
+            "name": self.name,
+            "markets_watched": self.markets_watched or [],
+            "legs_snapshot": self.legs_snapshot,
+            "is_active": bool(self.is_active),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "last_updated": self.last_updated.isoformat() if self.last_updated else None
+        }
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "bet_id": self.bet_id,
+            "type": self.type,
+            "amount": self.amount,
+            "balance_before": self.balance_before,
+            "balance_after": self.balance_after,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class RefreshToken(Base):
     """Refresh tokens for session management."""
     __tablename__ = "refresh_tokens"

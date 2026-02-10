@@ -1,223 +1,271 @@
 """
-Protocol API endpoints for S17.
-Manage tracked protocols (create, get, refresh, delete).
+Protocol API endpoints - Phase 1: Database Persistence.
+User-linked protocols with full CRUD.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime
 
-from app.services.protocol_tracker import tracker
-from app.services.suggestion_engine import suggestion_engine, DNASuggestion
-from app.providers import ProviderFactory
+from app.services.auth import get_current_user_from_token
+from app.models import Protocol, get_session
 
 router = APIRouter(prefix="/api/protocols", tags=["protocols"])
+security = HTTPBearer()
 
+
+# =============================================================================
+# Request/Response Schemas
+# =============================================================================
 
 class CreateProtocolRequest(BaseModel):
     """Request to create a protocol."""
     game_id: str
     league: str
-    teams: List[str]
-    markets_watched: List[str]
-    legs: Optional[List[dict]] = None
+    home_team: str
+    away_team: str
+    name: Optional[str] = None
+    markets_watched: List[str] = ["spread", "total", "moneyline"]
+    legs_snapshot: Optional[List[dict]] = None
 
 
 class ProtocolResponse(BaseModel):
     """Protocol response."""
-    protocol_id: str
+    id: str
     game_id: str
     league: str
-    teams: List[str]
+    home_team: str
+    away_team: str
+    name: Optional[str]
+    markets_watched: List[str]
+    legs_snapshot: Optional[List[dict]]
+    is_active: bool
     created_at: str
     last_updated: str
-    markets_watched: List[str]
-    current_odds: Optional[dict] = None
-    current_score: Optional[dict] = None
-    legs_snapshot: Optional[List[dict]] = None
 
 
-@router.post("/create", response_model=ProtocolResponse)
-async def create_protocol(request: CreateProtocolRequest):
+class ProtocolListResponse(BaseModel):
+    """List of protocols."""
+    protocols: List[ProtocolResponse]
+    total: int
+
+
+class UpdateProtocolRequest(BaseModel):
+    """Request to update a protocol."""
+    name: Optional[str] = None
+    markets_watched: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+
+# =============================================================================
+# Routes
+# =============================================================================
+
+@router.post("/", response_model=ProtocolResponse)
+async def create_protocol(
+    request: CreateProtocolRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     """
-    Create a new tracked protocol.
+    Create a new protocol linked to the authenticated user.
     
-    Called when user enters builder screen.
+    Protocols track games for suggestions and monitoring.
     """
-    protocol = tracker.create_protocol(
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    db = get_session()
+    
+    protocol = Protocol(
+        user_id=user.id,
         game_id=request.game_id,
         league=request.league,
-        teams=request.teams,
+        home_team=request.home_team,
+        away_team=request.away_team,
+        name=request.name or f"{request.away_team} @ {request.home_team}",
         markets_watched=request.markets_watched,
-        legs=request.legs
+        legs_snapshot=request.legs_snapshot,
+        is_active=1,
+        created_at=datetime.utcnow(),
+        last_updated=datetime.utcnow()
     )
     
+    db.add(protocol)
+    db.commit()
+    db.refresh(protocol)
+    
     return ProtocolResponse(
-        protocol_id=protocol.protocol_id,
+        id=protocol.id,
         game_id=protocol.game_id,
         league=protocol.league,
-        teams=protocol.teams,
-        created_at=protocol.created_at.isoformat(),
-        last_updated=protocol.last_updated.isoformat(),
-        markets_watched=protocol.markets_watched,
-        legs_snapshot=protocol.legs_snapshot
+        home_team=protocol.home_team,
+        away_team=protocol.away_team,
+        name=protocol.name,
+        markets_watched=protocol.markets_watched or [],
+        legs_snapshot=protocol.legs_snapshot,
+        is_active=bool(protocol.is_active),
+        created_at=protocol.created_at.isoformat() if protocol.created_at else "",
+        last_updated=protocol.last_updated.isoformat() if protocol.last_updated else ""
+    )
+
+
+@router.get("/", response_model=ProtocolListResponse)
+async def list_protocols(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    active_only: bool = Query(True, description="Only return active protocols"),
+    limit: int = Query(50, ge=1, le=100)
+):
+    """
+    Get all protocols for the authenticated user.
+    
+    Query params:
+        - active_only: Filter to active protocols (default: true)
+        - limit: Max protocols to return (default: 50)
+    """
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    db = get_session()
+    
+    query = db.query(Protocol).filter(Protocol.user_id == user.id)
+    
+    if active_only:
+        query = query.filter(Protocol.is_active == 1)
+    
+    protocols = query.order_by(Protocol.last_updated.desc()).limit(limit).all()
+    total = query.count()
+    
+    return ProtocolListResponse(
+        protocols=[
+            ProtocolResponse(
+                id=p.id,
+                game_id=p.game_id,
+                league=p.league,
+                home_team=p.home_team,
+                away_team=p.away_team,
+                name=p.name,
+                markets_watched=p.markets_watched or [],
+                legs_snapshot=p.legs_snapshot,
+                is_active=bool(p.is_active),
+                created_at=p.created_at.isoformat() if p.created_at else "",
+                last_updated=p.last_updated.isoformat() if p.last_updated else ""
+            )
+            for p in protocols
+        ],
+        total=total
     )
 
 
 @router.get("/{protocol_id}", response_model=ProtocolResponse)
-async def get_protocol(protocol_id: str):
-    """Get protocol by ID."""
-    protocol = tracker.get_protocol(protocol_id)
+async def get_protocol(
+    protocol_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get a specific protocol by ID."""
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    db = get_session()
+    
+    protocol = db.query(Protocol).filter(
+        Protocol.id == protocol_id,
+        Protocol.user_id == user.id
+    ).first()
+    
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
     return ProtocolResponse(
-        protocol_id=protocol.protocol_id,
+        id=protocol.id,
         game_id=protocol.game_id,
         league=protocol.league,
-        teams=protocol.teams,
-        created_at=protocol.created_at.isoformat(),
-        last_updated=protocol.last_updated.isoformat(),
-        markets_watched=protocol.markets_watched,
-        current_odds=protocol.current_odds.model_dump() if protocol.current_odds else None,
-        current_score=protocol.current_score.model_dump() if protocol.current_score else None,
-        legs_snapshot=protocol.legs_snapshot
+        home_team=protocol.home_team,
+        away_team=protocol.away_team,
+        name=protocol.name,
+        markets_watched=protocol.markets_watched or [],
+        legs_snapshot=protocol.legs_snapshot,
+        is_active=bool(protocol.is_active),
+        created_at=protocol.created_at.isoformat() if protocol.created_at else "",
+        last_updated=protocol.last_updated.isoformat() if protocol.last_updated else ""
     )
 
 
-@router.get("/", response_model=List[ProtocolResponse])
-async def list_active_protocols(max_age_hours: int = 24):
-    """List all active protocols."""
-    protocols = tracker.list_active_protocols(max_age_hours)
+@router.patch("/{protocol_id}", response_model=ProtocolResponse)
+async def update_protocol(
+    protocol_id: str,
+    request: UpdateProtocolRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Update a protocol (name, markets, or active status)."""
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    return [
-        ProtocolResponse(
-            protocol_id=p.protocol_id,
-            game_id=p.game_id,
-            league=p.league,
-            teams=p.teams,
-            created_at=p.created_at.isoformat(),
-            last_updated=p.last_updated.isoformat(),
-            markets_watched=p.markets_watched,
-            current_odds=p.current_odds.model_dump() if p.current_odds else None,
-            current_score=p.current_score.model_dump() if p.current_score else None,
-            legs_snapshot=p.legs_snapshot
-        )
-        for p in protocols
-    ]
-
-
-@router.post("/{protocol_id}/refresh", response_model=ProtocolResponse)
-async def refresh_protocol(protocol_id: str):
-    """
-    Refresh odds and score for a protocol.
+    db = get_session()
     
-    Fetches latest data from providers and generates suggestions.
-    """
-    protocol = tracker.get_protocol(protocol_id)
+    protocol = db.query(Protocol).filter(
+        Protocol.id == protocol_id,
+        Protocol.user_id == user.id
+    ).first()
+    
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
-    old_odds = protocol.current_odds
-    old_score = protocol.current_score
+    # Update fields
+    if request.name is not None:
+        protocol.name = request.name
+    if request.markets_watched is not None:
+        protocol.markets_watched = request.markets_watched
+    if request.is_active is not None:
+        protocol.is_active = 1 if request.is_active else 0
     
-    # Refresh odds
-    if "spread" in protocol.markets_watched or "total" in protocol.markets_watched:
-        odds_provider = ProviderFactory.get_odds_provider("mock")
-        try:
-            new_odds = await odds_provider.get_odds(protocol.game_id)
-            tracker.update_odds(protocol_id, new_odds)
-            
-            # Analyze odds changes
-            suggestion_engine.analyze_odds_change(protocol_id, old_odds, new_odds)
-        except Exception as e:
-            print(f"Failed to refresh odds: {e}")
-    
-    # Refresh score
-    score_provider = ProviderFactory.get_score_provider("mock")
-    try:
-        new_score = await score_provider.get_score(protocol.game_id)
-        tracker.update_score(protocol_id, new_score)
-        
-        # Analyze score changes
-        suggestion_engine.analyze_score_change(protocol_id, old_score, new_score)
-    except Exception as e:
-        print(f"Failed to refresh score: {e}")
-    
-    # Get updated protocol
-    protocol = tracker.get_protocol(protocol_id)
+    protocol.last_updated = datetime.utcnow()
+    db.commit()
+    db.refresh(protocol)
     
     return ProtocolResponse(
-        protocol_id=protocol.protocol_id,
+        id=protocol.id,
         game_id=protocol.game_id,
         league=protocol.league,
-        teams=protocol.teams,
-        created_at=protocol.created_at.isoformat(),
-        last_updated=protocol.last_updated.isoformat(),
-        markets_watched=protocol.markets_watched,
-        current_odds=protocol.current_odds.model_dump() if protocol.current_odds else None,
-        current_score=protocol.current_score.model_dump() if protocol.current_score else None,
-        legs_snapshot=protocol.legs_snapshot
+        home_team=protocol.home_team,
+        away_team=protocol.away_team,
+        name=protocol.name,
+        markets_watched=protocol.markets_watched or [],
+        legs_snapshot=protocol.legs_snapshot,
+        is_active=bool(protocol.is_active),
+        created_at=protocol.created_at.isoformat() if protocol.created_at else "",
+        last_updated=protocol.last_updated.isoformat() if protocol.last_updated else ""
     )
 
 
 @router.delete("/{protocol_id}")
-async def delete_protocol(protocol_id: str):
-    """Delete a protocol."""
-    success = tracker.delete_protocol(protocol_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Protocol not found")
+async def delete_protocol(
+    protocol_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Delete (archive) a protocol."""
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    return {"status": "deleted", "protocol_id": protocol_id}
-
-
-@router.get("/stats/summary")
-async def get_stats():
-    """Get tracker statistics."""
-    return tracker.get_stats()
-
-
-@router.post("/cleanup")
-async def cleanup_expired(max_age_hours: int = 24):
-    """Manually trigger cleanup of expired protocols."""
-    expired_count = tracker.expire_old_protocols(max_age_hours)
-    return {"expired_count": expired_count, "max_age_hours": max_age_hours}
-
-
-# S17-C: Suggestion Endpoints
-
-@router.get("/{protocol_id}/suggestions")
-async def get_suggestions(protocol_id: str, unacknowledged_only: bool = False):
-    """
-    Get suggestions for a protocol.
+    db = get_session()
     
-    Args:
-        protocol_id: Protocol ID
-        unacknowledged_only: If true, only return unacknowledged suggestions
-    """
-    # Verify protocol exists
-    protocol = tracker.get_protocol(protocol_id)
+    protocol = db.query(Protocol).filter(
+        Protocol.id == protocol_id,
+        Protocol.user_id == user.id
+    ).first()
+    
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
-    suggestions = suggestion_engine.get_suggestions(protocol_id, unacknowledged_only)
+    # Soft delete - mark as inactive
+    protocol.is_active = 0
+    protocol.last_updated = datetime.utcnow()
+    db.commit()
     
-    return {
-        "protocol_id": protocol_id,
-        "suggestions": [s.model_dump() for s in suggestions],
-        "count": len(suggestions)
-    }
-
-
-@router.post("/suggestions/{suggestion_id}/acknowledge")
-async def acknowledge_suggestion(suggestion_id: str):
-    """
-    Acknowledge (dismiss) a suggestion.
-    
-    User has seen and acted on (or ignored) the suggestion.
-    """
-    success = suggestion_engine.acknowledge_suggestion(suggestion_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Suggestion not found")
-    
-    return {"status": "acknowledged", "suggestion_id": suggestion_id}
+    return {"success": True, "message": f"Protocol {protocol_id} archived"}
