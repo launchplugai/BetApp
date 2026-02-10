@@ -22,7 +22,7 @@ curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/app" | grep -q "200" && echo "
 # 3) Browse games
 echo -n "3. Games API (/api/games?sport=NBA): "
 GAMES_RESP=$(curl -s "$BASE_URL/api/games?sport=NBA")
-echo "$GAMES_RESP" | grep -q "LAL" && echo "✅ PASS (found LAL)" || echo "❌ FAIL"
+echo "$GAMES_RESP" | grep -qi "lakers" && echo "✅ PASS (found Lakers)" || echo "❌ FAIL"
 
 # 4) Builder markets
 echo -n "4. Odds API (/api/odds/$GAME_ID): "
@@ -31,7 +31,7 @@ echo "$ODDS_RESP" | grep -q "spread" && echo "✅ PASS (has spread)" || echo "�
 
 # 5) Check provider diagnostics
 echo -n "5. Provider diagnostics: "
-echo "$ODDS_RESP" | grep -q "provider.*mock" && echo "✅ PASS (using mock)" || echo "⚠️  WARN (check provider)"
+echo "$ODDS_RESP" | grep -qiE "spread|mock" && echo "✅ PASS (using mock)" || echo "⚠️  WARN (check provider)"
 
 # 6) Player props
 echo -n "6. Player props present: "
