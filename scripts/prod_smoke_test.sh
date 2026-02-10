@@ -35,7 +35,7 @@ echo "$ODDS_RESP" | grep -qiE "spread|mock" && echo "✅ PASS (using mock)" || e
 
 # 6) Player props
 echo -n "6. Player props present: "
-echo "$ODDS_RESP" | grep -q "player_prop" && echo "✅ PASS" || echo "❌ FAIL"
+echo "$ODDS_RESP" | grep -qE "player_points|player_rebounds|player_assists" && echo "✅ PASS" || echo "❌ FAIL"
 
 # 7) Quarters/Halves (via markets check)
 echo -n "7. Main lines present: "
