@@ -86,14 +86,27 @@ async function loadMarkets() {
                             }
                         }
                     });
-                } else if (m.market && m.market.includes('player_prop')) {
-                    markets.player_props.push({
-                        player: m.selections?.[0]?.player || 'Player',
-                        prop: m.market.replace('player_prop_', ''),
-                        line: m.selections?.[0]?.line || 20.5,
-                        over_odds: m.selections?.[0]?.odds || -110,
-                        under_odds: m.selections?.[1]?.odds || -110
+                } else if (m.market === 'player_prop' && m.selections) {
+                    // Group selections by player + prop
+                    const propsMap = new Map();
+                    m.selections.forEach(sel => {
+                        // Parse label like "LeBron James O27.5 PTS" or "LeBron James U27.5 PTS"
+                        const match = sel.label.match(/^(.+)\s+([OU])([\d.]+)\s+(.+)$/);
+                        if (match) {
+                            const [, player, overUnder, line, prop] = match;
+                            const key = `${player}|${prop}|${line}`;
+                            if (!propsMap.has(key)) {
+                                propsMap.set(key, { player: player.trim(), prop: prop.trim(), line: parseFloat(line), over_odds: null, under_odds: null });
+                            }
+                            const propData = propsMap.get(key);
+                            if (overUnder === 'O') {
+                                propData.over_odds = sel.odds;
+                            } else {
+                                propData.under_odds = sel.odds;
+                            }
+                        }
                     });
+                    markets.player_props = Array.from(propsMap.values());
                 }
             });
         }

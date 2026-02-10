@@ -117,7 +117,7 @@ class MockOddsProvider(OddsProvider):
         ]
     
     def _get_nba_odds(self) -> List[MarketOdds]:
-        """Mock NBA odds."""
+        """Mock NBA odds including player props."""
         return [
             MarketOdds(
                 market="spread",
@@ -138,6 +138,23 @@ class MockOddsProvider(OddsProvider):
                 selections=[
                     Selection(label="Lakers ML", line=None, odds=-180),
                     Selection(label="Warriors ML", line=None, odds=+150),
+                ]
+            ),
+            MarketOdds(
+                market="player_prop",
+                selections=[
+                    Selection(label="LeBron James O27.5 PTS", line=27.5, odds=-110),
+                    Selection(label="LeBron James U27.5 PTS", line=27.5, odds=-110),
+                    Selection(label="Anthony Davis O23.5 PTS", line=23.5, odds=-110),
+                    Selection(label="Anthony Davis U23.5 PTS", line=23.5, odds=-110),
+                    Selection(label="Stephen Curry O28.5 PTS", line=28.5, odds=-110),
+                    Selection(label="Stephen Curry U28.5 PTS", line=28.5, odds=-110),
+                    Selection(label="LeBron James O8.5 AST", line=8.5, odds=-115),
+                    Selection(label="LeBron James U8.5 AST", line=8.5, odds=-105),
+                    Selection(label="Anthony Davis O10.5 REB", line=10.5, odds=-120),
+                    Selection(label="Anthony Davis U10.5 REB", line=10.5, odds=+100),
+                    Selection(label="Stephen Curry O4.5 3PM", line=4.5, odds=-130),
+                    Selection(label="Stephen Curry U4.5 3PM", line=4.5, odds=+110),
                 ]
             ),
         ]
