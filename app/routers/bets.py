@@ -9,7 +9,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 from app.services.auth import get_current_user_from_token
-from app.models import Bet, get_session
+from app.models import Bet, Transaction, User, get_session
 
 log = logging.getLogger(__name__)
 
@@ -250,8 +250,6 @@ async def create_bet(
         )
     
     try:
-        from app.models import Transaction
-        
         # Record balance before wager
         balance_before = user.balance
         
@@ -351,7 +349,6 @@ async def settle_bet(
     - void: Refund original wager to balance
     """
     from datetime import datetime
-    from app.models import User, Transaction
     
     user = get_current_user_from_token(credentials.credentials)
     
@@ -497,8 +494,6 @@ async def get_transaction_history(
     
     Returns wager, payout, and refund transactions with balance tracking.
     """
-    from app.models import Transaction
-    
     user = get_current_user_from_token(credentials.credentials)
     
     if not user:
