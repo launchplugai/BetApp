@@ -89,10 +89,10 @@ rate_limiter = get_rate_limiter()
 # Routes
 # =============================================================================
 
-@router.get("/", response_class=RedirectResponse)
-async def redirect_root():
-    """Redirect / to /app"""
-    return RedirectResponse(url="/app")
+@router.get("/", response_class=HTMLResponse)
+async def landing_page(request: Request):
+    """Serve landing page at root"""
+    return templates.TemplateResponse("screens/landing.html", {"request": request})
 
 
 @router.get("/ui2", response_class=RedirectResponse)
