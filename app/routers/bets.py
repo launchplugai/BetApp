@@ -240,10 +240,19 @@ async def create_bet(
         else:
             potential_payout = int(request.wager * (100 / abs(request.total_odds) + 1))
     
-    # Create bet
+    # Check and deduct balance
     db = get_session()
     
+    if user.balance < request.wager:
+        return CreateBetResponse(
+            success=False,
+            error=f"Insufficient balance. Available: ${user.balance/100:.2f}, Required: ${request.wager/100:.2f}"
+        )
+    
     try:
+        # Deduct wager from balance
+        user.balance -= request.wager
+        
         bet = Bet(
             user_id=user.id,
             input_text=request.input_text,

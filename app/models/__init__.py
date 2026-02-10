@@ -20,6 +20,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
     tier = Column(String, default="GOOD")  # GOOD, BETTER, BEST
+    balance = Column(Integer, default=1000000)  # Starting balance: $10,000 in cents
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
     preferences = Column(JSON, default=dict)
@@ -30,6 +31,7 @@ class User(Base):
             "email": self.email,
             "name": self.name,
             "tier": self.tier,
+            "balance": self.balance or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
             "preferences": self.preferences or {}
