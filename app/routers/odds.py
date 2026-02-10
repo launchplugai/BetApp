@@ -70,25 +70,25 @@ def get_odds_provider() -> any:
     """
     Get the active odds provider.
     
-    Uses OddsApiProvider if THE_ODDS_API_KEY is configured.
-    Falls back to MockProvider for development/testing.
+    R0.3: Deterministic provider selection based on ODDS_PROVIDER config.
+    Explicit flag-based selection, not env var presence.
     """
-    # DEBUG: Force mock provider for development
-    print(f"DEBUG get_odds_provider: config_key={_config_instance.the_odds_api_key}")
-    if _config_instance.the_odds_api_key and _config_instance.the_odds_api_key.strip():
+    provider_type = _config_instance.odds_provider
+    
+    if provider_type == "oddsapi":
         config = ProviderConfig(
             provider_type="live",
             api_key=_config_instance.the_odds_api_key
         )
         return OddsApiProvider(config)
     else:
-        print("DEBUG: Using MockOddsProvider")
+        # Default: mock provider
         return MockOddsProvider()
 
 
 def get_score_provider() -> any:
     """Get the active score provider."""
-    if _config_instance.the_odds_api_key:
+    if _config_instance.odds_provider == "oddsapi":
         config = ProviderConfig(
             provider_type="live",
             api_key=_config_instance.the_odds_api_key

@@ -71,7 +71,10 @@ class AppConfig:
     # API keys (OPTIONAL - features disabled without them)
     openai_api_key_present: bool = False
     the_odds_api_key: Optional[str] = None
-
+    
+    # Provider configuration (R0.3: Deterministic provider selection)
+    odds_provider: str = "mock"  # "mock" or "oddsapi"
+    
     # Warnings collected during config load
     warnings: list = field(default_factory=list)
 
@@ -173,6 +176,21 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     
     # The Odds API key (for live data)
     the_odds_api_key = os.environ.get("THE_ODDS_API_KEY")
+    
+    # R0.3: Deterministic provider selection
+    odds_provider = os.environ.get("ODDS_PROVIDER", "mock").lower()
+    if odds_provider not in ("mock", "oddsapi"):
+        warnings.append(
+            f"ODDS_PROVIDER='{odds_provider}' is not valid; using 'mock'. "
+            "Valid values: 'mock' or 'oddsapi'"
+        )
+        odds_provider = "mock"
+    
+    # R0.3: Validate oddsapi has API key
+    if odds_provider == "oddsapi" and not the_odds_api_key:
+        raise ConfigurationError(
+            "ODDS_PROVIDER=oddsapi requires THE_ODDS_API_KEY to be set"
+        )
 
     # Warn if features enabled but API key missing
     if (leading_light_enabled or voice_enabled) and not openai_api_key_present:
@@ -196,6 +214,7 @@ def load_config(fail_fast: bool = True) -> AppConfig:
         dna_recording_enabled=dna_recording_enabled,
         openai_api_key_present=openai_api_key_present,
         the_odds_api_key=the_odds_api_key,
+        odds_provider=odds_provider,
         warnings=warnings,
     )
 
