@@ -12,6 +12,7 @@ from app.models import get_session
 from app.protocol.models import Protocol
 from app.protocol import schemas
 from app.protocol import service
+from app.protocol.nba_integration import generate_natural_language_summary
 
 router = APIRouter(prefix="/api/protocols", tags=["protocols"])
 security = HTTPBearer()
@@ -183,10 +184,15 @@ async def create_snapshot(
     
     try:
         item = service.create_stats_snapshot(db, protocol, user.id, user_tier)
+        
+        # Generate natural language summary
+        nl_summary = generate_natural_language_summary(item.payload)
+        
         return schemas.SnapshotOut(
             item_id=item.id,
             type=item.type,
             summary=item.payload,
+            natural_language_summary=nl_summary,
             created_at=item.created_at.isoformat() if item.created_at else ""
         )
     except PermissionError:

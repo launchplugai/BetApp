@@ -103,4 +103,5 @@ class SnapshotOut(BaseModel):
     item_id: str
     type: str
     summary: Dict[str, Any]
+    natural_language_summary: Optional[str] = None
     created_at: str

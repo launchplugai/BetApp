@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 
 from app.protocol.models import Protocol, ProtocolItem, ProtocolTarget
+from app.protocol.nba_integration import get_protocol_snapshot, generate_natural_language_summary
 
 
 def create_protocol(
@@ -113,24 +114,8 @@ def _get_protocol_snapshot(protocol: Protocol, game_target: ProtocolTarget, user
     - GOOD: Basic game info
     - BETTER: + team stats, recent form
     - BEST: + player stats, injuries, advanced metrics
-    
-    Phase 1-C: Implement actual NBA data pull
     """
-    base = {
-        "game_id": game_target.external_id,
-        "provider": game_target.provider,
-        "tier": user_tier,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if user_tier == "GOOD":
-        base["data"] = {"level": "basic", "teams": [], "note": "Basic game info"}
-    elif user_tier == "BETTER":
-        base["data"] = {"level": "enhanced", "teams": [], "recent_form": {}, "note": "Team stats + form"}
-    else:  # BEST
-        base["data"] = {"level": "full", "teams": [], "players": [], "injuries": [], "advanced": {}, "note": "Full analytics"}
-    
-    return base
+    return get_protocol_snapshot(protocol, user_tier)
 
 
 def get_user_protocols(
