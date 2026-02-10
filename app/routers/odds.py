@@ -73,13 +73,16 @@ def get_odds_provider() -> any:
     Uses OddsApiProvider if THE_ODDS_API_KEY is configured.
     Falls back to MockProvider for development/testing.
     """
-    if _config_instance.the_odds_api_key:
+    # DEBUG: Force mock provider for development
+    print(f"DEBUG get_odds_provider: config_key={_config_instance.the_odds_api_key}")
+    if _config_instance.the_odds_api_key and _config_instance.the_odds_api_key.strip():
         config = ProviderConfig(
             provider_type="live",
             api_key=_config_instance.the_odds_api_key
         )
         return OddsApiProvider(config)
     else:
+        print("DEBUG: Using MockOddsProvider")
         return MockOddsProvider()
 
 
@@ -166,6 +169,7 @@ async def get_odds(game_id: str):
         return cached
     
     provider = get_odds_provider()
+    
     # Handle both sync and async providers
     import inspect
     if inspect.iscoroutinefunction(provider.get_odds):
