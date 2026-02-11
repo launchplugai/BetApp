@@ -41,6 +41,11 @@ echo "$ODDS_RESP" | grep -qE "player_points|player_rebounds|player_assists" && e
 echo -n "7. Main lines present: "
 (echo "$ODDS_RESP" | grep -q "spread" && echo "$ODDS_RESP" | grep -q "total" && echo "$ODDS_RESP" | grep -q "moneyline") && echo "✅ PASS" || echo "❌ FAIL"
 
+# 8) Protocols API requires auth
+echo -n "8. Protocols API (auth required): "
+RESP=$(curl -sS "$BASE_URL/api/protocols" 2>&1 | head -c 200)
+echo "$RESP" | grep -Eqi 'invalid|expired|token|unauthorized|detail' && echo "✅ PASS (auth required)" || echo "❌ FAIL"
+
 echo ""
 echo "=== Smoke Test Complete ==="
 echo "If any ❌ FAIL, check Railway logs: railway logs"
