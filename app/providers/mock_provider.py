@@ -28,8 +28,10 @@ class MockOddsProvider(OddsProvider):
             Sport(id="NBA", label="NBA", active=True),
             Sport(id="NFL", label="NFL", active=True),
             Sport(id="NHL", label="NHL", active=True),
-            Sport(id="MLB", label="MLB", active=False),
-            Sport(id="SOCCER", label="Soccer", active=False),
+            Sport(id="MLB", label="MLB", active=True),
+            Sport(id="SOCCER", label="Soccer", active=True),
+            Sport(id="UFC", label="UFC", active=True),
+            Sport(id="TENNIS", label="Tennis", active=True),
         ]
     
     def get_games(self, sport: str) -> List[Game]:
@@ -40,18 +42,34 @@ class MockOddsProvider(OddsProvider):
             return self._get_nfl_games()
         elif sport.upper() == "NHL":
             return self._get_nhl_games()
+        elif sport.upper() == "MLB":
+            return self._get_mlb_games()
+        elif sport.upper() == "SOCCER":
+            return self._get_soccer_games()
+        elif sport.upper() == "UFC":
+            return self._get_ufc_games()
+        elif sport.upper() == "TENNIS":
+            return self._get_tennis_games()
         else:
             return []
     
     def get_odds(self, game_id: str) -> List[MarketOdds]:
         """Return mock odds for a game."""
-        # Basic odds for any game
-        if "nba" in game_id.lower() or "lal" in game_id.lower():
+        game_lower = game_id.lower()
+        if "nba" in game_lower or "lal" in game_lower or "mia" in game_lower or "dal" in game_lower:
             return self._get_nba_odds()
-        elif "nfl" in game_id.lower() or "chiefs" in game_id.lower():
+        elif "nfl" in game_lower or "chiefs" in game_lower or "eagles" in game_lower:
             return self._get_nfl_odds()
-        elif "nhl" in game_id.lower():
+        elif "nhl" in game_lower or "leafs" in game_lower or "bruins" in game_lower:
             return self._get_nhl_odds()
+        elif "mlb" in game_lower or "yankees" in game_lower or "dodgers" in game_lower:
+            return self._get_mlb_odds()
+        elif "soccer" in game_lower or "epl" in game_lower or "laliga" in game_lower:
+            return self._get_soccer_odds()
+        elif "ufc" in game_lower or "fight" in game_lower:
+            return self._get_ufc_odds()
+        elif "tennis" in game_lower or "wimbledon" in game_lower:
+            return self._get_tennis_odds()
         else:
             return []
     
@@ -499,7 +517,7 @@ class MockOddsProvider(OddsProvider):
         ]
     
     def _get_nhl_odds(self) -> List[MarketOdds]:
-        """Mock NHL odds."""
+        """Mock NHL odds - FULL SPORTSBOOK COVERAGE."""
         return [
             MarketOdds(
                 market="puck_line",
@@ -522,6 +540,120 @@ class MockOddsProvider(OddsProvider):
                     Selection(label="Canadiens ML", line=None, odds=+110),
                 ]
             ),
+            MarketOdds(
+                market="player_points",
+                selections=[
+                    Selection(label="Auston Matthews O0.5 PTS", line=0.5, odds=-160),
+                    Selection(label="Auston Matthews U0.5 PTS", line=0.5, odds=+140),
+                    Selection(label="Cole Caufield O0.5 PTS", line=0.5, odds=-130),
+                    Selection(label="Cole Caufield U0.5 PTS", line=0.5, odds=+110),
+                ]
+            ),
+            MarketOdds(
+                market="player_shots",
+                selections=[
+                    Selection(label="Auston Matthews O3.5 SOG", line=3.5, odds=-120),
+                    Selection(label="Auston Matthews U3.5 SOG", line=3.5, odds=+100),
+                    Selection(label="William Nylander O2.5 SOG", line=2.5, odds=-140),
+                    Selection(label="William Nylander U2.5 SOG", line=2.5, odds=+120),
+                ]
+            ),
+            MarketOdds(
+                market="goalie_saves",
+                selections=[
+                    Selection(label="Ilya Samsonov O28.5 Saves", line=28.5, odds=-110),
+                    Selection(label="Ilya Samsonov U28.5 Saves", line=28.5, odds=-110),
+                    Selection(label="Sam Montembeault O27.5 Saves", line=27.5, odds=-110),
+                    Selection(label="Sam Montembeault U27.5 Saves", line=27.5, odds=-110),
+                ]
+            ),
+        ]
+    
+    def _get_mlb_games(self) -> List[Game]:
+        """Mock MLB games."""
+        now = datetime.utcnow()
+        return [
+            Game(id="mlb-nyy-bos-2026-02-09", league="MLB", home="Yankees", away="Red Sox", start_time=(now + timedelta(hours=3)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="mlb-lad-sf-2026-02-09", league="MLB", home="Dodgers", away="Giants", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="mlb-hou-tex-2026-02-09", league="MLB", home="Astros", away="Rangers", start_time=(now + timedelta(hours=5)).isoformat() + "Z", status="SCHEDULED"),
+        ]
+    
+    def _get_mlb_odds(self) -> List[MarketOdds]:
+        """Mock MLB odds - FULL COVERAGE."""
+        return [
+            MarketOdds(market="moneyline", selections=[Selection(label="Yankees ML", line=None, odds=-140), Selection(label="Red Sox ML", line=None, odds=+120)]),
+            MarketOdds(market="run_line", selections=[Selection(label="Yankees -1.5", line=-1.5, odds=+130), Selection(label="Red Sox +1.5", line=1.5, odds=-150)]),
+            MarketOdds(market="total", selections=[Selection(label="Over 8.5", line=8.5, odds=-110), Selection(label="Under 8.5", line=8.5, odds=-110)]),
+            MarketOdds(market="first_five_ml", selections=[Selection(label="F5 Yankees ML", line=None, odds=-130), Selection(label="F5 Red Sox ML", line=None, odds=+110)]),
+            MarketOdds(market="first_five_total", selections=[Selection(label="F5 Over 4.5", line=4.5, odds=-110), Selection(label="F5 Under 4.5", line=4.5, odds=-110)]),
+            MarketOdds(market="pitcher_strikeouts", selections=[Selection(label="Gerrit Cole O6.5 Ks", line=6.5, odds=-115), Selection(label="Gerrit Cole U6.5 Ks", line=6.5, odds=-105)]),
+            MarketOdds(market="pitcher_outs", selections=[Selection(label="Cole O17.5 Outs", line=17.5, odds=-120), Selection(label="Cole U17.5 Outs", line=17.5, odds=+100)]),
+            MarketOdds(market="batter_hits", selections=[Selection(label="Aaron Judge O1.5 Hits", line=1.5, odds=+120), Selection(label="Aaron Judge U1.5 Hits", line=1.5, odds=-140)]),
+            MarketOdds(market="batter_home_runs", selections=[Selection(label="Judge Anytime HR", line=None, odds=+240), Selection(label="Devers Anytime HR", line=None, odds=+320)]),
+            MarketOdds(market="batter_rbis", selections=[Selection(label="Judge O0.5 RBI", line=0.5, odds=-110), Selection(label="Judge U0.5 RBI", line=0.5, odds=-110)]),
+            MarketOdds(market="team_total", selections=[Selection(label="Yankees O4.5", line=4.5, odds=-110), Selection(label="Yankees U4.5", line=4.5, odds=-110)]),
+        ]
+    
+    def _get_soccer_games(self) -> List[Game]:
+        """Mock Soccer games."""
+        now = datetime.utcnow()
+        return [
+            Game(id="epl-mci-liv-2026-02-09", league="EPL", home="Man City", away="Liverpool", start_time=(now + timedelta(hours=2)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="laliga-rm-bar-2026-02-09", league="La Liga", home="Real Madrid", away="Barcelona", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="ucl-bay-psg-2026-02-09", league="UCL", home="Bayern", away="PSG", start_time=(now + timedelta(hours=6)).isoformat() + "Z", status="SCHEDULED"),
+        ]
+    
+    def _get_soccer_odds(self) -> List[MarketOdds]:
+        """Mock Soccer odds - FULL COVERAGE."""
+        return [
+            MarketOdds(market="moneyline", selections=[Selection(label="Man City ML", line=None, odds=-130), Selection(label="Liverpool ML", line=None, odds=+280), Selection(label="Draw", line=None, odds=+280)]),
+            MarketOdds(market="spread", selections=[Selection(label="Man City -1.0", line=-1.0, odds=+120), Selection(label="Liverpool +1.0", line=1.0, odds=-140)]),
+            MarketOdds(market="total", selections=[Selection(label="Over 2.5", line=2.5, odds=-120), Selection(label="Under 2.5", line=2.5, odds=+100)]),
+            MarketOdds(market="both_teams_to_score", selections=[Selection(label="BTTS Yes", line=None, odds=-140), Selection(label="BTTS No", line=None, odds=+120)]),
+            MarketOdds(market="first_half_ml", selections=[Selection(label="1H City", line=None, odds=-110), Selection(label="1H Liverpool", line=None, odds=+350), Selection(label="1H Draw", line=None, odds=+130)]),
+            MarketOdds(market="first_half_total", selections=[Selection(label="1H Over 1.0", line=1.0, odds=-130), Selection(label="1H Under 1.0", line=1.0, odds=+110)]),
+            MarketOdds(market="player_goals", selections=[Selection(label="Haaland Anytime Goal", line=None, odds=-140), Selection(label="Salah Anytime Goal", line=None, odds=+160)]),
+            MarketOdds(market="player_shots", selections=[Selection(label="Haaland O3.5 Shots", line=3.5, odds=-110), Selection(label="Haaland U3.5 Shots", line=3.5, odds=-110)]),
+            MarketOdds(market="corners", selections=[Selection(label="Over 9.5 Corners", line=9.5, odds=-110), Selection(label="Under 9.5 Corners", line=9.5, odds=-110)]),
+            MarketOdds(market="cards", selections=[Selection(label="Over 3.5 Cards", line=3.5, odds=+100), Selection(label="Under 3.5 Cards", line=3.5, odds=-120)]),
+            MarketOdds(market="correct_score", selections=[Selection(label="1-0 City", line=None, odds=+650), Selection(label="2-1 City", line=None, odds=+800), Selection(label="1-1 Draw", line=None, odds=+600)]),
+        ]
+    
+    def _get_ufc_games(self) -> List[Game]:
+        """Mock UFC fights."""
+        now = datetime.utcnow()
+        return [
+            Game(id="ufc-main-001", league="UFC", home="Islam Makhachev", away="Charles Oliveira", start_time=(now + timedelta(hours=6)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="ufc-co-001", league="UFC", home="Sean O'Malley", away="Marlon Vera", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
+        ]
+    
+    def _get_ufc_odds(self) -> List[MarketOdds]:
+        """Mock UFC odds - FULL COVERAGE."""
+        return [
+            MarketOdds(market="moneyline", selections=[Selection(label="Makhachev ML", line=None, odds=-280), Selection(label="Oliveira ML", line=None, odds=+220)]),
+            MarketOdds(market="method_of_victory", selections=[Selection(label="Makhachev KO/TKO", line=None, odds=+350), Selection(label="Makhachev Submission", line=None, odds=+220), Selection(label="Makhachev Decision", line=None, odds=+240)]),
+            MarketOdds(market="round_betting", selections=[Selection(label="Makhachev R1", line=None, odds=+450), Selection(label="Makhachev R2", line=None, odds=+550), Selection(label="Over 2.5 Rounds", line=2.5, odds=-140)]),
+            MarketOdds(market="total_rounds", selections=[Selection(label="Over 1.5 Rounds", line=1.5, odds=-180), Selection(label="Under 1.5 Rounds", line=1.5, odds=+150)]),
+            MarketOdds(market="fight_to_go_distance", selections=[Selection(label="Yes - Goes Distance", line=None, odds=+140), Selection(label="No - Ends Early", line=None, odds=-160)]),
+        ]
+    
+    def _get_tennis_games(self) -> List[Game]:
+        """Mock Tennis matches."""
+        now = datetime.utcnow()
+        return [
+            Game(id="wimbledon-m-001", league="Wimbledon", home="Carlos Alcaraz", away="Novak Djokovic", start_time=(now + timedelta(hours=5)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="uso-w-001", league="US Open", home="Iga Swiatek", away="Coco Gauff", start_time=(now + timedelta(hours=3)).isoformat() + "Z", status="SCHEDULED"),
+        ]
+    
+    def _get_tennis_odds(self) -> List[MarketOdds]:
+        """Mock Tennis odds - FULL COVERAGE."""
+        return [
+            MarketOdds(market="moneyline", selections=[Selection(label="Alcaraz ML", line=None, odds=-160), Selection(label="Djokovic ML", line=None, odds=+140)]),
+            MarketOdds(market="set_spread", selections=[Selection(label="Alcaraz -1.5 Sets", line=-1.5, odds=+120), Selection(label="Djokovic +1.5 Sets", line=1.5, odds=-140)]),
+            MarketOdds(market="total_games", selections=[Selection(label="Over 38.5 Games", line=38.5, odds=-110), Selection(label="Under 38.5 Games", line=38.5, odds=-110)]),
+            MarketOdds(market="set_1_winner", selections=[Selection(label="Alcaraz S1", line=None, odds=-130), Selection(label="Djokovic S1", line=None, odds=+110)]),
+            MarketOdds(market="exact_sets", selections=[Selection(label="3-0 Alcaraz", line=None, odds=+280), Selection(label="3-1 Alcaraz", line=None, odds=+320), Selection(label="3-2 Either", line=None, odds=+450)]),
+            MarketOdds(market="total_sets", selections=[Selection(label="Over 3.5 Sets", line=3.5, odds=+140), Selection(label="Under 3.5 Sets", line=3.5, odds=-160)]),
         ]
 
 
