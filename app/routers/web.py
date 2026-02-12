@@ -104,7 +104,11 @@ async def redirect_ui2():
 @router.get("/app", response_class=HTMLResponse)
 async def canonical_app(request: Request, screen: str = "dashboard"):
     """
-    S16: Neon UI - Complete redesign with dark theme.
+    S-PROT-4B: Dashboard-first routing - dashboard is primary surface.
+    Navigation priority: Dashboard → Protocols → Builder
+    
+    Core Design Rule: Dashboard = orchestration surface
+    Builder = execution tool (secondary access)
     """
     from fastapi.responses import HTMLResponse
     from pathlib import Path
@@ -115,7 +119,9 @@ async def canonical_app(request: Request, screen: str = "dashboard"):
         "browse": "screens/browse.html",
         "builder": "screens/builder.html",
         "auth": "screens/auth.html",
-        "history": "screens/history.html"
+        "history": "screens/history.html",
+        "protocols": "screens/protocols.html",
+        "protocol": "screens/protocol.html"
     }
     
     template_name = screens.get(screen, "screens/dashboard.html")

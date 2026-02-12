@@ -24,6 +24,7 @@ from app.routers import v1_ui
 from app.routers import debug
 from app.routers import metrics
 from app.routers import mock_api
+from app.routers import dashboard_stubs
 from app.protocol import router as protocol_router
 from app.protocol.recommendation_router import router as recommendation_router
 from app.routers import auth
@@ -108,6 +109,7 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # Web router first (handles / and /app)
 app.include_router(web.router)
 app.include_router(mock_api.router)
+app.include_router(dashboard_stubs.router)
 app.include_router(protocol_router.router)
 app.include_router(recommendation_router)
 app.include_router(auth.router)
