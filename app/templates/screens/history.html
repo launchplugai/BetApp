@@ -167,34 +167,29 @@
         </main>
 
         <!-- Bottom Navigation -->
-        <nav class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5" style="z-index: 9999;">
-            <div class="flex justify-around items-center px-4 pointer-events-auto">
-                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:layout-dashboard" class="text-2xl text-gray-400"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400">Home</span>
+        <nav id="nav" class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5" style="z-index: 9999;">
+            <div class="flex justify-around items-center px-4 pointer-events-auto max-w-md mx-auto">
+                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                    <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">Dashboard</span>
                 </a>
-                
-                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:search" class="text-2xl text-gray-400"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400">Browse</span>
+                <a href="/app?screen=protocol" id="nav-protocol" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors hidden">
+                    <iconify-icon icon="lucide:layers" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">Protocol</span>
                 </a>
-
-                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:plus-circle" class="text-2xl text-gray-400"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400">Build</span>
-                </a>
-
-                <a href="/app?screen=history" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
-                    <div class="relative">
-                        <iconify-icon icon="lucide:history" class="text-2xl text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]"></iconify-icon>
-                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
+                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                    <div class="w-12 h-12 -mt-8 bg-[#0a0a0a] border border-[#ff1744] rounded-full flex items-center justify-center">
+                        <iconify-icon icon="lucide:plus" class="text-xl text-[#ff1744]"></iconify-icon>
                     </div>
-                    <span class="text-[10px] font-medium text-white">History</span>
+                    <span class="text-[10px] font-medium -mt-1">Builder</span>
                 </a>
-
-                <a href="#" onclick="handleLogout(); return false;" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:log-out" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Logout</span>
+                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                    <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">Browse</span>
+                </a>
+                <a href="/app?screen=history" class="flex flex-col items-center gap-1 text-[#ff1744]">
+                    <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">History</span>
                 </a>
             </div>
         </nav>

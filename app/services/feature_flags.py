@@ -79,6 +79,8 @@ BEST_FEATURES: Set[str] = {
     "fragility_scoring",
     "sentiment_analysis",
     "advanced_correlation",
+    "incentive_intelligence",  # S-INT-1: Structured incentive modeling
+    "sherlock_incentives",  # S-INT-2: Audit layer for incentives
     
     # Pro features
     "api_access",
