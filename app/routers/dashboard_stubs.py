@@ -69,16 +69,42 @@ async def get_system_health():
 @router.get("/protocol/feed")
 async def get_protocol_feed():
     """
-    Protocol feed endpoint (Slice 2A).
-    Returns latest protocol activity - minimal live version.
-    Empty array acceptable for now - UI just needs stable contract.
+    Protocol feed endpoint (Slice 2B).
+    Returns latest protocol activity from database.
+    Shows user's recent protocols with latest snapshot data.
     """
     require_dashboard()
     
-    # Return empty feed for Slice 2A (persistence integration in Slice 2B)
-    return {
-        "items": []
-    }
+    # Import protocol models and DB session
+    from app.models import get_session
+    from app.protocol.models import Protocol
+    from sqlalchemy import desc
+    
+    db = get_session()
+    try:
+        # Fetch latest 10 protocols (most recent first)
+        protocols = db.query(Protocol).order_by(desc(Protocol.updated_at)).limit(10).all()
+        
+        items = []
+        for protocol in protocols:
+            # Get latest snapshot if available
+            latest_snapshot = None
+            if protocol.snapshots:
+                latest_snapshot = protocol.snapshots[-1]  # Last snapshot
+            
+            items.append({
+                "protocol_id": protocol.id,
+                "name": protocol.name or f"Protocol {protocol.id[:8]}",
+                "created_at": protocol.created_at.isoformat() if protocol.created_at else None,
+                "updated_at": protocol.updated_at.isoformat() if protocol.updated_at else None,
+                "snapshot_count": len(protocol.snapshots) if protocol.snapshots else 0,
+                "latest_confidence": latest_snapshot.confidence_score if latest_snapshot and hasattr(latest_snapshot, 'confidence_score') else None,
+                "latest_conclusion": latest_snapshot.conclusion if latest_snapshot and hasattr(latest_snapshot, 'conclusion') else "No analysis yet"
+            })
+        
+        return {"items": items}
+    finally:
+        db.close()
 
 
 @router.get("/edge-feed")
