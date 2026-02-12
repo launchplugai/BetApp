@@ -3,30 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Bet Engine Dashboard</title>
+    <title>DNA Bet Engine - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-red: #ff1744;
+            --neon-green: #00ff9d;
+            --neon-yellow: #ffd600;
             --bg-dark: #050505;
-            --card-bg: #0f0f0f;
+            --card-bg: #0a0a0a;
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
         body {
             background-color: var(--bg-dark);
             color: #ffffff;
-        }
-        .font-tanker {
-            font-family: 'Tanker', sans-serif;
-        }
-        .font-satoshi {
             font-family: 'Satoshi', sans-serif;
         }
-        .neon-text-glow {
-            text-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
-        }
-        .neon-border-glow {
+        .font-tanker { font-family: 'Tanker', sans-serif; }
+        .font-satoshi { font-family: 'Satoshi', sans-serif; }
+        .neon-text { color: var(--neon-red); text-shadow: 0 0 10px rgba(255, 23, 68, 0.6); }
+        .neon-border {
             border: 1px solid rgba(255, 23, 68, 0.4);
             box-shadow: 0 0 20px rgba(255, 23, 68, 0.15), inset 0 0 20px rgba(255, 23, 68, 0.05);
         }
@@ -35,285 +33,664 @@
             box-shadow: 0 0 25px rgba(255, 23, 68, 0.4);
             transition: all 0.3s ease;
         }
-        .neon-btn:active {
-            transform: scale(0.98);
-            box-shadow: 0 0 10px rgba(255, 23, 68, 0.2);
+        .neon-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 30px rgba(255, 23, 68, 0.6);
         }
-        /* Subtle grid background */
+        .neon-btn-secondary {
+            background: transparent;
+            border: 1px solid rgba(255, 23, 68, 0.4);
+            transition: all 0.3s ease;
+        }
+        .neon-btn-secondary:hover {
+            background: rgba(255, 23, 68, 0.1);
+            border-color: rgba(255, 23, 68, 0.6);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+        }
         .bg-grid-pattern {
-            background-image: 
+            background-image:
                 linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 40px 40px;
         }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .protocol-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.3s ease;
+        }
+        .protocol-card:hover {
+            border-color: rgba(255, 23, 68, 0.4);
+            box-shadow: 0 0 20px rgba(255, 23, 68, 0.1);
+        }
+        .protocol-card.active {
+            border-color: rgba(255, 23, 68, 0.6);
+            box-shadow: 0 0 25px rgba(255, 23, 68, 0.2);
+        }
+        .risk-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        .risk-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ff1744;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.5);
+        }
+        .edge-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .edge-high { background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); }
+        .edge-medium { background: var(--neon-yellow); box-shadow: 0 0 8px var(--neon-yellow); }
+        .edge-low { background: var(--neon-red); box-shadow: 0 0 8px var(--neon-red); }
+        .placeholder-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+        /* Fragility color coding */
+        .fragility-low { 
+            background: rgba(0, 255, 157, 0.1); 
+            border-color: rgba(0, 255, 157, 0.4);
+            color: #00ff9d;
+        }
+        .fragility-medium { 
+            background: rgba(255, 214, 0, 0.1); 
+            border-color: rgba(255, 214, 0, 0.4);
+            color: #ffd600;
+        }
+        .fragility-high { 
+            background: rgba(255, 23, 68, 0.1); 
+            border-color: rgba(255, 23, 68, 0.4);
+            color: #ff1744;
+        }
+        .confidence-score {
+            font-family: 'Satoshi', monospace;
+            font-weight: 700;
+        }
+        .protocol-list-item {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .action-btn {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .action-btn:hover {
+            transform: translateY(-1px);
         }
     </style>
 </head>
-<body>
-    <!-- Main App Container -->
-    <div class="w-full min-h-screen bg-[#050505] font-satoshi flex flex-col relative overflow-hidden bg-grid-pattern">
-        
-        <!-- Ambient Red Glow Top Right -->
-        <div class="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-[#ff1744] rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
-        
-        <!-- Header -->
-        <header class="pt-14 pb-2 px-6 flex justify-between items-center z-10 shrink-0">
-            <a href="/" class="flex flex-col hover:opacity-80 transition-opacity">
-                <span class="text-xs tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
-                <h1 class="font-tanker text-2xl tracking-wide leading-none">DASHBOARD</h1>
-            </a>
-            <div class="flex items-center gap-4">
-                <button onclick="AUTH.logout()" class="p-2 rounded-full hover:bg-white/5 transition-colors" title="Logout">
-                    <iconify-icon icon="lucide:log-out" class="text-xl text-gray-300"></iconify-icon>
-                </button>
-                <div class="w-10 h-10 rounded-full border border-gray-700 bg-gray-800 overflow-hidden relative">
-                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop" alt="Profile" class="w-full h-full object-cover opacity-80">
-                </div>
-            </div>
-        </header>
+<body class="min-h-screen bg-dark bg-grid-pattern">
+    <!-- S-PROT-4B: Dashboard Command Center -->
 
-        <!-- Main Scroll Area -->
-        <main class="flex-1 overflow-y-auto px-6 pb-32 z-10 no-scrollbar">
-            
-            <!-- Account Overview -->
-            <section class="mt-6">
-                <div class="flex items-baseline gap-2 mb-1">
-                    <span class="text-gray-400 text-sm font-medium">Total Balance</span>
-                    <span id="user-tier" class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 uppercase tracking-wider">Pro Tier</span>
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/10">
+        <div class="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="/app" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <iconify-icon icon="lucide:dna" class="text-2xl text-[#ff1744]"></iconify-icon>
+                <div class="flex flex-col">
+                    <span class="text-xs tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
+                    <h1 class="font-tanker text-lg tracking-wide leading-none text-white">COMMAND CENTER</h1>
+                </div>
+            </a>
+            <button onclick="AUTH.logout()" class="p-2 hover:bg-white/5 rounded-lg transition-colors" title="Logout">
+                <iconify-icon icon="lucide:log-out" class="text-xl text-gray-400"></iconify-icon>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-24 px-4 max-w-lg mx-auto">
+
+        <!-- Active Protocols Feed (Primary) -->
+        <section class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-tanker text-xl tracking-wide flex items-center gap-2">
+                    <iconify-icon icon="lucide:activity" class="text-[#ff1744]"></iconify-icon>
+                    ACTIVE PROTOCOLS
+                </h2>
+                <span id="protocol-count" class="text-xs text-gray-500 font-medium">0 active</span>
+            </div>
+
+            <!-- Protocol List Container -->
+            <div id="protocols-container" class="space-y-3">
+                <!-- Loading State -->
+                <div id="protocols-loading" class="glass-panel rounded-xl p-6 text-center">
+                    <iconify-icon icon="lucide:loader-2" class="text-3xl text-gray-600 mx-auto mb-2 animate-spin"></iconify-icon>
+                    <p class="text-gray-500 text-sm">Loading protocols...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="protocols-empty" class="glass-panel rounded-xl p-8 text-center hidden">
+                    <iconify-icon icon="lucide:target" class="text-5xl text-gray-600 mx-auto mb-3"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white mb-1">NO ACTIVE PROTOCOLS</h3>
+                    <p class="text-gray-400 text-sm mb-4">Create a protocol to track games and receive signals.</p>
+                    <a href="/app?screen=protocols" class="neon-btn text-white font-bold py-3 px-6 rounded-lg inline-flex items-center gap-2">
+                        <iconify-icon icon="lucide:plus"></iconify-icon>
+                        CREATE PROTOCOL
+                    </a>
+                </div>
+
+                <!-- Protocol Cards (dynamically populated) -->
+                <div id="protocol-list" class="space-y-3 hidden"></div>
+            </div>
+        </section>
+
+        <!-- Edge Feed (Live Signals) -->
+        <section class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-tanker text-xl tracking-wide flex items-center gap-2">
+                    <iconify-icon icon="lucide:zap" class="text-[#ff1744]"></iconify-icon>
+                    EDGE FEED
+                </h2>
+                <span id="edge-count" class="text-xs text-gray-500 font-medium">0 signals</span>
+            </div>
+
+            <div id="edge-feed-container" class="glass-panel rounded-xl p-4">
+                <!-- Loading State -->
+                <div id="edge-loading" class="text-center py-4">
+                    <iconify-icon icon="lucide:loader-2" class="text-2xl text-gray-600 mx-auto animate-spin"></iconify-icon>
+                </div>
+
+                <!-- Empty State -->
+                <div id="edge-empty" class="text-center py-6 hidden">
+                    <iconify-icon icon="lucide:activity" class="text-3xl text-gray-600 mx-auto mb-2"></iconify-icon>
+                    <p class="text-gray-500 text-sm">No edge signals detected</p>
+                    <p class="text-gray-600 text-xs mt-1">Signals appear when market conditions shift</p>
+                </div>
+
+                <!-- Edge Signals List -->
+                <div id="edge-list" class="space-y-3 hidden"></div>
+            </div>
+        </section>
+
+        <!-- Risk Settings Panel (Compact) -->
+        <section class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-tanker text-xl tracking-wide flex items-center gap-2">
+                    <iconify-icon icon="lucide:shield" class="text-[#ff1744]"></iconify-icon>
+                    RISK PROFILE
+                </h2>
+                <button onclick="window.location.href='/app?screen=risk-settings'" class="text-xs text-[#ff1744] hover:underline font-medium">
+                    Edit →
+                </button>
+            </div>
+
+            <div id="risk-panel" class="glass-panel rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm text-gray-300">Risk Tolerance</span>
+                    <span id="risk-tolerance-display" class="text-sm font-bold text-[#ff1744]">--</span>
+                </div>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm text-gray-300">Max Exposure</span>
+                    <span id="risk-exposure-display" class="text-sm font-mono text-white">--</span>
                 </div>
                 <div class="flex items-center justify-between">
-                    <h2 class="font-tanker text-[42px] leading-none text-white"><span id="user-balance">$0.00</span></h2>
-                    <div class="flex flex-col items-end">
-                        <span id="user-name" class="text-white text-sm font-bold">Loading...</span>
+                    <span class="text-sm text-gray-300">Kelly Cap</span>
+                    <span id="risk-kelly-display" class="text-sm font-mono text-white">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Health Panel (Transparency) -->
+        <section class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-tanker text-xl tracking-wide flex items-center gap-2">
+                    <iconify-icon icon="lucide:heart-pulse" class="text-[#ff1744]"></iconify-icon>
+                    SYSTEM HEALTH
+                </h2>
+                <span id="system-status" class="text-xs px-2 py-1 rounded bg-green-500/10 text-green-500 border border-green-500/20">
+                    OPERATIONAL
+                </span>
+            </div>
+
+            <div id="health-panel" class="glass-panel rounded-xl p-4">
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <div class="text-gray-500 mb-1">Snapshot Version</div>
+                        <div id="health-snapshot-version" class="font-mono text-white">--</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 mb-1">Confidence Schema</div>
+                        <div id="health-schema-version" class="font-mono text-white">--</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 mb-1">Data Freshness</div>
+                        <div id="health-data-freshness" class="font-mono text-white">--</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-500 mb-1">Provider Mode</div>
+                        <div id="health-provider-mode" class="font-mono text-white">--</div>
                     </div>
                 </div>
-            </section>
-
-            <!-- Primary CTA -->
-            <button id="start-bet-btn" class="w-full mt-8 h-14 neon-btn rounded-xl flex items-center justify-center gap-3 group relative overflow-hidden cursor-pointer" onclick="window.location.href='/app?screen=browse'">
-                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none"></div>
-                <iconify-icon icon="lucide:plus" class="text-xl font-bold"></iconify-icon>
-                <span class="font-tanker text-xl tracking-wide pt-1">START NEW BET PROTOCOL</span>
-            </button>
-
-            <!-- Quick Stats Grid -->
-            <div class="grid grid-cols-2 gap-4 mt-8">
-                <div class="glass-panel p-4 rounded-xl flex flex-col justify-between h-28 relative overflow-hidden">
-                    <div class="absolute -bottom-4 -right-4 text-gray-800 opacity-20 transform rotate-12">
-                        <iconify-icon icon="lucide:trophy" width="80"></iconify-icon>
-                    </div>
-                    <span class="text-gray-400 text-xs uppercase tracking-wider font-bold">Win Rate</span>
-                    <div>
-                        <span id="stat-win-rate" class="font-tanker text-3xl text-white">-</span>
-                        <span class="font-tanker text-lg text-[#ff1744]">%</span>
-                    </div>
-                </div>
-                <div class="glass-panel p-4 rounded-xl flex flex-col justify-between h-28 relative overflow-hidden">
-                    <div class="absolute -bottom-4 -right-4 text-gray-800 opacity-20 transform rotate-12">
-                        <iconify-icon icon="lucide:layers" width="80"></iconify-icon>
-                    </div>
-                    <span class="text-gray-400 text-xs uppercase tracking-wider font-bold">Total Parlays</span>
-                    <div>
-                        <span id="stat-total" class="font-tanker text-3xl text-white">-</span>
-                        <span class="text-xs text-gray-500 font-medium ml-1">Lifetime</span>
+                <div class="mt-3 pt-3 border-t border-white/10">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500">Last Updated</span>
+                        <span id="health-timestamp" class="font-mono text-gray-400">--</span>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Active Bets Section -->
-            <section class="mt-10" id="active-protocols-section">
-                <div class="flex justify-between items-end mb-5">
-                    <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
-                        ACTIVE PROTOCOLS
-                    </h3>
-                    <a href="/app?screen=history" class="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider font-bold">View All</a>
+        <!-- Quick Actions -->
+        <section class="grid grid-cols-2 gap-3">
+            <a href="/app?screen=builder" class="glass-panel rounded-xl p-4 text-center hover:border-[#ff1744]/40 transition-colors">
+                <iconify-icon icon="lucide:hammer" class="text-2xl text-[#ff1744] mx-auto mb-2"></iconify-icon>
+                <div class="text-sm font-bold text-white">BUILDER</div>
+                <div class="text-xs text-gray-500">Create new bet</div>
+            </a>
+            <a href="/app?screen=browse" class="glass-panel rounded-xl p-4 text-center hover:border-[#ff1744]/40 transition-colors">
+                <iconify-icon icon="lucide:search" class="text-2xl text-[#ff1744] mx-auto mb-2"></iconify-icon>
+                <div class="text-sm font-bold text-white">BROWSE</div>
+                <div class="text-xs text-gray-500">Find games</div>
+            </a>
+        </section>
+
+        <!-- Spacer -->
+        <div class="h-4"></div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10 pb-safe">
+        <div class="max-w-lg mx-auto px-4 py-3 flex justify-around">
+            <!-- Dashboard (Primary) -->
+            <a href="/app?screen=dashboard" id="nav-dashboard" class="flex flex-col items-center gap-1 text-[#ff1744]">
+                <div class="relative">
+                    <iconify-icon icon="lucide:layout-dashboard" class="text-2xl"></iconify-icon>
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
                 </div>
+                <span class="text-[10px] font-medium">Dashboard</span>
+            </a>
 
-                <!-- Loading state - will be replaced by JS -->
-                <div id="protocols-loading" class="glass-panel rounded-xl p-8 text-center text-gray-500">
-                    <iconify-icon icon="lucide:loader-2" class="text-4xl mb-2 animate-spin"></iconify-icon>
-                    <p>Loading active protocols...</p>
-                </div>
-            </section>
-            
-            <!-- Spacer for bottom nav -->
-            <div class="h-8"></div>
-        </main>
+            <!-- Protocol -->
+            <a href="/app?screen=protocols" id="nav-protocols" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:target" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Protocol</span>
+            </a>
 
-        <!-- Bottom Navigation -->
-        <nav class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5" style="z-index: 9999;">
-            <div class="flex justify-around items-center px-4 pointer-events-auto">
-                <a href="/app?screen=dashboard" id="nav-home" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
-                    <div class="relative">
-                        <iconify-icon icon="lucide:layout-dashboard" class="text-2xl text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]"></iconify-icon>
-                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
-                    </div>
-                    <span class="text-[10px] font-medium text-white">Home</span>
-                </a>
-                
-                <a href="/app?screen=browse" id="nav-browse" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:search" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Browse</span>
-                </a>
+            <!-- Builder -->
+            <a href="/app?screen=builder" id="nav-builder" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:plus-circle" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Builder</span>
+            </a>
 
-                <a href="/app?screen=builder" id="nav-builder" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:plus-circle" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Build</span>
-                </a>
+            <!-- Browse -->
+            <a href="/app?screen=browse" id="nav-browse" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:search" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Browse</span>
+            </a>
 
-                <a href="/app?screen=history" id="nav-history" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:ticket" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">My Bets</span>
-                </a>
-            </div>
-        </nav>
-    </div>
+            <!-- History -->
+            <a href="/app?screen=history" id="nav-history" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:history" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">History</span>
+            </a>
+        </div>
+    </nav>
 
     <script src="/static/js/auth.js"></script>
     <script>
-        // S18-E: Auth guard - redirect if not authenticated
+        // S18-E: Auth guard
         if (!AUTH.requireAuth()) {
             throw new Error('Authentication required');
         }
-        
-        const user = JSON.parse(sessionStorage.getItem('dna_user') || '{}');
 
-        // Format currency
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD'
-            }).format(amount || 0);
-        }
+        // State
+        let protocols = [];
+        let protocolSnapshots = {};  // Cache for snapshot-v2 data
+        let edgeSignals = [];
+        let systemHealth = null;
 
-        // Load dashboard data (S18-E: uses AUTH.fetch for auto-refresh)
-        async function loadDashboard() {
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProtocols();
+            loadEdgeFeed();
+            loadRiskProfile();
+            loadSystemHealth();
+        });
+
+        // =============================================================================
+        // Protocol Feed
+        // =============================================================================
+
+        async function loadProtocols() {
             try {
-                const response = await AUTH.fetch('/api/dashboard/');
+                const response = await AUTH.fetch('/api/protocols');
 
                 if (response.status === 401) {
-                    // Token refresh failed, logout
                     AUTH.logout();
                     return;
                 }
 
                 const data = await response.json();
+                protocols = data.protocols || [];
 
-                // Update user info
-                document.getElementById('user-name').textContent = data.user?.name || 'User';
-                document.getElementById('user-tier').textContent = data.user?.tier || 'GOOD';
-                document.getElementById('user-balance').textContent = formatCurrency(data.user?.balance || 0);
+                // Update count
+                document.getElementById('protocol-count').textContent = `${protocols.length} active`;
 
-                // Update stats
-                document.getElementById('stat-win-rate').textContent = data.stats?.win_rate?.toFixed(1) || '0.0';
-                document.getElementById('stat-total').textContent = data.stats?.total_bets || 0;
-
-                // Update active protocols section
-                updateActiveProtocols(data.active_protocols);
-
-                // Update recent bets
-                updateRecentBets(data.recent_bets);
-
+                // Show appropriate state
+                if (protocols.length === 0) {
+                    showProtocolsEmpty();
+                } else {
+                    // Load snapshots for each protocol
+                    await loadProtocolSnapshots();
+                    renderProtocols();
+                }
             } catch (err) {
-                console.error('Failed to load dashboard:', err);
+                console.error('Failed to load protocols:', err);
+                showProtocolsEmpty();
             }
         }
 
-        function updateActiveProtocols(protocols) {
-            const loadingEl = document.getElementById('protocols-loading');
-            if (!loadingEl) return;
+        async function loadProtocolSnapshots() {
+            // Fetch snapshot-v2 for each protocol in parallel
+            const snapshotPromises = protocols.map(async (protocol) => {
+                try {
+                    const response = await AUTH.fetch(`/api/protocols/${protocol.id}/snapshot-v2/latest`);
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        protocolSnapshots[protocol.id] = data.snapshot || data;
+                    } else if (response.status === 404) {
+                        // No snapshot yet, that's ok
+                        protocolSnapshots[protocol.id] = null;
+                    }
+                } catch (err) {
+                    console.warn(`Failed to load snapshot for protocol ${protocol.id}:`, err);
+                    protocolSnapshots[protocol.id] = null;
+                }
+            });
 
-            if (!protocols || protocols.length === 0) {
-                loadingEl.innerHTML = `
-                    <iconify-icon icon="lucide:activity" class="text-4xl mb-2"></iconify-icon>
-                    <p>No active protocols</p>
-                    <a href="/app?screen=browse" class="text-[#ff1744] text-sm mt-2 inline-block">Start a new bet →</a>
-                `;
-            } else {
-                // Replace loading with actual protocol cards
-                loadingEl.outerHTML = protocols.map(protocol => `
-                    <div class="neon-border-glow bg-[#0a0a0a] rounded-xl p-5 mb-4 relative group">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-                                    <iconify-icon icon="lucide:activity" class="text-xl text-gray-400"></iconify-icon>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-sm text-white">${protocol.name || 'Active Bet'}</h4>
-                                    <p class="text-xs text-gray-500 mt-0.5">${protocol.status || 'Active'}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <span class="block font-tanker text-xl text-[#ff1744]">${protocol.odds || '+100'}</span>
-                            </div>
+            await Promise.all(snapshotPromises);
+        }
+
+        function showProtocolsEmpty() {
+            document.getElementById('protocols-loading').classList.add('hidden');
+            document.getElementById('protocol-list').classList.add('hidden');
+            document.getElementById('protocols-empty').classList.remove('hidden');
+        }
+
+        function renderProtocols() {
+            const container = document.getElementById('protocol-list');
+            container.innerHTML = '';
+
+            protocols.forEach((protocol, index) => {
+                const card = createProtocolCard(protocol, index);
+                container.appendChild(card);
+            });
+
+            document.getElementById('protocols-loading').classList.add('hidden');
+            document.getElementById('protocols-empty').classList.add('hidden');
+            document.getElementById('protocol-list').classList.remove('hidden');
+        }
+
+        function createProtocolCard(protocol, index) {
+            const div = document.createElement('div');
+            div.className = 'protocol-card protocol-list-item rounded-xl p-4';
+            div.style.animationDelay = `${index * 0.1}s`;
+
+            // Get snapshot data from separate API call (S-PROT-4B)
+            const snapshot = protocolSnapshots[protocol.id] || null;
+
+            // Extract confidence scores from snapshot v3 (S-PROT-3)
+            const confidenceScore = snapshot?.intelligence?.confidence?.overall ?? null;
+            const structuralScore = snapshot?.intelligence?.confidence?.structural ?? null;
+            const fragilityScore = snapshot?.intelligence?.fragility?.overall ?? null;
+
+            // Format teams from protocol context
+            const teams = protocol.context?.teams || [protocol.context?.away_team || 'Away', protocol.context?.home_team || 'Home'];
+            const teamsText = teams.join(' vs ');
+
+            // Determine fragility color class (color-coded from data)
+            let fragilityClass = 'bg-gray-800 text-gray-400';
+            let fragilityText = '--';
+            if (fragilityScore !== null) {
+                if (fragilityScore <= 0.3) {
+                    fragilityClass = 'fragility-low';
+                    fragilityText = 'LOW';
+                } else if (fragilityScore <= 0.6) {
+                    fragilityClass = 'fragility-medium';
+                    fragilityText = 'MED';
+                } else {
+                    fragilityClass = 'fragility-high';
+                    fragilityText = 'HIGH';
+                }
+            }
+
+            // Format confidence as 0.XX (structural score from S-PROT-3 v3, NOT adjective)
+            const confidenceDisplay = structuralScore !== null 
+                ? structuralScore.toFixed(2) 
+                : '--';
+
+            // Headline from snapshot conclusion or default
+            const headline = snapshot?.conclusion?.headline 
+                || snapshot?.conclusion?.summary 
+                || `${teamsText} - No analysis yet`;
+
+            div.innerHTML = `
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-tanker text-lg text-white truncate">${protocol.title || 'Untitled Protocol'}</h3>
+                        <p class="text-gray-400 text-sm">${teamsText}</p>
+                    </div>
+                    <span class="px-2 py-1 rounded text-xs font-bold uppercase bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 ml-2">
+                        ${protocol.status || 'ACTIVE'}
+                    </span>
+                </div>
+
+                <!-- Latest Snapshot Headline -->
+                <div class="glass-panel rounded-lg p-3 mb-3">
+                    <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Latest Analysis</div>
+                    <p class="text-sm text-gray-300 line-clamp-2">${headline}</p>
+                </div>
+
+                <!-- Confidence & Fragility Row -->
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 mb-1">Confidence</div>
+                            <div class="confidence-score text-lg text-[#ff1744]">${confidenceDisplay}</div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Wager</p>
-                                <p class="font-tanker text-lg">${formatCurrency(protocol.wager || 0)}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Payout</p>
-                                <p class="font-tanker text-lg text-[#00ff9d]">${formatCurrency(protocol.payout || 0)}</p>
-                            </div>
+                        <div class="w-px h-8 bg-white/10"></div>
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 mb-1">Fragility</div>
+                            <span class="px-2 py-1 rounded text-xs font-bold border ${fragilityClass}">${fragilityText}</span>
                         </div>
                     </div>
-                `).join('');
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500">Updated</div>
+                        <div class="text-xs text-gray-400">${formatTimeAgo(protocol.updated_at || protocol.created_at)}</div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-2">
+                    <a href="/app?screen=protocol&id=${protocol.id}" class="action-btn neon-btn text-white flex-1 text-center">
+                        VIEW PROTOCOL
+                    </a>
+                    <button onclick="watchProtocol('${protocol.id}')" class="action-btn neon-btn-secondary text-[#ff1744] border border-[#ff1744]/40">
+                        WATCH
+                    </button>
+                    <a href="/app?screen=builder&protocol=${protocol.id}" class="action-btn neon-btn-secondary text-[#ff1744] border border-[#ff1744]/40">
+                        BUILD FROM
+                    </a>
+                </div>
+            `;
+
+            return div;
+        }
+
+        function formatTimeAgo(timestamp) {
+            if (!timestamp) return '--';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        }
+
+        function watchProtocol(protocolId) {
+            // TODO: Implement watch functionality
+            console.log('Watch protocol:', protocolId);
+            alert('Watch notifications coming soon!');
+        }
+
+        // =============================================================================
+        // Edge Feed
+        // =============================================================================
+
+        async function loadEdgeFeed() {
+            try {
+                const response = await AUTH.fetch('/api/edge-feed');
+                
+                if (response.status === 401) {
+                    return;
+                }
+
+                const data = await response.json();
+                edgeSignals = data.signals || [];
+
+                // Update count
+                document.getElementById('edge-count').textContent = `${edgeSignals.length} signals`;
+
+                if (edgeSignals.length === 0) {
+                    showEdgeEmpty();
+                } else {
+                    renderEdgeFeed();
+                }
+            } catch (err) {
+                console.error('Failed to load edge feed:', err);
+                showEdgeEmpty();
             }
         }
 
-        function updateRecentBets(bets) {
-            // For now, bets display on dashboard is limited
-            // Full history can be on separate screen
+        function showEdgeEmpty() {
+            document.getElementById('edge-loading').classList.add('hidden');
+            document.getElementById('edge-list').classList.add('hidden');
+            document.getElementById('edge-empty').classList.remove('hidden');
         }
 
-        // Logout handler
-        function handleLogout() {
-            sessionStorage.clear();
-            window.location.href = '/app?screen=auth';
+        function renderEdgeFeed() {
+            const container = document.getElementById('edge-list');
+            container.innerHTML = '';
+
+            edgeSignals.slice(0, 5).forEach(signal => {
+                const item = createEdgeItem(signal);
+                container.appendChild(item);
+            });
+
+            document.getElementById('edge-loading').classList.add('hidden');
+            document.getElementById('edge-empty').classList.add('hidden');
+            document.getElementById('edge-list').classList.remove('hidden');
         }
 
-        // Explicit nav click handlers (backup for href)
-        document.getElementById('nav-browse')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=browse';
-        });
+        function createEdgeItem(signal) {
+            const div = document.createElement('div');
+            div.className = 'flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/5';
 
-        document.getElementById('nav-builder')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=builder';
-        });
+            const indicatorClass = signal.severity === 'high' ? 'edge-high' : 
+                                   signal.severity === 'medium' ? 'edge-medium' : 'edge-low';
 
-        document.getElementById('nav-home')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=dashboard';
-        });
+            div.innerHTML = `
+                <span class="edge-indicator ${indicatorClass} mt-1"></span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-white">${signal.headline}</div>
+                    <div class="text-xs text-gray-500 mt-1">${signal.description || ''}</div>
+                    <div class="text-xs text-gray-600 mt-1">${formatTimeAgo(signal.timestamp)}</div>
+                </div>
+            `;
 
-        document.getElementById('nav-history')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=history';
-        });
+            return div;
+        }
 
-        // Load data on page load
-        loadDashboard();
+        // =============================================================================
+        // Risk Profile
+        // =============================================================================
 
-        // Debug: log that nav is ready
-        console.log('Dashboard nav ready:', {
-            home: !!document.getElementById('nav-home'),
-            browse: !!document.getElementById('nav-browse'),
-            builder: !!document.getElementById('nav-builder'),
-            history: !!document.getElementById('nav-history')
-        });
+        async function loadRiskProfile() {
+            try {
+                const response = await AUTH.fetch('/api/risk-profile');
+                
+                if (response.status === 401) {
+                    return;
+                }
+
+                const profile = await response.json();
+
+                document.getElementById('risk-tolerance-display').textContent = 
+                    profile.risk_tolerance.charAt(0).toUpperCase() + profile.risk_tolerance.slice(1);
+                document.getElementById('risk-exposure-display').textContent = profile.max_exposure_dollars;
+                document.getElementById('risk-kelly-display').textContent = 
+                    `${(profile.kelly_fraction_cap * 100).toFixed(0)}%`;
+            } catch (err) {
+                console.error('Failed to load risk profile:', err);
+            }
+        }
+
+        // =============================================================================
+        // System Health
+        // =============================================================================
+
+        async function loadSystemHealth() {
+            try {
+                const response = await AUTH.fetch('/api/system/health');
+                
+                if (response.status !== 200) {
+                    throw new Error('Health check failed');
+                }
+
+                const health = await response.json();
+                systemHealth = health;
+
+                // Update display
+                document.getElementById('health-snapshot-version').textContent = health.versions?.snapshot || 'v3';
+                document.getElementById('health-schema-version').textContent = health.versions?.confidence_schema || 'v3';
+                document.getElementById('health-data-freshness').textContent = health.data_freshness || 'Unknown';
+                document.getElementById('health-provider-mode').textContent = health.provider_mode || 'Unknown';
+                document.getElementById('health-timestamp').textContent = formatTimeAgo(health.timestamp);
+
+                // Update status indicator
+                const statusEl = document.getElementById('system-status');
+                if (health.status === 'healthy') {
+                    statusEl.textContent = 'OPERATIONAL';
+                    statusEl.className = 'text-xs px-2 py-1 rounded bg-green-500/10 text-green-500 border border-green-500/20';
+                } else {
+                    statusEl.textContent = 'DEGRADED';
+                    statusEl.className = 'text-xs px-2 py-1 rounded bg-yellow-500/10 text-yellow-500 border border-yellow-500/20';
+                }
+            } catch (err) {
+                console.error('Failed to load system health:', err);
+                document.getElementById('system-status').textContent = 'UNKNOWN';
+                document.getElementById('system-status').className = 'text-xs px-2 py-1 rounded bg-gray-500/10 text-gray-500 border border-gray-500/20';
+            }
+        }
     </script>
 </body>
 </html>
