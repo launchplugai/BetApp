@@ -63,9 +63,6 @@ _cache = SimpleCache(default_ttl_seconds=60)
 # Provider Selection
 # =============================================================================
 
-# Load config once at module level
-_config_instance = load_config(fail_fast=False)
-
 def get_odds_provider() -> any:
     """
     Get the active odds provider.
@@ -73,14 +70,16 @@ def get_odds_provider() -> any:
     R0.3: Deterministic provider selection based on ODDS_PROVIDER config.
     Explicit flag-based selection, not env var presence.
     """
-    provider_type = _config_instance.odds_provider
+    # Load config fresh each time to pick up env var changes
+    config = load_config(fail_fast=False)
+    provider_type = config.odds_provider
     
     if provider_type == "oddsapi":
-        config = ProviderConfig(
+        provider_config = ProviderConfig(
             provider_type="live",
-            api_key=_config_instance.the_odds_api_key
+            api_key=config.the_odds_api_key
         )
-        return OddsApiProvider(config)
+        return OddsApiProvider(provider_config)
     else:
         # Default: mock provider
         return MockOddsProvider()
@@ -88,12 +87,15 @@ def get_odds_provider() -> any:
 
 def get_score_provider() -> any:
     """Get the active score provider."""
-    if _config_instance.odds_provider == "oddsapi":
-        config = ProviderConfig(
+    # Load config fresh each time to pick up env var changes
+    config = load_config(fail_fast=False)
+    
+    if config.odds_provider == "oddsapi":
+        provider_config = ProviderConfig(
             provider_type="live",
-            api_key=_config_instance.the_odds_api_key
+            api_key=config.the_odds_api_key
         )
-        return OddsApiProvider(config)
+        return OddsApiProvider(provider_config)
     else:
         return MockScoreProvider()
 
