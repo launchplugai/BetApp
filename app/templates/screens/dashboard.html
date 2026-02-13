@@ -229,7 +229,7 @@
                 }
             } catch (err) {
                 console.error('Failed to load preferences:', err);
-            alert('Error loading user preferences! Please check the console for more details.');
+                // Silently fail - page should still render
             }
         }
         
