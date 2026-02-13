@@ -10,10 +10,8 @@ from datetime import datetime
 import uuid
 
 from app.models import get_session
-from app.models.user_preferences import (
-    UserPreferences, UserDnaSnapshot, ConstraintViolation,
-    RiskProfile, BetStyle, ConstraintsSchema, BankrollPolicySchema
-)
+from app.models.user_preferences import UserPreferences
+from app.models.user_dna_snapshot import UserDnaSnapshot
 from app.services.constraint_checker import check_constraints_for_user, ConstraintChecker
 
 router = APIRouter(prefix="/api/preferences", tags=["preferences"])
