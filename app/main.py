@@ -31,6 +31,7 @@ from app.routers import auth
 from app.routers import dashboard as dashboard_router
 from app.routers import bets
 from app.routers import odds
+from app.routers import preferences
 from app.nba.router import router as nba_router
 from app.admin.router import router as admin_router
 from app.voice.router import router as voice_router
@@ -118,8 +119,9 @@ app.include_router(bets.router)
 app.include_router(odds.router)
 app.include_router(nba_router)
 app.include_router(admin_router)
-app.include_router(leading_light.router)
 app.include_router(voice_router)
+app.include_router(preferences.router)
+app.include_router(leading_light.router)
 app.include_router(panel.router)
 app.include_router(history.router)
 app.include_router(v1_ui.router)
