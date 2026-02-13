@@ -79,26 +79,26 @@
         </section>
 
         <!-- Risk Profile Section -->
-        <section class="section-spacing">
+        <section class="section-spacing" id="risk-profile-section">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <iconify-icon icon="lucide:gauge" class="text-[#ff1744]"></iconify-icon>
                     <h2 class="font-tanker text-lg tracking-wide">RISK PROFILE</h2>
                 </div>
-                <button class="text-xs text-[#ff1744] hover:text-white">Edit →</button>
+                <button id="risk-profile-edit-btn" class="text-xs text-[#ff1744] hover:text-white">Edit →</button>
             </div>
             <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-4 space-y-3">
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-400">Risk Tolerance</span>
-                    <span class="text-sm text-[#ff1744]">--</span>
+                    <span id="risk-tolerance-value" class="text-sm text-[#ff1744]">--</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-400">Max Exposure</span>
-                    <span class="text-sm text-gray-500">--</span>
+                    <span id="max-exposure-value" class="text-sm text-gray-500">--</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-sm text-gray-400">Kelly Cap</span>
-                    <span class="text-sm text-gray-500">--</span>
+                    <span id="kelly-cap-value" class="text-sm text-gray-500">--</span>
                 </div>
             </div>
         </section>
@@ -191,37 +191,41 @@
                 
                 const response = await fetch('/api/preferences', { headers });
                 
+                const riskToleranceEl = document.getElementById('risk-tolerance-value');
+                const maxExposureEl = document.getElementById('max-exposure-value');
+                const kellyCapEl = document.getElementById('kelly-cap-value');
+                const editBtn = document.getElementById('risk-profile-edit-btn');
+                
                 if (response.ok) {
                     const prefs = await response.json();
                     console.log('User preferences loaded:', prefs);
                     
                     // Update Risk Profile section
-                    if (prefs.risk_profile) {
-                        document.querySelector('.section-spacing:nth-of-type(3) .text-\\[\\#ff1744\\]').textContent = 
-                            prefs.risk_profile.charAt(0).toUpperCase() + prefs.risk_profile.slice(1);
+                    if (prefs.risk_profile && riskToleranceEl) {
+                        riskToleranceEl.textContent = prefs.risk_profile.charAt(0).toUpperCase() + prefs.risk_profile.slice(1);
                     }
                     
                     // Update Max Exposure (from bankroll_policy)
-                    if (prefs.bankroll_policy && prefs.bankroll_policy.max_units_per_bet) {
-                        document.querySelector('.section-spacing:nth-of-type(3) .text-gray-500:nth-of-type(2)').nextElementSibling.textContent = 
-                            prefs.bankroll_policy.max_units_per_bet + ' units';
+                    if (prefs.bankroll_policy && prefs.bankroll_policy.max_units_per_bet && maxExposureEl) {
+                        maxExposureEl.textContent = prefs.bankroll_policy.max_units_per_bet + ' units';
                     }
                     
                     // Update Kelly Cap (unit_size_percent)
-                    if (prefs.bankroll_policy && prefs.bankroll_policy.unit_size_percent) {
-                        document.querySelector('.section-spacing:nth-of-type(3) .text-gray-500:nth-of-type(3)').nextElementSibling.textContent = 
-                            prefs.bankroll_policy.unit_size_percent + '%';
+                    if (prefs.bankroll_policy && prefs.bankroll_policy.unit_size_percent && kellyCapEl) {
+                        kellyCapEl.textContent = prefs.bankroll_policy.unit_size_percent + '%';
                     }
                     
                     // Update Edit button to link to onboarding
-                    const editBtn = document.querySelector('.section-spacing:nth-of-type(3) button');
-                    editBtn.onclick = () => window.location.href = '/onboarding';
+                    if (editBtn) {
+                        editBtn.onclick = () => window.location.href = '/onboarding';
+                    }
                 } else if (response.status === 401 || response.status === 404) {
                     // No preferences yet - show "Set Up" button
-                    document.querySelector('.section-spacing:nth-of-type(3) .text-\\[\\#ff1744\\]').textContent = 'Not Set';
-                    const editBtn = document.querySelector('.section-spacing:nth-of-type(3) button');
-                    editBtn.textContent = 'Set Up →';
-                    editBtn.onclick = () => window.location.href = '/onboarding';
+                    if (riskToleranceEl) riskToleranceEl.textContent = 'Not Set';
+                    if (editBtn) {
+                        editBtn.textContent = 'Set Up →';
+                        editBtn.onclick = () => window.location.href = '/onboarding';
+                    }
                 }
             } catch (err) {
                 console.error('Failed to load preferences:', err);
@@ -229,7 +233,7 @@
         }
         
         // Load on page load
-        loadUserPreferences();
+        document.addEventListener('DOMContentLoaded', loadUserPreferences);
     </script>
 </body>
 </html>
