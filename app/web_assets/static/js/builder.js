@@ -90,23 +90,47 @@ async function loadMarkets() {
                     // Group selections by player + prop
                     const propsMap = new Map();
                     m.selections.forEach(sel => {
-                        // Parse label like "LeBron James O27.5 PTS" or "LeBron James U27.5 PTS"
-                        const match = sel.label.match(/^(.+)\s+([OU])([\d.]+)\s+(.+)$/);
+                        // Try multiple regex patterns for different API formats
+                        // Pattern 1: "LeBron James O27.5 PTS" or "LeBron James U27.5 PTS"
+                        // Pattern 2: "LeBron James Over 27.5 PTS" or "LeBron James Under 27.5 PTS"
+                        // Pattern 3: "LeBron James O 27.5 Points"
+                        let match = sel.label.match(/^(.+?)\s+([OU])([\d.]+)\s+(.+)$/i);
+                        
+                        if (!match) {
+                            // Try "Over/Under" spelled out
+                            match = sel.label.match(/^(.+?)\s+(Over|Under)\s+([\d.]+)\s+(.+)$/i);
+                            if (match) {
+                                // Convert Over/Under to O/U
+                                match[2] = match[2].charAt(0).toUpperCase();
+                                // Shift groups
+                                match = [match[0], match[1], match[2], match[3], match[4]];
+                            }
+                        }
+                        
                         if (match) {
                             const [, player, overUnder, line, prop] = match;
-                            const key = `${player}|${prop}|${line}`;
+                            const key = `${player.trim()}|${prop.trim()}|${line}`;
                             if (!propsMap.has(key)) {
-                                propsMap.set(key, { player: player.trim(), prop: prop.trim(), line: parseFloat(line), over_odds: null, under_odds: null });
+                                propsMap.set(key, { 
+                                    player: player.trim(), 
+                                    prop: prop.trim().toUpperCase(), 
+                                    line: parseFloat(line), 
+                                    over_odds: null, 
+                                    under_odds: null 
+                                });
                             }
                             const propData = propsMap.get(key);
-                            if (overUnder === 'O') {
-                                propData.over_odds = sel.odds;
-                            } else {
-                                propData.under_odds = sel.odds;
+                            if (overUnder === 'O' || overUnder === 'OVER') {
+                                propData.over_odds = sel.odds || -110;
+                            } else if (overUnder === 'U' || overUnder === 'UNDER') {
+                                propData.under_odds = sel.odds || -110;
                             }
+                        } else {
+                            console.log('DEBUG: Could not parse player prop:', sel.label);
                         }
                     });
                     markets.player_props = Array.from(propsMap.values());
+                    console.log('DEBUG: Parsed player props:', markets.player_props);
                 }
             });
         }

@@ -182,5 +182,54 @@
     </nav>
 
     <script src="/static/js/nav-protocols.js"></script>
+    <script>
+        // Fetch and display user preferences
+        async function loadUserPreferences() {
+            try {
+                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                
+                const response = await fetch('/api/preferences', { headers });
+                
+                if (response.ok) {
+                    const prefs = await response.json();
+                    console.log('User preferences loaded:', prefs);
+                    
+                    // Update Risk Profile section
+                    if (prefs.risk_profile) {
+                        document.querySelector('.section-spacing:nth-of-type(3) .text-\\[\\#ff1744\\]').textContent = 
+                            prefs.risk_profile.charAt(0).toUpperCase() + prefs.risk_profile.slice(1);
+                    }
+                    
+                    // Update Max Exposure (from bankroll_policy)
+                    if (prefs.bankroll_policy && prefs.bankroll_policy.max_units_per_bet) {
+                        document.querySelector('.section-spacing:nth-of-type(3) .text-gray-500:nth-of-type(2)').nextElementSibling.textContent = 
+                            prefs.bankroll_policy.max_units_per_bet + ' units';
+                    }
+                    
+                    // Update Kelly Cap (unit_size_percent)
+                    if (prefs.bankroll_policy && prefs.bankroll_policy.unit_size_percent) {
+                        document.querySelector('.section-spacing:nth-of-type(3) .text-gray-500:nth-of-type(3)').nextElementSibling.textContent = 
+                            prefs.bankroll_policy.unit_size_percent + '%';
+                    }
+                    
+                    // Update Edit button to link to onboarding
+                    const editBtn = document.querySelector('.section-spacing:nth-of-type(3) button');
+                    editBtn.onclick = () => window.location.href = '/onboarding';
+                } else if (response.status === 401 || response.status === 404) {
+                    // No preferences yet - show "Set Up" button
+                    document.querySelector('.section-spacing:nth-of-type(3) .text-\\[\\#ff1744\\]').textContent = 'Not Set';
+                    const editBtn = document.querySelector('.section-spacing:nth-of-type(3) button');
+                    editBtn.textContent = 'Set Up →';
+                    editBtn.onclick = () => window.location.href = '/onboarding';
+                }
+            } catch (err) {
+                console.error('Failed to load preferences:', err);
+            }
+        }
+        
+        // Load on page load
+        loadUserPreferences();
+    </script>
 </body>
 </html>
