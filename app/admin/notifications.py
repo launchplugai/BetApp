@@ -568,14 +568,21 @@ def get_daily_telemetry_summary(db: Session, days: int = 7) -> List[Dict[str, An
     """
     since = datetime.utcnow() - timedelta(days=days)
 
-    # Query daily counts
+    # Query daily counts - using SQLAlchemy 2.0 compatible case expression
+    from sqlalchemy import case
+    
+    sent_expr = func.sum(case((NotificationReceipt.status == 'sent', 1), else_=0))
+    suppressed_expr = func.sum(case((NotificationReceipt.status == 'suppressed', 1), else_=0))
+    eligible_expr = func.sum(case((NotificationReceipt.status == 'eligible', 1), else_=0))
+    detected_expr = func.sum(case((NotificationReceipt.status == 'detected', 1), else_=0))
+    
     results = db.query(
         func.strftime('%Y-%m-%d', NotificationReceipt.created_at).label('date'),
         func.count().label('total'),
-        func.sum(func.case([(NotificationReceipt.status == 'sent', 1)], else_=0)).label('sent'),
-        func.sum(func.case([(NotificationReceipt.status == 'suppressed', 1)], else_=0)).label('suppressed'),
-        func.sum(func.case([(NotificationReceipt.status == 'eligible', 1)], else_=0)).label('eligible'),
-        func.sum(func.case([(NotificationReceipt.status == 'detected', 1)], else_=0)).label('detected')
+        sent_expr.label('sent'),
+        suppressed_expr.label('suppressed'),
+        eligible_expr.label('eligible'),
+        detected_expr.label('detected')
     ).filter(
         NotificationReceipt.created_at >= since
     ).group_by(

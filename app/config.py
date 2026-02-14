@@ -246,6 +246,11 @@ def load_config(fail_fast: bool = True) -> AppConfig:
         logger.warning("[KILL SWITCH] INCENTIVE_ACTIVATION_WEIGHT=off - incentives disabled")
         feature_sherlock_incentives = False
 
+    # S20-P3: Notification kill switch validation - if toggled, disable notification delivery
+    if notifications_kill_switch:
+        logger.warning("[KILL SWITCH] NOTIFICATIONS_KILL_SWITCH=true - notification delivery disabled")
+        notifications_enabled = False
+
     # S20-P5: Beta-safe notification defaults
     notifications_daily_cap, ndc_warning = _parse_int_env(
         "NOTIFICATIONS_DAILY_CAP", 5, min_value=1

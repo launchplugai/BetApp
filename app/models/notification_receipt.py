@@ -67,7 +67,7 @@ class NotificationReceipt(Base):
             "sent_at": self.sent_at.isoformat() if self.sent_at else None,
             "status": self.status,
             "suppression_reason": self.suppression_reason,
-            "metadata": self.metadata or {},
+            "metadata": self.additional_metadata or {},
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
@@ -107,7 +107,7 @@ class NotificationReceipt(Base):
             confidence=confidence,
             reason_codes=reason_codes or [],
             weight_tier=weight_tier,
-            metadata=metadata or {},
+            additional_metadata=metadata or {},
             detected_at=datetime.utcnow(),
             status="detected"
         )

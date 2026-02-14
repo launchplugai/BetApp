@@ -615,3 +615,137 @@ async def get_telemetry_suppression_endpoint(
         return breakdown
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# Test Notification Endpoint (Pre-Beta Validation)
+# =============================================================================
+
+class TestNotificationRequest(BaseModel):
+    """Test notification request."""
+    reason: str
+    userId: str
+    nonce: Optional[str] = None
+
+
+@router.post("/notifications/test-send")
+async def send_test_notification(
+    request: TestNotificationRequest,
+    db=Depends(get_session)
+):
+    """
+    Send a test notification for validation purposes.
+
+    Args:
+        reason: Test reason (kill-switch-drill, cohort-allow, cohort-deny, receipt-integrity)
+        userId: Target user ID
+        nonce: Optional unique nonce for deduplication testing
+
+    Returns:
+        Notification result with receipt ID and status
+    """
+    from app.config import load_config
+    from app.services.notification_delivery import get_notification_delivery
+    from app.services.notification_guardrails import get_notification_guardrails
+    from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters
+    from datetime import datetime
+
+    config = load_config()
+
+    # Check if notifications are enabled
+    if not config.notifications_enabled:
+        return {
+            "sent": False,
+            "reason": "notifications_disabled",
+            "user_id": request.userId,
+            "config_enabled": config.notifications_enabled,
+            "config_kill_switch": config.notifications_kill_switch
+        }
+
+    # Check beta gating
+    is_beta = request.userId in (config.notifications_beta_user_ids or [])
+    if config.notifications_beta_user_ids and not is_beta:
+        # Create suppressed receipt for cohort testing
+        receipt = NotificationReceipt(
+            user_id=request.userId,
+            opportunity_id=f"test_{request.nonce or datetime.utcnow().isoformat()}",
+            reason_codes=["test", request.reason],
+            constraints_applied=["beta_gate"],
+            confidence=0.5,
+            weight_tier="test",
+            status="suppressed",
+            suppression_reason="beta_gate",
+            additional_metadata={"test_nonce": request.nonce, "test_reason": request.reason}
+        )
+        db.add(receipt)
+        db.commit()
+
+        return {
+            "sent": False,
+            "reason": "beta_gate",
+            "user_id": request.userId,
+            "beta_gate_pass": False,
+            "receipt_id": receipt.id
+        }
+
+    # Create receipt for allowed user
+    receipt = NotificationReceipt(
+        user_id=request.userId,
+        opportunity_id=f"test_{request.nonce or datetime.utcnow().isoformat()}",
+        reason_codes=["test", request.reason],
+        constraints_applied=[],
+        confidence=0.5,
+        weight_tier="test",
+        status="detected",
+        additional_metadata={"test_nonce": request.nonce, "test_reason": request.reason}
+    )
+    db.add(receipt)
+    db.commit()
+
+    # Check guardrails
+    guardrails = get_notification_guardrails()
+    guardrail_result = guardrails.can_notify(
+        user_id=request.userId,
+        game_id="test_game",
+        opportunity_type="test"
+    )
+
+    if not guardrail_result.allowed:
+        receipt.mark_suppressed(guardrail_result.reason)
+        db.commit()
+
+        return {
+            "sent": False,
+            "reason": guardrail_result.reason,
+            "user_id": request.userId,
+            "beta_gate_pass": True,
+            "receipt_id": receipt.id,
+            "guardrail_result": guardrail_result.__dict__ if hasattr(guardrail_result, '__dict__') else str(guardrail_result)
+        }
+
+    # Mark eligible and attempt send
+    receipt.mark_eligible()
+    db.commit()
+
+    # Attempt delivery
+    delivery = get_notification_delivery()
+    result = delivery.send_notification(
+        user_id=request.userId,
+        notification_type="test",
+        title=f"Test: {request.reason}",
+        body=f"Test notification for {request.reason}",
+        data={"test_nonce": request.nonce, "test_reason": request.reason}
+    )
+
+    if result.get("status") in ["queued", "delivered"]:
+        receipt.mark_sent()
+        db.commit()
+
+    return {
+        "sent": result.get("status") in ["queued", "delivered"],
+        "status": result.get("status"),
+        "user_id": request.userId,
+        "beta_gate_pass": True,
+        "receipt_id": receipt.id,
+        "delivery_result": result
+    }

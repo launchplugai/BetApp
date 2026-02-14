@@ -210,6 +210,29 @@ grep "KILL SWITCH" /var/log/dna-matrix/app.log
 # Expected: [KILL SWITCH] INCENTIVE_ACTIVATION_WEIGHT=off - incentives disabled
 ```
 
+### Safety Check Logging
+
+The system logs all safety-related configuration changes at startup:
+
+```bash
+# Check startup logs for safety validations
+grep "SAFETY\|KILL SWITCH\|CONFIG" /var/log/dna-matrix/app.log
+
+Expected log entries:
+- [CONFIG] Loaded configuration with warnings: <count>
+- [KILL SWITCH] NOTIFICATIONS_KILL_SWITCH=true - notification delivery disabled
+- [KILL SWITCH] INCENTIVE_ACTIVATION_WEIGHT=off - incentives disabled
+```
+
+#### Log Levels
+
+| Event | Log Level | Message Pattern |
+|-------|-----------|-----------------|
+| Config warning | WARNING | `[CONFIG] {warning_message}` |
+| Kill switch active | WARNING | `[KILL SWITCH] {switch_name} - {action}` |
+| Invalid weight value | WARNING | `INCENTIVE_ACTIVATION_WEIGHT='{value}' is not valid; using 'minimal'` |
+| Production startup | INFO | `[STARTUP] service={name} version={version} environment=production` |
+
 ---
 
 ## Blast Radius Controls
