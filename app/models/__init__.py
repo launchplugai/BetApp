@@ -59,6 +59,12 @@ class Bet(Base):
     confidence = Column(Integer)  # 0-100
     fragility = Column(Integer)   # 0-100
     
+    # S21-E: History Receipts - DNA snapshot tracking
+    user_dna_snapshot_id = Column(String, nullable=True, index=True)
+    applied_constraints = Column(JSON, default=list)  # List of constraints that were applied
+    blocked_actions = Column(JSON, default=list)  # List of blocked actions with reasons
+    risk_profile_at_bet = Column(String, nullable=True)  # Risk profile used at bet time
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     settled_at = Column(DateTime, nullable=True)
     
@@ -76,6 +82,10 @@ class Bet(Base):
             "verdict": self.verdict,
             "confidence": self.confidence,
             "fragility": self.fragility,
+            "user_dna_snapshot_id": self.user_dna_snapshot_id,
+            "applied_constraints": self.applied_constraints,
+            "blocked_actions": self.blocked_actions,
+            "risk_profile_at_bet": self.risk_profile_at_bet,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "settled_at": self.settled_at.isoformat() if self.settled_at else None
         }

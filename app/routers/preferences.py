@@ -57,6 +57,26 @@ class PreferencesResponse(BaseModel):
     updated_at: Optional[str]
 
 
+# Schema classes for default constraints (used when user has no preferences)
+class ConstraintsSchema(BaseModel):
+    no_unders: bool = False
+    max_legs: int = 6
+    max_correlated_legs: int = 2
+    favorite_sports: List[str] = []
+    min_odds: Optional[float] = None
+    max_odds: Optional[float] = None
+    avoid_teams: List[str] = []
+    avoid_players: List[str] = []
+
+
+class BankrollPolicySchema(BaseModel):
+    unit_size_percent: float = 1.0
+    max_units_per_bet: float = 3.0
+    max_daily_exposure_units: float = 10.0
+    bankroll_goal: Optional[float] = None
+    goal_timeline_days: Optional[int] = None
+
+
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """Extract user ID from JWT token."""
     # This is a simplified version - integrate with your auth service
