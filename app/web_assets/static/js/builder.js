@@ -21,15 +21,38 @@ async function loadProtocol() {
         console.log('Protocol loaded:', protocol);
     } else {
         console.warn('No protocol in sessionStorage');
-        // Fallback for testing
+        // Fetch first available NHL game as fallback
+        try {
+            const gamesResponse = await fetch(`${API_BASE}/games?sport=NHL`);
+            if (gamesResponse.ok) {
+                const games = await gamesResponse.json();
+                if (games && games.length > 0) {
+                    const game = games[0];
+                    protocol = {
+                        protocolId: game.id,
+                        league: game.league,
+                        gameId: game.id,
+                        teams: [game.home, game.away],
+                        status: game.status,
+                        clock: null,
+                        score: null
+                    };
+                    console.log('Using real game as fallback:', protocol);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch fallback game:', e);
+        }
+        // Ultimate fallback
         protocol = {
-            protocolId: 'lal-gsw-2026-02-09',
-            league: 'NBA',
-            gameId: 'lal-gsw-2026-02-09',
-            teams: ['Lakers', 'Warriors'],
-            status: 'LIVE',
-            clock: 'Q3 8:42',
-            score: { home: 88, away: 82 }
+            protocolId: 'nhl-edmonton-oilers-at-anaheim-ducks-2026-02-26',
+            league: 'NHL',
+            gameId: 'nhl-edmonton-oilers-at-anaheim-ducks-2026-02-26',
+            teams: ['Anaheim Ducks', 'Edmonton Oilers'],
+            status: 'SCHEDULED',
+            clock: null,
+            score: null
         };
     }
 }
