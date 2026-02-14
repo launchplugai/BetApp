@@ -262,3 +262,44 @@ def validate_config_snapshot_safety(snapshot: str) -> bool:
             return False
 
     return True
+
+
+def get_config_health(config: AppConfig) -> dict:
+    """
+    Generate a health check report for configuration.
+
+    Returns a dict with config status for monitoring and debugging.
+    Safe to expose via health endpoint - no sensitive values.
+    """
+    return {
+        "status": "healthy" if not config.warnings else "degraded",
+        "environment": config.environment,
+        "git_sha": config.git_sha,
+        "features": {
+            "leading_light": {
+                "enabled": config.leading_light_enabled,
+                "api_key_present": config.openai_api_key_present,
+                "ready": config.leading_light_enabled and config.openai_api_key_present
+            },
+            "voice": {
+                "enabled": config.voice_enabled,
+                "api_key_present": config.openai_api_key_present,
+                "ready": config.voice_enabled and config.openai_api_key_present
+            },
+            "sherlock": {
+                "enabled": config.sherlock_enabled,
+                "ready": config.sherlock_enabled
+            },
+            "dna_recording": {
+                "enabled": config.dna_recording_enabled,
+                "ready": config.dna_recording_enabled
+            }
+        },
+        "odds_provider": {
+            "provider": config.odds_provider,
+            "api_key_present": bool(config.the_odds_api_key),
+            "ready": config.odds_provider == "mock" or bool(config.the_odds_api_key)
+        },
+        "warnings": config.warnings,
+        "warning_count": len(config.warnings)
+    }

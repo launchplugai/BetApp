@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import load_config, log_config_snapshot
+from app.config import load_config, log_config_snapshot, get_config_health
 from app.correlation import CorrelationIdMiddleware
 from app.routers import leading_light
 from app.routers import panel
@@ -149,15 +149,23 @@ async def startup_event():
 @app.get("/health")
 async def health():
     """Health check for Railway with service observability."""
+    config_health = get_config_health(_config)
     return {
-        "status": "healthy",
+        "status": "healthy" if config_health["status"] == "healthy" else "degraded",
         "service": _config.service_name,
         "version": _config.service_version,
         "environment": _config.environment,
         "git_sha": _config.git_sha,
         "build_time_utc": _config.build_time_utc,
         "started_at": _SERVICE_START_TIME.isoformat(),
+        "config": config_health,
     }
+
+
+@app.get("/health/config")
+async def health_config():
+    """Detailed configuration health for debugging."""
+    return get_config_health(_config)
 
 
 @app.get("/build")
