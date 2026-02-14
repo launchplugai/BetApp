@@ -7,19 +7,53 @@ let currentMarket = 'main';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadProtocol();
-    await loadMarkets();
-    renderGameHeader();
-    renderMarket();
-    renderLegs();
+    try {
+        await loadProtocol();
+        await loadMarkets();
+        renderGameHeader();
+        renderMarket();
+        renderLegs();
+    } catch (error) {
+        console.error('Builder initialization failed:', error);
+        document.body.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-screen text-white p-6">
+                <h1 class="text-2xl font-bold mb-4">Something went wrong</h1>
+                <p class="text-gray-400 mb-6">Failed to load builder. Please clear your cache and try again.</p>
+                <button onclick="window.location.reload(true)" class="px-6 py-3 bg-neon text-white rounded-lg font-bold">
+                    Reload Page
+                </button>
+                <button onclick="window.location.href='/'" class="mt-4 px-6 py-3 bg-white/10 text-white rounded-lg">
+                    Go Home
+                </button>
+            </div>
+        `;
+    }
 });
 
 async function loadProtocol() {
     const stored = sessionStorage.getItem('dna_protocol_context');
+    let useStored = false;
+    
     if (stored) {
-        protocol = JSON.parse(stored);
-        console.log('Protocol loaded:', protocol);
-    } else {
+        try {
+            const parsed = JSON.parse(stored);
+            // Validate the stored protocol has a valid game ID format
+            const gameId = parsed.gameId || parsed.protocolId;
+            if (gameId && gameId.includes('-at-') && gameId.startsWith('nhl-')) {
+                protocol = parsed;
+                useStored = true;
+                console.log('Protocol loaded from sessionStorage:', protocol);
+            } else {
+                console.warn('Invalid protocol game ID format, clearing:', gameId);
+                sessionStorage.removeItem('dna_protocol_context');
+            }
+        } catch (e) {
+            console.error('Failed to parse stored protocol, clearing:', e);
+            sessionStorage.removeItem('dna_protocol_context');
+        }
+    }
+    
+    if (!useStored) {
         console.warn('No protocol in sessionStorage');
         // Fetch first available NHL game as fallback
         try {
