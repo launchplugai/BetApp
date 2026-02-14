@@ -38,20 +38,20 @@ class BankrollPolicyInput(BaseModel):
     goal_timeline_days: Optional[int] = None
 
 
-class PreferencesInput(BaseModel):
-    risk_profile: str = "balanced"
-    bet_style: List[str] = ["props"]
-    constraints: ConstraintsInput = ConstraintsInput()
-    bankroll_policy: BankrollPolicyInput = BankrollPolicyInput()
-    notification_rules: Optional[NotificationRulesSchema] = None
-
-
 class NotificationRulesSchema(BaseModel):
     enabled: bool = True
     opportunity_alerts: Dict[str, Any] = {}
     bet_outcomes: Dict[str, Any] = {}
     game_reminders: Dict[str, Any] = {}
     quiet_hours: Dict[str, Any] = {}
+
+
+class PreferencesInput(BaseModel):
+    risk_profile: str = "balanced"
+    bet_style: List[str] = ["props"]
+    constraints: ConstraintsInput = ConstraintsInput()
+    bankroll_policy: BankrollPolicyInput = BankrollPolicyInput()
+    notification_rules: Optional[NotificationRulesSchema] = None
 
 
 class PreferencesResponse(BaseModel):
