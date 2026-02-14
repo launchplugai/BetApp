@@ -205,3 +205,12 @@ def get_session():
 def init_db():
     """Initialize database tables."""
     Base.metadata.create_all(bind=get_engine())
+
+
+# S20: Export notification models
+from app.models.notification_event import NotificationEvent
+from app.models.eligible_opportunity import EligibleOpportunity
+from app.models.user_preferences import UserPreferences
+from app.models.notification import Notification
+from app.models.notification_preferences import NotificationPreferences
+from app.models.user_device import UserDevice

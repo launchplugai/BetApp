@@ -1,0 +1,414 @@
+/**
+ * Notification Settings Styles
+ * Dark theme with neon red accents
+ */
+
+/* Base Typography */
+.font-tanker {
+    font-family: 'Tanker', sans-serif;
+}
+
+/* Settings Section */
+.settings-section {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    cursor: pointer;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 28px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 2px;
+    bottom: 2px;
+    background-color: #666;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: rgba(255, 23, 68, 0.2);
+    border-color: rgba(255, 23, 68, 0.5);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(24px);
+    background-color: #ff1744;
+    box-shadow: 0 0 10px rgba(255, 23, 68, 0.5);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+    box-shadow: 0 0 0 2px rgba(255, 23, 68, 0.3);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Setting Row */
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-row:last-child {
+    border-bottom: none;
+}
+
+.setting-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    padding-right: 16px;
+}
+
+.setting-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e8e8e8;
+}
+
+.setting-desc {
+    font-size: 12px;
+    color: #666;
+}
+
+/* Slider */
+.confidence-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.confidence-slider::-webkit-slider-track {
+    height: 6px;
+    background: #1a1a1a;
+    border-radius: 3px;
+}
+
+.confidence-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #ff1744;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 23, 68, 0.4);
+    transition: all 0.2s ease;
+    margin-top: -7px;
+}
+
+.confidence-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
+}
+
+.confidence-slider::-webkit-slider-thumb:active {
+    transform: scale(0.95);
+}
+
+.confidence-slider::-moz-range-track {
+    height: 6px;
+    background: #1a1a1a;
+    border-radius: 3px;
+}
+
+.confidence-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #ff1744;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 10px rgba(255, 23, 68, 0.4);
+}
+
+/* Slider Value Display */
+.slider-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ff1744;
+    min-width: 40px;
+    text-align: right;
+}
+
+/* Time Picker */
+.time-picker-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.time-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #111;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+}
+
+.time-picker:focus-within {
+    border-color: rgba(255, 23, 68, 0.5);
+}
+
+.time-input {
+    background: transparent;
+    border: none;
+    color: #e8e8e8;
+    font-size: 14px;
+    font-family: 'Satoshi', sans-serif;
+    outline: none;
+    flex: 1;
+    cursor: pointer;
+}
+
+.time-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+}
+
+.time-input::-webkit-calendar-picker-indicator:hover {
+    filter: invert(0.8);
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.toast-success .toast-content {
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+.toast-success #toast-icon {
+    color: #4ade80;
+}
+
+.toast-error .toast-content {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.toast-error #toast-icon {
+    color: #ef4444;
+}
+
+#toast-message {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e8e8e8;
+}
+
+/* Navigation Badge */
+.nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: #ff1744;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(255, 23, 68, 0.4);
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Loading Spinner */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Disabled State */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Section Stagger Animation */
+.settings-section:nth-child(1) { animation-delay: 0.05s; }
+.settings-section:nth-child(2) { animation-delay: 0.1s; }
+.settings-section:nth-child(3) { animation-delay: 0.15s; }
+.settings-section:nth-child(4) { animation-delay: 0.2s; }
+.settings-section:nth-child(5) { animation-delay: 0.25s; }
+
+/* Hover Effects */
+.settings-section > div {
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.settings-section > div:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+    .setting-row {
+        padding: 10px 0;
+    }
+    
+    .setting-label {
+        font-size: 13px;
+    }
+    
+    .setting-desc {
+        font-size: 11px;
+    }
+    
+    .toggle-switch {
+        width: 48px;
+        height: 26px;
+    }
+    
+    .toggle-slider::before {
+        height: 20px;
+        width: 20px;
+    }
+    
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(22px);
+    }
+    
+    .toast-content {
+        padding: 12px 20px;
+    }
+    
+    #toast-message {
+        font-size: 13px;
+    }
+}
+
+/* Focus States for Accessibility */
+button:focus-visible,
+input:focus-visible,
+.toggle-switch:focus-visible {
+    outline: 2px solid rgba(255, 23, 68, 0.5);
+    outline-offset: 2px;
+}
+
+/* Scrollbar for webkit browsers */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .settings-section,
+    .toggle-slider,
+    .toggle-slider::before,
+    .confidence-slider::-webkit-slider-thumb,
+    .toast,
+    .nav-badge {
+        animation: none;
+        transition: none;
+    }
+}

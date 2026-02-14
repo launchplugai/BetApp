@@ -43,6 +43,15 @@ class PreferencesInput(BaseModel):
     bet_style: List[str] = ["props"]
     constraints: ConstraintsInput = ConstraintsInput()
     bankroll_policy: BankrollPolicyInput = BankrollPolicyInput()
+    notification_rules: Optional[NotificationRulesSchema] = None
+
+
+class NotificationRulesSchema(BaseModel):
+    enabled: bool = True
+    opportunity_alerts: Dict[str, Any] = {}
+    bet_outcomes: Dict[str, Any] = {}
+    game_reminders: Dict[str, Any] = {}
+    quiet_hours: Dict[str, Any] = {}
 
 
 class PreferencesResponse(BaseModel):
@@ -52,6 +61,7 @@ class PreferencesResponse(BaseModel):
     bet_style: List[str]
     constraints: Dict[str, Any]
     bankroll_policy: Dict[str, Any]
+    notification_rules: Optional[Dict[str, Any]] = None
     version: int
     created_at: Optional[str]
     updated_at: Optional[str]
@@ -102,6 +112,7 @@ async def get_preferences(user_id: str = Depends(get_current_user_id)):
             bet_style=["props"],
             constraints=ConstraintsSchema().dict(),
             bankroll_policy=BankrollPolicySchema().dict(),
+            notification_rules={"enabled": True},  # Default notification rules
             version=1,
             created_at=None,
             updated_at=None
@@ -127,7 +138,8 @@ async def create_or_update_preferences(
         prefs.bet_style = input_data.bet_style
         prefs.constraints = input_data.constraints.dict()
         prefs.bankroll_policy = input_data.bankroll_policy.dict()
-        prefs.version += 1
+        if input_data.notification_rules:
+            prefs.notification_rules = input_data.notification_rules.dict()
         prefs.updated_at = datetime.utcnow()
     else:
         # Create new
@@ -138,6 +150,7 @@ async def create_or_update_preferences(
             bet_style=input_data.bet_style,
             constraints=input_data.constraints.dict(),
             bankroll_policy=input_data.bankroll_policy.dict(),
+            notification_rules=input_data.notification_rules.dict() if input_data.notification_rules else {},
             version=1
         )
         session.add(prefs)

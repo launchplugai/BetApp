@@ -68,6 +68,14 @@ class AppConfig:
     sherlock_enabled: bool = False
     dna_recording_enabled: bool = False
 
+    # Notification system flags (S20 - default disabled for safe rollout)
+    notifications_enabled: bool = False
+    notifications_kill_switch: bool = False
+
+    # Notification rate limiting configuration
+    notifications_max_daily_per_user: int = 10
+    notifications_cooldown_minutes: int = 60
+
     # API keys (OPTIONAL - features disabled without them)
     openai_api_key_present: bool = False
     the_odds_api_key: Optional[str] = None
@@ -170,6 +178,23 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     sherlock_enabled = _parse_bool_env("SHERLOCK_ENABLED", False)
     dna_recording_enabled = _parse_bool_env("DNA_RECORDING_ENABLED", False)
 
+    # Notification system flags (S20 - disabled by default for safe rollout)
+    notifications_enabled = _parse_bool_env("NOTIFICATIONS_ENABLED", False)
+    notifications_kill_switch = _parse_bool_env("NOTIFICATIONS_KILL_SWITCH", False)
+
+    # Notification rate limiting configuration
+    notifications_max_daily, nd_warning = _parse_int_env(
+        "NOTIFICATIONS_MAX_DAILY_PER_USER", 10, min_value=1
+    )
+    if nd_warning:
+        warnings.append(nd_warning)
+
+    notifications_cooldown, nc_warning = _parse_int_env(
+        "NOTIFICATIONS_COOLDOWN_MINUTES", 60, min_value=0
+    )
+    if nc_warning:
+        warnings.append(nc_warning)
+
     # API key presence (OPTIONAL - check presence, don't store value)
     openai_key = os.environ.get("OPENAI_API_KEY")
     openai_api_key_present = bool(openai_key and len(openai_key) > 0)
@@ -215,6 +240,10 @@ def load_config(fail_fast: bool = True) -> AppConfig:
         openai_api_key_present=openai_api_key_present,
         the_odds_api_key=the_odds_api_key,
         odds_provider=odds_provider,
+        notifications_enabled=notifications_enabled,
+        notifications_kill_switch=notifications_kill_switch,
+        notifications_max_daily_per_user=notifications_max_daily,
+        notifications_cooldown_minutes=notifications_cooldown,
         warnings=warnings,
     )
 
@@ -237,6 +266,10 @@ def log_config_snapshot(config: AppConfig) -> str:
         f"voice_enabled={config.voice_enabled} "
         f"sherlock_enabled={config.sherlock_enabled} "
         f"dna_recording_enabled={config.dna_recording_enabled} "
+        f"notifications_enabled={config.notifications_enabled} "
+        f"notifications_kill_switch={config.notifications_kill_switch} "
+        f"notifications_max_daily={config.notifications_max_daily_per_user} "
+        f"notifications_cooldown={config.notifications_cooldown_minutes} "
         f"openai_api_key_present={config.openai_api_key_present}"
     )
     logger.info(snapshot)
@@ -299,6 +332,14 @@ def get_config_health(config: AppConfig) -> dict:
             "provider": config.odds_provider,
             "api_key_present": bool(config.the_odds_api_key),
             "ready": config.odds_provider == "mock" or bool(config.the_odds_api_key)
+        },
+        "notifications": {
+            "enabled": config.notifications_enabled,
+            "kill_switch_active": config.notifications_kill_switch,
+            "max_daily_per_user": config.notifications_max_daily_per_user,
+            "cooldown_minutes": config.notifications_cooldown_minutes,
+            "ready": config.notifications_enabled and not config.notifications_kill_switch,
+            "status": "paused" if config.notifications_kill_switch else ("active" if config.notifications_enabled else "disabled")
         },
         "warnings": config.warnings,
         "warning_count": len(config.warnings)

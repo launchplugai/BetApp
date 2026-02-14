@@ -3,12 +3,21 @@ Admin API Router
 
 Configuration management and reporting endpoints.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from app.admin.config import get_config, update_config, ConfigManager
 from app.admin.reports import generate_super_report, export_report_json
+from app.admin.notifications import (
+    get_notification_stats,
+    get_recent_notifications,
+    get_dashboard_summary,
+    toggle_kill_switch,
+    get_kill_switch,
+    get_user_notification_summary
+)
+from app.models import get_session
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -304,3 +313,241 @@ async def run_daily_etl():
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+
+# =============================================================================
+# Notification Admin Endpoints
+# =============================================================================
+
+class KillSwitchRequest(BaseModel):
+    """Kill switch toggle request."""
+    enabled: bool
+    reason: str
+    triggered_by: str
+
+
+class KillSwitchResponse(BaseModel):
+    """Kill switch status response."""
+    enabled: bool
+    reason: Optional[str]
+    triggered_at: Optional[str]
+    triggered_by: Optional[str]
+
+
+class NotificationStatusUpdateRequest(BaseModel):
+    """Notification status update request."""
+    status: str  # pending, sent, delivered, read, dismissed, failed
+    error_message: Optional[str] = None
+
+
+@router.get("/notifications/dashboard")
+async def get_notifications_dashboard(db=Depends(get_session)):
+    """
+    Get complete notification dashboard summary.
+    
+    Returns stats, trends, opportunity metrics, and kill switch status.
+    """
+    try:
+        summary = get_dashboard_summary(db)
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/notifications/stats")
+async def get_notifications_stats(
+    period_hours: int = Query(default=24, ge=1, le=168),
+    user_id: Optional[str] = None,
+    db=Depends(get_session)
+):
+    """
+    Get notification statistics.
+    
+    Args:
+        period_hours: Time period to analyze (1-168 hours, default 24)
+        user_id: Optional user ID to filter by
+    
+    Returns:
+        Notification statistics including delivery rate, read rate, opt-out rate
+    """
+    try:
+        stats = get_notification_stats(db, period_hours=period_hours, user_id=user_id)
+        return stats.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/notifications/recent")
+async def get_recent_notifications_list(
+    limit: int = Query(default=50, ge=1, le=200),
+    status: Optional[str] = None,
+    user_id: Optional[str] = None,
+    db=Depends(get_session)
+):
+    """
+    Get recent notifications with optional filtering.
+    
+    Args:
+        limit: Maximum number of results (1-200, default 50)
+        status: Filter by status (pending, sent, delivered, read, dismissed, failed)
+        user_id: Filter by user ID
+    
+    Returns:
+        List of recent notification events
+    """
+    try:
+        notifications = get_recent_notifications(
+            db, limit=limit, status=status, user_id=user_id
+        )
+        return {
+            "notifications": notifications,
+            "count": len(notifications),
+            "filters": {
+                "status": status,
+                "user_id": user_id
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/notifications/kill-switch", response_model=KillSwitchResponse)
+async def post_kill_switch(
+    request: KillSwitchRequest,
+    db=Depends(get_session)
+):
+    """
+    Emergency kill switch for notifications.
+    
+    When enabled, all notification sending is immediately stopped.
+    Use for emergencies like spam detection, system issues, or compliance.
+    
+    Args:
+        enabled: True to engage kill switch, False to disengage
+        reason: Reason for the action (required)
+        triggered_by: Admin user ID taking the action
+    
+    Returns:
+        Current kill switch status
+    """
+    try:
+        status = toggle_kill_switch(
+            db,
+            enabled=request.enabled,
+            reason=request.reason,
+            triggered_by=request.triggered_by
+        )
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/notifications/kill-switch", response_model=KillSwitchResponse)
+async def get_kill_switch_status():
+    """
+    Get current kill switch status.
+    
+    Returns whether the notification kill switch is engaged.
+    """
+    return get_kill_switch().get_status()
+
+
+@router.get("/notifications/trends")
+async def get_notification_trends_endpoint(
+    period_hours: int = Query(default=24, ge=1, le=168),
+    db=Depends(get_session)
+):
+    """
+    Get notification trends over time.
+    
+    Args:
+        period_hours: Time period to analyze (1-168 hours, default 24)
+    
+    Returns:
+        Hourly breakdown of sent, delivered, and failed notifications
+    """
+    try:
+        from app.admin.notifications import get_notification_trends
+        trends = get_notification_trends(db, period_hours=period_hours)
+        return {
+            "trends": [t.to_dict() for t in trends],
+            "period_hours": period_hours
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/notifications/opportunities")
+async def get_opportunity_stats_endpoint(
+    period_hours: int = Query(default=24, ge=1, le=168),
+    db=Depends(get_session)
+):
+    """
+    Get eligible opportunity statistics.
+    
+    Args:
+        period_hours: Time period to analyze (1-168 hours, default 24)
+    
+    Returns:
+        Opportunity detection, notification, and conversion statistics
+    """
+    try:
+        from app.admin.notifications import get_opportunity_stats
+        stats = get_opportunity_stats(db, period_hours=period_hours)
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/notifications/users/{user_id}")
+async def get_user_notifications(
+    user_id: str,
+    db=Depends(get_session)
+):
+    """
+    Get notification summary for a specific user.
+    
+    Args:
+        user_id: User ID to query
+    
+    Returns:
+        User notification stats, recent notifications, and preferences
+    """
+    try:
+        summary = get_user_notification_summary(db, user_id=user_id)
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/notifications/{notification_id}/status")
+async def update_notification_status(
+    notification_id: str,
+    request: NotificationStatusUpdateRequest,
+    db=Depends(get_session)
+):
+    """
+    Manually update notification status (admin override).
+    
+    Args:
+        notification_id: Notification event ID
+        request: Status update with new status and optional error message
+    
+    Returns:
+        Updated notification
+    """
+    try:
+        from app.admin.notifications import mark_notification_status
+        notification = mark_notification_status(
+            db,
+            notification_id=notification_id,
+            status=request.status,
+            error_message=request.error_message
+        )
+        if not notification:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        return notification
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

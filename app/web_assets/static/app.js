@@ -2406,3 +2406,61 @@ async function evaluateBundle(bundleText) {
     // Make available globally
     window.generateAnalystTake = generateAnalystTake;
 })();
+
+// ============================================================
+// S20: NOTIFICATION COUNT FETCHER
+// ============================================================
+(function() {
+    const API_BASE = '/api/notifications';
+    
+    // Fetch unread notification count
+    async function fetchNotificationCount() {
+        try {
+            const token = sessionStorage.getItem('dna_auth_token') || 
+                         localStorage.getItem('dna_auth_token');
+            
+            if (!token) return;
+            
+            const response = await fetch(`${API_BASE}?page=1&per_page=1`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                updateBadge(data.unread_count);
+            }
+        } catch (error) {
+            console.error('Failed to fetch notification count:', error);
+        }
+    }
+    
+    // Update badge in navigation
+    function updateBadge(count) {
+        const badge = document.getElementById('nav-notifications-badge');
+        if (!badge) return;
+        
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+    
+    // Fetch on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', fetchNotificationCount);
+    } else {
+        fetchNotificationCount();
+    }
+    
+    // Refresh every 60 seconds
+    setInterval(fetchNotificationCount, 60000);
+    
+    // Expose globally
+    window.fetchNotificationCount = fetchNotificationCount;
+    window.updateNotificationBadge = updateBadge;
+})();
