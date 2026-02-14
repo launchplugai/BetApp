@@ -219,11 +219,33 @@ async function loadMarkets() {
     }
 }
 
+function getSportIcon(league) {
+    const icons = {
+        'NBA': 'emojione-monotone:basketball',
+        'NHL': 'game-icons:ice-hockey',
+        'NFL': 'game-icons:american-football-helmet',
+        'MLB': 'game-icons:baseball-bat'
+    };
+    return icons[league] || 'lucide:trophy';
+}
+
+function getSportColor(league) {
+    const colors = {
+        'NBA': { home: 'text-orange-500', away: 'text-purple-500' },
+        'NHL': { home: 'text-yellow-500', away: 'text-blue-500' },
+        'NFL': { home: 'text-red-500', away: 'text-blue-500' },
+        'MLB': { home: 'text-green-500', away: 'text-red-500' }
+    };
+    return colors[league] || { home: 'text-gray-400', away: 'text-gray-400' };
+}
+
 function renderGameHeader() {
     if (!protocol) return;
     const [home, away] = protocol.teams;
     const isLive = protocol.status === 'LIVE';
     const score = protocol.score;
+    const icon = getSportIcon(protocol.league);
+    const colors = getSportColor(protocol.league);
 
     document.getElementById('game-info').innerHTML = `
         <div class="flex justify-between items-center mb-4">
@@ -236,7 +258,7 @@ function renderGameHeader() {
         <div class="flex justify-between items-center">
             <div class="flex flex-col items-center gap-2 w-1/3">
                 <div class="w-16 h-16 rounded-full bg-white/5 p-3 border border-white/10 flex items-center justify-center">
-                    <iconify-icon icon="emojione-monotone:basketball" class="text-4xl text-yellow-500"></iconify-icon>
+                    <iconify-icon icon="${icon}" class="text-4xl ${colors.home}"></iconify-icon>
                 </div>
                 <h2 class="font-tanker text-2xl">${home.toUpperCase()}</h2>
                 ${score ? `<span class="font-satoshi text-xl font-bold">${score.home}</span>` : ''}
@@ -246,7 +268,7 @@ function renderGameHeader() {
             </div>
             <div class="flex flex-col items-center gap-2 w-1/3">
                 <div class="w-16 h-16 rounded-full bg-white/5 p-3 border border-white/10 flex items-center justify-center">
-                    <iconify-icon icon="emojione-monotone:basketball" class="text-4xl text-blue-500"></iconify-icon>
+                    <iconify-icon icon="${icon}" class="text-4xl ${colors.away}"></iconify-icon>
                 </div>
                 <h2 class="font-tanker text-2xl text-gray-300">${away.toUpperCase()}</h2>
                 ${score ? `<span class="font-satoshi text-xl font-bold text-gray-400">${score.away}</span>` : ''}
