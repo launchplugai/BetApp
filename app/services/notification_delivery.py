@@ -16,6 +16,8 @@ import time
 
 from app.config import load_config
 from app.services.notification_guardrails import get_notification_guardrails, GuardrailResult
+from app.models import get_session
+from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,7 @@ class NotificationDelivery:
     def __init__(self, max_queue_size: int = 1000, batch_size: int = 10):
         self.config = load_config(fail_fast=False)
         self.guardrails = get_notification_guardrails()
+        self._telemetry = get_telemetry_counters()
         
         # Queue for batch processing
         self._queue: Queue = Queue(maxsize=max_queue_size)
@@ -433,6 +436,20 @@ class NotificationDelivery:
     
     def _process_notification(self, payload: NotificationPayload):
         """Process a single notification through all channels."""
+        session = get_session()
+        receipt = None
+        
+        try:
+            # Try to find existing receipt for this notification
+            opportunity_id = payload.data.get("opportunity_id")
+            if opportunity_id:
+                receipt = session.query(NotificationReceipt).filter_by(
+                    opportunity_id=opportunity_id,
+                    user_id=payload.user_id
+                ).first()
+        except Exception as e:
+            logger.debug(f"Could not lookup receipt: {e}")
+        
         for channel in payload.channels:
             handler = self._channel_handlers.get(channel)
             
@@ -455,6 +472,16 @@ class NotificationDelivery:
                         NotificationStatus.DELIVERED,
                         metadata=result.get("metadata", {})
                     )
+                    
+                    # Update receipt as sent
+                    if receipt:
+                        receipt.mark_sent()
+                        self._telemetry.sent += 1
+                        try:
+                            session.commit()
+                        except Exception as e:
+                            logger.debug(f"Could not update receipt: {e}")
+                            session.rollback()
                 else:
                     self.track_delivery(
                         payload.notification_id,
@@ -480,6 +507,11 @@ class NotificationDelivery:
             game_id=game_id,
             notification_id=payload.notification_id
         )
+        
+        try:
+            session.close()
+        except:
+            pass
     
     def _send_in_app(self, payload: NotificationPayload) -> Dict[str, Any]:
         """

@@ -437,7 +437,7 @@ class TestKillSwitchMethods:
 
 class TestGuardrailResult:
     """Tests for GuardrailResult dataclass."""
-    
+
     def test_result_allowed(self):
         """Allowed result has correct properties."""
         result = GuardrailResult(
@@ -445,10 +445,11 @@ class TestGuardrailResult:
             reason="All checks passed",
             remaining_today=5
         )
-        
+
         assert result.allowed is True
         assert result.remaining_today == 5
-    
+        assert result.beta_gate_pass is True  # Default value
+
     def test_result_blocked(self):
         """Blocked result has correct properties."""
         result = GuardrailResult(
@@ -456,9 +457,120 @@ class TestGuardrailResult:
             reason="Daily cap reached",
             remaining_today=0
         )
-        
+
         assert result.allowed is False
         assert "cap" in result.reason
+
+
+class TestBetaGate:
+    """Tests for beta user gating (S20-P2)."""
+
+    def test_beta_user_passes_gate(self, guardrails):
+        """Beta user in allowlist passes gate."""
+        from app.config import is_beta_user
+
+        # Set up beta allowlist with test user (as list)
+        beta_user_ids = ["user_test123", "user_beta456"]
+
+        # Verify user is in allowlist
+        assert is_beta_user("user_test123", beta_user_ids) is True
+
+        # Mock config to return beta allowlist
+        with patch('app.services.notification_guardrails.load_config') as mock_load_config:
+            mock_config = Mock()
+            mock_config.notifications_beta_user_ids = beta_user_ids
+            mock_load_config.return_value = mock_config
+
+            # Also need to mock quiet hours
+            with patch.object(guardrails, '_in_quiet_hours', return_value=False):
+                result = guardrails.can_notify("user_test123", "game_456")
+
+        assert result.allowed is True
+        assert result.beta_gate_pass is True
+
+    def test_non_beta_user_blocked(self, guardrails):
+        """Non-beta user blocked with correct reason."""
+        from app.config import is_beta_user
+
+        # Set up beta allowlist without test user (as list)
+        beta_user_ids = ["user_beta456", "user_beta789"]
+
+        # Verify user is NOT in allowlist
+        assert is_beta_user("user_test123", beta_user_ids) is False
+
+        # Mock config to return beta allowlist
+        with patch('app.services.notification_guardrails.load_config') as mock_load_config:
+            mock_config = Mock()
+            mock_config.notifications_beta_user_ids = beta_user_ids
+            mock_load_config.return_value = mock_config
+
+            result = guardrails.can_notify("user_test123", "game_456")
+
+        assert result.allowed is False
+        assert result.reason == "beta_gate"
+        assert result.beta_gate_pass is False
+
+    def test_empty_allowlist_allows_all(self, guardrails):
+        """Empty allowlist allows all users (gating disabled)."""
+        from app.config import is_beta_user
+
+        # Empty allowlist (as list)
+        beta_user_ids = []
+
+        # All users should pass when allowlist is empty
+        assert is_beta_user("any_user", beta_user_ids) is True
+
+        # Mock config with empty allowlist
+        with patch('app.services.notification_guardrails.load_config') as mock_load_config:
+            mock_config = Mock()
+            mock_config.notifications_beta_user_ids = beta_user_ids
+            mock_load_config.return_value = mock_config
+
+            with patch.object(guardrails, '_in_quiet_hours', return_value=False):
+                result = guardrails.can_notify("any_user", "game_456")
+
+        assert result.allowed is True
+        assert result.beta_gate_pass is True
+
+    def test_none_allowlist_allows_all(self, guardrails):
+        """None allowlist allows all users (gating disabled)."""
+        from app.config import is_beta_user
+
+        # All users should pass when allowlist is None
+        assert is_beta_user("any_user", None) is True
+
+        # Mock config with None allowlist
+        with patch('app.services.notification_guardrails.load_config') as mock_load_config:
+            mock_config = Mock()
+            mock_config.notifications_beta_user_ids = None
+            mock_load_config.return_value = mock_config
+
+            with patch.object(guardrails, '_in_quiet_hours', return_value=False):
+                result = guardrails.can_notify("any_user", "game_456")
+
+        assert result.allowed is True
+        assert result.beta_gate_pass is True
+
+    def test_is_beta_user_helper(self):
+        """Test is_beta_user helper function directly."""
+        from app.config import is_beta_user
+
+        # User in list
+        assert is_beta_user("user1", ["user1", "user2", "user3"]) is True
+        assert is_beta_user("user2", ["user1", "user2", "user3"]) is True
+
+        # User not in list
+        assert is_beta_user("user4", ["user1", "user2", "user3"]) is False
+        assert is_beta_user("user1", ["user2", "user3"]) is False
+
+        # Empty list allows all
+        assert is_beta_user("any_user", []) is True
+
+        # None allows all
+        assert is_beta_user("any_user", None) is True
+
+        # Case sensitivity
+        assert is_beta_user("User1", ["user1", "user2"]) is False
 
 
 class TestSingleton:

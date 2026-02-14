@@ -12,11 +12,13 @@ from app.models import get_session
 from app.models.user_preferences import UserPreferences
 from app.models.eligible_opportunity import EligibleOpportunity
 from app.models.user_dna_snapshot import UserDnaSnapshot
+from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters
 from app.services.notification_types import (
     OpportunityStatus, RawOpportunity, OpportunityResult
 )
 from app.services.notification_rules import NotificationRulesEngine
 from app.services.notification_guardrails import NotificationGuardrails
+from app.config import is_beta_user, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ class ProtocolObserver:
         self.rules_engine = NotificationRulesEngine()
         self.guardrails = NotificationGuardrails()
         self._handlers: List[Callable[[EligibleOpportunity], None]] = []
+        self._telemetry = get_telemetry_counters()
     
     def watch_protocol(self, protocol_id: str, opportunities: List[RawOpportunity]) -> List[OpportunityResult]:
         """
@@ -46,6 +49,8 @@ class ProtocolObserver:
         results = []
         
         for opp in opportunities:
+            # Log detection counter
+            self._telemetry.detected += 1
             # Check confidence threshold
             if not self.check_confidence_threshold(opp):
                 results.append(OpportunityResult(
@@ -109,39 +114,81 @@ class ProtocolObserver:
         """Process an opportunity for all users with matching preferences."""
         results = []
         session = get_session()
-        
+
+        # Load config for beta user checking (S20-P2)
+        config = load_config(fail_fast=False)
+
         try:
             # Get all users with notification-enabled preferences
             all_prefs = session.query(UserPreferences).all()
-            
+
             for prefs in all_prefs:
                 notification_rules = prefs.get_notification_rules()
-                
+
                 # Skip if notifications disabled
                 if not notification_rules.get("enabled", True):
                     continue
-                
+
+                # Check beta gate status (S20-P2)
+                beta_gate_pass = is_beta_user(prefs.user_id, config.notifications_beta_user_ids)
+
+                # Log beta gate status for opportunity evaluation
+                logger.debug(
+                    "OPPORTUNITY_BETA_GATE_CHECK",
+                    extra={
+                        "user_id": prefs.user_id,
+                        "game_id": opportunity.game_id,
+                        "beta_gate_pass": beta_gate_pass,
+                        "beta_allowlist_empty": len(config.notifications_beta_user_ids) == 0
+                    }
+                )
+
+                # Create receipt at detection stage
+                receipt = NotificationReceipt.create_for_detection(
+                    user_id=prefs.user_id,
+                    confidence=opportunity.confidence_score,
+                    reason_codes=["opportunity_detected"],
+                    weight_tier=self._calculate_weight_tier(opportunity.confidence_score),
+                    metadata={
+                        "protocol_id": opportunity.protocol_id,
+                        "game_id": opportunity.game_id,
+                        "bet_type": opportunity.bet_type,
+                        "selection": opportunity.selection
+                    }
+                )
+                session.add(receipt)
+                session.flush()  # Get receipt ID
+
                 # Check if opportunity matches user's notification rules
                 match_result = self.rules_engine.matches_rules(
-                    opportunity, 
+                    opportunity,
                     notification_rules.get("opportunity_alerts", {})
                 )
-                
+
                 if not match_result.matches:
+                    receipt.mark_suppressed(f"Rule mismatch: {match_result.reason}")
+                    self._telemetry.increment_suppressed(f"constraints: {match_result.reason}")
                     results.append(OpportunityResult(
                         success=False,
                         reason=f"User {prefs.user_id}: {match_result.reason}"
                     ))
                     continue
-                
-                # Check guardrails
+
+                # Mark as eligible after constraints pass
+                receipt.mark_eligible()
+                receipt.constraints_applied = match_result.matched_criteria
+                self._telemetry.eligible_after_constraints += 1
+
+                # Check guardrails (includes beta gate check)
                 guardrail_check = self.guardrails.can_notify(
                     user_id=prefs.user_id,
                     game_id=opportunity.game_id,
                     opportunity_type="opportunity_alert"
                 )
-                
+
                 if not guardrail_check.allowed:
+                    receipt.mark_suppressed(guardrail_check.reason)
+                    self._telemetry.increment_suppressed(guardrail_check.reason)
                     results.append(OpportunityResult(
                         success=False,
                         passed_guardrails=False,
@@ -156,6 +203,9 @@ class ProtocolObserver:
                 )
                 
                 if eligible_opp:
+                    # Link receipt to opportunity
+                    receipt.opportunity_id = eligible_opp.id
+                    
                     # Notify handlers
                     self._notify_handlers(eligible_opp)
                     
@@ -165,15 +215,33 @@ class ProtocolObserver:
                         reason=f"Created for user {prefs.user_id}"
                     ))
                 else:
+                    receipt.mark_suppressed("Failed to create eligible opportunity")
+                    self._telemetry.increment_suppressed("other")
                     results.append(OpportunityResult(
                         success=False,
                         reason="Failed to create eligible opportunity"
                     ))
+            
+            session.commit()
         
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error processing opportunities: {e}")
         finally:
             session.close()
         
         return results
+    
+    def _calculate_weight_tier(self, confidence: float) -> str:
+        """Calculate weight tier based on confidence score."""
+        if confidence >= 85:
+            return "A"
+        elif confidence >= 75:
+            return "B"
+        elif confidence >= 65:
+            return "C"
+        else:
+            return "D"
     
     def _create_eligible_opportunity(self, session, prefs: UserPreferences,
                                      opportunity: RawOpportunity,

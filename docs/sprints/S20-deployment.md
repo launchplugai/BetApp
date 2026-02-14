@@ -52,9 +52,17 @@ Add to production environment:
 NOTIFICATIONS_ENABLED=false
 NOTIFICATIONS_KILL_SWITCH=false
 
-# Rate limiting (defaults are safe)
-NOTIFICATIONS_MAX_DAILY_PER_USER=10
-NOTIFICATIONS_COOLDOWN_MINUTES=60
+# Rate limiting (defaults are safe for beta)
+NOTIFICATIONS_MAX_DAILY_PER_USER=5      # Beta-safe: reduced from 10
+NOTIFICATIONS_COOLDOWN_MINUTES=120      # Beta-safe: 2 hour cooldown
+NOTIFICATIONS_DAILY_CAP=5               # Hard cap for beta period
+
+# Beta cohort (empty = all users - use with caution)
+NOTIFICATIONS_BETA_USER_IDS="user1,user2,user3"
+
+# Sherlock incentives (S20-P3)
+FEATURE_SHERLOCK_INCENTIVES=true
+INCENTIVE_ACTIVATION_WEIGHT=minimal     # minimal/low/medium/high/off
 
 # Webhook configuration (optional)
 NOTIFICATION_WEBHOOK_URL=""
@@ -149,6 +157,118 @@ NOTIFICATIONS_BETA_COHORT=100
 - User engagement > 30%
 - Zero spam complaints
 - 99.9% observer uptime
+
+---
+
+## Kill Switch Test Procedure
+
+### Pre-Deployment Test
+
+Before enabling notifications in production, verify kill switch functionality:
+
+```bash
+# 1. Start with notifications enabled
+NOTIFICATIONS_ENABLED=true
+NOTIFICATIONS_KILL_SWITCH=false
+
+# 2. Verify health endpoint shows active status
+curl /health/config | jq '.notifications.status'
+# Expected: "active"
+
+# 3. Activate kill switch (no restart required)
+export NOTIFICATIONS_KILL_SWITCH=true
+
+# 4. Verify immediate status change
+curl /health/config | jq '.notifications'
+# Expected: { "status": "paused", "kill_switch_active": true }
+
+# 5. Verify no notifications are queued
+python -c "from app.services.notification_delivery import get_notification_delivery; print(len(get_notification_delivery()._queue.queue))"
+# Expected: 0
+```
+
+### Incentive Kill Switch Test
+
+```bash
+# 1. Set incentives to minimal (default)
+INCENTIVE_ACTIVATION_WEIGHT=minimal
+FEATURE_SHERLOCK_INCENTIVES=true
+
+# 2. Verify incentives active
+curl /health/config | jq '.sherlock_incentives'
+# Expected: { "status": "active", "activation_weight": "minimal" }
+
+# 3. Kill incentives (immediate stop)
+export INCENTIVE_ACTIVATION_WEIGHT=off
+
+# 4. Verify immediate shutdown
+curl /health/config | jq '.sherlock_incentives'
+# Expected: { "status": "off", "activation_weight": "off" }
+
+# 5. Check logs for kill switch message
+grep "KILL SWITCH" /var/log/dna-matrix/app.log
+# Expected: [KILL SWITCH] INCENTIVE_ACTIVATION_WEIGHT=off - incentives disabled
+```
+
+---
+
+## Blast Radius Controls
+
+### Minimal Weight Settings (Default)
+
+The `INCENTIVE_ACTIVATION_WEIGHT` setting controls incentive sensitivity:
+
+| Weight | Description | Use Case |
+|--------|-------------|----------|
+| `minimal` | Only highest confidence signals (>90%) | Beta / Initial rollout |
+| `low` | High confidence signals (>75%) | Limited rollout |
+| `medium` | Moderate confidence signals (>60%) | General availability |
+| `high` | Most signals included (>40%) | Aggressive engagement |
+| `off` | Complete disable | Emergency stop |
+
+**Beta Default:** `minimal` - Only the strongest signals trigger incentives.
+
+### Notification Caps
+
+Multiple layers of protection prevent spam:
+
+```python
+# Layer 1: Per-user daily limit (soft)
+NOTIFICATIONS_MAX_DAILY_PER_USER=5
+
+# Layer 2: Hard daily cap (enforced)
+NOTIFICATIONS_DAILY_CAP=5
+
+# Layer 3: Cooldown between same-game notifications
+NOTIFICATIONS_COOLDOWN_MINUTES=120
+```
+
+### Beta Cohort Isolation
+
+```bash
+# Only specific users receive notifications
+NOTIFICATIONS_BETA_USER_IDS="user1,user2,user3"
+
+# Empty list = all users (use with caution)
+NOTIFICATIONS_BETA_USER_IDS=""
+```
+
+### Blast Radius Progression
+
+**Phase 1 - Internal:**
+- `NOTIFICATIONS_BETA_USER_IDS` = internal team (3-5 users)
+- `INCENTIVE_ACTIVATION_WEIGHT` = minimal
+- `NOTIFICATIONS_DAILY_CAP` = 5
+
+**Phase 2 - Beta:**
+- `NOTIFICATIONS_BETA_USER_IDS` = beta cohort (10-50 users)
+- `INCENTIVE_ACTIVATION_WEIGHT` = minimal
+- `NOTIFICATIONS_DAILY_CAP` = 5
+
+**Phase 3 - General Availability:**
+- `NOTIFICATIONS_BETA_USER_IDS` = "" (all users)
+- `INCENTIVE_ACTIVATION_WEIGHT` = low
+- `NOTIFICATIONS_DAILY_CAP` = 10
 
 ---
 
@@ -261,8 +381,12 @@ curl /health/notifications
 |----------|---------|-------------|
 | `NOTIFICATIONS_ENABLED` | `false` | Master feature flag |
 | `NOTIFICATIONS_KILL_SWITCH` | `false` | Emergency stop |
-| `NOTIFICATIONS_MAX_DAILY_PER_USER` | `10` | Daily cap per user |
-| `NOTIFICATIONS_COOLDOWN_MINUTES` | `60` | Cooldown between same-game notifications |
+| `NOTIFICATIONS_MAX_DAILY_PER_USER` | `5` | Daily cap per user (beta default) |
+| `NOTIFICATIONS_COOLDOWN_MINUTES` | `120` | Cooldown between same-game notifications (beta default) |
+| `NOTIFICATIONS_DAILY_CAP` | `5` | Hard cap for beta period |
+| `NOTIFICATIONS_BETA_USER_IDS` | `""` | Comma-separated user IDs for beta cohort |
+| `FEATURE_SHERLOCK_INCENTIVES` | `true` | Enable Sherlock incentive system |
+| `INCENTIVE_ACTIVATION_WEIGHT` | `minimal` | Signal sensitivity: minimal/low/medium/high/off |
 | `NOTIFICATION_WEBHOOK_URL` | `None` | Webhook endpoint (optional) |
 | `NOTIFICATION_WEBHOOK_SECRET` | `None` | Webhook signing secret |
 

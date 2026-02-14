@@ -12,7 +12,9 @@ import threading
 
 from app.models import get_session
 from app.models.notification_event import NotificationEvent
+from app.models.notification_receipt import get_telemetry_counters
 from app.services.notification_types import GuardrailResult
+from app.config import is_beta_user, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +37,17 @@ class NotificationGuardrails:
         self._cooldowns: Dict[str, datetime] = {}  # user_id:game_id -> last_notification_time
         self._daily_counts: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
         # user_id -> {date_str -> count}
-        
+
         self._entropy_cache: Dict[str, datetime] = {}  # content_hash -> first_seen_time
         self._lock = threading.RLock()
-        
+
         # Default limits
         self.default_daily_cap = 10
         self.default_cooldown_minutes = 60
         self.entropy_window_minutes = 30
+
+        # Telemetry counters reference
+        self._telemetry = get_telemetry_counters()
     
     def can_notify(self, user_id: str, game_id: str,
                    opportunity_type: str = "opportunity_alert",
@@ -50,59 +55,81 @@ class NotificationGuardrails:
                    rules: Optional[Dict[str, Any]] = None) -> GuardrailResult:
         """
         Check if notification can be sent based on guardrails.
-        
+
         Args:
             user_id: The user to notify
             game_id: The game/event identifier
             opportunity_type: Type of opportunity
             content_hash: Hash of notification content for entropy check
             rules: User's notification rules (optional, fetched from DB if not provided)
-            
+
         Returns:
             GuardrailResult with allow status and details
         """
         # Check kill switch first
         kill_switch = self._check_kill_switch()
         if kill_switch:
+            self._telemetry.increment_suppressed("Kill switch active")
             return GuardrailResult(
                 allowed=False,
                 reason="Kill switch active - notifications paused",
-                remaining_today=0
+                remaining_today=0,
+                beta_gate_pass=False
             )
-        
+
+        # Check beta user gate (S20-P2)
+        config = load_config(fail_fast=False)
+        beta_gate_pass = is_beta_user(user_id, config.notifications_beta_user_ids)
+        if not beta_gate_pass:
+            logger.debug(f"Beta gate blocked notification for user {user_id}")
+            self._telemetry.increment_suppressed("beta_gate")
+            return GuardrailResult(
+                allowed=False,
+                reason="beta_gate",
+                remaining_today=0,
+                beta_gate_pass=False
+            )
+
         # Check quiet hours
         if self._in_quiet_hours(user_id):
+            self._telemetry.increment_suppressed("quiet_hours")
             return GuardrailResult(
                 allowed=False,
                 reason="In quiet hours period",
-                remaining_today=self._get_remaining_daily(user_id, rules)
+                remaining_today=self._get_remaining_daily(user_id, rules),
+                beta_gate_pass=True
             )
-        
+
         # Check daily cap
         daily_check = self._check_daily_cap(user_id, rules)
         if not daily_check.allowed:
+            self._telemetry.increment_suppressed("daily_cap")
             return daily_check
-        
+
         # Check cooldown
         cooldown_key = f"{user_id}:{game_id}"
         cooldown_check = self._check_cooldown(cooldown_key, rules)
         if not cooldown_check.allowed:
+            self._telemetry.increment_suppressed("cooldown")
             return cooldown_check
-        
+
         # Check entropy (duplicate suppression)
         if content_hash:
             entropy_check = self._check_entropy(content_hash)
             if not entropy_check.allowed:
+                self._telemetry.increment_suppressed("cooldown")
                 return GuardrailResult(
                     allowed=False,
                     reason=entropy_check.reason,
-                    remaining_today=daily_check.remaining_today
+                    remaining_today=daily_check.remaining_today,
+                    beta_gate_pass=True
                 )
-        
+
         return GuardrailResult(
             allowed=True,
             reason="All guardrails passed",
-            remaining_today=daily_check.remaining_today - 1
+            remaining_today=daily_check.remaining_today - 1,
+            beta_gate_pass=True
         )
     
     def _check_kill_switch(self) -> bool:
@@ -110,17 +137,17 @@ class NotificationGuardrails:
         global _kill_switch_active
         return _kill_switch_active
     
-    def _check_cooldown(self, cooldown_key: str, 
+    def _check_cooldown(self, cooldown_key: str,
                         rules: Optional[Dict[str, Any]]) -> GuardrailResult:
         """Check per-user, per-game cooldown."""
         cooldown_minutes = self.default_cooldown_minutes
-        
+
         if rules and "cooldown_minutes" in rules:
             cooldown_minutes = rules["cooldown_minutes"]
-        
+
         with self._lock:
             last_sent = self._cooldowns.get(cooldown_key)
-            
+
             if last_sent:
                 elapsed = datetime.utcnow() - last_sent
                 if elapsed < timedelta(minutes=cooldown_minutes):
@@ -128,35 +155,38 @@ class NotificationGuardrails:
                     return GuardrailResult(
                         allowed=False,
                         reason=f"Cooldown active: {remaining} minutes remaining",
-                        remaining_today=self._get_remaining_daily(cooldown_key.split(":")[0], rules)
+                        remaining_today=self._get_remaining_daily(cooldown_key.split(":")[0], rules),
+                        beta_gate_pass=True
                     )
-        
-        return GuardrailResult(allowed=True, reason="", remaining_today=0)
+
+        return GuardrailResult(allowed=True, reason="", remaining_today=0, beta_gate_pass=True)
     
     def _check_daily_cap(self, user_id: str,
                          rules: Optional[Dict[str, Any]]) -> GuardrailResult:
         """Check daily notification cap."""
         daily_cap = self.default_daily_cap
-        
+
         if rules and "max_notifications_per_day" in rules:
             daily_cap = rules["max_notifications_per_day"]
-        
+
         today = datetime.utcnow().strftime("%Y-%m-%d")
-        
+
         with self._lock:
             current_count = self._daily_counts[user_id][today]
-            
+
             if current_count >= daily_cap:
                 return GuardrailResult(
                     allowed=False,
                     reason=f"Daily cap reached: {daily_cap} notifications",
-                    remaining_today=0
+                    remaining_today=0,
+                    beta_gate_pass=True
                 )
-            
+
             return GuardrailResult(
                 allowed=True,
                 reason="",
-                remaining_today=daily_cap - current_count
+                remaining_today=daily_cap - current_count,
+                beta_gate_pass=True
             )
     
     def _check_entropy(self, content_hash: str) -> GuardrailResult:
@@ -166,7 +196,7 @@ class NotificationGuardrails:
         """
         with self._lock:
             first_seen = self._entropy_cache.get(content_hash)
-            
+
             if first_seen:
                 elapsed = datetime.utcnow() - first_seen
                 if elapsed < timedelta(minutes=self.entropy_window_minutes):
@@ -174,13 +204,14 @@ class NotificationGuardrails:
                     return GuardrailResult(
                         allowed=False,
                         reason=f"Similar notification sent recently ({remaining} min cooldown)",
-                        remaining_today=0
+                        remaining_today=0,
+                        beta_gate_pass=True
                     )
             else:
                 # First time seeing this content
                 self._entropy_cache[content_hash] = datetime.utcnow()
-        
-        return GuardrailResult(allowed=True, reason="", remaining_today=0)
+
+        return GuardrailResult(allowed=True, reason="", remaining_today=0, beta_gate_pass=True)
     
     def _in_quiet_hours(self, user_id: str) -> bool:
         """Check if current time is in user's quiet hours."""

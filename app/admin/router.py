@@ -15,7 +15,10 @@ from app.admin.notifications import (
     get_dashboard_summary,
     toggle_kill_switch,
     get_kill_switch,
-    get_user_notification_summary
+    get_user_notification_summary,
+    get_telemetry_dashboard,
+    get_telemetry_counters_db,
+    get_suppression_breakdown
 )
 from app.models import get_session
 
@@ -528,11 +531,11 @@ async def update_notification_status(
 ):
     """
     Manually update notification status (admin override).
-    
+
     Args:
         notification_id: Notification event ID
         request: Status update with new status and optional error message
-    
+
     Returns:
         Updated notification
     """
@@ -549,5 +552,66 @@ async def update_notification_status(
         return notification
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# Telemetry Dashboard Endpoints (S20-P4)
+# =============================================================================
+
+@router.get("/telemetry/dashboard")
+async def get_telemetry_dashboard_endpoint(db=Depends(get_session)):
+    """
+    Get complete telemetry dashboard.
+
+    Returns real-time counters, database counters, suppression breakdown,
+    daily summary, and recent receipts.
+    """
+    try:
+        dashboard = get_telemetry_dashboard(db)
+        return dashboard
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/telemetry/counters")
+async def get_telemetry_counters_endpoint(
+    period_hours: int = Query(default=24, ge=1, le=168),
+    db=Depends(get_session)
+):
+    """
+    Get telemetry counters from database.
+
+    Args:
+        period_hours: Time period to analyze (1-168 hours, default 24)
+
+    Returns:
+        Detected, eligible, sent, and suppressed counts
+    """
+    try:
+        counters = get_telemetry_counters_db(db, period_hours=period_hours)
+        return counters
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/telemetry/suppression")
+async def get_telemetry_suppression_endpoint(
+    period_hours: int = Query(default=24, ge=1, le=168),
+    db=Depends(get_session)
+):
+    """
+    Get suppression breakdown by reason.
+
+    Args:
+        period_hours: Time period to analyze (1-168 hours, default 24)
+
+    Returns:
+        Breakdown of suppression reasons (cooldown, daily cap, quiet hours, etc.)
+    """
+    try:
+        breakdown = get_suppression_breakdown(db, period_hours=period_hours)
+        return breakdown
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

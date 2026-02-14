@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.models.notification_event import NotificationEvent
 from app.models.eligible_opportunity import EligibleOpportunity
 from app.models.user_preferences import UserPreferences
+from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters
 
 
 # =============================================================================
@@ -425,26 +426,209 @@ def get_user_notification_summary(
 ) -> Dict[str, Any]:
     """
     Get notification summary for a specific user.
-    
+
     Args:
         db: Database session
         user_id: User ID
-    
+
     Returns:
         User notification summary
     """
     stats = get_notification_stats(db, period_hours=24 * 30, user_id=user_id)
     recent = get_recent_notifications(db, limit=10, user_id=user_id)
-    
+
     # Get user preferences
     prefs = db.query(UserPreferences).filter(
         UserPreferences.user_id == user_id
     ).first()
-    
+
     return {
         "user_id": user_id,
         "stats": stats.to_dict(),
         "recent_notifications": recent,
         "preferences": prefs.to_dict() if prefs else None,
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
+
+# =============================================================================
+# Telemetry Dashboard (S20-P4)
+# =============================================================================
+
+def get_telemetry_counters_db(db: Session, period_hours: int = 24) -> Dict[str, Any]:
+    """
+    Get telemetry counters from database for a given period.
+
+    Args:
+        db: Database session
+        period_hours: Time period to analyze (default 24 hours)
+
+    Returns:
+        Dictionary with telemetry counts
+    """
+    since = datetime.utcnow() - timedelta(hours=period_hours)
+
+    # Count receipts by status
+    detected = db.query(NotificationReceipt).filter(
+        NotificationReceipt.detected_at >= since
+    ).count()
+
+    eligible = db.query(NotificationReceipt).filter(
+        NotificationReceipt.eligible_at >= since
+    ).count()
+
+    sent = db.query(NotificationReceipt).filter(
+        NotificationReceipt.sent_at >= since
+    ).count()
+
+    suppressed = db.query(NotificationReceipt).filter(
+        NotificationReceipt.status == 'suppressed',
+        NotificationReceipt.updated_at >= since
+    ).count()
+
+    return {
+        "detected": detected,
+        "eligible": eligible,
+        "sent": sent,
+        "suppressed": suppressed,
+        "period_hours": period_hours
+    }
+
+
+def get_suppression_breakdown(db: Session, period_hours: int = 24) -> Dict[str, Any]:
+    """
+    Get breakdown of suppression reasons.
+
+    Args:
+        db: Database session
+        period_hours: Time period to analyze (default 24 hours)
+
+    Returns:
+        Dictionary with suppression breakdown
+    """
+    since = datetime.utcnow() - timedelta(hours=period_hours)
+
+    # Query suppressed receipts grouped by suppression reason
+    results = db.query(
+        NotificationReceipt.suppression_reason,
+        func.count().label('count')
+    ).filter(
+        NotificationReceipt.status == 'suppressed',
+        NotificationReceipt.updated_at >= since
+    ).group_by(
+        NotificationReceipt.suppression_reason
+    ).all()
+
+    breakdown = {}
+    for reason, count in results:
+        # Categorize the reason
+        if reason:
+            if 'cooldown' in reason.lower():
+                category = 'suppressed_cooldown'
+            elif 'daily cap' in reason.lower() or 'cap reached' in reason.lower():
+                category = 'suppressed_daily_cap'
+            elif 'quiet hours' in reason.lower():
+                category = 'suppressed_quiet_hours'
+            elif 'constraint' in reason.lower() or 'rule' in reason.lower():
+                category = 'suppressed_constraints'
+            elif 'beta' in reason.lower() or 'kill switch' in reason.lower():
+                category = 'suppressed_beta_gate'
+            else:
+                category = 'suppressed_other'
+        else:
+            category = 'suppressed_other'
+
+        if category not in breakdown:
+            breakdown[category] = 0
+        breakdown[category] += count
+
+    # Ensure all categories exist
+    for category in ['suppressed_cooldown', 'suppressed_daily_cap', 'suppressed_quiet_hours',
+                     'suppressed_constraints', 'suppressed_beta_gate', 'suppressed_other']:
+        if category not in breakdown:
+            breakdown[category] = 0
+
+    return {
+        "breakdown": breakdown,
+        "total_suppressed": sum(breakdown.values()),
+        "period_hours": period_hours
+    }
+
+
+def get_daily_telemetry_summary(db: Session, days: int = 7) -> List[Dict[str, Any]]:
+    """
+    Get daily telemetry summary for the past N days.
+
+    Args:
+        db: Database session
+        days: Number of days to analyze
+
+    Returns:
+        List of daily telemetry summaries
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+
+    # Query daily counts
+    results = db.query(
+        func.strftime('%Y-%m-%d', NotificationReceipt.created_at).label('date'),
+        func.count().label('total'),
+        func.sum(func.case([(NotificationReceipt.status == 'sent', 1)], else_=0)).label('sent'),
+        func.sum(func.case([(NotificationReceipt.status == 'suppressed', 1)], else_=0)).label('suppressed'),
+        func.sum(func.case([(NotificationReceipt.status == 'eligible', 1)], else_=0)).label('eligible'),
+        func.sum(func.case([(NotificationReceipt.status == 'detected', 1)], else_=0)).label('detected')
+    ).filter(
+        NotificationReceipt.created_at >= since
+    ).group_by(
+        func.strftime('%Y-%m-%d', NotificationReceipt.created_at)
+    ).order_by('date').all()
+
+    daily_summary = []
+    for row in results:
+        daily_summary.append({
+            "date": row.date,
+            "total": row.total or 0,
+            "sent": row.sent or 0,
+            "suppressed": row.suppressed or 0,
+            "eligible": row.eligible or 0,
+            "detected": row.detected or 0,
+            "delivery_rate": round((row.sent or 0) / (row.total or 1) * 100, 2)
+        })
+
+    return daily_summary
+
+
+def get_telemetry_dashboard(db: Session) -> Dict[str, Any]:
+    """
+    Get complete telemetry dashboard data.
+
+    Args:
+        db: Database session
+
+    Returns:
+        Dictionary with all telemetry data
+    """
+    # Get in-memory counters (real-time)
+    memory_counters = get_telemetry_counters().to_dict()
+
+    # Get database counters (past 24h)
+    db_counters_24h = get_telemetry_counters_db(db, period_hours=24)
+
+    # Get suppression breakdown
+    suppression_breakdown = get_suppression_breakdown(db, period_hours=24)
+
+    # Get daily summary (past 7 days)
+    daily_summary = get_daily_telemetry_summary(db, days=7)
+
+    # Get recent receipts
+    recent_receipts = db.query(NotificationReceipt).order_by(
+        NotificationReceipt.created_at.desc()
+    ).limit(50).all()
+
+    return {
+        "real_time_counters": memory_counters,
+        "db_counters_24h": db_counters_24h,
+        "suppression_breakdown": suppression_breakdown,
+        "daily_summary": daily_summary,
+        "recent_receipts": [r.to_dict() for r in recent_receipts],
         "generated_at": datetime.utcnow().isoformat()
     }

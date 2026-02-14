@@ -214,3 +214,4 @@ from app.models.user_preferences import UserPreferences
 from app.models.notification import Notification
 from app.models.notification_preferences import NotificationPreferences
 from app.models.user_device import UserDevice
+from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters, reset_telemetry_counters

@@ -65,3 +65,4 @@ class GuardrailResult:
     allowed: bool
     reason: str
     remaining_today: int
+    beta_gate_pass: bool = True  # S20-P2: Beta user gating status
