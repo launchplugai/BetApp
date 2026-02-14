@@ -42,9 +42,7 @@ async function loadProtocol() {
             if (gameId && gameId.includes('-at-') && gameId.startsWith('nhl-')) {
                 protocol = parsed;
                 useStored = true;
-                console.log('Protocol loaded from sessionStorage:', protocol);
             } else {
-                console.warn('Invalid protocol game ID format, clearing:', gameId);
                 sessionStorage.removeItem('dna_protocol_context');
             }
         } catch (e) {
@@ -54,7 +52,6 @@ async function loadProtocol() {
     }
     
     if (!useStored) {
-        console.warn('No protocol in sessionStorage');
         // Fetch first available NHL game as fallback
         try {
             const gamesResponse = await fetch(`${API_BASE}/games?sport=NHL`);
@@ -71,7 +68,6 @@ async function loadProtocol() {
                         clock: null,
                         score: null
                     };
-                    console.log('Using real game as fallback:', protocol);
                     return;
                 }
             }
@@ -104,7 +100,6 @@ async function loadMarkets() {
 
         // API returns array, transform to expected structure
         const marketsArray = await response.json();
-        console.log('Markets loaded:', marketsArray);
 
         // Transform array to object structure expected by renderer
         markets = {
@@ -182,12 +177,9 @@ async function loadMarkets() {
                             } else if (overUnder === 'U' || overUnder === 'UNDER') {
                                 propData.under_odds = sel.odds || -110;
                             }
-                        } else {
-                            console.log('DEBUG: Could not parse player prop:', sel.label);
                         }
                     });
                     markets.player_props = Array.from(propsMap.values());
-                    console.log('DEBUG: Parsed player props:', markets.player_props);
                 }
             });
         }
@@ -206,7 +198,6 @@ async function loadMarkets() {
             markets.moneyline.away = { odds: +130 };
         }
 
-        console.log('Transformed markets:', markets);
     } catch (err) {
         console.error('Failed to load markets:', err);
         // Fallback to default markets
@@ -362,9 +353,18 @@ function renderMainLines() {
 
 function renderPlayerProps() {
     const props = markets.player_props || [];
-    console.log('DEBUG: Rendering player props, count:', props.length, 'props:', props);
     if (props.length === 0) {
-        return '<div class="text-center text-gray-500 py-8">No player props available</div>';
+        return `
+            <div class="text-center py-12 px-6">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                    <iconify-icon icon="lucide:users" class="text-3xl text-gray-500"></iconify-icon>
+                </div>
+                <h4 class="font-tanker text-lg text-gray-300 mb-2">Player Props Coming Soon</h4>
+                <p class="text-sm text-gray-500 max-w-xs mx-auto">
+                    Individual player stats and prop bets are coming soon for ${protocol?.league || 'NHL'}. Stay tuned!
+                </p>
+            </div>
+        `;
     }
 
     return `
@@ -429,7 +429,7 @@ async function addLeg(legData) {
             userPrefs = await prefsResponse.json();
         }
     } catch (err) {
-        console.log('No user preferences found, using defaults');
+        // No user preferences found, using defaults
     }
     
     // S21-D: Check constraints if preferences exist
@@ -479,7 +479,6 @@ async function addLeg(legData) {
     };
     
     legs.push(leg);
-    console.log('Leg added:', leg);
     renderLegs();
     recalculate();
     renderMarket(); // Re-render to update selected state
@@ -487,7 +486,6 @@ async function addLeg(legData) {
 
 function removeLeg(index) {
     legs.splice(index, 1);
-    console.log('Leg removed, remaining:', legs.length);
     renderLegs();
     recalculate();
     renderMarket(); // Re-render to update selected state
@@ -629,16 +627,12 @@ async function analyzeWithDNA() {
             tier: 'good',
             legs: dnaLegs
         };
-        console.log('Sending DNA request:', requestBody);
-        
         const response = await fetch('/app/evaluate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
 
-        console.log('Response status:', response.status);
-        
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Error response:', errorText);
@@ -646,7 +640,6 @@ async function analyzeWithDNA() {
         }
 
         const result = await response.json();
-        console.log('DNA response:', result);
 
         // Store result
         sessionStorage.setItem('dna_analysis_result', JSON.stringify(result));
@@ -664,16 +657,11 @@ async function analyzeWithDNA() {
 }
 
 function displayResults(data) {
-    console.log('DNA Result data:', data);
-    
     const resultsSection = document.getElementById('results-section');
     const verdictBadge = document.getElementById('verdict-badge');
     const confidenceScore = document.getElementById('confidence-score');
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
-
-    // Debug: hidden by default
-    const rawDataHtml = `<details class="mt-4"><summary class="text-xs text-gray-500 cursor-pointer">Debug</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 1000)}</pre></details>`;
 
     // Extract verdict from DNA engine response
     // Response: { evaluation: { recommendation: { action: 'ACCEPT'|'REDUCE'|'AVOID' } } }
@@ -688,8 +676,6 @@ function displayResults(data) {
                   actionUpper === 'REDUCE' ? 'RISKY' : 
                   actionUpper === 'AVOID' ? 'PASS' : 'UNKNOWN';
     }
-    
-    console.log('Extracted verdict:', verdict, 'action:', action);
     
     // Verdict styling
     const verdictColors = {
@@ -734,7 +720,7 @@ function displayResults(data) {
     } else if (data.interpretation?.summary) {
         summary = data.interpretation.summary;
     }
-    summaryText.innerHTML = `<div class="mb-2">${summary}</div>${rawDataHtml}`;
+    summaryText.innerHTML = `<div class="mb-2">${summary}</div>`;
 
     // Legs breakdown
     const legResults = data.legs || data.leg_results || [];
@@ -838,8 +824,6 @@ async function submitBet() {
             confidence: dnaResult.confidence
         };
 
-        console.log('Submitting bet:', requestBody);
-
         const response = await fetch('/api/bets/', {
             method: 'POST',
             headers: {
@@ -850,7 +834,6 @@ async function submitBet() {
         });
 
         const result = await response.json();
-        console.log('Bet submission result:', result);
 
         if (result.success) {
             showSuccess(`Bet submitted! ID: ${result.bet_id}`);
