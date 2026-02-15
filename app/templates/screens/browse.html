@@ -86,6 +86,29 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+
+    /* Live indicator - blinking red light */
+    @keyframes blink-red {
+      0%, 100% { opacity: 1; box-shadow: 0 0 10px #ff1744, 0 0 20px #ff1744; }
+      50% { opacity: 0.6; box-shadow: 0 0 5px #ff1744, 0 0 10px #ff1744; }
+    }
+    .live-indicator {
+      animation: blink-red 1s ease-in-out infinite;
+    }
+
+    /* Team logo styling */
+    .team-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 4px rgba(255,255,255,0.1));
+    }
+
+    /* Game time badge */
+    .game-time {
+      background: linear-gradient(135deg, rgba(255,23,68,0.15), rgba(255,23,68,0.05));
+      border: 1px solid rgba(255,23,68,0.3);
+    }
   </style>
   <script>
     tailwind.config = {
@@ -203,15 +226,64 @@
     let protocolsData = [];
     let sportsData = [];
 
-    // Icon map for sport types
+    // Icon map for sport types - using reliable Iconify icons
     const SPORT_ICONS = {
       'NBA': 'emojione-monotone:basketball',
       'NFL': 'fluent:sport-american-football-24-regular',
-      'MLB': 'guidance:baseball',
+      'MLB': 'mdi:baseball',  // Fixed: using Material Design icon
       'NHL': 'ph:hockey-light',
+      'MLS': 'ph:soccer-ball-light',
+      'EPL': 'ph:soccer-ball-light',
+      'UCL': 'ph:soccer-ball-light',
       'SOCCER': 'ph:soccer-ball-light',
       'MMA': 'game-icons:boxing-glove'
     };
+
+    // Team logo URL builder - uses ESPN CDN
+    function getTeamLogoUrl(teamName, league) {
+      // Map team names to ESPN abbreviations (simplified mapping)
+      const teamSlugs = {
+        // NBA
+        'Lakers': 'lal', 'Warriors': 'gs', 'Celtics': 'bos', 'Nets': 'bkn',
+        'Knicks': 'ny', 'Suns': 'phx', 'Bucks': 'mil', 'Bulls': 'chi',
+        'Heat': 'mia', '76ers': 'phi', 'Mavericks': 'dal', 'Nuggets': 'den',
+        // NHL
+        'Devils': 'nj', 'Sabres': 'buf', 'Capitals': 'wsh', 'Flyers': 'phi',
+        'Rangers': 'nyr', 'Islanders': 'nyi', 'Penguins': 'pit', 'Bruins': 'bos',
+        // Add more as needed
+      };
+      
+      // Try to find team slug
+      let slug = null;
+      for (const [name, abbr] of Object.entries(teamSlugs)) {
+        if (teamName.toLowerCase().includes(name.toLowerCase())) {
+          slug = abbr;
+          break;
+        }
+      }
+      
+      if (slug) {
+        return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${league.toLowerCase()}/500/${slug}.png&w=100&h=100`;
+      }
+      
+      // Fallback: generic sport icon
+      return null;
+    }
+
+    // Format game time
+    function formatGameTime(startTime) {
+      if (!startTime) return 'TBD';
+      const date = new Date(startTime);
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+      const isTomorrow = new Date(now.setDate(now.getDate() + 1)).toDateString() === date.toDateString();
+      
+      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      
+      if (isToday) return `Today • ${timeStr}`;
+      if (isTomorrow) return `Tomorrow • ${timeStr}`;
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
 
     // Initialize - fetch sports from API then load games
     document.addEventListener('DOMContentLoaded', async () => {
@@ -352,42 +424,50 @@
       const isFeatured = protocol.featured;
       const [homeTeam, awayTeam] = protocol.teams;
       const score = protocol.score;
+      const homeLogo = getTeamLogoUrl(homeTeam, protocol.league);
+      const awayLogo = getTeamLogoUrl(awayTeam, protocol.league);
+      const gameTime = formatGameTime(protocol.startTime);
       
       return `
-        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden ${isFeatured ? 'border-neon-red' : ''}">
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden ${isFeatured ? 'border-neon-red' : ''} ${isLive ? 'border-neon-red/50' : ''}">
           <!-- Card Header -->
-          <div class="flex justify-between items-start mb-6">
+          <div class="flex justify-between items-start mb-4">
             <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
-              <iconify-icon icon="emojione-monotone:basketball" class="text-base"></iconify-icon>
-              <span>${protocol.league} • ${isLive ? 'Live' : 'Upcoming'}</span>
+              <iconify-icon icon="${SPORT_ICONS[protocol.league] || 'lucide:trophy'}" class="text-base"></iconify-icon>
+              <span>${protocol.league}</span>
             </div>
             ${isLive ? `
-              <div class="flex items-center gap-2 bg-neon-red/10 px-2 py-1 rounded border border-neon-red/30">
-                <div class="w-1.5 h-1.5 bg-neon-red rounded-full animate-pulse"></div>
-                <span class="text-neon-red text-xs font-bold tracking-wider">LIVE • ${protocol.clock}</span>
+              <div class="flex items-center gap-2 bg-neon-red/20 px-3 py-1.5 rounded-lg border border-neon-red/50">
+                <div class="w-2 h-2 bg-neon-red rounded-full live-indicator"></div>
+                <span class="text-neon-red text-xs font-black tracking-widest">LIVE</span>
+                ${protocol.clock ? `<span class="text-neon-red/80 text-xs font-mono">${protocol.clock}</span>` : ''}
               </div>
             ` : `
-              <div class="text-xs text-gray-500 font-mono">Upcoming</div>
+              <div class="game-time px-3 py-1.5 rounded-lg">
+                <span class="text-neon-red text-xs font-bold tracking-wider">${gameTime}</span>
+              </div>
             `}
           </div>
 
-          <!-- Teams Matchup -->
+          <!-- Teams Matchup with Logos -->
           <div class="flex justify-between items-center mb-6">
-            <div class="flex flex-col items-start">
-              <span class="font-tanker text-2xl leading-none text-white">${homeTeam.toUpperCase()}</span>
-              <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider">Home</span>
-              ${score ? `<span class="font-satoshi text-xl font-bold mt-2 text-white">${score.home}</span>` : ''}
+            <div class="flex flex-col items-center gap-2">
+              ${homeLogo ? `<img src="${homeLogo}" alt="${homeTeam}" class="team-logo" onerror="this.style.display='none'">` : ''}
+              <span class="font-tanker text-xl leading-none text-white text-center">${homeTeam.toUpperCase()}</span>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider">Home</span>
+              ${score ? `<span class="font-satoshi text-2xl font-bold mt-1 text-white">${score.home}</span>` : ''}
             </div>
             
-            <div class="flex flex-col items-center">
+            <div class="flex flex-col items-center px-4">
               <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
-              <div class="w-8 h-[1px] bg-gray-700"></div>
+              <div class="w-12 h-[1px] bg-gray-700"></div>
             </div>
 
-            <div class="flex flex-col items-end">
-              <span class="font-tanker text-2xl leading-none text-right text-gray-300">${awayTeam.toUpperCase()}</span>
-              <span class="text-xs text-gray-500 mt-1 uppercase tracking-wider text-right">Away</span>
-              ${score ? `<span class="font-satoshi text-xl font-bold mt-2 text-gray-400">${score.away}</span>` : ''}
+            <div class="flex flex-col items-center gap-2">
+              ${awayLogo ? `<img src="${awayLogo}" alt="${awayTeam}" class="team-logo" onerror="this.style.display='none'">` : ''}
+              <span class="font-tanker text-xl leading-none text-center text-gray-300">${awayTeam.toUpperCase()}</span>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider">Away</span>
+              ${score ? `<span class="font-satoshi text-2xl font-bold mt-1 text-gray-400">${score.away}</span>` : ''}
             </div>
           </div>
 
