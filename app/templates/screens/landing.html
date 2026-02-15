@@ -18,6 +18,22 @@
       margin: 0;
       padding: 0;
     }
+
+    /* Jordan background - positioned right side, half transparent */
+    .jordan-bg {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 60%;
+      height: 100vh;
+      background: url('/static/images/jordan-bg.jpg') no-repeat right center;
+      background-size: contain;
+      opacity: 0.25;
+      pointer-events: none;
+      z-index: 0;
+      mask-image: linear-gradient(to left, black 50%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to left, black 50%, transparent 100%);
+    }
     .font-tanker {
       font-family: 'Tanker', sans-serif;
     }
@@ -86,7 +102,10 @@
   </style>
 </head>
 <body>
-  <div class="w-full min-h-screen flex flex-col bg-[#050505]">
+  <!-- Jordan background -->
+  <div class="jordan-bg"></div>
+  
+  <div class="w-full min-h-screen flex flex-col bg-[#050505] relative z-10">
     <!-- Header -->
     <header class="shrink-0 pt-8 px-6 flex justify-between items-center z-50">
       <div class="flex items-center gap-2">
