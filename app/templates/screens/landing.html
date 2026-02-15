@@ -22,26 +22,27 @@
     /* Jordan background - positioned right side, half transparent */
     .jordan-bg {
       position: fixed;
-      right: -10%;
-      top: 10%;
-      width: 80%;
-      height: 80vh;
-      background: url('/static/images/jordan-bg.jpg') no-repeat right center;
+      right: -5%;
+      top: 5%;
+      width: 70%;
+      height: 90vh;
+      background: url('/static/images/jordan-bg.jpg') no-repeat center center;
       background-size: contain;
-      opacity: 0.35;
+      opacity: 0.4;
       pointer-events: none;
       z-index: 1;
-      mask-image: linear-gradient(to left, black 60%, transparent 100%);
-      -webkit-mask-image: linear-gradient(to left, black 60%, transparent 100%);
+      mask-image: linear-gradient(to left, black 70%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to left, black 70%, transparent 100%);
     }
     
     /* Mobile adjustments */
     @media (max-width: 768px) {
       .jordan-bg {
-        width: 100%;
-        right: -20%;
-        opacity: 0.3;
-        top: 15%;
+        width: 90%;
+        right: -15%;
+        opacity: 0.35;
+        top: 8%;
+        background-position: right center;
       }
     }
     .font-tanker {
