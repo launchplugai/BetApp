@@ -268,18 +268,50 @@
             
             try {
                 const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
-                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                
+                // If no token, show guest state
+                if (!token) {
+                    if (countEl) countEl.textContent = '0 active';
+                    container.innerHTML = `
+                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                            <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
+                            <p class="text-sm text-gray-500 mb-4">Sign in to track your bets and receive signals.</p>
+                            <button onclick="window.location.href='/app?screen=auth'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                SIGN IN
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
                 
                 // Fetch active/pending bets from history API
-                const response = await fetch('/api/bets/history?status=pending&limit=5', { headers });
+                const response = await fetch('/api/bets/history?status=pending&limit=5', { 
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.status === 401) {
+                    // Token expired or invalid
+                    if (countEl) countEl.textContent = '0 active';
+                    container.innerHTML = `
+                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                            <h3 class="font-tanker text-lg mb-2">SESSION EXPIRED</h3>
+                            <p class="text-sm text-gray-500 mb-4">Please sign in again to view your protocols.</p>
+                            <button onclick="window.location.href='/app?screen=auth'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                SIGN IN
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
                 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch bets');
+                    throw new Error(`HTTP ${response.status}`);
                 }
                 
                 const data = await response.json();
-                const bets = data.bets || [];
-                const activeBets = bets.filter(b => b.status === 'pending');
+                const activeBets = data.bets || [];
                 
                 // Update count
                 if (countEl) {
@@ -312,7 +344,7 @@
                     <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
                         <iconify-icon icon="lucide:alert-circle" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
                         <h3 class="font-tanker text-lg mb-2">ERROR LOADING PROTOCOLS</h3>
-                        <p class="text-sm text-gray-500 mb-4">Could not fetch your active bets.</p>
+                        <p class="text-sm text-gray-500 mb-4">${err.message}</p>
                         <button onclick="loadActiveProtocols()" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
                             RETRY
                         </button>

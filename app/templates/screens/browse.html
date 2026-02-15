@@ -241,32 +241,81 @@
 
     // Team logo URL builder - uses ESPN CDN
     function getTeamLogoUrl(teamName, league) {
-      // Map team names to ESPN abbreviations (simplified mapping)
+      // Map team names to ESPN abbreviations
       const teamSlugs = {
         // NBA
         'Lakers': 'lal', 'Warriors': 'gs', 'Celtics': 'bos', 'Nets': 'bkn',
         'Knicks': 'ny', 'Suns': 'phx', 'Bucks': 'mil', 'Bulls': 'chi',
         'Heat': 'mia', '76ers': 'phi', 'Mavericks': 'dal', 'Nuggets': 'den',
+        'Clippers': 'lac', 'Jazz': 'utah', 'Kings': 'sac', 'Pelicans': 'no',
+        'Thunder': 'okc', 'Raptors': 'tor', 'Spurs': 'sa', 'Rockets': 'hou',
+        'Grizzlies': 'mem', 'Hornets': 'cha', 'Pacers': 'ind', 'Pistons': 'det',
+        'Magic': 'orl', 'Hawks': 'atl', 'Wizards': 'wsh', 'Timberwolves': 'min',
+        'Trail Blazers': 'por', 'Cavaliers': 'cle', 'Suns': 'phx',
         // NHL
         'Devils': 'nj', 'Sabres': 'buf', 'Capitals': 'wsh', 'Flyers': 'phi',
         'Rangers': 'nyr', 'Islanders': 'nyi', 'Penguins': 'pit', 'Bruins': 'bos',
-        // Add more as needed
+        'Canadiens': 'mtl', 'Senators': 'ott', 'Maple Leafs': 'tor', 'Jets': 'wpg',
+        'Hurricanes': 'car', 'Blue Jackets': 'cbj', 'Red Wings': 'det',
+        'Blackhawks': 'chi', 'Avalanche': 'col', 'Stars': 'dal', 'Wild': 'min',
+        'Predators': 'nsh', 'Blues': 'stl', 'Jets': 'wpg', 'Ducks': 'ana',
+        'Coyotes': 'ari', 'Flames': 'cgy', 'Oilers': 'edm', 'Kings': 'la',
+        'Sharks': 'sj', 'Kraken': 'sea', 'Canucks': 'van', 'Golden Knights': 'vgk',
+        'Lightning': 'tb', 'Panthers': 'fla',
+        // NFL
+        'Cardinals': 'ari', 'Falcons': 'atl', 'Ravens': 'bal', 'Bills': 'buf',
+        'Panthers': 'car', 'Bears': 'chi', 'Bengals': 'cin', 'Browns': 'cle',
+        'Cowboys': 'dal', 'Broncos': 'den', 'Lions': 'det', 'Packers': 'gb',
+        'Texans': 'hou', 'Colts': 'ind', 'Jaguars': 'jax', 'Chiefs': 'kc',
+        'Raiders': 'lv', 'Chargers': 'lac', 'Rams': 'lar', 'Dolphins': 'mia',
+        'Vikings': 'min', 'Patriots': 'ne', 'Saints': 'no', 'Giants': 'nyg',
+        'Jets': 'nyj', 'Eagles': 'phi', 'Steelers': 'pit', '49ers': 'sf',
+        'Seahawks': 'sea', 'Buccaneers': 'tb', 'Titans': 'ten', 'Commanders': 'wsh',
+        // MLB
+        'Diamondbacks': 'ari', 'Braves': 'atl', 'Orioles': 'bal', 'Red Sox': 'bos',
+        'Cubs': 'chc', 'White Sox': 'chw', 'Reds': 'cin', 'Guardians': 'cle',
+        'Rockies': 'col', 'Tigers': 'det', 'Astros': 'hou', 'Royals': 'kc',
+        'Angels': 'laa', 'Dodgers': 'lad', 'Marlins': 'mia', 'Brewers': 'mil',
+        'Twins': 'min', 'Mets': 'nym', 'Yankees': 'nyy', 'Athletics': 'oak',
+        'Phillies': 'phi', 'Pirates': 'pit', 'Padres': 'sd', 'Mariners': 'sea',
+        'Giants': 'sf', 'Cardinals': 'stl', 'Rays': 'tb', 'Rangers': 'tex',
+        'Blue Jays': 'tor', 'Nationals': 'wsh',
       };
       
-      // Try to find team slug
+      // Try to find team slug - check for exact match first, then partial
       let slug = null;
+      
+      // First try exact match on full name
       for (const [name, abbr] of Object.entries(teamSlugs)) {
-        if (teamName.toLowerCase().includes(name.toLowerCase())) {
+        if (teamName.toLowerCase() === name.toLowerCase()) {
           slug = abbr;
           break;
         }
       }
       
-      if (slug) {
-        return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${league.toLowerCase()}/500/${slug}.png&w=100&h=100`;
+      // Then try partial match
+      if (!slug) {
+        for (const [name, abbr] of Object.entries(teamSlugs)) {
+          if (teamName.toLowerCase().includes(name.toLowerCase())) {
+            slug = abbr;
+            break;
+          }
+        }
       }
       
-      // Fallback: generic sport icon
+      if (slug) {
+        // Map league names to ESPN sport paths
+        const sportPaths = {
+          'NBA': 'nba',
+          'NHL': 'nhl',
+          'NFL': 'nfl',
+          'MLB': 'mlb'
+        };
+        const sportPath = sportPaths[league] || league.toLowerCase();
+        return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${sportPath}/500/${slug}.png&w=100&h=100`;
+      }
+      
+      // Fallback: null (will show team name instead)
       return null;
     }
 
