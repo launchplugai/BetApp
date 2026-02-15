@@ -121,10 +121,11 @@ class ProviderFactory:
         from app.providers.mock_provider import MockOddsProvider
         from app.providers.live_provider import LiveOddsProvider
         from app.providers.odds_api import OddsApiProvider
+        from app.providers.cached_odds_api import CachedOddsApiProvider
         
         if provider_type == "live" and api_key:
             config = ProviderConfig(provider_type="live", api_key=api_key)
-            return OddsApiProvider(config)
+            return CachedOddsApiProvider(config)
         elif provider_type == "live":
             config = ProviderConfig(provider_type="live", api_key=None)
             return LiveOddsProvider(config)
