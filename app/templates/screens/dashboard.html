@@ -50,15 +50,13 @@
                     <iconify-icon icon="lucide:activity" class="text-[#ff1744]"></iconify-icon>
                     <h2 class="font-tanker text-lg tracking-wide">ACTIVE PROTOCOLS</h2>
                 </div>
-                <span class="text-xs text-gray-500">0 active</span>
+                <span id="active-protocols-count" class="text-xs text-gray-500">--</span>
             </div>
-            <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
-                <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
-                <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
-                <p class="text-sm text-gray-500 mb-4">Create a protocol to track games and receive signals.</p>
-                <button onclick="window.location.href='/app?screen=builder'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                    + CREATE PROTOCOL
-                </button>
+            <div id="active-protocols-container">
+                <!-- Loading state -->
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                    <div class="animate-pulse text-gray-600 font-tanker">LOADING...</div>
+                </div>
             </div>
         </section>
 
@@ -263,10 +261,115 @@
             }
         }
         
+        // Load active bets/protocols
+        async function loadActiveProtocols() {
+            const container = document.getElementById('active-protocols-container');
+            const countEl = document.getElementById('active-protocols-count');
+            
+            try {
+                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                
+                // Fetch active/pending bets from history API
+                const response = await fetch('/api/bets/history?status=pending&limit=5', { headers });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch bets');
+                }
+                
+                const data = await response.json();
+                const bets = data.bets || [];
+                const activeBets = bets.filter(b => b.status === 'pending');
+                
+                // Update count
+                if (countEl) {
+                    countEl.textContent = `${activeBets.length} active`;
+                    countEl.className = activeBets.length > 0 
+                        ? 'text-xs text-[#ff1744] font-bold' 
+                        : 'text-xs text-gray-500';
+                }
+                
+                if (activeBets.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                            <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
+                            <p class="text-sm text-gray-500 mb-4">Create a bet to track games and receive signals.</p>
+                            <button onclick="window.location.href='/app?screen=builder'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                + CREATE PROTOCOL
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Render active bets as protocol cards
+                container.innerHTML = activeBets.map(bet => renderProtocolCard(bet)).join('');
+                
+            } catch (err) {
+                console.error('Failed to load active protocols:', err);
+                container.innerHTML = `
+                    <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                        <iconify-icon icon="lucide:alert-circle" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                        <h3 class="font-tanker text-lg mb-2">ERROR LOADING PROTOCOLS</h3>
+                        <p class="text-sm text-gray-500 mb-4">Could not fetch your active bets.</p>
+                        <button onclick="loadActiveProtocols()" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                            RETRY
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderProtocolCard(bet) {
+            const legs = bet.legs || [];
+            const legCount = legs.length;
+            const firstLeg = legs[0] || {};
+            const game = firstLeg.game || firstLeg.entity || 'Unknown Game';
+            const odds = bet.total_odds ? (bet.total_odds > 0 ? `+${bet.total_odds}` : bet.total_odds) : '--';
+            const wager = bet.wager ? `$${(bet.wager / 100).toFixed(2)}` : '$0.00';
+            const potential = bet.potential_payout ? `$${(bet.potential_payout / 100).toFixed(2)}` : '$0.00';
+            
+            return `
+                <div class="bg-[#0a0a0a] border border-[#ff1744]/30 rounded-lg p-4 mb-3 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-[#ff1744]"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[10px] text-[#ff1744] font-bold tracking-widest uppercase">ACTIVE PROTOCOL</span>
+                            <h3 class="font-tanker text-lg text-white mt-1">${legCount} LEG${legCount !== 1 ? 'S' : ''}</h3>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <div class="w-2 h-2 bg-[#ff1744] rounded-full animate-pulse"></div>
+                            <span class="text-xs text-[#ff1744] font-bold">LIVE</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-3 truncate">${game}</p>
+                    <div class="flex justify-between items-center text-sm">
+                        <div>
+                            <span class="text-gray-500 text-xs block">WAGER</span>
+                            <span class="text-white font-bold">${wager}</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-gray-500 text-xs block">ODDS</span>
+                            <span class="text-[#ff1744] font-bold">${odds}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-gray-500 text-xs block">PAYOUT</span>
+                            <span class="text-white font-bold">${potential}</span>
+                        </div>
+                    </div>
+                    <button onclick="window.location.href='/app?screen=history'" class="w-full mt-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs text-gray-400 hover:text-white transition-colors">
+                        VIEW DETAILS
+                    </button>
+                </div>
+            `;
+        }
+        
         // Load on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadUserPreferences();
             loadNotificationCount();
+            loadActiveProtocols();
         });
     </script>
 </body>
