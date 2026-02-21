@@ -15,6 +15,8 @@ from app.providers.mock_provider import MockOddsProvider, MockScoreProvider
 from app.providers.live_provider import LiveOddsProvider, LiveScoreProvider
 from app.providers.odds_api import OddsApiProvider
 from app.config import load_config
+from analytics import enrich_game
+from analytics.schemas import GameContext
 
 router = APIRouter(prefix="/api", tags=["odds"])
 
@@ -217,8 +219,69 @@ async def get_score(game_id: str):
 async def clear_cache():
     """
     Clear all cached data.
-    
+
     Useful for development/testing.
     """
     _cache.clear()
     return {"success": True, "message": "Cache cleared"}
+
+
+@router.get("/context/{sport}/{game_id}", response_model=GameContext)
+async def get_game_context(sport: str, game_id: str):
+    """
+    Get enriched statistical context for a specific game.
+
+    Looks up the game from the active provider then enriches it with
+    advanced team stats fetched from free public APIs:
+      - NBA: pace, off/def/net rating from stats.nba.com
+      - NFL: plays/game, points/game from ESPN
+
+    On success, returns GameContext with is_enriched=True and real stats.
+    If the stats source is unreachable, returns is_enriched=False with
+    enrichment_errors populated (degraded mode — never a hard 5xx).
+
+    Supported sports: nba, nfl
+    """
+    sport_lower = sport.lower()
+    if sport_lower not in ("nba", "nfl"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Enrichment not available for '{sport}'. Supported: nba, nfl",
+        )
+
+    # Pull games from provider (uses shared cache when warm)
+    cache_key = f"games:{sport.upper()}"
+    games: Optional[List[Game]] = _cache.get(cache_key)
+
+    if games is None:
+        provider = get_odds_provider()
+        import inspect
+        if inspect.iscoroutinefunction(provider.get_games):
+            games = await provider.get_games(sport.upper())
+        else:
+            games = provider.get_games(sport.upper())
+        _cache.set(cache_key, games, ttl_seconds=60)
+
+    # Find the requested game
+    target: Optional[Game] = next((g for g in games if g.id == game_id), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail=f"Game not found: {game_id}")
+
+    # Build the raw_odds_data dict enrichment expects
+    raw_odds_data = {
+        "id": target.id,
+        "home_team": target.home,
+        "away_team": target.away,
+        "home_team_name": target.home,
+        "away_team_name": target.away,
+    }
+
+    result = enrich_game(raw_odds_data, sport_lower)
+
+    if not result.success or result.game_context is None:
+        raise HTTPException(
+            status_code=502,
+            detail=result.error_message or "Enrichment failed",
+        )
+
+    return result.game_context
