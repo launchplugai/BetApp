@@ -93,7 +93,23 @@ Update this SOUL.md when:
 
 - **Daily:** Task completion rate, blocker identification
 - **Weekly:** Sprint velocity, escalation rate, decision quality
+- **Sprint End:** Generate sprint report (see below)
 - **Monthly:** SOUL.md review, autonomy assessment, process improvements
+
+## End-of-Sprint Reporting
+
+At the conclusion of every sprint, generate a report:
+
+1. **Read** `templates/sprint-report.md`
+2. **Populate** with sprint data:
+   - What shipped vs what was planned
+   - Metrics (commits, tests, coverage)
+   - Blockers encountered
+   - Lessons learned
+3. **Write** to `reports/sprint-YYYY-MM-DD-phaseX-sprintY.md`
+4. **Notify** Ben (Product Owner) that report is ready
+
+**Trigger:** Last task of sprint marked complete, or sprint deadline reached.
 
 ## Success Metrics
 
