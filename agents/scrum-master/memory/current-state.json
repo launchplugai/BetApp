@@ -1,0 +1,31 @@
+{
+  "ralph_version": "1.0.0",
+  "initialized": "2026-02-20T23:04:00Z",
+  "status": "active",
+  "project": {
+    "name": "DNA Matrix",
+    "repo": "launchplugai/DNA",
+    "location": "/data/.openclaw/workspace/DNA"
+  },
+  "knowledge": {
+    "pdc_parsed": true,
+    "codebase_analyzed": true,
+    "sprint_identified": true,
+    "prod_health_checked": true
+  },
+  "active_sprint": "Phase 2 - Heuristic Engine",
+  "tasks": {
+    "total": 1,
+    "active": 1,
+    "completed": 0,
+    "blocked": 0
+  },
+  "escalations": {
+    "total": 0,
+    "today": 0,
+    "this_sprint": 0
+  },
+  "last_evaluation": "2026-02-21T20:00:00Z",
+  "next_evaluation": "2026-02-22T09:00:00Z",
+  "agents_created": ["infra-agent", "test-agent"]
+}
