@@ -77,6 +77,9 @@ class GameContext(BaseModel):
     is_enriched: bool = True
     enrichment_errors: list[str] = Field(default_factory=list)
     
+    # Phase 2: Heuristic signals
+    heuristics: list[dict] = Field(default_factory=list, description="Detected heuristic signals")
+    
     class Config:
         json_schema_extra = {
             "example": {

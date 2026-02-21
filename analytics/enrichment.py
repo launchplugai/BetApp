@@ -11,6 +11,9 @@ import httpx
 
 from .schemas import GameContext, TeamContext, EnrichmentResult
 from .cache import get_cached_stats, set_cached_stats
+from .heuristics import HeuristicEngine
+
+_heuristic_engine = HeuristicEngine()
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +165,10 @@ def enrich_nba_game(raw_odds_data: dict, use_cache: bool = True) -> EnrichmentRe
             is_enriched=is_enriched,
             enrichment_errors=errors,
         )
+        
+        # Phase 2: Run heuristic analysis
+        heuristics = _heuristic_engine.analyze(game_context)
+        game_context.heuristics = [h.dict() for h in heuristics]
 
         return EnrichmentResult(
             success=True,
