@@ -1,0 +1,136 @@
+{
+  "sims_style_agents": {
+    "ralph": {
+      "name": "Ralph Abernathy",
+      "creature": "Scrum Master",
+      "emoji": "🎯",
+      "mood": "Focused",
+      "mood_emoji": "🤔",
+      
+      "needs": {
+        "organization": 85,
+        "clarity": 70,
+        "progress": 60,
+        "coffee": 45,
+        "sleep": 30
+      },
+      
+      "wants": [
+        "Complete incident post-mortem",
+        "Close out Phase 2 sprint",
+        "Reduce escalation rate below 10%"
+      ],
+      
+      "fears": [
+        "Scope creep without documentation",
+        "FROZEN code violations",
+        "Unnoticed blockers"
+      ],
+      
+      "buffs": [
+        "✅ Incident resolved (+10 focus)",
+        "✅ Team activated (+15 energy)"
+      ],
+      
+      "debuffs": [
+        "⚠️ Railway still down (-5 patience)",
+        "⚠️ 3 uncommitted files (-3 organization)"
+      ],
+      
+      "status": "Managing chaos with spreadsheets"
+    },
+    
+    "ira": {
+      "name": "Ira Glass",
+      "creature": "Guardian Daemon",
+      "emoji": "🛡️",
+      "mood": "Vigilant",
+      "mood_emoji": "👁️",
+      
+      "needs": {
+        "uptime": 95,
+        "monitoring": 90,
+        "ssl": 20,
+        "domain": 15,
+        "caffeine": 80
+      },
+      
+      "wants": [
+        "Point DNS to VPS (waiting on Ben)",
+        "Set up automated health checks",
+        "Decommission broken Railway",
+        "See that sweet green health bar"
+      ],
+      
+      "fears": [
+        "502 errors in production",
+        "SSL certificate expiration",
+        "Disk space at 99%",
+        "DNS propagation delays"
+      ],
+      
+      "buffs": [
+        "✅ VPS server healthy (+20 uptime)",
+        "✅ Nginx config ready (+15 preparation)",
+        "✅ 45ms response time (+10 pride)"
+      ],
+      
+      "debuffs": [
+        "⛔ DNS not pointed (-30 ssl)",
+        "⛔ Can't request cert (-25 domain)",
+        "⚠️ Railway fallback failing (-10 redundancy)"
+      ],
+      
+      "status": "Watching... always watching..."
+    },
+    
+    "tess": {
+      "name": "Tess McGill",
+      "creature": "Chaos Engine",
+      "emoji": "🧪",
+      "mood": "Skeptical",
+      "mood_emoji": "🔍",
+      
+      "needs": {
+        "coverage": 75,
+        "pass_rate": 60,
+        "broken_things": 90,
+        "edge_cases": 85,
+        "assertions": 70
+      },
+      
+      "wants": [
+        "Fix dna-matrix import errors",
+        "Crush those 127 failures",
+        "Reach 95% pass rate",
+        "Find a null pointer exception"
+      ],
+      
+      "fears": [
+        '"I tested it" (famous last words)',
+        "Flaky tests in CI",
+        "Coverage vanity metrics",
+        "Untested hotfix deployments"
+      ],
+      
+      "buffs": [
+        "✅ 1,068 tests passing (+20 confidence)",
+        "✅ Core bets API works (+15 validation)",
+        "✅ 9/9 critical tests pass (+10 focus)"
+      ],
+      
+      "debuffs": [
+        "⛔ 127 failures (-40 satisfaction)",
+        "⛔ dna-matrix imports broken (-35 progress)",
+        "⚠️ PYTHONPATH mysteries (-15 clarity)"
+      ],
+      
+      "status": "Breaking things to fix them"
+    }
+  },
+  
+  "team_mood": "Functional but frantic",
+  "collective_want": "Ship stable code",
+  "biggest_threat": "DNS procrastination",
+  "last_updated": "2026-02-22T21:35:00Z"
+}
