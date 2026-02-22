@@ -1,0 +1,31 @@
+{
+  "manifest_id": "team-handoff-2026-02-22",
+  "timestamp": "2026-02-22T21:25:00Z",
+  "manager": "marvin",
+  "team": ["ralph", "ira", "tess"],
+  "status": "active",
+  "charter": "Marvin manages agent operations. Agents report through Marvin. No agent sits idle.",
+  "rhythms": {
+    "ira": {
+      "health_checks": "every 5 minutes",
+      "status_reports": "every 4 hours",
+      "deep_dive": "daily at 18:00"
+    },
+    "tess": {
+      "test_runs": "on every commit",
+      "coverage_reports": "daily at 12:00",
+      "quality_gates": "before every deploy"
+    },
+    "ralph": {
+      "sprint_sync": "daily at 09:00",
+      "incident_response": "immediate",
+      "weekly_retro": "sundays at 20:00"
+    }
+  },
+  "current_priorities": {
+    "ira": "stabilize VPS deployment, configure SSL/domain",
+    "tess": "fix 127 test failures, reach 95% pass rate",
+    "ralph": "resolve Railway incident, plan VPS migration completion"
+  },
+  "escalation_path": "marvin -> ben (for decisions)"
+}

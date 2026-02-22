@@ -1,0 +1,41 @@
+{
+  "task_chain_id": "incident-2026-02-21-502",
+  "created_at": "2026-02-21T22:38:00Z",
+  "status": "in_progress",
+  "current_step": 1,
+  "steps": [
+    {
+      "id": 1,
+      "description": "Query Railway API for deployment status",
+      "status": "complete",
+      "input": null,
+      "output": {
+        "likely_causes": [
+          "pip install -e ./dna-matrix at boot fails → server never starts",
+          "Healthcheck 30s timeout → Railway marks crashed", 
+          "PYTHONPATH mismatch between Procfile and railway.json"
+        ],
+        "checkpoint_file": "checkpoint-1-railway-status.json"
+      },
+      "output_file": "checkpoint-1-railway-status.json",
+      "estimated_duration": 30
+    },
+    {
+      "id": 2,
+      "description": "Analyze root cause and implement fix",
+      "status": "in_progress", 
+      "input": "checkpoint-1-railway-status.json",
+      "output_file": "checkpoint-2-fix.json",
+      "estimated_duration": 40
+    },
+    {
+      "id": 3,
+      "description": "Commit, push, verify deployment",
+      "status": "pending",
+      "input": "checkpoint-2-fix.json",
+      "output_file": "checkpoint-3-verify.json",
+      "estimated_duration": 30
+    }
+  ],
+  "final_output": null
+}
