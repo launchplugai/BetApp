@@ -1,0 +1,53 @@
+{
+  "checkpoint_id": "ira-first-watch-2026-02-22",
+  "agent": "ira",
+  "timestamp": "2026-02-22T21:20:00Z",
+  "type": "vps_health_baseline",
+  "environment": {
+    "host": "vps-hostinger",
+    "ip": "100.93.133.32",
+    "port": 8000,
+    "deployment": "fresh",
+    "commit": "bf15bc88"
+  },
+  "vitals": {
+    "health_check": {
+      "status": "healthy",
+      "response_time_ms": 45,
+      "endpoint": "/health",
+      "timestamp": "2026-02-22T21:14:13Z"
+    },
+    "service_status": {
+      "status": "healthy",
+      "version": "0.1.0",
+      "environment": "production",
+      "features": {
+        "leading_light": "disabled",
+        "voice": "disabled",
+        "sherlock": "disabled",
+        "dna_recording": "disabled",
+        "notifications": "disabled",
+        "sherlock_incentives": "active"
+      }
+    },
+    "ssl": "not_configured",
+    "domain": "not_configured",
+    "railway_fallback": "unhealthy_502"
+  },
+  "observations": [
+    "VPS deployment successful after Railway failures",
+    "All health checks passing",
+    "No 5xx errors observed",
+    "SSL and domain pending configuration",
+    "Service running on Tailscale IP only"
+  ],
+  "recommendations": [
+    "Configure nginx reverse proxy",
+    "Set up SSL with certbot",
+    "Point domain to VPS",
+    "Set up automated health monitoring (cron)",
+    "Decommission Railway when VPS stable"
+  ],
+  "next_check": "2026-02-22T22:00:00Z",
+  "status": "watching"
+}
