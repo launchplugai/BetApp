@@ -1,0 +1,26 @@
+{
+  "checkpoint_id": "ira-progress-2026-02-22",
+  "agent": "ira",
+  "manager": "marvin",
+  "timestamp": "2026-02-22T21:30:00Z",
+  "orders": "STABILIZE VPS",
+  "progress": {
+    "nginx_config": "created",
+    "ssl_setup": "pending_dns",
+    "health_monitoring": "active",
+    "railway_status": "still_502"
+  },
+  "deliverables": [
+    {
+      "file": "agents/infra-agent/nginx-dna.conf",
+      "status": "ready_for_deploy",
+      "note": "Reverse proxy to port 8000, health endpoint included"
+    }
+  ],
+  "blockers": [
+    "DNS not pointed to VPS yet (dna.launchplugai.com)",
+    "Cannot request SSL cert without working DNS"
+  ],
+  "next_action": "Deploy nginx config when DNS ready",
+  "eta_ssl": "2 hours after DNS propagation"
+}

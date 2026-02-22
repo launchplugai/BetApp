@@ -1,0 +1,30 @@
+{
+  "checkpoint_id": "tess-progress-2026-02-22",
+  "agent": "tess",
+  "manager": "marvin",
+  "timestamp": "2026-02-22T21:30:00Z",
+  "orders": "FIX THE FAILURES",
+  "progress": {
+    "dna_matrix_imports": "investigating",
+    "failure_categorization": "in_progress"
+  },
+  "findings": [
+    {
+      "test_file": "app/tests/test_bets_api.py",
+      "result": "9 PASSED - these are working",
+      "priority": "core_functionality"
+    },
+    {
+      "issue": "dna-matrix tests fail with ModuleNotFoundError",
+      "root_cause": "PYTHONPATH doesn't include dna-matrix during pytest",
+      "fixable": "yes"
+    }
+  ],
+  "deprecation_warnings": [
+    "SQLAlchemy 2.0: declarative_base() moved",
+    "datetime.utcnow() deprecated",
+    "FastAPI on_event deprecated (use lifespan)"
+  ],
+  "recommendation": "Fix PYTHONPATH first, then categorize remaining failures",
+  "next_action": "Run pytest with correct PYTHONPATH"
+}
