@@ -63,3 +63,8 @@ Thumbs.db
 
 # uv package manager
 uv.lock
+
+# Node / Playwright
+node_modules/
+playwright-report/
+test-results/
