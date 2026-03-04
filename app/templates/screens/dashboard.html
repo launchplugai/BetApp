@@ -13,19 +13,10 @@
             --bg-dark: #050505;
             --card-bg: #0f0f0f;
         }
-        body {
-            background-color: var(--bg-dark);
-            color: #ffffff;
-        }
-        .font-tanker {
-            font-family: 'Tanker', sans-serif;
-        }
-        .font-satoshi {
-            font-family: 'Satoshi', sans-serif;
-        }
-        .neon-text-glow {
-            text-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
-        }
+        body { background-color: var(--bg-dark); color: #ffffff; }
+        .font-tanker { font-family: 'Tanker', sans-serif; }
+        .font-satoshi { font-family: 'Satoshi', sans-serif; }
+        .neon-text-glow { text-shadow: 0 0 15px rgba(255, 23, 68, 0.6); }
         .neon-border-glow {
             border: 1px solid rgba(255, 23, 68, 0.4);
             box-shadow: 0 0 20px rgba(255, 23, 68, 0.15), inset 0 0 20px rgba(255, 23, 68, 0.05);
@@ -35,13 +26,9 @@
             box-shadow: 0 0 25px rgba(255, 23, 68, 0.4);
             transition: all 0.3s ease;
         }
-        .neon-btn:active {
-            transform: scale(0.98);
-            box-shadow: 0 0 10px rgba(255, 23, 68, 0.2);
-        }
-        /* Subtle grid background */
+        .neon-btn:active { transform: scale(0.98); box-shadow: 0 0 10px rgba(255, 23, 68, 0.2); }
         .bg-grid-pattern {
-            background-image: 
+            background-image:
                 linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 40px 40px;
@@ -52,15 +39,18 @@
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .team-logo-sm { width: 28px; height: 28px; object-fit: contain; }
+        .league-logo-sm { width: 20px; height: 20px; object-fit: contain; opacity: 0.6; }
     </style>
 </head>
 <body>
-    <!-- Main App Container -->
     <div class="w-full min-h-screen bg-[#050505] font-satoshi flex flex-col relative overflow-hidden bg-grid-pattern">
-        
-        <!-- Ambient Red Glow Top Right -->
+
+        <!-- Ambient Red Glow -->
         <div class="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-[#ff1744] rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
-        
+
         <!-- Header -->
         <header class="pt-14 pb-2 px-6 flex justify-between items-center z-10 shrink-0">
             <div class="flex flex-col">
@@ -72,20 +62,20 @@
                     <iconify-icon icon="lucide:bell" class="text-xl text-gray-300"></iconify-icon>
                     <span class="absolute top-2 right-2 w-2 h-2 bg-[#ff1744] rounded-full shadow-[0_0_8px_#ff1744]"></span>
                 </button>
-                <div class="w-10 h-10 rounded-full border border-gray-700 bg-gray-800 overflow-hidden relative">
-                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop" alt="Profile" class="w-full h-full object-cover opacity-80">
+                <div class="w-10 h-10 rounded-full border border-gray-700 bg-gray-800 overflow-hidden flex items-center justify-center">
+                    <span id="user-avatar" class="font-tanker text-lg text-gray-400">?</span>
                 </div>
             </div>
         </header>
 
         <!-- Main Scroll Area -->
         <main class="flex-1 overflow-y-auto px-6 pb-32 z-10 no-scrollbar">
-            
+
             <!-- Account Overview -->
             <section class="mt-6">
                 <div class="flex items-baseline gap-2 mb-1">
                     <span class="text-gray-400 text-sm font-medium">Total Balance</span>
-                    <span id="user-tier" class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 uppercase tracking-wider">Pro Tier</span>
+                    <span id="user-tier" class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 uppercase tracking-wider">Pro</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <h2 class="font-tanker text-[42px] leading-none text-white"><span id="user-balance">$0.00</span></h2>
@@ -96,7 +86,7 @@
             </section>
 
             <!-- Primary CTA -->
-            <button id="start-bet-btn" class="w-full mt-8 h-14 neon-btn rounded-xl flex items-center justify-center gap-3 group relative overflow-hidden cursor-pointer" onclick="window.location.href='/app?screen=browse'">
+            <button class="w-full mt-8 h-14 neon-btn rounded-xl flex items-center justify-center gap-3 group relative overflow-hidden cursor-pointer" onclick="window.location.href='/app?screen=browse'">
                 <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none"></div>
                 <iconify-icon icon="lucide:plus" class="text-xl font-bold"></iconify-icon>
                 <span class="font-tanker text-xl tracking-wide pt-1">START NEW BET PROTOCOL</span>
@@ -126,7 +116,25 @@
                 </div>
             </div>
 
-            <!-- Active Bets Section -->
+            <!-- Live Games Ticker -->
+            <section class="mt-8">
+                <div class="flex justify-between items-end mb-4">
+                    <h3 class="font-tanker text-xl tracking-wide flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
+                        TODAY'S GAMES
+                    </h3>
+                    <a href="/app?screen=browse" class="text-xs text-[#ff1744] hover:text-white transition-colors uppercase tracking-wider font-bold">Browse All</a>
+                </div>
+
+                <div id="live-games-scroll" class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                    <!-- Populated by JS -->
+                    <div class="glass-panel rounded-xl p-4 min-w-[200px] flex items-center justify-center">
+                        <span class="text-gray-600 text-sm">Loading games...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Active Protocols Section -->
             <section class="mt-10">
                 <div class="flex justify-between items-end mb-5">
                     <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
@@ -136,110 +144,33 @@
                     <a href="#" class="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider font-bold">View All</a>
                 </div>
 
-                <!-- Bet Card 1 -->
-                <div class="neon-border-glow bg-[#0a0a0a] rounded-xl p-5 mb-4 relative group">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-                                <iconify-icon icon="mdi:basketball" class="text-xl text-gray-400"></iconify-icon>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-bold text-sm text-white">Lakers vs. Heat</h4>
-                                    <span class="text-[10px] bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded border border-red-900/50">LIVE</span>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-0.5">NBA • 4th Quarter</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                             <span class="block font-tanker text-xl text-[#ff1744]">+240</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Divider -->
-                    <div class="h-px w-full bg-gradient-to-r from-transparent via-gray-800 to-transparent my-3"></div>
-
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Wager</p>
-                            <p class="font-tanker text-lg">$50.00</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Est. Payout</p>
-                            <p class="font-tanker text-lg text-[#00ff9d]">$170.00</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3 pt-2">
-                        <div class="flex justify-between text-xs mb-1">
-                            <span class="text-gray-400">Spread -4.5</span>
-                            <span class="text-[#ff1744]">Winning</span>
-                        </div>
-                        <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-[#ff1744] h-full rounded-full w-[85%] shadow-[0_0_10px_rgba(255,23,68,0.5)]"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bet Card 2 -->
-                <div class="glass-panel border-l-2 border-l-gray-600 rounded-xl p-5 mb-4 relative group hover:border-l-[#ff1744] transition-colors">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
-                                <iconify-icon icon="mdi:football" class="text-xl text-gray-400"></iconify-icon>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h4 class="font-bold text-sm text-white">Chiefs vs. Bills</h4>
-                                </div>
-                                <p class="text-xs text-gray-500 mt-0.5">NFL • Starts in 2h</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                             <span class="block font-tanker text-xl text-white">-110</span>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-gray-800/50 rounded-lg p-3 flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase">Total Points</p>
-                            <p class="font-bold text-sm">Over 48.5</p>
-                        </div>
-                        <div class="h-6 w-px bg-gray-700"></div>
-                        <div class="text-right">
-                            <p class="text-[10px] text-gray-400 uppercase">Wager</p>
-                            <p class="font-bold text-sm">$100.00</p>
-                        </div>
-                    </div>
+                <div id="active-protocols-list">
+                    <!-- Populated by JS -->
                 </div>
             </section>
-            
-            <!-- Spacer for bottom nav -->
+
             <div class="h-8"></div>
         </main>
 
         <!-- Bottom Navigation -->
         <nav class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5" style="z-index: 9999;">
             <div class="flex justify-around items-center px-4 pointer-events-auto">
-                <a href="/app?screen=dashboard" id="nav-home" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
+                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
                     <div class="relative">
                         <iconify-icon icon="lucide:layout-dashboard" class="text-2xl text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]"></iconify-icon>
                         <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
                     </div>
                     <span class="text-[10px] font-medium text-white">Home</span>
                 </a>
-                
-                <a href="/app?screen=browse" id="nav-browse" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
+                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
                     <iconify-icon icon="lucide:search" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
                     <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Browse</span>
                 </a>
-
-                <a href="/app?screen=builder" id="nav-builder" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
+                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
                     <iconify-icon icon="lucide:plus-circle" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
                     <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Build</span>
                 </a>
-
-                <a href="#" id="nav-logout" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;" onclick="handleLogout(); return false;">
+                <a href="#" onclick="handleLogout(); return false;" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
                     <iconify-icon icon="lucide:log-out" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
                     <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Logout</span>
                 </a>
@@ -248,34 +179,25 @@
     </div>
 
     <script>
-        // Auth token handling
         const token = sessionStorage.getItem('dna_auth_token');
         const user = JSON.parse(sessionStorage.getItem('dna_user') || '{}');
 
-        // Redirect to auth if not logged in
         if (!token) {
             window.location.href = '/app?screen=auth';
         }
 
-        // Format currency
         function formatCurrency(amount) {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD'
-            }).format(amount || 0);
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
         }
 
         // Load dashboard data
         async function loadDashboard() {
             try {
                 const response = await fetch('/api/dashboard/', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (response.status === 401) {
-                    // Token expired, redirect to login
                     sessionStorage.clear();
                     window.location.href = '/app?screen=auth';
                     return;
@@ -283,85 +205,124 @@
 
                 const data = await response.json();
 
-                // Update user info
                 document.getElementById('user-name').textContent = data.user?.name || 'User';
+                document.getElementById('user-avatar').textContent = (data.user?.name || 'U').charAt(0).toUpperCase();
                 document.getElementById('user-tier').textContent = data.user?.tier || 'GOOD';
                 document.getElementById('user-balance').textContent = formatCurrency(data.user?.balance || 0);
-
-                // Update stats
                 document.getElementById('stat-win-rate').textContent = data.stats?.win_rate?.toFixed(1) || '0.0';
                 document.getElementById('stat-total').textContent = data.stats?.total_bets || 0;
 
-                // Update active protocols section
-                updateActiveProtocols(data.active_protocols);
-
-                // Update recent bets
-                updateRecentBets(data.recent_bets);
-
+                renderActiveProtocols(data.active_protocols);
             } catch (err) {
-                console.error('Failed to load dashboard:', err);
+                console.error('Dashboard load failed:', err);
+                // Still load with defaults
+                document.getElementById('user-name').textContent = user.name || 'User';
+                document.getElementById('user-avatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
             }
         }
 
-        function updateActiveProtocols(protocols) {
-            const section = document.querySelector('section.mt-10');
-            if (!protocols || protocols.length === 0) {
-                section.innerHTML = `
-                    <div class="flex justify-between items-end mb-5">
-                        <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
-                            ACTIVE PROTOCOLS
-                        </h3>
-                    </div>
-                    <div class="glass-panel rounded-xl p-8 text-center text-gray-500">
-                        <iconify-icon icon="lucide:activity" class="text-4xl mb-2"></iconify-icon>
-                        <p>No active protocols</p>
-                        <a href="/app?screen=browse" class="text-[#ff1744] text-sm mt-2 inline-block">Start a new bet →</a>
+        // Load live games for ticker
+        async function loadLiveGames() {
+            const container = document.getElementById('live-games-scroll');
+            try {
+                const resp = await fetch('/api/live/protocols/available?league=nba');
+                const data = await resp.json();
+                const games = data.protocols || [];
+
+                if (games.length === 0) {
+                    container.innerHTML = `
+                        <div class="glass-panel rounded-xl p-4 min-w-[240px] flex flex-col items-center justify-center gap-2">
+                            <iconify-icon icon="lucide:calendar" class="text-2xl text-gray-600"></iconify-icon>
+                            <span class="text-gray-500 text-sm">No games right now</span>
+                            <a href="/app?screen=browse" class="text-[#ff1744] text-xs font-bold">Browse all leagues</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = games.slice(0, 8).map(game => {
+                    const [home, away] = game.teams;
+                    const homeLogo = game.homeLogo || '';
+                    const awayLogo = game.awayLogo || '';
+                    const isLive = game.status === 'LIVE';
+                    const score = game.score;
+
+                    return `
+                        <div class="glass-panel rounded-xl p-4 min-w-[220px] flex-shrink-0 cursor-pointer hover:border-white/20 transition-all"
+                             onclick="window.location.href='/app?screen=browse'">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-1.5">
+                                    ${isLive ? `
+                                        <div class="w-1.5 h-1.5 bg-[#ff1744] rounded-full animate-pulse"></div>
+                                        <span class="text-[10px] text-[#ff1744] font-bold tracking-wider">${game.clock || 'LIVE'}</span>
+                                    ` : `
+                                        <span class="text-[10px] text-gray-500 font-medium">Upcoming</span>
+                                    `}
+                                </div>
+                                <span class="text-[10px] text-gray-600 uppercase">${game.league}</span>
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    ${homeLogo ? `<img src="${homeLogo}" class="team-logo-sm" onerror="this.style.display='none'">` : ''}
+                                    <span class="text-sm font-bold text-white">${home}</span>
+                                </div>
+                                ${score ? `<span class="font-tanker text-lg text-white">${score.home}</span>` : ''}
+                            </div>
+
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center gap-2">
+                                    ${awayLogo ? `<img src="${awayLogo}" class="team-logo-sm" onerror="this.style.display='none'">` : ''}
+                                    <span class="text-sm font-bold text-gray-400">${away}</span>
+                                </div>
+                                ${score ? `<span class="font-tanker text-lg text-gray-400">${score.away}</span>` : ''}
+                            </div>
+
+                            ${game.odds?.moneyline ? `
+                                <div class="flex justify-between mt-3 pt-2 border-t border-white/5">
+                                    <span class="text-[10px] text-gray-500">ML</span>
+                                    <div class="flex gap-3">
+                                        <span class="text-xs font-bold text-white">${game.odds.moneyline.home?.odds > 0 ? '+' : ''}${game.odds.moneyline.home?.odds || ''}</span>
+                                        <span class="text-xs font-bold text-gray-400">${game.odds.moneyline.away?.odds > 0 ? '+' : ''}${game.odds.moneyline.away?.odds || ''}</span>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Live games load failed:', err);
+                container.innerHTML = `
+                    <div class="glass-panel rounded-xl p-4 min-w-[200px] flex items-center justify-center">
+                        <span class="text-gray-600 text-sm">Could not load games</span>
                     </div>
                 `;
             }
         }
 
-        function updateRecentBets(bets) {
-            // For now, bets display on dashboard is limited
-            // Full history can be on separate screen
+        function renderActiveProtocols(protocols) {
+            const list = document.getElementById('active-protocols-list');
+            if (!protocols || protocols.length === 0) {
+                list.innerHTML = `
+                    <div class="glass-panel rounded-xl p-8 text-center">
+                        <iconify-icon icon="lucide:activity" class="text-4xl text-gray-700 mb-3"></iconify-icon>
+                        <p class="text-gray-500 mb-2">No active protocols</p>
+                        <a href="/app?screen=browse" class="text-[#ff1744] text-sm font-bold">Start your first bet →</a>
+                    </div>
+                `;
+                return;
+            }
         }
 
-        // Logout handler
         function handleLogout() {
             sessionStorage.clear();
             window.location.href = '/app?screen=auth';
         }
 
-        // Explicit nav click handlers (backup for href)
-        document.getElementById('nav-browse')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=browse';
-        });
-
-        document.getElementById('nav-builder')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=builder';
-        });
-
-        document.getElementById('nav-home')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = '/app?screen=dashboard';
-        });
-
-        // Load data on page load
+        // Load everything
         loadDashboard();
-
-        // Debug: log that nav is ready
-        console.log('Dashboard nav ready:', {
-            home: !!document.getElementById('nav-home'),
-            browse: !!document.getElementById('nav-browse'),
-            builder: !!document.getElementById('nav-builder'),
-            logout: !!document.getElementById('nav-logout')
-        });
+        loadLiveGames();
     </script>
 </body>
 </html>

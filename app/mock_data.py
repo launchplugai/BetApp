@@ -32,7 +32,12 @@ MOCK_PROTOCOLS = {
             "score": {"home": 88, "away": 82},
             "marketsAvailable": ["spread", "total", "moneyline", "player_props"],
             "featured": True,
-            "aiInsight": "Lakers spread has 82% probability"
+            "aiInsight": "Lakers spread has 82% probability",
+            "odds": {
+                "spread": {"home": {"line": -4.5, "odds": -110}, "away": {"line": 4.5, "odds": -110}},
+                "total": {"over": {"line": 224.5, "odds": -108}, "under": {"line": 224.5, "odds": -108}},
+                "moneyline": {"home": {"odds": -190}, "away": {"odds": 158}},
+            },
         },
         {
             "protocolId": generate_protocol_id(),
@@ -44,7 +49,12 @@ MOCK_PROTOCOLS = {
             "score": None,
             "marketsAvailable": ["spread", "total", "moneyline"],
             "featured": False,
-            "aiInsight": "Celtics strong home advantage"
+            "aiInsight": "Celtics strong home advantage",
+            "odds": {
+                "spread": {"home": {"line": -2.5, "odds": -110}, "away": {"line": 2.5, "odds": -110}},
+                "total": {"over": {"line": 212, "odds": -110}, "under": {"line": 212, "odds": -110}},
+                "moneyline": {"home": {"odds": -145}, "away": {"odds": 125}},
+            },
         },
         {
             "protocolId": generate_protocol_id(),
@@ -56,8 +66,13 @@ MOCK_PROTOCOLS = {
             "score": None,
             "marketsAvailable": ["spread", "total", "moneyline", "player_props"],
             "featured": False,
-            "aiInsight": "High total expected"
-        }
+            "aiInsight": "High total expected",
+            "odds": {
+                "spread": {"home": {"line": -7.5, "odds": -110}, "away": {"line": 7.5, "odds": -110}},
+                "total": {"over": {"line": 230.5, "odds": -110}, "under": {"line": 230.5, "odds": -110}},
+                "moneyline": {"home": {"odds": -320}, "away": {"odds": 260}},
+            },
+        },
     ],
     "nfl": [
         {
@@ -70,8 +85,30 @@ MOCK_PROTOCOLS = {
             "score": None,
             "marketsAvailable": ["spread", "total", "moneyline", "player_props"],
             "featured": True,
-            "aiInsight": "Chiefs home field advantage significant"
-        }
+            "aiInsight": "Chiefs home field advantage significant",
+            "odds": {
+                "spread": {"home": {"line": -3.5, "odds": -110}, "away": {"line": 3.5, "odds": -110}},
+                "total": {"over": {"line": 47.5, "odds": -110}, "under": {"line": 47.5, "odds": -110}},
+                "moneyline": {"home": {"odds": -175}, "away": {"odds": 145}},
+            },
+        },
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NFL",
+            "gameId": "sf-bal-2026-02-11",
+            "teams": ["49ers", "Ravens"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline"],
+            "featured": False,
+            "aiInsight": "Ravens strong rushing attack favors the under",
+            "odds": {
+                "spread": {"home": {"line": -1.5, "odds": -110}, "away": {"line": 1.5, "odds": -110}},
+                "total": {"over": {"line": 44.5, "odds": -110}, "under": {"line": 44.5, "odds": -110}},
+                "moneyline": {"home": {"odds": -130}, "away": {"odds": 110}},
+            },
+        },
     ],
     "nhl": [
         {
@@ -82,11 +119,105 @@ MOCK_PROTOCOLS = {
             "status": "LIVE",
             "clock": "2nd 14:32",
             "score": {"home": 2, "away": 1},
-            "marketsAvailable": ["puck_line", "total", "moneyline"],
+            "marketsAvailable": ["spread", "total", "moneyline"],
+            "featured": True,
+            "aiInsight": "Low scoring game developing",
+            "odds": {
+                "spread": {"home": {"line": -1.5, "odds": +145}, "away": {"line": 1.5, "odds": -165}},
+                "total": {"over": {"line": 5.5, "odds": -110}, "under": {"line": 5.5, "odds": -110}},
+                "moneyline": {"home": {"odds": -150}, "away": {"odds": 130}},
+            },
+        },
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "NHL",
+            "gameId": "col-edm-2026-02-09",
+            "teams": ["Avalanche", "Oilers"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline"],
             "featured": False,
-            "aiInsight": "Low scoring game developing"
-        }
-    ]
+            "aiInsight": "High-scoring affair expected with elite offenses",
+            "odds": {
+                "spread": {"home": {"line": -1.5, "odds": +140}, "away": {"line": 1.5, "odds": -160}},
+                "total": {"over": {"line": 6.5, "odds": -115}, "under": {"line": 6.5, "odds": -105}},
+                "moneyline": {"home": {"odds": -135}, "away": {"odds": 115}},
+            },
+        },
+    ],
+    "soccer": [
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "Soccer",
+            "gameId": "ars-che-2026-03-08",
+            "teams": ["Arsenal", "Chelsea"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline"],
+            "featured": True,
+            "aiInsight": "London derby — Arsenal strong at home this season",
+            "odds": {
+                "spread": {"home": {"line": -0.5, "odds": -130}, "away": {"line": 0.5, "odds": 110}},
+                "total": {"over": {"line": 2.5, "odds": -120}, "under": {"line": 2.5, "odds": 100}},
+                "moneyline": {"home": {"odds": -160}, "away": {"odds": 380}},
+            },
+        },
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "Soccer",
+            "gameId": "liv-mci-2026-03-09",
+            "teams": ["Liverpool", "Manchester City"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline"],
+            "featured": False,
+            "aiInsight": "Title race showdown, expect a tight match",
+            "odds": {
+                "spread": {"home": {"line": -0.5, "odds": -105}, "away": {"line": 0.5, "odds": -115}},
+                "total": {"over": {"line": 3.5, "odds": +105}, "under": {"line": 3.5, "odds": -125}},
+                "moneyline": {"home": {"odds": +110}, "away": {"odds": +180}},
+            },
+        },
+    ],
+    "mlb": [
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "MLB",
+            "gameId": "nyy-lad-2026-04-01",
+            "teams": ["Yankees", "Dodgers"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["spread", "total", "moneyline"],
+            "featured": True,
+            "aiInsight": "Opening day — pitching matchup favors the under",
+            "odds": {
+                "spread": {"home": {"line": -1.5, "odds": +140}, "away": {"line": 1.5, "odds": -160}},
+                "total": {"over": {"line": 8.5, "odds": -110}, "under": {"line": 8.5, "odds": -110}},
+                "moneyline": {"home": {"odds": +120}, "away": {"odds": -140}},
+            },
+        },
+    ],
+    "mma": [
+        {
+            "protocolId": generate_protocol_id(),
+            "league": "MMA",
+            "gameId": "ufc-main-2026-03-15",
+            "teams": ["Fighter A", "Fighter B"],
+            "status": "UPCOMING",
+            "clock": None,
+            "score": None,
+            "marketsAvailable": ["moneyline"],
+            "featured": True,
+            "aiInsight": "Main event — underdog has strong grappling advantage",
+            "odds": {
+                "moneyline": {"home": {"odds": -200}, "away": {"odds": 170}},
+            },
+        },
+    ],
 }
 
 # Legacy games data (kept for compatibility)
@@ -251,10 +382,10 @@ MOCK_USER = {
 SPORTS = [
     {"id": "nba", "name": "NBA", "icon": "🏀", "active": True},
     {"id": "nfl", "name": "NFL", "icon": "🏈", "active": True},
-    {"id": "mlb", "name": "MLB", "icon": "⚾", "active": False},
+    {"id": "mlb", "name": "MLB", "icon": "⚾", "active": True},
     {"id": "nhl", "name": "NHL", "icon": "🏒", "active": True},
-    {"id": "soccer", "name": "Soccer", "icon": "⚽", "active": False},
-    {"id": "mma", "name": "MMA", "icon": "🥊", "active": False}
+    {"id": "soccer", "name": "Soccer", "icon": "⚽", "active": True},
+    {"id": "mma", "name": "MMA", "icon": "🥊", "active": True}
 ]
 
 

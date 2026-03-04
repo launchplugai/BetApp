@@ -21,6 +21,7 @@ from app.routers import v1_ui
 from app.routers import debug
 from app.routers import metrics
 from app.routers import mock_api
+from app.routers import live_api
 from app.routers import protocols
 from app.routers import auth
 from app.routers import dashboard as dashboard_router
@@ -100,6 +101,7 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 # Web router first (handles / and /app)
 app.include_router(web.router)
 app.include_router(mock_api.router)
+app.include_router(live_api.router)
 app.include_router(protocols.router)
 app.include_router(auth.router)
 app.include_router(dashboard_router.router)
