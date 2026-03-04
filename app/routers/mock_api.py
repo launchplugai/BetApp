@@ -9,7 +9,7 @@ from app.providers import ProviderFactory
 
 router = APIRouter(prefix="/api/mock", tags=["mock"])
 
-from app.mock_data import MOCK_GAMES, MOCK_ODDS, MOCK_USER, SPORTS, MOCK_PROTOCOLS
+from app.mock_data import MOCK_GAMES, MOCK_ODDS, MOCK_USER, SPORTS, MOCK_PROTOCOLS, MOCK_PROTOCOL_CONTEXTS
 
 @router.get("/sports")
 async def get_sports():
@@ -146,7 +146,7 @@ async def get_protocol(protocol_id: str):
 @router.get("/markets/{game_id}")
 async def get_markets(game_id: str):
     """Get betting markets for a specific game.
-    
+
     Used by parlay builder to display available bets.
     """
     # Map game_id to odds key
@@ -156,11 +156,72 @@ async def get_markets(game_id: str):
             if game["id"] == game_id:
                 odds_key = game_id
                 break
-    
+
     if not odds_key or odds_key not in MOCK_ODDS:
         raise HTTPException(status_code=404, detail="Markets not found")
-    
+
     return {
         "game_id": game_id,
         "markets": MOCK_ODDS[odds_key]
     }
+
+
+# Protocol Context endpoints — contextual intelligence data
+
+@router.get("/protocols/{protocol_id}/context")
+async def get_protocol_context(protocol_id: str):
+    """Get contextual intelligence data for a protocol.
+
+    Returns the hidden forces affecting the game:
+    fatigue, psychology, matchups, market signals.
+
+    Used by the Protocol System pipeline.
+    """
+    # Find the protocol to get its game_id
+    game_id = None
+    for league_protocols in MOCK_PROTOCOLS.values():
+        for protocol in league_protocols:
+            if protocol["protocolId"] == protocol_id:
+                game_id = protocol["gameId"]
+                break
+
+    if not game_id:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+
+    context = MOCK_PROTOCOL_CONTEXTS.get(game_id)
+    if not context:
+        raise HTTPException(status_code=404, detail="Protocol context not available")
+
+    return context
+
+
+@router.get("/protocols/{protocol_id}/risk")
+async def get_protocol_risk(protocol_id: str):
+    """Run protocol analysis and return risk assessment.
+
+    Executes the Protocol System pipeline against the game context
+    and returns aggregated risk signals.
+    """
+    # Find the protocol to get its game_id
+    game_id = None
+    for league_protocols in MOCK_PROTOCOLS.values():
+        for protocol in league_protocols:
+            if protocol["protocolId"] == protocol_id:
+                game_id = protocol["gameId"]
+                break
+
+    if not game_id:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+
+    context = MOCK_PROTOCOL_CONTEXTS.get(game_id)
+    if not context:
+        return {"protocols_triggered": 0, "risk_summary": "No contextual data available"}
+
+    # Run protocol pipeline
+    from core.protocols.pipeline import ProtocolPipeline, initialize_protocols
+    initialize_protocols()
+
+    pipeline = ProtocolPipeline()
+    risk = pipeline.run(context)
+
+    return risk.to_dict()

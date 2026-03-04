@@ -48,11 +48,26 @@ async function loadMarkets() {
     }
 }
 
+// League icon mapping — correct sport icon per league
+const LEAGUE_ICONS = {
+    'NBA': 'emojione-monotone:basketball',
+    'NFL': 'fluent:sport-american-football-24-regular',
+    'NHL': 'ph:hockey-light',
+    'MLB': 'guidance:baseball',
+    'Soccer': 'ph:soccer-ball-light',
+    'MMA': 'game-icons:boxing-glove',
+};
+
+function getLeagueIcon(league) {
+    return LEAGUE_ICONS[league] || LEAGUE_ICONS['NBA'];
+}
+
 function renderGameHeader() {
     if (!protocol) return;
     const [home, away] = protocol.teams;
     const isLive = protocol.status === 'LIVE';
     const score = protocol.score;
+    const sportIcon = getLeagueIcon(protocol.league);
 
     document.getElementById('game-info').innerHTML = `
         <div class="flex justify-between items-center mb-4">
@@ -65,7 +80,7 @@ function renderGameHeader() {
         <div class="flex justify-between items-center">
             <div class="flex flex-col items-center gap-2 w-1/3">
                 <div class="w-16 h-16 rounded-full bg-white/5 p-3 border border-white/10 flex items-center justify-center">
-                    <iconify-icon icon="emojione-monotone:basketball" class="text-4xl text-yellow-500"></iconify-icon>
+                    <iconify-icon icon="${sportIcon}" class="text-4xl text-yellow-500"></iconify-icon>
                 </div>
                 <h2 class="font-tanker text-2xl">${home.toUpperCase()}</h2>
                 ${score ? `<span class="font-satoshi text-xl font-bold">${score.home}</span>` : ''}
@@ -75,13 +90,105 @@ function renderGameHeader() {
             </div>
             <div class="flex flex-col items-center gap-2 w-1/3">
                 <div class="w-16 h-16 rounded-full bg-white/5 p-3 border border-white/10 flex items-center justify-center">
-                    <iconify-icon icon="emojione-monotone:basketball" class="text-4xl text-blue-500"></iconify-icon>
+                    <iconify-icon icon="${sportIcon}" class="text-4xl text-blue-500"></iconify-icon>
                 </div>
                 <h2 class="font-tanker text-2xl text-gray-300">${away.toUpperCase()}</h2>
                 ${score ? `<span class="font-satoshi text-xl font-bold text-gray-400">${score.away}</span>` : ''}
             </div>
         </div>
     `;
+
+    // Fetch and display protocol risk signals
+    fetchProtocolRisk();
+}
+
+async function fetchProtocolRisk() {
+    if (!protocol || !protocol.protocolId) return;
+    try {
+        const response = await fetch(`${API_BASE}/protocols/${protocol.protocolId}/risk`);
+        if (!response.ok) return;
+        const risk = await response.json();
+        if (risk.triggeredCount > 0) {
+            renderProtocolSignals(risk);
+        }
+    } catch (err) {
+        console.log('Protocol risk fetch skipped:', err.message);
+    }
+}
+
+function renderProtocolSignals(risk) {
+    const container = document.getElementById('protocol-signals');
+    if (!container) return;
+
+    const riskColors = {
+        none: { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20' },
+        low: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' },
+        moderate: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20' },
+        high: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
+        critical: { bg: 'bg-red-500/20', text: 'text-red-300', border: 'border-red-500/40' },
+    };
+
+    const categoryIcons = {
+        physical: 'lucide:battery-low',
+        tactical: 'lucide:swords',
+        volatility: 'lucide:activity',
+        psychological: 'lucide:brain',
+        market: 'lucide:trending-up',
+    };
+
+    const signals = risk.signals || [];
+    if (signals.length === 0) return;
+
+    let html = `
+        <div class="mb-4">
+            <div class="flex items-center gap-2 mb-3">
+                <iconify-icon icon="lucide:shield-alert" class="text-neon text-sm"></iconify-icon>
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PROTOCOL INTELLIGENCE</span>
+                <span class="text-[10px] font-bold text-neon bg-neon/10 px-1.5 py-0.5 rounded">${risk.triggeredCount} ACTIVE</span>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">${risk.riskSummary}</p>
+            <div class="space-y-2">
+    `;
+
+    for (const signal of signals.slice(0, 5)) {
+        const colors = riskColors[signal.risk] || riskColors.none;
+        const icon = categoryIcons[signal.category] || 'lucide:info';
+
+        html += `
+            <div class="${colors.bg} rounded-lg p-3 border ${colors.border}">
+                <div class="flex items-center gap-2 mb-1">
+                    <iconify-icon icon="${icon}" class="${colors.text} text-sm"></iconify-icon>
+                    <span class="text-[10px] font-bold ${colors.text} uppercase">${signal.protocol.replace(/_/g, ' ')}</span>
+                    <span class="text-[10px] ${colors.text} ml-auto">${Math.round(signal.confidence * 100)}% conf</span>
+                </div>
+                <p class="text-xs text-gray-300">${signal.explanation}</p>
+            </div>
+        `;
+    }
+
+    html += `
+            </div>
+            <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">Fragility</div>
+                    <div class="font-tanker text-lg ${risk.fragilityScore >= 0.5 ? 'text-red-400' : risk.fragilityScore >= 0.3 ? 'text-yellow-400' : 'text-green-400'}">
+                        ${(risk.fragilityScore * 100).toFixed(0)}%
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">Confidence</div>
+                    <div class="font-tanker text-lg text-white">${(risk.confidenceScore * 100).toFixed(0)}%</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[10px] text-gray-500 uppercase">Protocols</div>
+                    <div class="font-tanker text-lg text-neon">${risk.triggeredCount}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+    container.classList.remove('hidden');
 }
 
 function switchMarket(market) {
@@ -470,6 +577,9 @@ function displayResults(data) {
     }
     summaryText.innerHTML = `<div class="mb-2">${summary}</div>${rawDataHtml}`;
 
+    // Render protocol risk in DNA results (if present)
+    renderProtocolRiskInResults(data);
+
     // Sprint 2: Render explainability sections
     renderExplainabilitySections(data);
 
@@ -752,4 +862,87 @@ function fragilityToLevel(fragility) {
     if (fragility <= 35) return 'loaded';
     if (fragility <= 60) return 'tense';
     return 'critical';
+}
+
+// =============================================================================
+// Protocol Risk in DNA Results
+// =============================================================================
+
+function renderProtocolRiskInResults(data) {
+    const container = document.getElementById('explainability-panels');
+    if (!container) return;
+
+    const protocolRisk = data.protocolRisk || data.protocol_risk;
+    if (!protocolRisk || !protocolRisk.triggeredCount) return;
+
+    const categoryIcons = {
+        physical: 'lucide:battery-low',
+        tactical: 'lucide:swords',
+        volatility: 'lucide:activity',
+        psychological: 'lucide:brain',
+        market: 'lucide:trending-up',
+    };
+
+    // Build category risk summary
+    const categoryRisks = protocolRisk.categoryRisks || {};
+    const activeCats = Object.entries(categoryRisks)
+        .filter(([_, risk]) => risk !== 'none')
+        .sort((a, b) => {
+            const order = { critical: 0, high: 1, moderate: 2, low: 3 };
+            return (order[a[1]] || 4) - (order[b[1]] || 4);
+        });
+
+    const riskColors = {
+        low: 'text-green-400',
+        moderate: 'text-yellow-400',
+        high: 'text-red-400',
+        critical: 'text-red-300',
+    };
+
+    let catHtml = activeCats.map(([cat, risk]) => {
+        const icon = categoryIcons[cat] || 'lucide:info';
+        const color = riskColors[risk] || 'text-gray-400';
+        return `
+            <div class="flex items-center gap-2 p-2 bg-white/5 rounded text-xs">
+                <iconify-icon icon="${icon}" class="${color}"></iconify-icon>
+                <span class="text-gray-300 capitalize">${cat}</span>
+                <span class="font-bold ${color} ml-auto uppercase text-[10px]">${risk}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Dual evaluation comparison (if present)
+    let dualHtml = '';
+    const dual = protocolRisk.dual_evaluation || protocolRisk.dualEvaluation;
+    if (dual && dual.adjusted) {
+        const impact = dual.adjusted.protocol_impact || dual.adjusted.protocolImpact || 0;
+        const modifier = dual.adjusted.stability_modifier || dual.adjusted.stabilityModifier || 1;
+        dualHtml = `
+            <div class="mt-3 pt-3 border-t border-white/5">
+                <div class="text-[10px] text-gray-500 uppercase mb-2">DNA + Protocol Comparison</div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-white/5 rounded p-2">
+                        <div class="text-[10px] text-gray-500">Stability</div>
+                        <div class="font-bold ${modifier < 0.85 ? 'text-red-400' : modifier < 0.95 ? 'text-yellow-400' : 'text-green-400'}">${(modifier * 100).toFixed(0)}%</div>
+                    </div>
+                    <div class="bg-white/5 rounded p-2">
+                        <div class="text-[10px] text-gray-500">Protocol Impact</div>
+                        <div class="font-bold text-red-400">-${(impact * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Prepend protocol panel before other explainability sections
+    const protocolPanel = renderExplainPanel({
+        icon: 'lucide:shield-alert',
+        title: 'PROTOCOL INTELLIGENCE',
+        headline: protocolRisk.riskSummary ? protocolRisk.riskSummary.split('.')[0] : 'Contextual Risk Detected',
+        level: protocolRisk.fragilityScore >= 0.5 ? 'critical' : protocolRisk.fragilityScore >= 0.3 ? 'tense' : 'loaded',
+        summary: protocolRisk.riskSummary,
+        detail: catHtml + dualHtml,
+    });
+
+    container.insertAdjacentHTML('afterbegin', protocolPanel);
 }

@@ -80,6 +80,21 @@ from app.delta_engine import (
 # Grounding Score Engine (Ticket 38B-C2)
 from app.grounding_score import compute_grounding_score
 
+# Protocol System — Contextual Reasoning Layer
+from core.protocols.pipeline import ProtocolPipeline, initialize_protocols
+from core.protocols.models import AggregatedRisk
+from core.protocols.dna_mode import (
+    DNAMode,
+    should_run_protocols,
+    compute_stability_modifier,
+    build_dual_evaluation,
+    get_mode_for_tier,
+)
+from core.protocols.artifact_mapper import map_to_dna_artifacts
+
+# Ensure protocols are registered
+initialize_protocols()
+
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -184,6 +199,9 @@ class PipelineResponse:
 
     # Sprint 2: Explainability sections (tier-gated engine stage breakdown)
     explainability_sections: Optional[dict] = None
+
+    # Protocol System: Contextual risk signals (fatigue, matchups, psychology, market)
+    protocol_risk: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -2345,6 +2363,98 @@ def _extract_entities_from_text(text: str) -> tuple[list[str], list[str]]:
     return found_players, found_teams
 
 
+def _build_protocol_context(blocks: list, context_data: Optional[dict]) -> Optional[dict]:
+    """
+    Build protocol context from bet blocks and external context.
+
+    Extracts team, game, and contextual information from the evaluated
+    blocks and context data to feed into the Protocol System pipeline.
+
+    Returns a game context dict, or None if insufficient data.
+    """
+    if not blocks:
+        return None
+
+    # Extract teams and game info from blocks
+    teams_seen = set()
+    league = "NBA"  # Default, expanded later
+    game_id = ""
+
+    for block in blocks:
+        if hasattr(block, 'sport') and block.sport:
+            league = block.sport.upper()
+        if hasattr(block, 'game_id') and block.game_id:
+            game_id = block.game_id
+        if hasattr(block, 'team_id') and block.team_id:
+            teams_seen.add(block.team_id)
+
+    teams = list(teams_seen)
+    home_team = teams[0] if len(teams) > 0 else "Home"
+    away_team = teams[1] if len(teams) > 1 else "Away"
+
+    # Build protocol context with defaults
+    # In production, these would come from real data APIs
+    protocol_ctx = {
+        "game_id": game_id or "unknown",
+        "league": league,
+        "home_team": home_team,
+        "away_team": away_team,
+        # Schedule defaults (would come from schedule API)
+        "is_back_to_back_home": False,
+        "is_back_to_back_away": False,
+        "home_rest_days": 2,
+        "away_rest_days": 2,
+        "home_travel_miles": 0.0,
+        "away_travel_miles": 0.0,
+        # Tactical defaults (would come from stats API)
+        "home_pace": 0.0,
+        "away_pace": 0.0,
+        "home_def_rating": 0.0,
+        "away_def_rating": 0.0,
+        # Roster defaults
+        "home_injuries": [],
+        "away_injuries": [],
+        "home_lineup_changes": 0,
+        "away_lineup_changes": 0,
+        "home_starter_out": False,
+        "away_starter_out": False,
+        # Psychological defaults
+        "revenge_players": [],
+        "home_streak": 0,
+        "away_streak": 0,
+        # Market defaults
+        "opening_spread": 0.0,
+        "current_spread": 0.0,
+        "public_bet_pct_home": 50.0,
+        "sharp_money_side": None,
+        "line_movement": 0.0,
+        # Officiating
+        "ref_crew": None,
+        "ref_foul_rate": 0.0,
+        "ref_home_advantage": 0.0,
+        # Environment
+        "altitude_ft": 0.0,
+        "is_playoff": False,
+    }
+
+    # Enrich from context data if available
+    if context_data and isinstance(context_data, dict):
+        # Pull injury data from external context
+        impact = context_data.get("impact", {})
+        modifiers = impact.get("modifiers", [])
+        for mod in modifiers:
+            if "out" in mod.get("reason", "").lower() or "injured" in mod.get("reason", "").lower():
+                players = mod.get("affected_players", [])
+                for p in players:
+                    protocol_ctx["home_injuries"].append({
+                        "player": p,
+                        "status": "OUT",
+                        "is_star": True,
+                    })
+
+    return protocol_ctx
+
+
 def _fetch_context_for_bet(text: str, correlation_id: Optional[str] = None) -> Optional[dict]:
     """
     Fetch context data relevant to the bet.
@@ -2647,6 +2757,46 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         correlation_id=str(evaluation.parlay_id),
     )
 
+    # Step 4B: Run Protocol System — contextual reasoning layer
+    # Protocols detect hidden forces: fatigue, psychology, matchups, market signals
+    # Respects DNA_MODE toggle: CORE_ONLY skips protocols, CORE_PLUS_PROTOCOLS runs them
+    protocol_risk_result = None
+    protocol_artifacts = []
+
+    tier_mode = get_mode_for_tier(normalized.tier.value)
+    if should_run_protocols() or tier_mode == DNAMode.CORE_PLUS_PROTOCOLS:
+        protocol_pipeline = ProtocolPipeline()
+        protocol_context = _build_protocol_context(blocks, context_data)
+        if protocol_context:
+            try:
+                aggregated_risk = protocol_pipeline.run(protocol_context)
+                if aggregated_risk.triggered_count > 0:
+                    protocol_risk_result = aggregated_risk.to_dict()
+
+                    # Map protocol outputs to DNA-compatible artifacts
+                    protocol_artifacts = map_to_dna_artifacts(
+                        aggregated_risk,
+                        request_id=str(evaluation.parlay_id),
+                    )
+
+                    # Build dual evaluation record for development comparison
+                    protocol_risk_result["dual_evaluation"] = build_dual_evaluation(
+                        core_result={
+                            "final_fragility": evaluation.metrics.final_fragility,
+                            "recommendation": evaluation.recommendation.action.value,
+                        },
+                        protocol_result=protocol_risk_result,
+                        protocol_fragility=aggregated_risk.fragility_score,
+                    )
+
+                    _logger.info(
+                        f"Protocol System: {aggregated_risk.triggered_count} protocols triggered, "
+                        f"fragility={aggregated_risk.fragility_score:.3f}, "
+                        f"stability_modifier={compute_stability_modifier(aggregated_risk.fragility_score):.3f}"
+                    )
+            except Exception as e:
+                _logger.warning(f"Protocol pipeline error (non-fatal): {e}")
+
     # Step 5: Generate plain-English interpretation
     interpretation = {
         "fragility": _interpret_fragility(evaluation.metrics.final_fragility),
@@ -2885,6 +3035,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         delta=delta_result.to_dict() if delta_result else None,  # Ticket 38B-B: Change delta
         grounding_score=grounding_score_result.to_dict(),  # Ticket 38B-C2: Grounding score
         explainability_sections=explainability_sections,  # Sprint 2: Tier-gated engine stage breakdown
+        protocol_risk=protocol_risk_result,  # Protocol System: Contextual risk signals
         leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
     )
