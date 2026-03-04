@@ -912,7 +912,7 @@ async def _parse_bet_slip_image(image_bytes: bytes) -> str:
     """Parse bet slip image to extract bet text using OpenAI Vision API."""
     logger.info("OCR_PARSE_START image_size=%d", len(image_bytes))
     
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY", "").replace("\n", "").replace("\r", "").strip()
     logger.info("OCR_API_KEY_CHECK present=%s", "yes" if api_key else "no")
     
     if not api_key:

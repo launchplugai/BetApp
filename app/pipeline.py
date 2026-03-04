@@ -80,29 +80,6 @@ from app.delta_engine import (
 # Grounding Score Engine (Ticket 38B-C2)
 from app.grounding_score import compute_grounding_score
 
-# Protocol System — Contextual Reasoning Layer
-from core.protocols.pipeline import ProtocolPipeline, initialize_protocols
-from core.protocols.models import AggregatedRisk
-from core.protocols.dna_mode import (
-    DNAMode,
-    should_run_protocols,
-    compute_stability_modifier,
-    build_dual_evaluation,
-    get_mode_for_tier,
-)
-from core.protocols.artifact_mapper import map_to_dna_artifacts
-from core.protocols.registry_loader import (
-    ProtocolTier,
-    get_enabled_protocols,
-    get_protocol_names_for_tier,
-    get_protocol_weights,
-)
-from core.protocols.shadow_logger import log_shadow_compare
-from core.protocols.messaging import adapt_risk_summary, UserStyle
-
-# Ensure protocols are registered
-initialize_protocols()
-
 _logger = logging.getLogger(__name__)
 
 # Load config for feature flags (Ticket 17)
@@ -149,6 +126,9 @@ class PipelineResponse:
 
     # Context impact (Sprint 3 - additive only, does not modify engine)
     context: Optional[dict] = None
+
+    # NBA heuristics (rest, injury, tank, playoff context)
+    nba_heuristics: Optional[dict] = None
 
     # Primary failure diagnosis + delta preview (Ticket 4)
     primary_failure: Optional[dict] = None
@@ -205,19 +185,9 @@ class PipelineResponse:
     # Ticket 38B-C2: Grounding score (breakdown of output sources)
     grounding_score: Optional[dict] = None
 
-    # Sprint 2: Explainability sections (tier-gated engine stage breakdown)
-    explainability_sections: Optional[dict] = None
-
-    # Protocol System: Contextual risk signals (fatigue, matchups, psychology, market)
-    protocol_risk: Optional[dict] = None
-
-    # Protocol System: User-style adapted messaging
-    protocol_messaging: Optional[dict] = None
-
     # Metadata
     leg_count: int = 0
     tier: str = "good"
-    dna_mode: str = "core_only"
 
 
 # =============================================================================
@@ -2375,98 +2345,6 @@ def _extract_entities_from_text(text: str) -> tuple[list[str], list[str]]:
     return found_players, found_teams
 
 
-def _build_protocol_context(blocks: list, context_data: Optional[dict]) -> Optional[dict]:
-    """
-    Build protocol context from bet blocks and external context.
-
-    Extracts team, game, and contextual information from the evaluated
-    blocks and context data to feed into the Protocol System pipeline.
-
-    Returns a game context dict, or None if insufficient data.
-    """
-    if not blocks:
-        return None
-
-    # Extract teams and game info from blocks
-    teams_seen = set()
-    league = "NBA"  # Default, expanded later
-    game_id = ""
-
-    for block in blocks:
-        if hasattr(block, 'sport') and block.sport:
-            league = block.sport.upper()
-        if hasattr(block, 'game_id') and block.game_id:
-            game_id = block.game_id
-        if hasattr(block, 'team_id') and block.team_id:
-            teams_seen.add(block.team_id)
-
-    teams = list(teams_seen)
-    home_team = teams[0] if len(teams) > 0 else "Home"
-    away_team = teams[1] if len(teams) > 1 else "Away"
-
-    # Build protocol context with defaults
-    # In production, these would come from real data APIs
-    protocol_ctx = {
-        "game_id": game_id or "unknown",
-        "league": league,
-        "home_team": home_team,
-        "away_team": away_team,
-        # Schedule defaults (would come from schedule API)
-        "is_back_to_back_home": False,
-        "is_back_to_back_away": False,
-        "home_rest_days": 2,
-        "away_rest_days": 2,
-        "home_travel_miles": 0.0,
-        "away_travel_miles": 0.0,
-        # Tactical defaults (would come from stats API)
-        "home_pace": 0.0,
-        "away_pace": 0.0,
-        "home_def_rating": 0.0,
-        "away_def_rating": 0.0,
-        # Roster defaults
-        "home_injuries": [],
-        "away_injuries": [],
-        "home_lineup_changes": 0,
-        "away_lineup_changes": 0,
-        "home_starter_out": False,
-        "away_starter_out": False,
-        # Psychological defaults
-        "revenge_players": [],
-        "home_streak": 0,
-        "away_streak": 0,
-        # Market defaults
-        "opening_spread": 0.0,
-        "current_spread": 0.0,
-        "public_bet_pct_home": 50.0,
-        "sharp_money_side": None,
-        "line_movement": 0.0,
-        # Officiating
-        "ref_crew": None,
-        "ref_foul_rate": 0.0,
-        "ref_home_advantage": 0.0,
-        # Environment
-        "altitude_ft": 0.0,
-        "is_playoff": False,
-    }
-
-    # Enrich from context data if available
-    if context_data and isinstance(context_data, dict):
-        # Pull injury data from external context
-        impact = context_data.get("impact", {})
-        modifiers = impact.get("modifiers", [])
-        for mod in modifiers:
-            if "out" in mod.get("reason", "").lower() or "injured" in mod.get("reason", "").lower():
-                players = mod.get("affected_players", [])
-                for p in players:
-                    protocol_ctx["home_injuries"].append({
-                        "player": p,
-                        "status": "OUT",
-                        "is_star": True,
-                    })
-
-    return protocol_ctx
-
-
 def _fetch_context_for_bet(text: str, correlation_id: Optional[str] = None) -> Optional[dict]:
     """
     Fetch context data relevant to the bet.
@@ -2543,173 +2421,6 @@ def _fetch_context_for_bet(text: str, correlation_id: Optional[str] = None) -> O
         return None
 
 
-def _build_explainability_sections(
-    tier: Tier,
-    evaluation,
-    blocks,
-    primary_failure: Optional[dict],
-    signal_info: Optional[dict],
-    eval_ctx: Optional[EvaluationContext] = None,
-) -> dict:
-    """
-    Sprint 2: Build tier-gated explainability sections.
-
-    Maps engine stages to UI sections so users understand WHY
-    the engine said what it said.
-
-    Sections:
-    - structural_risk: inductor level + explanation
-    - correlation: detected correlations + penalty
-    - fragility_breakdown: leg penalty + multiplier + final score
-    - context_snapshot: context modifiers applied to blocks
-
-    Tier gating:
-    - GOOD: headline + one-liner per section
-    - BETTER: headline + 2-3 sentence summary
-    - BEST: full breakdown with all detail
-    """
-    metrics = evaluation.metrics
-    leg_count = eval_ctx.leg_count if eval_ctx else (len(blocks) if blocks else 0)
-    inductor = evaluation.inductor
-    correlations = evaluation.correlations
-
-    # --- Structural Risk ---
-    risk_level = inductor.level.value
-    risk_label = {
-        "stable": "Low Risk",
-        "loaded": "Moderate Risk",
-        "tense": "Elevated Risk",
-        "critical": "Critical Risk",
-    }.get(risk_level, "Unknown")
-
-    structural_risk: dict = {"headline": risk_label, "level": risk_level}
-
-    if tier in (Tier.BETTER, Tier.BEST):
-        structural_risk["summary"] = inductor.explanation
-        structural_risk["recommendation"] = evaluation.recommendation.action.value
-        structural_risk["recommendation_reason"] = evaluation.recommendation.reason
-
-    if tier == Tier.BEST:
-        structural_risk["inductor_detail"] = {
-            "final_fragility": metrics.final_fragility,
-            "leg_penalty": metrics.leg_penalty,
-            "correlation_penalty": metrics.correlation_penalty,
-            "correlation_multiplier": metrics.correlation_multiplier,
-        }
-        if primary_failure:
-            structural_risk["primary_failure_type"] = primary_failure.get("type")
-            structural_risk["primary_failure_severity"] = primary_failure.get("severity")
-
-    # --- Correlation ---
-    corr_count = len(correlations)
-    if corr_count == 0:
-        corr_headline = "No Correlations"
-    elif corr_count == 1:
-        corr_headline = "1 Correlation Detected"
-    else:
-        corr_headline = f"{corr_count} Correlations Detected"
-
-    correlation_section: dict = {
-        "headline": corr_headline,
-        "count": corr_count,
-        "penalty": metrics.correlation_penalty,
-    }
-
-    if tier in (Tier.BETTER, Tier.BEST) and corr_count > 0:
-        correlation_section["summary"] = (
-            f"{corr_count} pair(s) of legs share dependent outcomes, "
-            f"adding +{metrics.correlation_penalty:.1f}pt penalty. "
-            f"Correlation multiplier: {metrics.correlation_multiplier:.2f}x."
-        )
-
-    if tier == Tier.BEST and corr_count > 0:
-        correlation_section["details"] = [
-            {
-                "type": c.type,
-                "block_a": str(c.block_a),
-                "block_b": str(c.block_b),
-                "penalty": c.penalty,
-            }
-            for c in correlations
-        ]
-        correlation_section["multiplier"] = metrics.correlation_multiplier
-
-    # --- Fragility Breakdown ---
-    frag = metrics.final_fragility
-    if frag <= 15:
-        frag_headline = "Low Fragility"
-    elif frag <= 35:
-        frag_headline = "Moderate Fragility"
-    elif frag <= 60:
-        frag_headline = "High Fragility"
-    else:
-        frag_headline = "Critical Fragility"
-
-    fragility_section: dict = {
-        "headline": frag_headline,
-        "final_fragility": round(frag, 2),
-    }
-
-    if tier in (Tier.BETTER, Tier.BEST):
-        fragility_section["summary"] = (
-            f"Final fragility is {frag:.1f}/100. "
-            f"Leg penalty: +{metrics.leg_penalty:.1f}pt from {leg_count} leg(s). "
-            f"Correlation penalty: +{metrics.correlation_penalty:.1f}pt."
-        )
-
-    if tier == Tier.BEST:
-        # Per-block fragility
-        block_details = []
-        for b in (blocks or []):
-            block_details.append({
-                "selection": b.selection[:60],
-                "bet_type": b.bet_type.value,
-                "base_fragility": b.base_fragility,
-                "effective_fragility": b.effective_fragility,
-            })
-        fragility_section["blocks"] = block_details
-        fragility_section["leg_penalty"] = metrics.leg_penalty
-        fragility_section["correlation_penalty"] = metrics.correlation_penalty
-        fragility_section["correlation_multiplier"] = metrics.correlation_multiplier
-
-    # --- Context Snapshot ---
-    context_applied = False
-    context_items = []
-    for b in (blocks or []):
-        mods = b.context_modifiers
-        for mod_name in ("weather", "injury", "trade", "role"):
-            mod = getattr(mods, mod_name, None)
-            if mod and mod.applied:
-                context_applied = True
-                context_items.append({
-                    "type": mod_name,
-                    "delta": mod.delta,
-                    "reason": mod.reason,
-                    "block_selection": b.selection[:40],
-                })
-
-    context_section: dict = {
-        "headline": "Context Applied" if context_applied else "No Context Signals",
-        "has_context": context_applied,
-    }
-
-    if tier in (Tier.BETTER, Tier.BEST) and context_applied:
-        context_section["summary"] = (
-            f"{len(context_items)} context modifier(s) applied to blocks. "
-            "Context can only increase fragility, never decrease it."
-        )
-
-    if tier == Tier.BEST and context_applied:
-        context_section["modifiers"] = context_items
-
-    return {
-        "structural_risk": structural_risk,
-        "correlation": correlation_section,
-        "fragility_breakdown": fragility_section,
-        "context_snapshot": context_section,
-    }
-
-
 def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     """
     Run the canonical evaluation pipeline.
@@ -2768,70 +2479,9 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         normalized.input_text,
         correlation_id=str(evaluation.parlay_id),
     )
-
-    # Step 4B: Run Protocol System — contextual reasoning layer
-    # Protocols detect hidden forces: fatigue, psychology, matchups, market signals
-    # Respects DNA_MODE toggle + per-protocol tier gating from registry.json
-    protocol_risk_result = None
-    protocol_messaging_result = None
-    protocol_artifacts = []
-    aggregated_risk = None
-
-    # Resolve protocol tier from user tier
-    protocol_tier = ProtocolTier.from_app_tier(normalized.tier.value)
-    tier_mode = get_mode_for_tier(normalized.tier.value)
-    active_dna_mode = tier_mode.value
-
-    # Get tier-gated protocol weights from registry.json
-    tier_weights = get_protocol_weights(protocol_tier)
-    enabled_protocol_names = get_protocol_names_for_tier(protocol_tier)
-
-    if should_run_protocols() or tier_mode == DNAMode.CORE_PLUS_PROTOCOLS:
-        protocol_pipeline = ProtocolPipeline(protocol_weights=tier_weights)
-        protocol_context = _build_protocol_context(blocks, context_data)
-        if protocol_context:
-            try:
-                aggregated_risk = protocol_pipeline.run(protocol_context)
-
-                # Filter to only tier-enabled protocols
-                if enabled_protocol_names:
-                    # Pipeline already ran all; filtering happens at output
-                    pass
-
-                if aggregated_risk.triggered_count > 0:
-                    protocol_risk_result = aggregated_risk.to_dict()
-
-                    # Map protocol outputs to DNA-compatible artifacts
-                    protocol_artifacts = map_to_dna_artifacts(
-                        aggregated_risk,
-                        request_id=str(evaluation.parlay_id),
-                    )
-
-                    # Build dual evaluation record for development comparison
-                    protocol_risk_result["dual_evaluation"] = build_dual_evaluation(
-                        core_result={
-                            "final_fragility": evaluation.metrics.final_fragility,
-                            "recommendation": evaluation.recommendation.action.value,
-                        },
-                        protocol_result=protocol_risk_result,
-                        protocol_fragility=aggregated_risk.fragility_score,
-                    )
-
-                    # User-style adapted messaging
-                    # Default to novice; in production, derive from user profile
-                    user_style = UserStyle.NOVICE
-                    protocol_messaging_result = adapt_risk_summary(
-                        aggregated_risk, user_style=user_style
-                    )
-
-                    _logger.info(
-                        f"Protocol System: {aggregated_risk.triggered_count} protocols triggered, "
-                        f"fragility={aggregated_risk.fragility_score:.3f}, "
-                        f"stability_modifier={compute_stability_modifier(aggregated_risk.fragility_score):.3f}, "
-                        f"tier={protocol_tier}, enabled={len(enabled_protocol_names)}"
-                    )
-            except Exception as e:
-                _logger.warning(f"Protocol pipeline error (non-fatal): {e}")
+    
+    # Step 4.5: Enrich with NBA heuristics (rest, injury, tank, playoff)
+    # Applied later in pipeline after result construction
 
     # Step 5: Generate plain-English interpretation
     interpretation = {
@@ -2853,31 +2503,6 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 8: Build signal info (Ticket 5)
     signal_info = _build_signal_info(evaluation, primary_failure, delta_preview)
-
-    # Step 8B: Shadow compare logging — log both core and protocol results
-    # for calibration, even when user only sees core
-    try:
-        core_signal = "unknown"
-        if signal_info:
-            core_signal = signal_info.get("signal", "unknown") if isinstance(signal_info, dict) else "unknown"
-
-        log_shadow_compare(
-            bet_id=str(evaluation.parlay_id),
-            mode_returned=active_dna_mode,
-            core_result={
-                "final_fragility": evaluation.metrics.final_fragility,
-                "recommendation": evaluation.recommendation.action.value,
-                "signal": core_signal,
-            },
-            protocol_result=protocol_risk_result,
-            stability_modifier=compute_stability_modifier(
-                aggregated_risk.fragility_score if aggregated_risk else 0.0
-            ),
-            triggered_protocols=list(aggregated_risk.triggered_protocols) if aggregated_risk else [],
-            user_tier=normalized.tier.value,
-        )
-    except Exception as e:
-        _logger.debug(f"Shadow compare logging skipped: {e}")
 
     # Step 9: Apply tier filtering (uses primary_failure for specific warnings/tips)
     explain_filtered = _apply_tier_filtering(normalized.tier, explain_full, evaluation, blocks, primary_failure)
@@ -3061,44 +2686,85 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Store current signal for next evaluation
     store_signal_for_session(session_id, signal_info)
 
-    # Step 29: Sprint 2 — Build tier-gated explainability sections
-    explainability_sections = _build_explainability_sections(
-        tier=normalized.tier,
-        evaluation=evaluation,
-        blocks=blocks,
-        primary_failure=primary_failure,
-        signal_info=signal_info,
-        eval_ctx=eval_ctx,
+    # Build result dict for NBA context injection
+    result = {
+        "evaluation": evaluation,
+        "interpretation": interpretation,
+        "explain": explain_filtered,
+        "context": context_data,
+        "primary_failure": primary_failure,
+        "delta_preview": delta_preview,
+        "signal_info": signal_info,
+        "entities": entities_public,
+        "secondary_factors": secondary_factors,
+        "human_summary": human_summary,
+        "evaluated_parlay": evaluated_parlay,
+        "notable_legs": notable_legs,
+        "final_verdict": final_verdict,
+        "gentle_guidance": gentle_guidance,
+        "next_action": next_action,
+        "confidence_trend": confidence_trend,
+        "grounding_warnings": grounding_warnings if grounding_warnings else None,
+        "sherlock_result": sherlock_result,
+        "debug_explainability": debug_explainability,
+        "proof_summary": proof_summary,
+        "structure": structure_snapshot.to_dict(),
+        "delta": delta_result.to_dict() if delta_result else None,
+        "grounding_score": grounding_score_result.to_dict(),
+        "leg_count": eval_ctx.leg_count,
+        "tier": normalized.tier.value,
+    }
+    
+    # Step 29: Apply NBA heuristics (clean, defensive integration)
+    # Extract NBA teams from entities for context injection
+    teams_mentioned = entities.get("teams_mentioned", [])
+    sport_guess = entities.get("sport_guess", "")
+    
+    # Only apply NBA context if sport is NBA or likely NBA
+    is_nba_bet = (
+        sport_guess == "nba" or
+        "nba" in normalized.input_text.lower() or
+        any(team in _NBA_TEAMS.values() for team in teams_mentioned)
     )
-
+    
+    nba_heuristics = None
+    if is_nba_bet and teams_mentioned and len(teams_mentioned) >= 2:
+        from app.pipeline_nba_hook import apply_nba_context
+        # apply_nba_context modifies result in place and returns nba_heuristics
+        nba_context_result = apply_nba_context(
+            bet_input=normalized.input_text,
+            teams=teams_mentioned[:2],  # Take first two teams
+            result=result
+        )
+        nba_heuristics = nba_context_result.get("nba_heuristics")
+        # Update confidence from result
+        result["confidence"] = nba_context_result.get("confidence", result.get("confidence"))
+    
     return PipelineResponse(
-        evaluation=evaluation,
-        interpretation=interpretation,
-        explain=explain_filtered,
-        context=context_data,
-        primary_failure=primary_failure,
-        delta_preview=delta_preview,
-        signal_info=signal_info,
-        entities=entities_public,
-        secondary_factors=secondary_factors,
-        human_summary=human_summary,
-        evaluated_parlay=evaluated_parlay,
-        notable_legs=notable_legs,
-        final_verdict=final_verdict,
-        gentle_guidance=gentle_guidance,
-        next_action=next_action,
-        confidence_trend=confidence_trend,
-        grounding_warnings=grounding_warnings if grounding_warnings else None,
-        sherlock_result=sherlock_result,
-        debug_explainability=debug_explainability,
-        proof_summary=proof_summary,
-        structure=structure_snapshot.to_dict(),  # Ticket 38B-A: Structural snapshot
-        delta=delta_result.to_dict() if delta_result else None,  # Ticket 38B-B: Change delta
-        grounding_score=grounding_score_result.to_dict(),  # Ticket 38B-C2: Grounding score
-        explainability_sections=explainability_sections,  # Sprint 2: Tier-gated engine stage breakdown
-        protocol_risk=protocol_risk_result,  # Protocol System: Contextual risk signals
-        protocol_messaging=protocol_messaging_result,  # Protocol System: User-style messaging
-        leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
-        tier=normalized.tier.value,
-        dna_mode=active_dna_mode,
+        evaluation=result["evaluation"],
+        interpretation=result["interpretation"],
+        explain=result["explain"],
+        context=result["context"],
+        nba_heuristics=nba_heuristics,
+        primary_failure=result["primary_failure"],
+        delta_preview=result["delta_preview"],
+        signal_info=result["signal_info"],
+        entities=result["entities"],
+        secondary_factors=result["secondary_factors"],
+        human_summary=result["human_summary"],
+        evaluated_parlay=result["evaluated_parlay"],
+        notable_legs=result["notable_legs"],
+        final_verdict=result["final_verdict"],
+        gentle_guidance=result["gentle_guidance"],
+        next_action=result["next_action"],
+        confidence_trend=result["confidence_trend"],
+        grounding_warnings=result.get("grounding_warnings"),
+        sherlock_result=result.get("sherlock_result"),
+        debug_explainability=result.get("debug_explainability"),
+        proof_summary=result.get("proof_summary"),
+        structure=result["structure"],
+        delta=result["delta"],
+        grounding_score=result["grounding_score"],
+        leg_count=result["leg_count"],
+        tier=result["tier"],
     )

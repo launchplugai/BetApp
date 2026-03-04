@@ -1,0 +1,21 @@
+{
+    "NBA": {
+        "Golden State Warriors": ["GS", "Warriors"],
+        "Los Angeles Lakers": ["LAL", "Lakers"],
+        "Philadelphia 76ers": ["PHI", "76ers"]
+        // Additional mappings here
+    },
+    "NFL": {
+        "New England Patriots": ["NE", "Patriots"],
+        "Kansas City Chiefs": ["KC", "Chiefs"]
+        // Additional mappings here
+    },
+    "NHL": {
+        "Pittsburgh Penguins": ["PIT", "Penguins"]
+        // Additional mappings here
+    },
+    "MLB": {
+        "New York Yankees": ["NYY", "Yankees"]
+        // Additional mappings here
+    }
+}

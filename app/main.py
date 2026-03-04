@@ -2,8 +2,11 @@
 import logging
 import os
 from datetime import datetime, timezone
-
 from pathlib import Path
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +14,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.config import load_config, log_config_snapshot
+from app.config import load_config, log_config_snapshot, get_config_health
 from app.correlation import CorrelationIdMiddleware
 from app.routers import leading_light
 from app.routers import panel
@@ -22,9 +25,17 @@ from app.routers import debug
 from app.routers import metrics
 from app.routers import mock_api
 from app.routers import live_api
-from app.routers import protocols
+from app.routers import dashboard_stubs
+from app.protocol import router as protocol_router
+from app.protocol.recommendation_router import router as recommendation_router
 from app.routers import auth
 from app.routers import dashboard as dashboard_router
+from app.routers import bets
+from app.routers import odds
+from app.routers import preferences
+from app.routers import notifications
+from app.nba.router import router as nba_router
+from app.admin.router import router as admin_router
 from app.voice.router import router as voice_router
 
 # Configure logging
@@ -102,11 +113,19 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 app.include_router(web.router)
 app.include_router(mock_api.router)
 app.include_router(live_api.router)
-app.include_router(protocols.router)
+app.include_router(dashboard_stubs.router)
+app.include_router(protocol_router.router)
+app.include_router(recommendation_router)
 app.include_router(auth.router)
 app.include_router(dashboard_router.router)
-app.include_router(leading_light.router)
+app.include_router(bets.router)
+app.include_router(odds.router)
+app.include_router(nba_router)
+app.include_router(admin_router)
 app.include_router(voice_router)
+app.include_router(preferences.router)
+app.include_router(notifications.router)
+app.include_router(leading_light.router)
 app.include_router(panel.router)
 app.include_router(history.router)
 app.include_router(v1_ui.router)
@@ -117,23 +136,40 @@ app.include_router(metrics.router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables."""
+    # Import protocol models to register with Base.metadata
+    from app.protocol.models import Protocol, ProtocolItem, ProtocolTarget
+    from app.protocol.recommendation_models import Recommendation, Parlay
+    
     from app.models import init_db
     init_db()
-    print("✅ Database initialized")
+    print("✅ User database initialized")
+    
+    # Initialize NBA analytics database
+    from app.nba.database import init_database as init_nba_db
+    init_nba_db()
+    print("✅ NBA analytics database initialized")
 
 
 @app.get("/health")
 async def health():
     """Health check for Railway with service observability."""
+    config_health = get_config_health(_config)
     return {
-        "status": "healthy",
+        "status": "healthy" if config_health["status"] == "healthy" else "degraded",
         "service": _config.service_name,
         "version": _config.service_version,
         "environment": _config.environment,
         "git_sha": _config.git_sha,
         "build_time_utc": _config.build_time_utc,
         "started_at": _SERVICE_START_TIME.isoformat(),
+        "config": config_health,
     }
+
+
+@app.get("/health/config")
+async def health_config():
+    """Detailed configuration health for debugging."""
+    return get_config_health(_config)
 
 
 @app.get("/build")

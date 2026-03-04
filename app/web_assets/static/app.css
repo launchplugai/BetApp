@@ -200,6 +200,35 @@ header a {
     border-bottom-color: var(--accent);
 }
 
+/* Notification Badge in Nav */
+.nav-tab {
+    position: relative;
+}
+.nav-tab .nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--signal-red);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 9px;
+    margin-left: 6px;
+    animation: pulse-badge 2s infinite;
+}
+.nav-tab .nav-badge.hidden {
+    display: none;
+}
+
+/* Badge Pulse Animation */
+@keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
 /* Tab Content */
 .tab-content {
     display: none;

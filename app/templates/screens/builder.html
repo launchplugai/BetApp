@@ -46,7 +46,10 @@
             <button onclick="goBack()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 active:bg-white/10">
                 <iconify-icon icon="lucide:arrow-left" class="text-xl"></iconify-icon>
             </button>
-            <h1 class="font-tanker text-2xl tracking-wider pt-1">BUILD PARLAY</h1>
+            <a href="/" class="flex flex-col items-center hover:opacity-80 transition-opacity">
+                <span class="text-[10px] tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
+                <h1 class="font-tanker text-2xl tracking-wider pt-1">BUILD PARLAY</h1>
+            </a>
             <button class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5">
                 <iconify-icon icon="lucide:more-horizontal" class="text-xl"></iconify-icon>
             </button>
@@ -97,12 +100,20 @@
                         <span id="total-odds" class="font-tanker text-xl text-neon">—</span>
                     </div>
                     
-                    <div class="relative mb-5">
+                    <div class="relative mb-3">
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Wager Amount</label>
                         <div class="flex items-center bg-dark border border-white/10 rounded-lg">
                             <div class="pl-4 pr-2 text-gray-400 font-tanker text-xl">$</div>
                             <input type="number" id="wager-input" value="100" min="1" class="w-full bg-transparent py-3 text-white font-tanker text-2xl outline-none" oninput="recalculate()">
                         </div>
+                    </div>
+
+                    <!-- Quick Bet Shortcuts -->
+                    <div class="grid grid-cols-4 gap-2 mb-5">
+                        <button type="button" onclick="setWager(10)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$10</button>
+                        <button type="button" onclick="setWager(50)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$50</button>
+                        <button type="button" onclick="setWager(100)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$100</button>
+                        <button type="button" onclick="setWager(500)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$500</button>
                     </div>
 
                     <div class="flex justify-between items-center pt-4 border-t border-white/5">
@@ -117,6 +128,12 @@
                 <button id="analyze-btn" onclick="analyzeWithDNA()" disabled class="w-full mt-4 bg-neon/50 text-white font-tanker text-2xl py-4 rounded-xl cursor-not-allowed uppercase flex items-center justify-center gap-2">
                     <span>ANALYZE WITH DNA</span>
                     <iconify-icon icon="lucide:zap"></iconify-icon>
+                </button>
+
+                <!-- Submit Bet Button (Priority 1) -->
+                <button id="submit-bet-btn" onclick="submitBet()" disabled class="w-full mt-3 bg-white/10 border-2 border-neon text-white font-tanker text-lg py-3 rounded-xl cursor-not-allowed uppercase flex items-center justify-center gap-2 hover:bg-neon/20 transition-colors">
+                    <span>SUBMIT BET</span>
+                    <iconify-icon icon="lucide:send"></iconify-icon>
                 </button>
             </section>
 
@@ -158,33 +175,34 @@
 
         <!-- Bottom Nav -->
         <footer class="shrink-0 bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-[34px] pt-4 px-6">
-            <nav class="flex justify-between items-center">
-                <button onclick="window.location.href='/new?screen=dashboard'" class="flex flex-col items-center gap-1 bg-transparent border-0">
-                    <iconify-icon icon="lucide:home" class="text-xl text-gray-500"></iconify-icon>
-                    <span class="text-[10px] text-gray-500">Home</span>
-                </button>
-                <button onclick="window.location.href='/new?screen=browse'" class="flex flex-col items-center gap-1 bg-transparent border-0">
-                    <iconify-icon icon="lucide:search" class="text-xl text-gray-500"></iconify-icon>
-                    <span class="text-[10px] text-gray-500">Search</span>
-                </button>
-                <button class="flex flex-col items-center gap-1 bg-transparent border-0">
+            <nav id="nav" class="flex justify-between items-center">
+                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                    <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">Dashboard</span>
+                </a>
+                <a href="/app?screen=protocol" id="nav-protocol" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors hidden">
+                    <iconify-icon icon="lucide:layers" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">Protocol</span>
+                </a>
+                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-neon">
                     <div class="w-12 h-12 -mt-8 bg-card border border-neon rounded-full flex items-center justify-center">
                         <iconify-icon icon="lucide:plus" class="text-2xl text-neon"></iconify-icon>
                     </div>
-                    <span class="text-[10px] font-bold text-neon mt-1">Build</span>
-                </button>
-                <button onclick="window.location.href='/new?screen=builder'" class="flex flex-col items-center gap-1 bg-transparent border-0">
-                    <iconify-icon icon="lucide:ticket" class="text-xl text-gray-500"></iconify-icon>
-                    <span class="text-[10px] text-gray-500">My Bets</span>
-                </button>
-                <button class="flex flex-col items-center gap-1 bg-transparent border-0">
-                    <iconify-icon icon="lucide:user" class="text-xl text-gray-500"></iconify-icon>
-                    <span class="text-[10px] text-gray-500">Profile</span>
-                </button>
+                    <span class="text-[10px] font-bold text-neon mt-1">Builder</span>
+                </a>
+                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                    <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">Browse</span>
+                </a>
+                <a href="/app?screen=history" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                    <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
+                    <span class="text-[10px] font-medium">History</span>
+                </a>
             </nav>
         </footer>
     </div>
 
     <script src="/static/js/builder.js"></script>
+    <script src="/static/js/nav-protocols.js"></script>
 </body>
 </html>

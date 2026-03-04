@@ -1,484 +1,456 @@
 """
-The Odds API provider for live sports data.
-https://the-odds-api.com/ — Free tier: 500 requests/month
+The Odds API integration provider.
 
-Maps their response format to our internal OddsProvider/ScoreProvider interfaces.
-Falls back gracefully when API key is missing or quota exceeded.
+Fetches live odds and scores from the-odds-api.com.
+Docs: https://the-odds-api.com/liveapi/guides/v4/
 """
 
 import asyncio
-import logging
-import os
-from datetime import datetime, timezone
-from typing import List, Optional
-
+from datetime import datetime
+from typing import List, Optional, Dict, Any
 import httpx
 
-from app.providers.base import (
-    OddsProvider, ScoreProvider,
-    OddsResponse, ScoreResponse,
-    MarketsData, MarketLine, PlayerProp,
-    ScoreData
+from app.providers import (
+    OddsProvider,
+    ScoreProvider,
+    Sport,
+    Game,
+    MarketOdds,
+    Selection,
+    LiveScore,
+    ProviderConfig
 )
 
-logger = logging.getLogger(__name__)
 
-# The Odds API sport keys mapped to our internal sport IDs
-SPORT_KEY_MAP = {
-    "nba": "basketball_nba",
-    "nfl": "americanfootball_nfl",
-    "mlb": "baseball_mlb",
-    "nhl": "icehockey_nhl",
-    "soccer": "soccer_epl",
-    "soccer_mls": "soccer_usa_mls",
-    "soccer_ucl": "soccer_uefa_champs_league",
-    "mma": "mma_mixed_martial_arts",
-}
-
-# Reverse map
-SPORT_KEY_REVERSE = {v: k for k, v in SPORT_KEY_MAP.items()}
-
-
-class OddsAPIProvider(OddsProvider):
+class OddsApiProvider(OddsProvider, ScoreProvider):
     """
-    Live odds provider using The Odds API.
-    Free tier: 500 requests/month.
+    Live odds and scores provider using The Odds API.
+    
+    Implements both OddsProvider and ScoreProvider interfaces.
+    Uses in-memory caching with TTL for cost efficiency.
     """
-
-    def __init__(self, api_key: Optional[str] = None, timeout: int = 10):
-        self.api_key = api_key or os.environ.get("ODDS_API_KEY", "")
-        self.base_url = "https://api.the-odds-api.com/v4"
-        self.timeout = timeout
-        self._remaining_requests = None
-
-    @property
-    def source_name(self) -> str:
-        return "odds_api"
-
-    @property
-    def is_configured(self) -> bool:
-        return bool(self.api_key)
-
-    async def get_upcoming_games(self, sport: str = "nba", regions: str = "us") -> list:
-        """Fetch upcoming/live games for a sport with odds."""
-        sport_key = SPORT_KEY_MAP.get(sport, sport)
-        url = f"{self.base_url}/sports/{sport_key}/odds/"
-        params = {
-            "apiKey": self.api_key,
-            "regions": regions,
-            "markets": "spreads,totals,h2h",
-            "oddsFormat": "american",
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.get(url, params=params)
-                self._remaining_requests = resp.headers.get("x-requests-remaining")
-                logger.info(f"Odds API requests remaining: {self._remaining_requests}")
-
-                if resp.status_code == 401:
-                    logger.error("Odds API: Invalid API key")
-                    return []
-                if resp.status_code == 429:
-                    logger.warning("Odds API: Quota exceeded")
-                    return []
-                resp.raise_for_status()
-                return resp.json()
-        except Exception as e:
-            logger.error(f"Odds API fetch failed: {e}")
-            return []
-
-    async def get_live_scores(self, sport: str = "nba") -> list:
-        """Fetch live scores for a sport."""
-        sport_key = SPORT_KEY_MAP.get(sport, sport)
-        url = f"{self.base_url}/sports/{sport_key}/scores/"
-        params = {
-            "apiKey": self.api_key,
-            "daysFrom": 1,
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.get(url, params=params)
-                self._remaining_requests = resp.headers.get("x-requests-remaining")
-                if resp.status_code != 200:
-                    return []
-                return resp.json()
-        except Exception as e:
-            logger.error(f"Odds API scores fetch failed: {e}")
-            return []
-
-    def normalize_games(self, raw_games: list, sport: str) -> list:
-        """Convert Odds API game format to our internal game format."""
-        games = []
-        for g in raw_games:
-            game_id = g.get("id", "")
-            home_team = g.get("home_team", "")
-            away_team = g.get("away_team", "")
-            commence = g.get("commence_time", "")
-
-            # Determine status
-            completed = g.get("completed", False)
-            if completed:
-                status = "final"
-            elif g.get("scores"):
-                status = "live"
-            else:
-                status = "upcoming"
-
-            # Extract best odds from bookmakers
-            odds = self._extract_best_odds(g.get("bookmakers", []))
-
-            game = {
-                "id": game_id,
-                "sport": sport,
-                "home_team": {
-                    "name": home_team,
-                    "code": self._team_code(home_team),
-                    "logo": get_team_logo(home_team, sport),
-                },
-                "away_team": {
-                    "name": away_team,
-                    "code": self._team_code(away_team),
-                    "logo": get_team_logo(away_team, sport),
-                },
-                "home_score": None,
-                "away_score": None,
-                "start_time": commence,
-                "status": status,
-                "odds": odds,
-                "source": "live",
+    
+    BASE_URL = "https://api.the-odds-api.com/v4"
+    
+    # Sport key mapping: our ID -> The Odds API key
+    SPORT_KEYS = {
+        "NBA": "basketball_nba",
+        "NFL": "americanfootball_nfl",
+        "NHL": "icehockey_nhl",
+        "MLB": "baseball_mlb",
+        "MLS": "soccer_usa_mls",
+        "EPL": "soccer_epl",
+        "UCL": "soccer_uefa_champs_league",
+    }
+    
+    # Reverse mapping for lookups
+    REVERSE_SPORT_KEYS = {v: k for k, v in SPORT_KEYS.items()}
+    
+    def __init__(self, config: ProviderConfig):
+        self.config = config
+        self.api_key = config.api_key
+        
+        if not self.api_key:
+            raise ValueError("OddsApiProvider requires api_key in config")
+        
+        self._client = httpx.AsyncClient(
+            base_url=self.BASE_URL,
+            timeout=30.0,
+            headers={
+                "Accept": "application/json",
             }
-
-            # Add scores if available
-            scores = g.get("scores")
-            if scores:
-                for s in scores:
-                    if s.get("name") == home_team:
-                        game["home_score"] = int(s.get("score", 0)) if s.get("score") else None
-                    elif s.get("name") == away_team:
-                        game["away_score"] = int(s.get("score", 0)) if s.get("score") else None
-
-            games.append(game)
-        return games
-
-    def _extract_best_odds(self, bookmakers: list) -> dict:
-        """Extract odds from first available bookmaker (usually FanDuel/DraftKings)."""
-        preferred = ["fanduel", "draftkings", "betmgm", "pointsbetus"]
-        selected = None
-
-        for pref in preferred:
-            for bm in bookmakers:
-                if bm.get("key") == pref:
-                    selected = bm
-                    break
-            if selected:
-                break
-
-        if not selected and bookmakers:
-            selected = bookmakers[0]
-
-        if not selected:
-            return {}
-
-        odds = {}
-        for market in selected.get("markets", []):
-            key = market.get("key")
-            outcomes = market.get("outcomes", [])
-
-            if key == "spreads":
-                home_out = next((o for o in outcomes if o.get("name") == "home" or outcomes.index(o) == 0), None)
-                away_out = next((o for o in outcomes if o.get("name") == "away" or outcomes.index(o) == 1), None)
-                if home_out and away_out:
-                    odds["spread"] = {
-                        "home": {"line": home_out.get("point", 0), "odds": home_out.get("price", -110)},
-                        "away": {"line": away_out.get("point", 0), "odds": away_out.get("price", -110)},
-                    }
-            elif key == "totals":
-                over = next((o for o in outcomes if o.get("name") == "Over"), None)
-                under = next((o for o in outcomes if o.get("name") == "Under"), None)
-                if over and under:
-                    odds["total"] = {
-                        "over": {"line": over.get("point", 0), "odds": over.get("price", -110)},
-                        "under": {"line": under.get("point", 0), "odds": under.get("price", -110)},
-                    }
-            elif key == "h2h":
-                if len(outcomes) >= 2:
-                    odds["moneyline"] = {
-                        "home": {"odds": outcomes[0].get("price", -110)},
-                        "away": {"odds": outcomes[1].get("price", 100)},
-                    }
-
-        return odds
-
-    def _team_code(self, team_name: str) -> str:
-        """Generate a short team code from name."""
-        code = TEAM_CODES.get(team_name)
-        if code:
-            return code
-        # Fallback: first 3 chars uppercase
-        parts = team_name.split()
-        return parts[-1][:3].upper() if parts else team_name[:3].upper()
-
-    async def get_odds(self, game_id: str) -> OddsResponse:
-        """Get odds for a single game (not efficient for Odds API, use batch)."""
-        return OddsResponse(
-            game_id=game_id,
-            timestamp=datetime.now(timezone.utc),
-            markets=MarketsData()
         )
-
-    async def get_odds_batch(self, game_ids: List[str]) -> List[OddsResponse]:
-        return []
-
-
-class OddsAPIScoreProvider(ScoreProvider):
-    """Live score provider using The Odds API."""
-
-    def __init__(self, api_key: Optional[str] = None):
-        self.odds_provider = OddsAPIProvider(api_key=api_key)
-
+    
     @property
     def source_name(self) -> str:
-        return "odds_api"
-
-    async def get_score(self, game_id: str) -> ScoreResponse:
-        return ScoreResponse(game_id=game_id, status="UNKNOWN")
-
-    async def get_scores_batch(self, game_ids: List[str]) -> List[ScoreResponse]:
-        return []
-
-
-# =============================================================================
-# Team Logo CDN — ESPN public logo URLs
-# =============================================================================
-
-def get_team_logo(team_name: str, sport: str = "nba") -> str:
-    """Get team logo URL from ESPN CDN."""
-    espn_id = TEAM_ESPN_IDS.get(team_name)
-    if espn_id:
-        sport_path = ESPN_SPORT_PATHS.get(sport, "basketball/nba")
-        return f"https://a.espncdn.com/i/teamlogos/{sport_path}/500/{espn_id}.png"
-    # Fallback: generic sport icon
-    return ""
-
-
-def get_league_logo(sport: str) -> str:
-    """Get league logo URL."""
-    return LEAGUE_LOGOS.get(sport, "")
-
-
-ESPN_SPORT_PATHS = {
-    "nba": "nba",
-    "nfl": "nfl",
-    "mlb": "mlb",
-    "nhl": "nhl",
-    "soccer": "soccer/eng.1",
-}
-
-# ESPN team IDs for logo CDN
-TEAM_ESPN_IDS = {
-    # NBA
-    "Los Angeles Lakers": "lal",
-    "Lakers": "lal",
-    "Golden State Warriors": "gs",
-    "Warriors": "gs",
-    "Boston Celtics": "bos",
-    "Celtics": "bos",
-    "Miami Heat": "mia",
-    "Heat": "mia",
-    "Denver Nuggets": "den",
-    "Nuggets": "den",
-    "Phoenix Suns": "phx",
-    "Suns": "phx",
-    "Milwaukee Bucks": "mil",
-    "Bucks": "mil",
-    "Philadelphia 76ers": "phi",
-    "76ers": "phi",
-    "New York Knicks": "ny",
-    "Knicks": "ny",
-    "Brooklyn Nets": "bkn",
-    "Nets": "bkn",
-    "Chicago Bulls": "chi",
-    "Bulls": "chi",
-    "Dallas Mavericks": "dal",
-    "Mavericks": "dal",
-    "Memphis Grizzlies": "mem",
-    "Grizzlies": "mem",
-    "Cleveland Cavaliers": "cle",
-    "Cavaliers": "cle",
-    "Sacramento Kings": "sac",
-    "Kings": "sac",
-    "Minnesota Timberwolves": "min",
-    "Timberwolves": "min",
-    "Oklahoma City Thunder": "okc",
-    "Thunder": "okc",
-    "New Orleans Pelicans": "no",
-    "Pelicans": "no",
-    "Atlanta Hawks": "atl",
-    "Hawks": "atl",
-    "Toronto Raptors": "tor",
-    "Raptors": "tor",
-    "Indiana Pacers": "ind",
-    "Pacers": "ind",
-    "Portland Trail Blazers": "por",
-    "Trail Blazers": "por",
-    "Utah Jazz": "utah",
-    "Jazz": "utah",
-    "San Antonio Spurs": "sa",
-    "Spurs": "sa",
-    "Charlotte Hornets": "cha",
-    "Hornets": "cha",
-    "Detroit Pistons": "det",
-    "Pistons": "det",
-    "Orlando Magic": "orl",
-    "Magic": "orl",
-    "Washington Wizards": "wsh",
-    "Wizards": "wsh",
-    "Houston Rockets": "hou",
-    "Rockets": "hou",
-    "LA Clippers": "lac",
-    "Clippers": "lac",
-    # NFL
-    "Kansas City Chiefs": "kc",
-    "Chiefs": "kc",
-    "Buffalo Bills": "buf",
-    "Bills": "buf",
-    "San Francisco 49ers": "sf",
-    "49ers": "sf",
-    "Baltimore Ravens": "bal",
-    "Ravens": "bal",
-    "Detroit Lions": "det",
-    "Lions": "det",
-    "Dallas Cowboys": "dal",
-    "Cowboys": "dal",
-    "Philadelphia Eagles": "phi",
-    "Eagles": "phi",
-    "Miami Dolphins": "mia",
-    "Dolphins": "mia",
-    "Cincinnati Bengals": "cin",
-    "Bengals": "cin",
-    "Houston Texans": "hou",
-    "Texans": "hou",
-    "Jacksonville Jaguars": "jax",
-    "Jaguars": "jax",
-    "Pittsburgh Steelers": "pit",
-    "Steelers": "pit",
-    "Green Bay Packers": "gb",
-    "Packers": "gb",
-    "New York Giants": "nyg",
-    "Giants": "nyg",
-    "New York Jets": "nyj",
-    "Jets": "nyj",
-    "Los Angeles Rams": "lar",
-    "Rams": "lar",
-    "Los Angeles Chargers": "lac",
-    "Chargers": "lac",
-    "Seattle Seahawks": "sea",
-    "Seahawks": "sea",
-    "New England Patriots": "ne",
-    "Patriots": "ne",
-    "Tampa Bay Buccaneers": "tb",
-    "Buccaneers": "tb",
-    "Minnesota Vikings": "min",
-    "Vikings": "min",
-    "Chicago Bears": "chi",
-    "Bears": "chi",
-    "Denver Broncos": "den",
-    "Broncos": "den",
-    "Cleveland Browns": "cle",
-    "Browns": "cle",
-    "Las Vegas Raiders": "lv",
-    "Raiders": "lv",
-    "Tennessee Titans": "ten",
-    "Titans": "ten",
-    "Indianapolis Colts": "ind",
-    "Colts": "ind",
-    "Arizona Cardinals": "ari",
-    "Cardinals": "ari",
-    "Carolina Panthers": "car",
-    "Panthers": "car",
-    "Atlanta Falcons": "atl",
-    "Falcons": "atl",
-    "New Orleans Saints": "no",
-    "Saints": "no",
-    "Washington Commanders": "wsh",
-    "Commanders": "wsh",
-    # NHL
-    "New York Rangers": "nyr",
-    "Rangers": "nyr",
-    "Boston Bruins": "bos",
-    "Bruins": "bos",
-    "Toronto Maple Leafs": "tor",
-    "Maple Leafs": "tor",
-    "Edmonton Oilers": "edm",
-    "Oilers": "edm",
-    "Florida Panthers": "fla",
-    "Colorado Avalanche": "col",
-    "Avalanche": "col",
-    "Dallas Stars": "dal",
-    "Stars": "dal",
-    "Carolina Hurricanes": "car",
-    "Hurricanes": "car",
-    "Vegas Golden Knights": "vgk",
-    "Golden Knights": "vgk",
-    "Winnipeg Jets": "wpg",
-    # MLB
-    "New York Yankees": "nyy",
-    "Yankees": "nyy",
-    "Los Angeles Dodgers": "lad",
-    "Dodgers": "lad",
-    "Atlanta Braves": "atl",
-    "Braves": "atl",
-    "Houston Astros": "hou",
-    "Astros": "hou",
-    "Boston Red Sox": "bos",
-    "Red Sox": "bos",
-    "Chicago Cubs": "chc",
-    "Cubs": "chc",
-    "Philadelphia Phillies": "phi",
-    "Phillies": "phi",
-    "San Diego Padres": "sd",
-    "Padres": "sd",
-    "Texas Rangers": "tex",
-    "St. Louis Cardinals": "stl",
-    "New York Mets": "nym",
-    "Mets": "nym",
-}
-
-TEAM_CODES = {
-    # NBA short codes
-    "Los Angeles Lakers": "LAL", "Lakers": "LAL",
-    "Golden State Warriors": "GSW", "Warriors": "GSW",
-    "Boston Celtics": "BOS", "Celtics": "BOS",
-    "Miami Heat": "MIA", "Heat": "MIA",
-    "Denver Nuggets": "DEN", "Nuggets": "DEN",
-    "Phoenix Suns": "PHX", "Suns": "PHX",
-    "Milwaukee Bucks": "MIL", "Bucks": "MIL",
-    "Philadelphia 76ers": "PHI", "76ers": "PHI",
-    "New York Knicks": "NYK", "Knicks": "NYK",
-    "Brooklyn Nets": "BKN", "Nets": "BKN",
-    "Dallas Mavericks": "DAL", "Mavericks": "DAL",
-    "Oklahoma City Thunder": "OKC", "Thunder": "OKC",
-    "Cleveland Cavaliers": "CLE", "Cavaliers": "CLE",
-    "Minnesota Timberwolves": "MIN", "Timberwolves": "MIN",
-    "Sacramento Kings": "SAC", "Kings": "SAC",
-    # NFL
-    "Kansas City Chiefs": "KC", "Chiefs": "KC",
-    "Buffalo Bills": "BUF", "Bills": "BUF",
-    "San Francisco 49ers": "SF", "49ers": "SF",
-    "Baltimore Ravens": "BAL", "Ravens": "BAL",
-    "Philadelphia Eagles": "PHI", "Eagles": "PHI",
-    # NHL
-    "New York Rangers": "NYR", "Rangers": "NYR",
-    "Boston Bruins": "BOS", "Bruins": "BOS",
-}
-
-LEAGUE_LOGOS = {
-    "nba": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/nba.png&w=100&h=100",
-    "nfl": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/nfl.png&w=100&h=100",
-    "mlb": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/mlb.png&w=100&h=100",
-    "nhl": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/nhl.png&w=100&h=100",
-    "soccer": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/eng.1.png&w=100&h=100",
-    "mma": "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/ufc.png&w=100&h=100",
-}
+        return "the_odds_api"
+    
+    # ========================================================================
+    # Sports
+    # ========================================================================
+    
+    def get_sports(self) -> List[Sport]:
+        """Get list of available sports."""
+        # Return cached sports list - these don't change often
+        return [
+            Sport(id="NBA", label="NBA", active=True),
+            Sport(id="NFL", label="NFL", active= self._is_nfl_season()),
+            Sport(id="NHL", label="NHL", active=True),
+            Sport(id="MLB", label="MLB", active= self._is_mlb_season()),
+            Sport(id="MLS", label="MLS", active=True),
+            Sport(id="EPL", label="Premier League", active=True),
+            Sport(id="UCL", label="Champions League", active=True),
+        ]
+    
+    def _is_nfl_season(self) -> bool:
+        """Rough NFL season check (Sept - Feb)."""
+        month = datetime.now().month
+        return month >= 9 or month <= 2
+    
+    def _is_mlb_season(self) -> bool:
+        """Rough MLB season check (March - Oct)."""
+        month = datetime.now().month
+        return 3 <= month <= 10
+    
+    # ========================================================================
+    # Games
+    # ========================================================================
+    
+    async def get_games(self, sport: str) -> List[Game]:
+        """Get upcoming games for a sport."""
+        sport_key = self.SPORT_KEYS.get(sport, sport.lower())
+        
+        url = f"/sports/{sport_key}/odds"
+        params = {
+            "apiKey": self.api_key,
+            "regions": "us",
+            "markets": "h2h,spreads,totals",  # Standard markets only
+            "oddsFormat": "american",
+            "dateFormat": "iso",
+        }
+        
+        try:
+            response = await self._client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            games = []
+            for event in data:
+                game = self._parse_game(event, sport)
+                if game:
+                    games.append(game)
+            
+            return games
+            
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
+                raise ValueError("Invalid API key")
+            elif e.response.status_code == 429:
+                raise ValueError("API rate limit exceeded")
+            raise ValueError(f"API error: {e.response.status_code}")
+        except Exception as e:
+            raise ValueError(f"Failed to fetch games: {str(e)}")
+    
+    def _parse_game(self, event: Dict[str, Any], sport: str) -> Optional[Game]:
+        """Parse API event into canonical Game model."""
+        try:
+            home_team = event.get("home_team")
+            away_team = event.get("away_team")
+            
+            if not home_team or not away_team:
+                return None
+            
+            # Determine status
+            commence_time = event.get("commence_time", "")
+            status = "SCHEDULED"
+            if event.get("completed", False):
+                status = "FINAL"
+            
+            # Build game ID
+            game_date = commence_time[:10] if commence_time else datetime.now().strftime("%Y-%m-%d")
+            game_id = f"{sport.lower()}-{away_team.lower().replace(' ', '-')}-at-{home_team.lower().replace(' ', '-')}-{game_date}"
+            
+            return Game(
+                id=game_id,
+                league=sport,
+                home=home_team,
+                away=away_team,
+                start_time=commence_time,
+                status=status
+            )
+        except Exception:
+            return None
+    
+    # ========================================================================
+    # Odds
+    # ========================================================================
+    
+    async def get_odds(self, game_id: str) -> List[MarketOdds]:
+        """Get odds for a specific game."""
+        # Parse sport from game_id (format: sport-away-at-home-date)
+        parts = game_id.split("-")
+        if len(parts) < 2:
+            raise ValueError(f"Invalid game_id format: {game_id}")
+        
+        sport_code = parts[0].upper()
+        sport_key = self.SPORT_KEYS.get(sport_code, sport_code.lower())
+        
+        # Fetch all games for this sport and find matching game
+        games_data = await self._fetch_odds_for_sport(sport_key)
+        
+        for event in games_data:
+            event_game_id = self._generate_game_id(event, sport_code)
+            if event_game_id == game_id:
+                return self._parse_markets(event)
+        
+        raise ValueError(f"Game not found: {game_id}")
+    
+    async def get_odds_batch(self, game_ids: List[str]) -> List[List[MarketOdds]]:
+        """Get odds for multiple games."""
+        results = []
+        for game_id in game_ids:
+            try:
+                odds = await self.get_odds(game_id)
+                results.append(odds)
+            except ValueError:
+                results.append([])
+        return results
+    
+    async def _fetch_odds_for_sport(self, sport_key: str) -> List[Dict[str, Any]]:
+        """Fetch odds data for a sport."""
+        url = f"/sports/{sport_key}/odds"
+        params = {
+            "apiKey": self.api_key,
+            "regions": "us",
+            "markets": "h2h,spreads,totals",  # player_props is separate endpoint
+            "oddsFormat": "american",
+            "dateFormat": "iso",
+        }
+        
+        response = await self._client.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    def _generate_game_id(self, event: Dict[str, Any], sport: str) -> str:
+        """Generate consistent game ID from event data."""
+        home = event.get("home_team", "").lower().replace(" ", "-")
+        away = event.get("away_team", "").lower().replace(" ", "-")
+        commence = event.get("commence_time", "")[:10]
+        return f"{sport.lower()}-{away}-at-{home}-{commence}"
+    
+    def _parse_markets(self, event: Dict[str, Any]) -> List[MarketOdds]:
+        """Parse odds markets from event data."""
+        markets = []
+        
+        bookmakers = event.get("bookmakers", [])
+        if not bookmakers:
+            return markets
+        
+        # Use first bookmaker (typically has best odds or is most reliable)
+        # TODO: Could average across bookmakers or pick specific one
+        bookmaker = bookmakers[0]
+        market_data = {m["key"]: m for m in bookmaker.get("markets", [])}
+        
+        home_team = event.get("home_team", "Home")
+        away_team = event.get("away_team", "Away")
+        
+        # Moneyline (h2h)
+        if "h2h" in market_data:
+            h2h = market_data["h2h"]
+            outcomes = {o["name"]: o for o in h2h.get("outcomes", [])}
+            
+            selections = []
+            if home_team in outcomes:
+                selections.append(Selection(
+                    label=f"{home_team} ML",
+                    line=None,
+                    odds=outcomes[home_team].get("price", 0)
+                ))
+            if away_team in outcomes:
+                selections.append(Selection(
+                    label=f"{away_team} ML",
+                    line=None,
+                    odds=outcomes[away_team].get("price", 0)
+                ))
+            
+            if selections:
+                markets.append(MarketOdds(market="moneyline", selections=selections))
+        
+        # Spread
+        if "spreads" in market_data:
+            spreads = market_data["spreads"]
+            outcomes = {o["name"]: o for o in spreads.get("outcomes", [])}
+            
+            selections = []
+            if home_team in outcomes:
+                home_outcome = outcomes[home_team]
+                selections.append(Selection(
+                    label=f"{home_team} {home_outcome.get('point', 0):+.1f}",
+                    line=home_outcome.get("point", 0),
+                    odds=home_outcome.get("price", 0)
+                ))
+            if away_team in outcomes:
+                away_outcome = outcomes[away_team]
+                selections.append(Selection(
+                    label=f"{away_team} {away_outcome.get('point', 0):+.1f}",
+                    line=away_outcome.get("point", 0),
+                    odds=away_outcome.get("price", 0)
+                ))
+            
+            if selections:
+                markets.append(MarketOdds(market="spread", selections=selections))
+        
+        # Total
+        if "totals" in market_data:
+            totals = market_data["totals"]
+            outcomes = {o["name"].lower(): o for o in totals.get("outcomes", [])}
+            
+            # Find the line value (should be same for over/under)
+            line = 0
+            for outcome in totals.get("outcomes", []):
+                if "point" in outcome:
+                    line = outcome["point"]
+                    break
+            
+            selections = []
+            if "over" in outcomes:
+                selections.append(Selection(
+                    label=f"Over {line:.1f}",
+                    line=line,
+                    odds=outcomes["over"].get("price", 0)
+                ))
+            if "under" in outcomes:
+                selections.append(Selection(
+                    label=f"Under {line:.1f}",
+                    line=line,
+                    odds=outcomes["under"].get("price", 0)
+                ))
+            
+            if selections:
+                markets.append(MarketOdds(market="total", selections=selections))
+        
+        # Player Props
+        if "player_props" in market_data:
+            props = market_data["player_props"]
+            # Group by player
+            player_groups: Dict[str, List] = {}
+            for outcome in props.get("outcomes", []):
+                player = outcome.get("description", "Unknown")
+                if player not in player_groups:
+                    player_groups[player] = []
+                player_groups[player].append(outcome)
+            
+            for player, outcomes in player_groups.items():
+                for outcome in outcomes:
+                    prop_type = self._normalize_prop_type(outcome.get("name", ""))
+                    line = outcome.get("point", 0)
+                    odds = outcome.get("price", 0)
+                    
+                    selections = [
+                        Selection(
+                            label=f"{player} {prop_type} O{line:.1f}",
+                            line=line,
+                            odds=odds
+                        )
+                    ]
+                    
+                    markets.append(MarketOdds(
+                        market=f"player_prop_{prop_type.lower().replace(' ', '_')}",
+                        selections=selections
+                    ))
+        
+        return markets
+    
+    def _normalize_prop_type(self, raw_name: str) -> str:
+        """Normalize prop type names to standard format."""
+        name = raw_name.lower()
+        if "point" in name or "pts" in name:
+            return "Points"
+        elif "rebound" in name or "reb" in name:
+            return "Rebounds"
+        elif "assist" in name or "ast" in name:
+            return "Assists"
+        elif "three" in name or "3pt" in name:
+            return "3-Pointers"
+        elif "block" in name or "blk" in name:
+            return "Blocks"
+        elif "steal" in name or "stl" in name:
+            return "Steals"
+        elif "turnover" in name or "to" in name:
+            return "Turnovers"
+        else:
+            return raw_name.title()
+    
+    # ========================================================================
+    # Scores
+    # ========================================================================
+    
+    async def get_score(self, game_id: str) -> Optional[LiveScore]:
+        """Get live score for a game."""
+        parts = game_id.split("-")
+        if len(parts) < 2:
+            return None
+        
+        sport_code = parts[0].upper()
+        sport_key = self.SPORT_KEYS.get(sport_code, sport_code.lower())
+        
+        # Fetch scores for this sport
+        scores = await self._fetch_scores(sport_key)
+        
+        for score_data in scores:
+            score_game_id = self._generate_game_id(score_data, sport_code)
+            if score_game_id == game_id:
+                return self._parse_score(score_data, game_id)
+        
+        return None
+    
+    async def get_scores_batch(self, game_ids: List[str]) -> List[Optional[LiveScore]]:
+        """Get scores for multiple games."""
+        results = []
+        for game_id in game_ids:
+            try:
+                score = await self.get_score(game_id)
+                results.append(score)
+            except Exception:
+                results.append(None)
+        return results
+    
+    async def _fetch_scores(self, sport_key: str) -> List[Dict[str, Any]]:
+        """Fetch live scores for a sport."""
+        url = f"/sports/{sport_key}/scores"
+        params = {
+            "apiKey": self.api_key,
+            "daysFrom": 3,  # Last 3 days
+        }
+        
+        try:
+            response = await self._client.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError:
+            return []
+    
+    def _parse_score(self, data: Dict[str, Any], game_id: str) -> Optional[LiveScore]:
+        """Parse score data into LiveScore model."""
+        try:
+            scores = data.get("scores", [])
+            if len(scores) < 2:
+                return None
+            
+            home_score = 0
+            away_score = 0
+            
+            for score in scores:
+                if score.get("name") == data.get("home_team"):
+                    home_score = int(score.get("score", 0))
+                elif score.get("name") == data.get("away_team"):
+                    away_score = int(score.get("score", 0))
+            
+            # Determine status and period
+            completed = data.get("completed", False)
+            if completed:
+                status = "FINAL"
+                period = "Final"
+            else:
+                status = "LIVE"
+                # Try to get period info from scores API
+                period = "Live"
+            
+            return LiveScore(
+                game_id=game_id,
+                home_score=home_score,
+                away_score=away_score,
+                period=period,
+                clock=None,  # API may not provide clock
+                status=status
+            )
+        except Exception:
+            return None
+    
+    # ========================================================================
+    # Cleanup
+    # ========================================================================
+    
+    async def close(self):
+        """Close HTTP client."""
+        await self._client.aclose()

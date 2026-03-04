@@ -12,7 +12,11 @@ from app.services.auth import (
     authenticate_user,
     get_current_user_from_token,
     create_access_token,
-    update_user_tier
+    update_user_tier,
+    validate_refresh_token,
+    blacklist_access_token,
+    revoke_refresh_token,
+    revoke_all_user_refresh_tokens
 )
 from app.models import User
 
@@ -38,7 +42,9 @@ class LoginRequest(BaseModel):
 class AuthResponse(BaseModel):
     success: bool
     user: Optional[dict] = None
-    token: Optional[str] = None
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    token: Optional[str] = None  # Legacy compatibility
     error: Optional[str] = None
 
 
@@ -47,6 +53,16 @@ class UserResponse(BaseModel):
     email: str
     name: str
     tier: str
+    session_expires_at: Optional[str] = None  # S18-E: Session expiry
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: Optional[str] = None
+    logout_all: bool = False  # Logout from all devices
 
 
 # =============================================================================
@@ -56,7 +72,7 @@ class UserResponse(BaseModel):
 @router.post("/register", response_model=AuthResponse)
 async def register(request: RegisterRequest):
     """Register a new user account."""
-    user, error = register_user(
+    user, access_token, refresh_token, error = register_user(
         email=request.email,
         password=request.password,
         name=request.name
@@ -65,20 +81,19 @@ async def register(request: RegisterRequest):
     if error:
         return AuthResponse(success=False, error=error)
     
-    # Create JWT token
-    token = create_access_token({"sub": user.id})
-    
     return AuthResponse(
         success=True,
         user=user.to_dict(),
-        token=token
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token=access_token  # Legacy compatibility
     )
 
 
 @router.post("/login", response_model=AuthResponse)
 async def login(request: LoginRequest):
     """Login with email/password."""
-    user, error = authenticate_user(
+    user, access_token, refresh_token, error = authenticate_user(
         email=request.email,
         password=request.password
     )
@@ -86,51 +101,101 @@ async def login(request: LoginRequest):
     if error:
         return AuthResponse(success=False, error=error)
     
-    # Create JWT token
-    token = create_access_token({"sub": user.id})
-    
     return AuthResponse(
         success=True,
         user=user.to_dict(),
-        token=token
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token=access_token  # Legacy compatibility
     )
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Get current user info."""
-    user = get_current_user_from_token(credentials.credentials)
+    """Get current user info with session expiry (S18-E)."""
+    from app.services.auth import decode_token
+    from datetime import datetime
+    
+    token = credentials.credentials
+    user = get_current_user_from_token(token)
     
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    # Get expiry from token
+    payload = decode_token(token)
+    exp_timestamp = payload.get("exp") if payload else None
+    session_expires_at = None
+    
+    if exp_timestamp:
+        session_expires_at = datetime.utcfromtimestamp(exp_timestamp).isoformat() + "Z"
     
     return UserResponse(
         id=user.id,
         email=user.email,
         name=user.name,
-        tier=user.tier
+        tier=user.tier,
+        session_expires_at=session_expires_at
     )
 
 
 @router.post("/refresh")
-async def refresh_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Refresh JWT token."""
-    user = get_current_user_from_token(credentials.credentials)
+async def refresh_token(request: RefreshRequest):
+    """
+    Refresh access token using refresh token (S18-E).
+    
+    Validates refresh token and issues new access token.
+    """
+    user = validate_refresh_token(request.refresh_token)
     
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     
-    # Create new token
-    new_token = create_access_token({"sub": user.id})
+    # Create new access token
+    new_access_token, _ = create_access_token({"sub": user.id})
     
-    return {"token": new_token}
+    return {
+        "success": True,
+        "access_token": new_access_token,
+        "token": new_access_token  # Legacy compatibility
+    }
 
 
 @router.post("/logout")
-async def logout():
-    """Logout (client-side token deletion)."""
-    # JWT tokens are stateless, so we just tell client to delete it
-    return {"success": True, "message": "Logged out successfully"}
+async def logout(
+    request: LogoutRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Logout and invalidate tokens (S18-E).
+    
+    Blacklists access token and revokes refresh token(s).
+    """
+    access_token = credentials.credentials
+    user = get_current_user_from_token(access_token)
+    
+    if not user:
+        # Token already invalid, still return success
+        return {"success": True, "message": "Logged out"}
+    
+    # Blacklist access token
+    blacklist_access_token(access_token, reason="logout")
+    
+    # Revoke refresh token(s)
+    if request.logout_all:
+        # Logout from all devices
+        revoked_count = revoke_all_user_refresh_tokens(user.id)
+        return {
+            "success": True,
+            "message": f"Logged out from all devices ({revoked_count} sessions)"
+        }
+    elif request.refresh_token:
+        # Revoke specific refresh token
+        revoke_refresh_token(request.refresh_token)
+        return {"success": True, "message": "Logged out successfully"}
+    else:
+        # No refresh token provided, just blacklist access token
+        return {"success": True, "message": "Logged out (access token invalidated)"}
 
 
 # =============================================================================

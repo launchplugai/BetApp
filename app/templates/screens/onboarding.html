@@ -1,0 +1,627 @@
+<!-- S21-B: Onboarding UI - User DNA Preferences -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Up Your Betting DNA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .onboarding-container {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 32px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .progress-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+        }
+        
+        .progress-step {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+        
+        .progress-step.active {
+            background: #00d4ff;
+        }
+        
+        .progress-step.completed {
+            background: #00ff88;
+        }
+        
+        .step {
+            display: none;
+        }
+        
+        .step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+        
+        .option-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .option-card:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(0,212,255,0.3);
+        }
+        
+        .option-card.selected {
+            background: rgba(0,212,255,0.1);
+            border-color: #00d4ff;
+        }
+        
+        .option-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .option-card.selected .option-icon {
+            background: #00d4ff;
+        }
+        
+        .option-text h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .option-text p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .checkbox-card {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .checkbox-card:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .checkbox-card.selected {
+            background: rgba(0,212,255,0.1);
+            border-color: #00d4ff;
+        }
+        
+        .checkbox-card .icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-card .label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+        
+        .toggle-text h4 {
+            font-size: 15px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        
+        .toggle-text p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .toggle {
+            width: 52px;
+            height: 28px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .toggle.active {
+            background: #00d4ff;
+        }
+        
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+        
+        .toggle.active::after {
+            transform: translateX(24px);
+        }
+        
+        .slider-container {
+            margin: 24px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .btn-primary {
+            background: #00d4ff;
+            color: #000;
+        }
+        
+        .btn-primary:hover {
+            background: #00b8e6;
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .summary-card {
+            background: rgba(0,212,255,0.1);
+            border: 1px solid rgba(0,212,255,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .summary-card h4 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #00d4ff;
+            margin-bottom: 8px;
+        }
+        
+        .summary-card p {
+            font-size: 15px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="onboarding-container">
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-step active" data-step="1"></div>
+            <div class="progress-step" data-step="2"></div>
+            <div class="progress-step" data-step="3"></div>
+            <div class="progress-step" data-step="4"></div>
+        </div>
+        
+        <!-- Step 1: Risk Profile -->
+        <div class="step active" data-step="1">
+            <h1>What's your risk tolerance?</h1>
+            <p class="subtitle">This helps us tailor bet suggestions to your comfort level.</p>
+            
+            <div class="option-card" data-value="conservative">
+                <div class="option-icon">🛡️</div>
+                <div class="option-text">
+                    <h3>Conservative</h3>
+                    <p>Protect bankroll, steady growth, avoid big swings</p>
+                </div>
+            </div>
+            
+            <div class="option-card selected" data-value="balanced">
+                <div class="option-icon">⚖️</div>
+                <div class="option-text">
+                    <h3>Balanced</h3>
+                    <p>Moderate risk, mix of safe and aggressive plays</p>
+                </div>
+            </div>
+            
+            <div class="option-card" data-value="aggressive">
+                <div class="option-icon">🚀</div>
+                <div class="option-text">
+                    <h3>Aggressive</h3>
+                    <p>High upside tolerance, swing for the fences</p>
+                </div>
+            </div>
+            
+            <div class="button-row">
+                <button class="btn-secondary" onclick="skipOnboarding()">Skip for now</button>
+                <button class="btn-primary" onclick="nextStep()">Continue</button>
+            </div>
+        </div>
+        
+        <!-- Step 2: Bet Style -->
+        <div class="step" data-step="2">
+            <h1>What do you like to bet?</h1>
+            <p class="subtitle">Select all that apply. We'll prioritize these in recommendations.</p>
+            
+            <div class="checkbox-grid">
+                <div class="checkbox-card selected" data-value="props">
+                    <div class="icon">🏀</div>
+                    <div class="label">Player Props</div>
+                </div>
+                <div class="checkbox-card" data-value="spreads">
+                    <div class="icon">📊</div>
+                    <div class="label">Spreads</div>
+                </div>
+                <div class="checkbox-card" data-value="moneyline">
+                    <div class="icon">💰</div>
+                    <div class="label">Moneyline</div>
+                </div>
+                <div class="checkbox-card selected" data-value="parlays">
+                    <div class="icon">🔗</div>
+                    <div class="label">Parlays</div>
+                </div>
+                <div class="checkbox-card" data-value="totals">
+                    <div class="icon">📈</div>
+                    <div class="label">Totals</div>
+                </div>
+                <div class="checkbox-card" data-value="singles">
+                    <div class="icon">🎯</div>
+                    <div class="label">Singles</div>
+                </div>
+            </div>
+            
+            <div class="button-row">
+                <button class="btn-secondary" onclick="prevStep()">Back</button>
+                <button class="btn-primary" onclick="nextStep()">Continue</button>
+            </div>
+        </div>
+        
+        <!-- Step 3: Constraints -->
+        <div class="step" data-step="3">
+            <h1>Set your constraints</h1>
+            <p class="subtitle">We'll warn you when picks violate these rules.</p>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Max parlay legs</span>
+                    <span id="maxLegsValue">6</span>
+                </div>
+                <input type="range" class="slider" id="maxLegs" min="2" max="10" value="6">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Max legs from same game</span>
+                    <span id="maxCorrelatedValue">2</span>
+                </div>
+                <input type="range" class="slider" id="maxCorrelated" min="1" max="4" value="2">
+            </div>
+            
+            <div class="toggle-row">
+                <div class="toggle-text">
+                    <h4>Avoid under bets</h4>
+                    <p>Skip bets on "under" totals</p>
+                </div>
+                <div class="toggle" id="noUnders"></div>
+            </div>
+            
+            <div class="toggle-row">
+                <div class="toggle-text">
+                    <h4>NBA only</h4>
+                    <p>Focus on basketball for now</p>
+                </div>
+                <div class="toggle active" id="nbaOnly"></div>
+            </div>
+            
+            <div class="button-row">
+                <button class="btn-secondary" onclick="prevStep()">Back</button>
+                <button class="btn-primary" onclick="nextStep()">Continue</button>
+            </div>
+        </div>
+        
+        <!-- Step 4: Bankroll & Summary -->
+        <div class="step" data-step="4">
+            <h1>Almost done</h1>
+            <p class="subtitle">Review your Betting DNA. You can change this anytime.</p>
+            
+            <div class="summary-card">
+                <h4>Risk Profile</h4>
+                <p id="summaryRisk">Balanced</p>
+            </div>
+            
+            <div class="summary-card">
+                <h4>Bet Styles</h4>
+                <p id="summaryStyles">Player Props, Parlays</p>
+            </div>
+            
+            <div class="summary-card">
+                <h4>Constraints</h4>
+                <p id="summaryConstraints">Max 6 legs, 2 per game, NBA only</p>
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Unit size (% of bankroll)</span>
+                    <span id="unitSizeValue">1%</span>
+                </div>
+                <input type="range" class="slider" id="unitSize" min="0.5" max="5" step="0.5" value="1">
+            </div>
+            
+            <div class="button-row">
+                <button class="btn-secondary" onclick="prevStep()">Back</button>
+                <button class="btn-primary" onclick="savePreferences()">Save & Continue</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const preferences = {
+            risk_profile: 'balanced',
+            bet_style: ['props', 'parlays'],
+            constraints: {
+                max_legs: 6,
+                max_correlated_legs: 2,
+                no_unders: false,
+                favorite_sports: ['NBA']
+            },
+            bankroll_policy: {
+                unit_size_percent: 1.0
+            }
+        };
+        
+        // Step navigation
+        function showStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.querySelector(`.step[data-step="${step}"]`).classList.add('active');
+            
+            // Update progress bar
+            document.querySelectorAll('.progress-step').forEach((p, i) => {
+                p.classList.remove('active', 'completed');
+                if (i + 1 < step) p.classList.add('completed');
+                else if (i + 1 === step) p.classList.add('active');
+            });
+            
+            currentStep = step;
+        }
+        
+        function nextStep() {
+            if (currentStep < 4) showStep(currentStep + 1);
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) showStep(currentStep - 1);
+        }
+        
+        function skipOnboarding() {
+            // Save defaults and redirect
+            savePreferences(true);
+        }
+        
+        // Risk profile selection
+        document.querySelectorAll('[data-step="1"] .option-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('[data-step="1"] .option-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                preferences.risk_profile = card.dataset.value;
+            });
+        });
+        
+        // Bet style selection
+        document.querySelectorAll('[data-step="2"] .checkbox-card').forEach(card => {
+            card.addEventListener('click', () => {
+                card.classList.toggle('selected');
+                const value = card.dataset.value;
+                if (card.classList.contains('selected')) {
+                    if (!preferences.bet_style.includes(value)) preferences.bet_style.push(value);
+                } else {
+                    preferences.bet_style = preferences.bet_style.filter(s => s !== value);
+                }
+            });
+        });
+        
+        // Toggles
+        document.querySelectorAll('.toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('active');
+                const id = toggle.id;
+                if (id === 'noUnders') {
+                    preferences.constraints.no_unders = toggle.classList.contains('active');
+                } else if (id === 'nbaOnly') {
+                    preferences.constraints.favorite_sports = toggle.classList.contains('active') ? ['NBA'] : [];
+                }
+            });
+        });
+        
+        // Sliders
+        document.getElementById('maxLegs').addEventListener('input', (e) => {
+            preferences.constraints.max_legs = parseInt(e.target.value);
+            document.getElementById('maxLegsValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('maxCorrelated').addEventListener('input', (e) => {
+            preferences.constraints.max_correlated_legs = parseInt(e.target.value);
+            document.getElementById('maxCorrelatedValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('unitSize').addEventListener('input', (e) => {
+            preferences.bankroll_policy.unit_size_percent = parseFloat(e.target.value);
+            document.getElementById('unitSizeValue').textContent = e.target.value + '%';
+        });
+        
+        // Update summary before showing step 4
+        document.querySelector('[data-step="4"] .btn-secondary').addEventListener('click', () => {
+            document.getElementById('summaryRisk').textContent = 
+                preferences.risk_profile.charAt(0).toUpperCase() + preferences.risk_profile.slice(1);
+            document.getElementById('summaryStyles').textContent = 
+                preferences.bet_style.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+            document.getElementById('summaryConstraints').textContent = 
+                `Max ${preferences.constraints.max_legs} legs, ${preferences.constraints.max_correlated_legs} per game, ${preferences.constraints.favorite_sports.join(', ') || 'All sports'}`;
+        });
+        
+        async function savePreferences(skip = false) {
+            try {
+                const response = await fetch('/api/preferences', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(preferences)
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/app?screen=dashboard';
+                } else {
+                    alert('Failed to save preferences. Please try again.');
+                }
+            } catch (err) {
+                console.error('Error saving preferences:', err);
+                // For demo, just redirect
+                window.location.href = '/app?screen=dashboard';
+            }
+        }
+        
+        // Check if user already has preferences
+        async function checkExistingPreferences() {
+            try {
+                const response = await fetch('/api/preferences', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.preferences) {
+                        // User has preferences, skip onboarding
+                        window.location.href = '/app?screen=dashboard';
+                    }
+                }
+            } catch (err) {
+                console.log('No existing preferences or not authenticated');
+            }
+        }
+        
+        // Run on load
+        checkExistingPreferences();
+    </script>
+</body>
+</html>

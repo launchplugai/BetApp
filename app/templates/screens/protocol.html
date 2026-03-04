@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA - Protocol Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-red: #ff1744;
+            --bg-dark: #050505;
+            --card-bg: #0a0a0a;
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            font-family: 'Satoshi', sans-serif;
+        }
+        .font-tanker { font-family: 'Tanker', sans-serif; }
+        .font-satoshi { font-family: 'Satoshi', sans-serif; }
+        .neon-text { color: var(--neon-red); text-shadow: 0 0 10px rgba(255, 23, 68, 0.6); }
+        .neon-border { border-color: var(--neon-red); box-shadow: 0 0 15px rgba(255, 23, 68, 0.3); }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+        }
+        .section-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .section-card:hover {
+            border-color: rgba(255, 23, 68, 0.3);
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #d50000 0%, #ff1744 100%);
+            box-shadow: 0 0 25px rgba(255, 23, 68, 0.4);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-out { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .status-questionable { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .status-probable { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .status-available { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .confidence-high { color: #22c55e; }
+        .confidence-medium { color: #f59e0b; }
+        .confidence-low { color: #ef4444; }
+        .loading-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .empty-state {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+        .bullet-item::before {
+            content: "•";
+            color: var(--neon-red);
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-dark">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/10">
+        <div class="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+            <button onclick="goBack()" class="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-400"></iconify-icon>
+            </button>
+            <h1 class="font-tanker text-xl tracking-wider">
+                <span class="text-white">PROTOCOL</span> <span class="neon-text">DETAIL</span>
+            </h1>
+            <button onclick="refreshSnapshot()" class="p-2 hover:bg-white/5 rounded-lg transition-colors" id="refresh-btn">
+                <iconify-icon icon="lucide:refresh-cw" class="text-xl text-gray-400"></iconify-icon>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-24 px-4 max-w-lg mx-auto">
+        <!-- Protocol Header -->
+        <div class="glass-panel rounded-2xl p-4 mb-6">
+            <div class="flex items-start justify-between mb-3">
+                <span id="protocol-sport" class="px-2 py-1 rounded text-xs font-bold uppercase bg-red-500/20 text-red-400">NBA</span>
+                <span id="protocol-status" class="text-xs text-gray-500 capitalize">draft</span>
+            </div>
+            <h2 id="protocol-title" class="font-tanker text-2xl text-white mb-2">Loading...</h2>
+            <p id="protocol-teams" class="text-gray-400 text-sm">-- vs --</p>
+        </div>
+
+        <!-- Generate Snapshot Button -->
+        <button onclick="generateSnapshotV2()" class="w-full btn-primary text-white font-satoshi font-bold py-4 rounded-xl mb-6 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity" id="generate-btn">
+            <iconify-icon icon="lucide:activity" class="text-xl"></iconify-icon>
+            GENERATE INTELLIGENCE SNAPSHOT
+        </button>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="hidden">
+            <div class="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center">
+                <div class="loading-pulse neon-text font-tanker text-xl tracking-wider">ANALYZING DATA...</div>
+                <p class="text-gray-500 text-sm mt-2">Building intelligence blocks</p>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden">
+            <div class="glass-panel rounded-2xl p-6 text-center border-red-500/30">
+                <iconify-icon icon="lucide:alert-circle" class="text-4xl text-red-500 mx-auto mb-3"></iconify-icon>
+                <p class="text-red-400 text-sm" id="error-message">Failed to load snapshot</p>
+                <button onclick="loadProtocolData()" class="mt-3 text-white text-sm hover:underline">Retry</button>
+            </div>
+        </div>
+
+        <!-- Snapshot v2 Content -->
+        <div id="snapshot-content" class="space-y-4 hidden">
+            <!-- Conclusion Section -->
+            <div class="section-card rounded-xl p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <iconify-icon icon="lucide:lightbulb" class="text-xl neon-text"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white">CONCLUSION</h3>
+                    <span id="confidence-badge" class="ml-auto text-xs font-bold px-2 py-1 rounded bg-gray-800"></span>
+                </div>
+                <h4 id="conclusion-headline" class="text-white font-bold text-lg mb-3"></h4>
+                <ul id="conclusion-bullets" class="space-y-2 text-gray-300 text-sm"></ul>
+                <div id="conclusion-disclaimers" class="mt-4 pt-3 border-t border-white/10 text-xs text-gray-500 italic"></div>
+            </div>
+
+            <!-- Injuries Section -->
+            <div class="section-card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <iconify-icon icon="lucide:heart-pulse" class="text-xl text-red-400"></iconify-icon>
+                        <h3 class="font-tanker text-lg text-white">INJURIES</h3>
+                    </div>
+                    <span id="injuries-as-of" class="text-xs text-gray-500"></span>
+                </div>
+                <p id="injuries-summary" class="text-gray-300 text-sm mb-3"></p>
+                <div id="injuries-list" class="space-y-2"></div>
+                <div id="injuries-empty" class="empty-state rounded-lg p-4 text-center text-gray-500 text-sm hidden">
+                    No injury reports available
+                </div>
+            </div>
+
+            <!-- Matchup History Section -->
+            <div class="section-card rounded-xl p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <iconify-icon icon="lucide:history" class="text-xl text-blue-400"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white">MATCHUP HISTORY</h3>
+                </div>
+                <div id="matchup-stats" class="grid grid-cols-3 gap-3 mb-4"></div>
+                <div id="matchup-meetings" class="space-y-2"></div>
+                <div id="matchup-empty" class="empty-state rounded-lg p-4 text-center text-gray-500 text-sm hidden">
+                    No head-to-head data available
+                </div>
+            </div>
+
+            <!-- Trends Section -->
+            <div class="section-card rounded-xl p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <iconify-icon icon="lucide:trending-up" class="text-xl text-green-400"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white">TRENDS</h3>
+                </div>
+                <div id="trends-content" class="grid grid-cols-2 gap-4"></div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="text-center text-xs text-gray-600 mt-6" id="snapshot-metadata"></div>
+        </div>
+
+        <!-- No Snapshot State -->
+        <div id="no-snapshot-state" class="glass-panel rounded-2xl p-8 text-center">
+            <iconify-icon icon="lucide:file-search" class="text-6xl text-gray-600 mx-auto mb-4"></iconify-icon>
+            <h3 class="font-tanker text-xl text-white mb-2">NO SNAPSHOT YET</h3>
+            <p class="text-gray-400 text-sm">Generate an intelligence snapshot to see injuries, matchup history, and trends.</p>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 glass-panel border-t border-white/10">
+        <div class="max-w-lg mx-auto px-4 py-3 flex justify-around">
+            <button onclick="window.location.href='/app'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:home" class="text-xl"></iconify-icon>
+                <span class="text-xs font-satoshi">Home</span>
+            </button>
+            <button onclick="window.location.href='/app?screen=browse'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
+                <span class="text-xs font-satoshi">Browse</span>
+            </button>
+            <button onclick="window.location.href='/app?screen=protocols'" class="flex flex-col items-center gap-1 neon-text">
+                <iconify-icon icon="lucide:clipboard-list" class="text-xl"></iconify-icon>
+                <span class="text-xs font-satoshi font-medium">Protocols</span>
+            </button>
+            <button onclick="window.location.href='/app?screen=history'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:history" class="text-xl"></iconify-icon>
+                <span class="text-xs font-satoshi">History</span>
+            </button>
+            <button onclick="window.location.href='/app?screen=account'" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:user" class="text-xl"></iconify-icon>
+                <span class="text-xs font-satoshi">Account</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        // State
+        let protocolId = null;
+        let protocolData = null;
+        let snapshotData = null;
+        let authToken = localStorage.getItem('accessToken');
+        let homeTeamId = null;
+        let awayTeamId = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!authToken) {
+                window.location.href = '/app?screen=login';
+                return;
+            }
+
+            // Get protocol ID from URL
+            const params = new URLSearchParams(window.location.search);
+            protocolId = params.get('protocolId');
+            
+            if (!protocolId) {
+                showError('No protocol ID provided');
+                return;
+            }
+
+            loadProtocolData();
+        });
+
+        async function loadProtocolData() {
+            showLoading(false);
+            
+            try {
+                const response = await fetch(`/api/protocols/${protocolId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    window.location.href = '/app?screen=login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                protocolData = await response.json();
+                renderProtocolHeader();
+                
+                // Extract team IDs from targets
+                const gameTarget = protocolData.targets?.find(t => t.target_type === 'game');
+                if (gameTarget?.meta?.home_team_id && gameTarget?.meta?.away_team_id) {
+                    homeTeamId = gameTarget.meta.home_team_id;
+                    awayTeamId = gameTarget.meta.away_team_id;
+                }
+
+                // Try to load latest v2 snapshot
+                await loadLatestSnapshot();
+            } catch (err) {
+                console.error('Failed to load protocol:', err);
+                showError(err.message);
+            }
+        }
+
+        async function loadLatestSnapshot() {
+            try {
+                const response = await fetch(`/api/protocols/${protocolId}/snapshot-v2/latest`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    snapshotData = data.snapshot;
+                    renderSnapshot();
+                } else if (response.status === 404) {
+                    // No snapshot yet - show create button
+                    showNoSnapshot();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (err) {
+                console.error('Failed to load snapshot:', err);
+                showNoSnapshot();
+            }
+        }
+
+        async function generateSnapshotV2() {
+            if (!homeTeamId || !awayTeamId) {
+                showError('Team IDs not available. Check protocol targets.');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const response = await fetch(
+                    `/api/protocols/${protocolId}/snapshot-v2?home_team_id=${homeTeamId}&away_team_id=${awayTeamId}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    }
+                );
+
+                if (response.status === 401) {
+                    localStorage.removeItem('accessToken');
+                    window.location.href = '/app?screen=login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                snapshotData = data.snapshot;
+                renderSnapshot();
+            } catch (err) {
+                console.error('Failed to generate snapshot:', err);
+                showError(err.message);
+            }
+        }
+
+        function renderProtocolHeader() {
+            document.getElementById('protocol-title').textContent = protocolData.title || 'Untitled Protocol';
+            document.getElementById('protocol-sport').textContent = protocolData.sport?.toUpperCase() || 'NBA';
+            document.getElementById('protocol-status').textContent = protocolData.status || 'draft';
+            
+            const teams = protocolData.context?.teams || ['Team A', 'Team B'];
+            document.getElementById('protocol-teams').textContent = `${teams[0]} vs ${teams[1]}`;
+        }
+
+        function renderSnapshot() {
+            if (!snapshotData) {
+                showNoSnapshot();
+                return;
+            }
+
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('no-snapshot-state').classList.add('hidden');
+            document.getElementById('snapshot-content').classList.remove('hidden');
+            document.getElementById('generate-btn').classList.remove('hidden');
+            document.getElementById('generate-btn').innerHTML = `
+                <iconify-icon icon="lucide:refresh-cw" class="text-xl"></iconify-icon>
+                REFRESH SNAPSHOT
+            `;
+
+            // Render Conclusion
+            renderConclusion(snapshotData.conclusion);
+            
+            // Render Injuries
+            renderInjuries(snapshotData.injuries);
+            
+            // Render Matchup History
+            renderMatchupHistory(snapshotData.matchupHistory);
+            
+            // Render Trends
+            renderTrends(snapshotData.trends);
+            
+            // Metadata
+            const generatedAt = snapshotData.generatedAt ? new Date(snapshotData.generatedAt).toLocaleString() : 'Unknown';
+            document.getElementById('snapshot-metadata').textContent = `Snapshot v${snapshotData.version || 2} • Generated: ${generatedAt}`;
+        }
+
+        function renderConclusion(conclusion) {
+            if (!conclusion) return;
+            
+            document.getElementById('conclusion-headline').textContent = conclusion.headline || 'No headline available';
+            
+            // Confidence badge
+            const confidence = conclusion.confidence || {};
+            const badge = document.getElementById('confidence-badge');
+            badge.textContent = `${confidence.level?.toUpperCase() || 'MEDIUM'} (${Math.round((confidence.score || 0.5) * 100)}%)`;
+            badge.className = `ml-auto text-xs font-bold px-2 py-1 rounded ${getConfidenceClass(confidence.level)}`;
+            
+            // Bullets
+            const bulletsContainer = document.getElementById('conclusion-bullets');
+            bulletsContainer.innerHTML = (conclusion.bullets || [])
+                .map(b => `<li class="bullet-item">${escapeHtml(b)}</li>`)
+                .join('');
+            
+            // Disclaimers
+            const disclaimers = conclusion.disclaimers || [];
+            document.getElementById('conclusion-disclaimers').innerHTML = disclaimers
+                .map(d => `* ${escapeHtml(d)}`)
+                .join('<br>');
+        }
+
+        function renderInjuries(injuries) {
+            if (!injuries) {
+                document.getElementById('injuries-empty').classList.remove('hidden');
+                return;
+            }
+            
+            document.getElementById('injuries-as-of').textContent = `As of: ${formatDate(injuries.asOf)}`;
+            document.getElementById('injuries-summary').textContent = injuries.summary || 'No injury summary available';
+            
+            const items = injuries.items || [];
+            const container = document.getElementById('injuries-list');
+            
+            if (items.length === 0) {
+                document.getElementById('injuries-empty').classList.remove('hidden');
+                container.innerHTML = '';
+            } else {
+                document.getElementById('injuries-empty').classList.add('hidden');
+                container.innerHTML = items.map(item => `
+                    <div class="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                        <div>
+                            <div class="text-white font-medium">${escapeHtml(item.playerName)}</div>
+                            <div class="text-gray-500 text-xs">${escapeHtml(item.detail || 'No details')}</div>
+                        </div>
+                        <span class="status-badge status-${item.status}">${item.status}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderMatchupHistory(matchup) {
+            if (!matchup || matchup.sampleSize === 0) {
+                document.getElementById('matchup-empty').classList.remove('hidden');
+                document.getElementById('matchup-stats').innerHTML = '';
+                document.getElementById('matchup-meetings').innerHTML = '';
+                return;
+            }
+            
+            document.getElementById('matchup-empty').classList.add('hidden');
+            
+            const summary = matchup.summary || {};
+            document.getElementById('matchup-stats').innerHTML = `
+                <div class="bg-white/5 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-white">${matchup.sampleSize}</div>
+                    <div class="text-gray-500 text-xs">Games</div>
+                </div>
+                <div class="bg-white/5 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-white">${summary.avgTotalPoints?.toFixed(1) || '—'}</div>
+                    <div class="text-gray-500 text-xs">Avg Total</div>
+                </div>
+                <div class="bg-white/5 rounded-lg p-3 text-center">
+                    <div class="text-2xl font-bold text-white">${summary.avgMargin?.toFixed(1) || '—'}</div>
+                    <div class="text-gray-500 text-xs">Avg Margin</div>
+                </div>
+            `;
+            
+            const meetings = matchup.lastMeetings || [];
+            document.getElementById('matchup-meetings').innerHTML = meetings.map(m => `
+                <div class="flex items-center justify-between bg-white/5 rounded-lg p-2 text-sm">
+                    <span class="text-gray-400">${formatDate(m.date)}</span>
+                    <span class="text-white">${m.totalPoints?.toFixed(0) || '—'} pts</span>
+                    <span class="text-gray-500">${m.margin?.toFixed(0) || '—'} pt margin</span>
+                </div>
+            `).join('');
+        }
+
+        function renderTrends(trends) {
+            if (!trends) {
+                document.getElementById('trends-content').innerHTML = '<div class="col-span-2 text-center text-gray-500">No trend data available</div>';
+                return;
+            }
+            
+            const teamForm = trends.teamForm || {};
+            const homeForm = teamForm.homeLastN || {};
+            const awayForm = teamForm.awayLastN || {};
+            
+            document.getElementById('trends-content').innerHTML = `
+                <div class="bg-white/5 rounded-lg p-3">
+                    <div class="text-gray-400 text-xs mb-1">Home Last ${homeForm.n || 10}</div>
+                    <div class="text-2xl font-bold text-white">${homeForm.wins !== null ? `${homeForm.wins}-${homeForm.losses}` : '—'}</div>
+                    <div class="text-gray-500 text-xs">${homeForm.netRatingProxy ? `Net: ${homeForm.netRatingProxy.toFixed(1)}` : 'No net rating'}</div>
+                </div>
+                <div class="bg-white/5 rounded-lg p-3">
+                    <div class="text-gray-400 text-xs mb-1">Away Last ${awayForm.n || 10}</div>
+                    <div class="text-2xl font-bold text-white">${awayForm.wins !== null ? `${awayForm.wins}-${awayForm.losses}` : '—'}</div>
+                    <div class="text-gray-500 text-xs">${awayForm.netRatingProxy ? `Net: ${awayForm.netRatingProxy.toFixed(1)}` : 'No net rating'}</div>
+                </div>
+            `;
+        }
+
+        function getConfidenceClass(level) {
+            switch(level?.toLowerCase()) {
+                case 'high': return 'bg-green-500/20 text-green-400';
+                case 'medium': return 'bg-yellow-500/20 text-yellow-400';
+                case 'low': return 'bg-red-500/20 text-red-400';
+                default: return 'bg-gray-500/20 text-gray-400';
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/app?screen=protocols';
+        }
+
+        function refreshSnapshot() {
+            if (snapshotData) {
+                generateSnapshotV2();
+            } else {
+                loadProtocolData();
+            }
+        }
+
+        function showLoading(isGenerating) {
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('no-snapshot-state').classList.add('hidden');
+            document.getElementById('snapshot-content').classList.add('hidden');
+            document.getElementById('generate-btn').classList.toggle('hidden', isGenerating);
+        }
+
+        function showError(message) {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.remove('hidden');
+            document.getElementById('no-snapshot-state').classList.add('hidden');
+            document.getElementById('snapshot-content').classList.add('hidden');
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function showNoSnapshot() {
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('no-snapshot-state').classList.remove('hidden');
+            document.getElementById('snapshot-content').classList.add('hidden');
+            document.getElementById('generate-btn').classList.remove('hidden');
+            document.getElementById('generate-btn').innerHTML = `
+                <iconify-icon icon="lucide:activity" class="text-xl"></iconify-icon>
+                GENERATE INTELLIGENCE SNAPSHOT
+            `;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '—';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

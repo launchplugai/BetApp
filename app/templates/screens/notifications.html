@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Engine - Notifications</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/notifications.css">
+</head>
+<body class="min-h-screen bg-[#050505]">
+    <!-- Header -->
+    <header class="px-4 py-4 border-b border-white/5">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <iconify-icon icon="lucide:bell" class="text-2xl text-[#ff1744]"></iconify-icon>
+                <div>
+                    <h1 class="font-tanker text-lg tracking-wide">NOTIFICATIONS</h1>
+                    <p class="text-xs text-gray-500">SETTINGS & PREFERENCES</p>
+                </div>
+            </div>
+            <button onclick="window.location.href='/app'" class="text-gray-400 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:x" class="text-xl"></iconify-icon>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-4 py-6 pb-32">
+        <!-- Loading State -->
+        <div id="loading-state" class="flex flex-col items-center justify-center py-12">
+            <div class="w-8 h-8 border-2 border-[#ff1744] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-sm text-gray-500">Loading preferences...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="error-state" class="hidden flex flex-col items-center justify-center py-12">
+            <iconify-icon icon="lucide:alert-circle" class="text-4xl text-red-500 mb-4"></iconify-icon>
+            <p class="text-sm text-gray-400 mb-2">Failed to load preferences</p>
+            <button onclick="loadPreferences()" class="text-[#ff1744] text-sm hover:underline">Try again</button>
+        </div>
+
+        <!-- Settings Form -->
+        <form id="notification-settings" class="hidden space-y-6">
+            
+            <!-- Master Toggle -->
+            <section class="settings-section">
+                <div class="flex items-center justify-between p-4 bg-[#0a0a0a] border border-white/5 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#ff1744]/10 flex items-center justify-center">
+                            <iconify-icon icon="lucide:bell-ring" class="text-lg text-[#ff1744]"></iconify-icon>
+                        </div>
+                        <div>
+                            <h3 class="font-medium text-white">Enable Notifications</h3>
+                            <p class="text-xs text-gray-500">Receive alerts for opportunities and updates</p>
+                        </div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enabled" name="enabled">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Opportunity Alerts Section -->
+            <section class="settings-section" id="opportunity-section">
+                <div class="flex items-center gap-2 mb-4">
+                    <iconify-icon icon="lucide:zap" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-sm tracking-wide text-gray-300">OPPORTUNITY ALERTS</h2>
+                </div>
+                
+                <div class="space-y-4 bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+                    <!-- Favorite Sports Only -->
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Favorite Sports Only</span>
+                            <span class="setting-desc">Only notify for your selected sports</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="favorite_sports_only" name="favorite_sports_only">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Avoid Volatility -->
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Avoid High Volatility</span>
+                            <span class="setting-desc">Skip notifications for unstable markets</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="avoid_volatility" name="avoid_volatility">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Min Confidence Slider -->
+                    <div class="setting-row flex-col items-start gap-3">
+                        <div class="w-full flex justify-between items-center">
+                            <div class="setting-info">
+                                <span class="setting-label">Minimum Confidence</span>
+                                <span class="setting-desc">Only alerts above this confidence level</span>
+                            </div>
+                            <span class="slider-value" id="min_confidence_value">70%</span>
+                        </div>
+                        <input type="range" id="min_confidence" name="min_confidence" min="0" max="100" value="70" class="confidence-slider">
+                        <div class="flex justify-between w-full text-[10px] text-gray-600">
+                            <span>0%</span>
+                            <span>50%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <!-- Max Per Day Slider -->
+                    <div class="setting-row flex-col items-start gap-3">
+                        <div class="w-full flex justify-between items-center">
+                            <div class="setting-info">
+                                <span class="setting-label">Max Notifications Per Day</span>
+                                <span class="setting-desc">Limit to avoid spam</span>
+                            </div>
+                            <span class="slider-value" id="max_per_day_value">10</span>
+                        </div>
+                        <input type="range" id="max_per_day" name="max_per_day" min="1" max="50" value="10" class="confidence-slider">
+                        <div class="flex justify-between w-full text-[10px] text-gray-600">
+                            <span>1</span>
+                            <span>25</span>
+                            <span>50</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quiet Hours Section -->
+            <section class="settings-section">
+                <div class="flex items-center gap-2 mb-4">
+                    <iconify-icon icon="lucide:moon" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-sm tracking-wide text-gray-300">QUIET HOURS</h2>
+                </div>
+                
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+                    <p class="text-xs text-gray-500 mb-4">No notifications will be sent during these hours</p>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="time-picker-group">
+                            <label class="text-xs text-gray-400 mb-2 block">Start Time</label>
+                            <div class="time-picker">
+                                <iconify-icon icon="lucide:clock" class="text-gray-500"></iconify-icon>
+                                <input type="time" id="quiet_hours_start" name="quiet_hours_start" value="22:00" class="time-input">
+                            </div>
+                        </div>
+                        <div class="time-picker-group">
+                            <label class="text-xs text-gray-400 mb-2 block">End Time</label>
+                            <div class="time-picker">
+                                <iconify-icon icon="lucide:sun" class="text-gray-500"></iconify-icon>
+                                <input type="time" id="quiet_hours_end" name="quiet_hours_end" value="08:00" class="time-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Other Notifications -->
+            <section class="settings-section">
+                <div class="flex items-center gap-2 mb-4">
+                    <iconify-icon icon="lucide:settings" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-sm tracking-wide text-gray-300">OTHER NOTIFICATIONS</h2>
+                </div>
+                
+                <div class="space-y-3 bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+                    <!-- Bet Outcomes -->
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Bet Outcomes</span>
+                            <span class="setting-desc">Get notified when bets settle</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="bet_outcomes" name="bet_outcomes">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- Game Reminders -->
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Game Reminders</span>
+                            <span class="setting-desc">Reminders before games start</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="game_reminders" name="game_reminders">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Save Button -->
+            <div class="pt-4">
+                <button type="submit" id="save-btn" class="w-full bg-[#ff1744] hover:bg-[#d50000] text-white py-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2">
+                    <iconify-icon icon="lucide:save" class="text-lg"></iconify-icon>
+                    <span>Save Changes</span>
+                </button>
+                <p class="text-center text-xs text-gray-600 mt-3">Changes are applied immediately</p>
+            </div>
+        </form>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <iconify-icon id="toast-icon" icon="lucide:check-circle" class="text-xl"></iconify-icon>
+            <span id="toast-message">Settings saved</span>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation (Matching app.html) -->
+    <nav class="fixed bottom-0 left-0 w-full bg-[#050505]/95 backdrop-blur-md border-t border-white/5 pb-8 pt-4 px-4">
+        <div class="flex justify-around items-center max-w-md mx-auto">
+            <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Dashboard</span>
+            </a>
+            <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <div class="w-10 h-10 -mt-6 bg-[#0a0a0a] border border-[#ff1744] rounded-full flex items-center justify-center">
+                    <iconify-icon icon="lucide:plus" class="text-lg text-[#ff1744]"></iconify-icon>
+                </div>
+                <span class="text-[10px] font-medium -mt-1">Builder</span>
+            </a>
+            <a href="/app?screen=notifications" class="flex flex-col items-center gap-1 text-[#ff1744]">
+                <div class="relative">
+                    <iconify-icon icon="lucide:bell" class="text-xl"></iconify-icon>
+                    <span id="nav-badge" class="nav-badge hidden">0</span>
+                </div>
+                <span class="text-[10px] font-medium">Alerts</span>
+            </a>
+        </div>
+    </nav>
+
+    <script src="/static/notifications.js"></script>
+</body>
+</html>

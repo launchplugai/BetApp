@@ -1,0 +1,35 @@
+{
+  "checkpoint_id": "ira-marching-orders-2026-02-22",
+  "agent": "ira",
+  "manager": "marvin",
+  "timestamp": "2026-02-22T21:25:00Z",
+  "orders": "STABILIZE VPS",
+  "tasks": [
+    {
+      "id": 1,
+      "task": "Verify VPS health every 5 minutes",
+      "status": "active",
+      "auto": true
+    },
+    {
+      "id": 2,
+      "task": "Configure nginx reverse proxy",
+      "status": "assigned",
+      "due": "2026-02-22T23:00:00Z"
+    },
+    {
+      "id": 3,
+      "task": "Set up SSL certificate (certbot)",
+      "status": "assigned",
+      "due": "2026-02-23T12:00:00Z"
+    },
+    {
+      "id": 4,
+      "task": "Monitor Railway for recovery or decommission",
+      "status": "watching",
+      "note": "Currently 502, not recovering"
+    }
+  ],
+  "next_checkin": "2026-02-22T22:00:00Z",
+  "status": "active"
+}

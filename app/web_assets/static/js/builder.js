@@ -1,5 +1,5 @@
-// S16-B: Parlay Builder Logic
-const API_BASE = '/api/mock';
+// S19-D: Parlay Builder Logic (using new /api/odds endpoint)
+const API_BASE = '/api';
 let protocol = null;
 let markets = null;
 let legs = [];
@@ -7,29 +7,82 @@ let currentMarket = 'main';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadProtocol();
-    await loadMarkets();
-    renderGameHeader();
-    renderMarket();
-    renderLegs();
+    try {
+        await loadProtocol();
+        await loadMarkets();
+        renderGameHeader();
+        renderMarket();
+        renderLegs();
+    } catch (error) {
+        console.error('Builder initialization failed:', error);
+        document.body.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-screen text-white p-6">
+                <h1 class="text-2xl font-bold mb-4">Something went wrong</h1>
+                <p class="text-gray-400 mb-6">Failed to load builder. Please clear your cache and try again.</p>
+                <button onclick="window.location.reload(true)" class="px-6 py-3 bg-neon text-white rounded-lg font-bold">
+                    Reload Page
+                </button>
+                <button onclick="window.location.href='/'" class="mt-4 px-6 py-3 bg-white/10 text-white rounded-lg">
+                    Go Home
+                </button>
+            </div>
+        `;
+    }
 });
 
 async function loadProtocol() {
     const stored = sessionStorage.getItem('dna_protocol_context');
+    let useStored = false;
+    
     if (stored) {
-        protocol = JSON.parse(stored);
-        console.log('Protocol loaded:', protocol);
-    } else {
-        console.warn('No protocol in sessionStorage');
-        // Fallback for testing
+        try {
+            const parsed = JSON.parse(stored);
+            // Validate the stored protocol has a valid game ID format
+            const gameId = parsed.gameId || parsed.protocolId;
+            if (gameId && gameId.includes('-at-') && gameId.startsWith('nhl-')) {
+                protocol = parsed;
+                useStored = true;
+            } else {
+                sessionStorage.removeItem('dna_protocol_context');
+            }
+        } catch (e) {
+            console.error('Failed to parse stored protocol, clearing:', e);
+            sessionStorage.removeItem('dna_protocol_context');
+        }
+    }
+    
+    if (!useStored) {
+        // Fetch first available NHL game as fallback
+        try {
+            const gamesResponse = await fetch(`${API_BASE}/games?sport=NHL`);
+            if (gamesResponse.ok) {
+                const games = await gamesResponse.json();
+                if (games && games.length > 0) {
+                    const game = games[0];
+                    protocol = {
+                        protocolId: game.id,
+                        league: game.league,
+                        gameId: game.id,
+                        teams: [game.home, game.away],
+                        status: game.status,
+                        clock: null,
+                        score: null
+                    };
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch fallback game:', e);
+        }
+        // Ultimate fallback
         protocol = {
-            protocolId: 'test',
-            league: 'NBA',
-            gameId: 'nba_001',
-            teams: ['Lakers', 'Warriors'],
-            status: 'LIVE',
-            clock: 'Q3 8:42',
-            score: { home: 88, away: 82 }
+            protocolId: 'nhl-edmonton-oilers-at-anaheim-ducks-2026-02-26',
+            league: 'NHL',
+            gameId: 'nhl-edmonton-oilers-at-anaheim-ducks-2026-02-26',
+            teams: ['Anaheim Ducks', 'Edmonton Oilers'],
+            status: 'SCHEDULED',
+            clock: null,
+            score: null
         };
     }
 }
@@ -37,29 +90,144 @@ async function loadProtocol() {
 async function loadMarkets() {
     if (!protocol) return;
     try {
-        // Use the gameId from protocol, or fallback to nba_001
-        const gameId = protocol.gameId.includes('_') ? protocol.gameId : 'nba_001';
+        // S19-D: Use new /api/odds endpoint
+        const gameId = protocol.gameId || protocol.protocolId || 'lal-gsw-2026-02-09';
         const response = await fetch(`${API_BASE}/odds/${gameId}`);
-        const data = await response.json();
-        markets = data.odds;
-        console.log('Markets loaded:', markets);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        // API returns array, transform to expected structure
+        const marketsArray = await response.json();
+
+        // Transform array to object structure expected by renderer
+        markets = {
+            spread: { home: {}, away: {} },
+            total: { over: {}, under: {} },
+            moneyline: { home: {}, away: {} },
+            player_props: []
+        };
+
+        if (Array.isArray(marketsArray)) {
+            marketsArray.forEach(m => {
+                if (m.market === 'spread' && m.selections) {
+                    m.selections.forEach(sel => {
+                        if (sel.label && sel.label.includes(' -')) {
+                            markets.spread.home = { line: sel.line || '-4.5', odds: sel.odds || -110 };
+                        } else if (sel.label && sel.label.includes(' +')) {
+                            markets.spread.away = { line: sel.line || '+4.5', odds: sel.odds || -110 };
+                        }
+                    });
+                } else if (m.market === 'total' && m.selections) {
+                    m.selections.forEach(sel => {
+                        if (sel.label && sel.label.includes('Over')) {
+                            markets.total.over = { line: sel.line || '220.5', odds: sel.odds || -110 };
+                        } else if (sel.label && sel.label.includes('Under')) {
+                            markets.total.under = { line: sel.line || '220.5', odds: sel.odds || -110 };
+                        }
+                    });
+                } else if (m.market === 'moneyline' && m.selections) {
+                    m.selections.forEach(sel => {
+                        if (sel.label && !sel.label.includes('ML')) {
+                            // First selection is usually home
+                            if (!markets.moneyline.home.odds) {
+                                markets.moneyline.home = { odds: sel.odds || -150 };
+                            } else {
+                                markets.moneyline.away = { odds: sel.odds || +130 };
+                            }
+                        }
+                    });
+                } else if (m.market === 'player_prop' && m.selections) {
+                    // Group selections by player + prop
+                    const propsMap = new Map();
+                    m.selections.forEach(sel => {
+                        // Try multiple regex patterns for different API formats
+                        // Pattern 1: "LeBron James O27.5 PTS" or "LeBron James U27.5 PTS"
+                        // Pattern 2: "LeBron James Over 27.5 PTS" or "LeBron James Under 27.5 PTS"
+                        // Pattern 3: "LeBron James O 27.5 Points"
+                        let match = sel.label.match(/^(.+?)\s+([OU])([\d.]+)\s+(.+)$/i);
+                        
+                        if (!match) {
+                            // Try "Over/Under" spelled out
+                            match = sel.label.match(/^(.+?)\s+(Over|Under)\s+([\d.]+)\s+(.+)$/i);
+                            if (match) {
+                                // Convert Over/Under to O/U
+                                match[2] = match[2].charAt(0).toUpperCase();
+                                // Shift groups
+                                match = [match[0], match[1], match[2], match[3], match[4]];
+                            }
+                        }
+                        
+                        if (match) {
+                            const [, player, overUnder, line, prop] = match;
+                            const key = `${player.trim()}|${prop.trim()}|${line}`;
+                            if (!propsMap.has(key)) {
+                                propsMap.set(key, { 
+                                    player: player.trim(), 
+                                    prop: prop.trim().toUpperCase(), 
+                                    line: parseFloat(line), 
+                                    over_odds: null, 
+                                    under_odds: null 
+                                });
+                            }
+                            const propData = propsMap.get(key);
+                            if (overUnder === 'O' || overUnder === 'OVER') {
+                                propData.over_odds = sel.odds || -110;
+                            } else if (overUnder === 'U' || overUnder === 'UNDER') {
+                                propData.under_odds = sel.odds || -110;
+                            }
+                        }
+                    });
+                    markets.player_props = Array.from(propsMap.values());
+                }
+            });
+        }
+
+        // Ensure we have defaults if API didn't return expected structure
+        if (!markets.spread.home.line) {
+            markets.spread.home = { line: '-4.5', odds: -110 };
+            markets.spread.away = { line: '+4.5', odds: -110 };
+        }
+        if (!markets.total.over.line) {
+            markets.total.over = { line: '220.5', odds: -110 };
+            markets.total.under = { line: '220.5', odds: -110 };
+        }
+        if (!markets.moneyline.home.odds) {
+            markets.moneyline.home = { odds: -150 };
+            markets.moneyline.away = { odds: +130 };
+        }
+
     } catch (err) {
         console.error('Failed to load markets:', err);
+        // Fallback to default markets
+        markets = {
+            spread: { home: { line: '-4.5', odds: -110 }, away: { line: '+4.5', odds: -110 } },
+            total: { over: { line: '220.5', odds: -110 }, under: { line: '220.5', odds: -110 } },
+            moneyline: { home: { odds: -150 }, away: { odds: +130 } },
+            player_props: []
+        };
     }
 }
 
-// League icon mapping — correct sport icon per league
-const LEAGUE_ICONS = {
-    'NBA': 'emojione-monotone:basketball',
-    'NFL': 'fluent:sport-american-football-24-regular',
-    'NHL': 'ph:hockey-light',
-    'MLB': 'guidance:baseball',
-    'Soccer': 'ph:soccer-ball-light',
-    'MMA': 'game-icons:boxing-glove',
-};
+function getSportIcon(league) {
+    const icons = {
+        'NBA': 'emojione-monotone:basketball',
+        'NHL': 'game-icons:ice-hockey',
+        'NFL': 'game-icons:american-football-helmet',
+        'MLB': 'game-icons:baseball-bat'
+    };
+    return icons[league] || 'lucide:trophy';
+}
 
-function getLeagueIcon(league) {
-    return LEAGUE_ICONS[league] || LEAGUE_ICONS['NBA'];
+function getSportColor(league) {
+    const colors = {
+        'NBA': { home: 'text-orange-500', away: 'text-purple-500' },
+        'NHL': { home: 'text-yellow-500', away: 'text-blue-500' },
+        'NFL': { home: 'text-red-500', away: 'text-blue-500' },
+        'MLB': { home: 'text-green-500', away: 'text-red-500' }
+    };
+    return colors[league] || { home: 'text-gray-400', away: 'text-gray-400' };
 }
 
 function renderGameHeader() {
@@ -67,7 +235,8 @@ function renderGameHeader() {
     const [home, away] = protocol.teams;
     const isLive = protocol.status === 'LIVE';
     const score = protocol.score;
-    const sportIcon = getLeagueIcon(protocol.league);
+    const icon = getSportIcon(protocol.league);
+    const colors = getSportColor(protocol.league);
 
     document.getElementById('game-info').innerHTML = `
         <div class="flex justify-between items-center mb-4">
@@ -80,7 +249,7 @@ function renderGameHeader() {
         <div class="flex justify-between items-center">
             <div class="flex flex-col items-center gap-2 w-1/3">
                 <div class="w-16 h-16 rounded-full bg-white/5 p-3 border border-white/10 flex items-center justify-center">
-                    <iconify-icon icon="${sportIcon}" class="text-4xl text-yellow-500"></iconify-icon>
+                    <iconify-icon icon="${icon}" class="text-4xl ${colors.home}"></iconify-icon>
                 </div>
                 <h2 class="font-tanker text-2xl">${home.toUpperCase()}</h2>
                 ${score ? `<span class="font-satoshi text-xl font-bold">${score.home}</span>` : ''}
@@ -90,105 +259,13 @@ function renderGameHeader() {
             </div>
             <div class="flex flex-col items-center gap-2 w-1/3">
                 <div class="w-16 h-16 rounded-full bg-white/5 p-3 border border-white/10 flex items-center justify-center">
-                    <iconify-icon icon="${sportIcon}" class="text-4xl text-blue-500"></iconify-icon>
+                    <iconify-icon icon="${icon}" class="text-4xl ${colors.away}"></iconify-icon>
                 </div>
                 <h2 class="font-tanker text-2xl text-gray-300">${away.toUpperCase()}</h2>
                 ${score ? `<span class="font-satoshi text-xl font-bold text-gray-400">${score.away}</span>` : ''}
             </div>
         </div>
     `;
-
-    // Fetch and display protocol risk signals
-    fetchProtocolRisk();
-}
-
-async function fetchProtocolRisk() {
-    if (!protocol || !protocol.protocolId) return;
-    try {
-        const response = await fetch(`${API_BASE}/protocols/${protocol.protocolId}/risk`);
-        if (!response.ok) return;
-        const risk = await response.json();
-        if (risk.triggeredCount > 0) {
-            renderProtocolSignals(risk);
-        }
-    } catch (err) {
-        console.log('Protocol risk fetch skipped:', err.message);
-    }
-}
-
-function renderProtocolSignals(risk) {
-    const container = document.getElementById('protocol-signals');
-    if (!container) return;
-
-    const riskColors = {
-        none: { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20' },
-        low: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20' },
-        moderate: { bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/20' },
-        high: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20' },
-        critical: { bg: 'bg-red-500/20', text: 'text-red-300', border: 'border-red-500/40' },
-    };
-
-    const categoryIcons = {
-        physical: 'lucide:battery-low',
-        tactical: 'lucide:swords',
-        volatility: 'lucide:activity',
-        psychological: 'lucide:brain',
-        market: 'lucide:trending-up',
-    };
-
-    const signals = risk.signals || [];
-    if (signals.length === 0) return;
-
-    let html = `
-        <div class="mb-4">
-            <div class="flex items-center gap-2 mb-3">
-                <iconify-icon icon="lucide:shield-alert" class="text-neon text-sm"></iconify-icon>
-                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">PROTOCOL INTELLIGENCE</span>
-                <span class="text-[10px] font-bold text-neon bg-neon/10 px-1.5 py-0.5 rounded">${risk.triggeredCount} ACTIVE</span>
-            </div>
-            <p class="text-xs text-gray-400 mb-3">${risk.riskSummary}</p>
-            <div class="space-y-2">
-    `;
-
-    for (const signal of signals.slice(0, 5)) {
-        const colors = riskColors[signal.risk] || riskColors.none;
-        const icon = categoryIcons[signal.category] || 'lucide:info';
-
-        html += `
-            <div class="${colors.bg} rounded-lg p-3 border ${colors.border}">
-                <div class="flex items-center gap-2 mb-1">
-                    <iconify-icon icon="${icon}" class="${colors.text} text-sm"></iconify-icon>
-                    <span class="text-[10px] font-bold ${colors.text} uppercase">${signal.protocol.replace(/_/g, ' ')}</span>
-                    <span class="text-[10px] ${colors.text} ml-auto">${Math.round(signal.confidence * 100)}% conf</span>
-                </div>
-                <p class="text-xs text-gray-300">${signal.explanation}</p>
-            </div>
-        `;
-    }
-
-    html += `
-            </div>
-            <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase">Fragility</div>
-                    <div class="font-tanker text-lg ${risk.fragilityScore >= 0.5 ? 'text-red-400' : risk.fragilityScore >= 0.3 ? 'text-yellow-400' : 'text-green-400'}">
-                        ${(risk.fragilityScore * 100).toFixed(0)}%
-                    </div>
-                </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase">Confidence</div>
-                    <div class="font-tanker text-lg text-white">${(risk.confidenceScore * 100).toFixed(0)}%</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-[10px] text-gray-500 uppercase">Protocols</div>
-                    <div class="font-tanker text-lg text-neon">${risk.triggeredCount}</div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    container.innerHTML = html;
-    container.classList.remove('hidden');
 }
 
 function switchMarket(market) {
@@ -213,8 +290,12 @@ function renderMarket() {
         container.innerHTML = renderMainLines();
     } else if (currentMarket === 'props') {
         container.innerHTML = renderPlayerProps();
+    } else if (currentMarket === 'quarters') {
+        container.innerHTML = renderQuarters();
+    } else if (currentMarket === 'halves') {
+        container.innerHTML = renderHalves();
     } else {
-        container.innerHTML = '<div class="text-center text-gray-500 py-8">Coming soon</div>';
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">Market not available</div>';
     }
 }
 
@@ -273,7 +354,17 @@ function renderMainLines() {
 function renderPlayerProps() {
     const props = markets.player_props || [];
     if (props.length === 0) {
-        return '<div class="text-center text-gray-500 py-8">No player props available</div>';
+        return `
+            <div class="text-center py-12 px-6">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                    <iconify-icon icon="lucide:users" class="text-3xl text-gray-500"></iconify-icon>
+                </div>
+                <h4 class="font-tanker text-lg text-gray-300 mb-2">Player Props Coming Soon</h4>
+                <p class="text-sm text-gray-500 max-w-xs mx-auto">
+                    Individual player stats and prop bets are coming soon for ${protocol?.league || 'NHL'}. Stay tuned!
+                </p>
+            </div>
+        `;
     }
 
     return `
@@ -310,6 +401,10 @@ function renderPlayerProps() {
 
 function isLegSelected(market, identifier) {
     return legs.some(leg => {
+        // Handle quarter markets (q1_spread, q2_total, etc.)
+        if (market.includes('_')) {
+            return leg.market === market && leg.selection === identifier;
+        }
         if (market === 'spread' || market === 'moneyline') {
             return leg.market === market && leg.team === identifier;
         }
@@ -323,7 +418,46 @@ function isLegSelected(market, identifier) {
     });
 }
 
-function addLeg(legData) {
+async function addLeg(legData) {
+    // S21-D: Load user preferences and check constraints
+    let userPrefs = null;
+    try {
+        const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const prefsResponse = await fetch(`${API_BASE}/preferences`, { headers });
+        if (prefsResponse.ok) {
+            userPrefs = await prefsResponse.json();
+        }
+    } catch (err) {
+        // No user preferences found, using defaults
+    }
+    
+    // S21-D: Check constraints if preferences exist
+    if (userPrefs && userPrefs.constraints) {
+        // Check max_legs
+        const maxLegs = userPrefs.constraints.max_legs || 6;
+        if (legs.length >= maxLegs) {
+            showError(`Cannot add more than ${maxLegs} legs (your preference)`);
+            return;
+        }
+        
+        // Check no_unders
+        if (userPrefs.constraints.no_unders && legData.selection.toLowerCase().includes('under')) {
+            showError('Under bets disabled in your preferences');
+            return;
+        }
+        
+        // Check favorite_sports
+        const favSports = userPrefs.constraints.favorite_sports || [];
+        if (favSports.length > 0) {
+            const currentSport = protocol?.league || 'NBA';
+            if (!favSports.map(s => s.toUpperCase()).includes(currentSport.toUpperCase())) {
+                showError(`${currentSport} not in your preferred sports: ${favSports.join(', ')}`);
+                return;
+            }
+        }
+    }
+
     // Check if already exists - if so, remove it
     const existingIndex = legs.findIndex(l => {
         if (l.market !== legData.market) return false;
@@ -345,7 +479,6 @@ function addLeg(legData) {
     };
     
     legs.push(leg);
-    console.log('Leg added:', leg);
     renderLegs();
     recalculate();
     renderMarket(); // Re-render to update selected state
@@ -353,7 +486,6 @@ function addLeg(legData) {
 
 function removeLeg(index) {
     legs.splice(index, 1);
-    console.log('Leg removed, remaining:', legs.length);
     renderLegs();
     recalculate();
     renderMarket(); // Re-render to update selected state
@@ -370,6 +502,7 @@ function renderLegs() {
     const container = document.getElementById('legs-list');
     const countEl = document.getElementById('leg-count');
     const analyzeBtn = document.getElementById('analyze-btn');
+    const submitBtn = document.getElementById('submit-bet-btn');
     
     countEl.textContent = legs.length;
     
@@ -378,12 +511,24 @@ function renderLegs() {
         analyzeBtn.disabled = true;
         analyzeBtn.classList.add('bg-neon/50', 'cursor-not-allowed');
         analyzeBtn.classList.remove('bg-neon', 'cursor-pointer', 'hover:shadow-[0_0_30px_rgba(255,23,68,0.6)]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('cursor-not-allowed', 'opacity-50');
+            submitBtn.classList.remove('cursor-pointer', 'hover:bg-neon/20');
+        }
         return;
     }
 
     analyzeBtn.disabled = false;
     analyzeBtn.classList.remove('bg-neon/50', 'cursor-not-allowed');
     analyzeBtn.classList.add('bg-neon', 'cursor-pointer', 'hover:shadow-[0_0_30px_rgba(255,23,68,0.6)]');
+    
+    // Enable submit button when legs are added
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('cursor-not-allowed', 'opacity-50');
+        submitBtn.classList.add('cursor-pointer', 'hover:bg-neon/20');
+    }
 
     container.innerHTML = legs.map((leg, index) => {
         const marketColors = {
@@ -446,6 +591,18 @@ function recalculate() {
     document.getElementById('est-payout').textContent = `$${payout.toFixed(2)}`;
 }
 
+function setWager(amount) {
+    const input = document.getElementById('wager-input');
+    input.value = amount;
+    recalculate();
+    
+    // Visual feedback - brief highlight
+    input.parentElement.classList.add('border-neon');
+    setTimeout(() => {
+        input.parentElement.classList.remove('border-neon');
+    }, 300);
+}
+
 async function analyzeWithDNA() {
     if (legs.length === 0) return;
 
@@ -470,16 +627,12 @@ async function analyzeWithDNA() {
             tier: 'good',
             legs: dnaLegs
         };
-        console.log('Sending DNA request:', requestBody);
-        
         const response = await fetch('/app/evaluate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
 
-        console.log('Response status:', response.status);
-        
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Error response:', errorText);
@@ -487,7 +640,6 @@ async function analyzeWithDNA() {
         }
 
         const result = await response.json();
-        console.log('DNA response:', result);
 
         // Store result
         sessionStorage.setItem('dna_analysis_result', JSON.stringify(result));
@@ -505,16 +657,11 @@ async function analyzeWithDNA() {
 }
 
 function displayResults(data) {
-    console.log('DNA Result data:', data);
-    
     const resultsSection = document.getElementById('results-section');
     const verdictBadge = document.getElementById('verdict-badge');
     const confidenceScore = document.getElementById('confidence-score');
     const summaryText = document.getElementById('summary-text');
     const legsBreakdown = document.getElementById('legs-breakdown');
-
-    // Debug: hidden by default
-    const rawDataHtml = `<details class="mt-4"><summary class="text-xs text-gray-500 cursor-pointer">Debug</summary><pre class="text-[10px] overflow-auto bg-black/50 p-2 rounded mt-2 text-gray-400">${JSON.stringify(data, null, 2).substring(0, 1000)}</pre></details>`;
 
     // Extract verdict from DNA engine response
     // Response: { evaluation: { recommendation: { action: 'ACCEPT'|'REDUCE'|'AVOID' } } }
@@ -529,8 +676,6 @@ function displayResults(data) {
                   actionUpper === 'REDUCE' ? 'RISKY' : 
                   actionUpper === 'AVOID' ? 'PASS' : 'UNKNOWN';
     }
-    
-    console.log('Extracted verdict:', verdict, 'action:', action);
     
     // Verdict styling
     const verdictColors = {
@@ -575,13 +720,7 @@ function displayResults(data) {
     } else if (data.interpretation?.summary) {
         summary = data.interpretation.summary;
     }
-    summaryText.innerHTML = `<div class="mb-2">${summary}</div>${rawDataHtml}`;
-
-    // Render protocol risk in DNA results (if present)
-    renderProtocolRiskInResults(data);
-
-    // Sprint 2: Render explainability sections
-    renderExplainabilitySections(data);
+    summaryText.innerHTML = `<div class="mb-2">${summary}</div>`;
 
     // Legs breakdown
     const legResults = data.legs || data.leg_results || [];
@@ -590,7 +729,7 @@ function displayResults(data) {
             <h4 class="font-tanker text-sm text-gray-400 mb-3">LEG BREAKDOWN</h4>
             ${legResults.map(leg => {
                 const signal = leg.signal || leg.verdict || '—';
-                const signalColor = signal.toLowerCase().includes('good') || signal.toLowerCase().includes('pass') ? 'text-green-400' :
+                const signalColor = signal.toLowerCase().includes('good') || signal.toLowerCase().includes('pass') ? 'text-green-400' : 
                                    signal.toLowerCase().includes('risk') || signal.toLowerCase().includes('caution') ? 'text-red-400' : 'text-gray-400';
                 return `
                     <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
@@ -606,13 +745,239 @@ function displayResults(data) {
 
     // Show results section
     resultsSection.classList.remove('hidden');
-
+    
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 function closeResults() {
     document.getElementById('results-section').classList.add('hidden');
+}
+
+// S18-E + Priority 1: Submit bet to backend
+async function submitBet() {
+    if (legs.length === 0) {
+        showError('Add at least one leg to submit bet');
+        return;
+    }
+
+    const wagerInput = document.getElementById('wager-input');
+    const wager = parseInt(wagerInput.value) * 100; // Convert to cents
+
+    if (isNaN(wager) || wager <= 0) {
+        showError('Enter a valid wager amount');
+        return;
+    }
+
+    // Build input text
+    const inputText = legs.map(l => l.selection).join(' + ');
+
+    // Get DNA analysis result if available
+    const dnaResult = JSON.parse(sessionStorage.getItem('dna_analysis_result') || '{}');
+
+    // Calculate total odds
+    let totalOdds = 0;
+    legs.forEach(leg => {
+        if (leg.odds > 0) {
+            totalOdds += leg.odds;
+        } else {
+            totalOdds -= 10000 / leg.odds; // Convert negative odds
+        }
+    });
+
+    // Calculate payout
+    let potentialPayout = wager;
+    if (totalOdds > 0) {
+        potentialPayout = Math.floor(wager * (totalOdds / 100 + 1));
+    } else {
+        potentialPayout = Math.floor(wager * (100 / Math.abs(totalOdds) + 1));
+    }
+
+    // Get auth token
+    const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+    if (!token) {
+        showError('Please log in to submit bet');
+        setTimeout(() => window.location.href = '/app?screen=auth', 2000);
+        return;
+    }
+
+    const submitBtn = document.getElementById('submit-bet-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>SUBMITTING...</span>';
+    }
+
+    try {
+        const requestBody = {
+            input_text: inputText,
+            legs: legs.map(l => ({
+                entity: l.player || l.team || 'Unknown',
+                market: l.market,
+                value: l.line ? String(l.line) : null,
+                odds: l.odds,
+                selection: l.selection
+            })),
+            wager: wager,
+            total_odds: Math.round(totalOdds),
+            potential_payout: potentialPayout,
+            verdict: dnaResult.verdict,
+            confidence: dnaResult.confidence
+        };
+
+        const response = await fetch('/api/bets/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess(`Bet submitted! ID: ${result.bet_id}`);
+            // Clear legs after successful submission
+            legs = [];
+            renderLegs();
+            recalculate();
+            closeResults();
+            // Redirect to history after 2 seconds
+            setTimeout(() => window.location.href = '/app?screen=history', 2000);
+        } else {
+            showError(result.error || 'Failed to submit bet');
+        }
+    } catch (err) {
+        console.error('Bet submission failed:', err);
+        showError('Network error. Please try again.');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>SUBMIT BET</span>';
+        }
+    }
+}
+
+function renderQuarters() {
+    const [home, away] = protocol.teams;
+    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+    
+    // Use main game lines as fallback for quarters (simplified)
+    const spread = markets.spread || { home: { line: '-4.5', odds: -110 }, away: { line: '+4.5', odds: -110 } };
+    const total = markets.total || { over: { line: '220.5', odds: -110 }, under: { line: '220.5', odds: -110 } };
+    
+    let html = '<div class="space-y-4">';
+    
+    quarters.forEach(q => {
+        html += `
+            <div class="bg-card rounded-xl p-4 border border-white/5">
+                <h4 class="font-tanker text-lg mb-3 text-neon">${q} LINES</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="text-xs text-gray-500 mb-2">${home.toUpperCase()}</p>
+                        <div class="flex gap-2">
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_spread', home + ' ' + spread.home.line + ' ' + q) ? 'leg-selected' : ''}">
+                                ${spread.home.line} (${spread.home.odds})
+                            </button>
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_total', 'Over ' + total.over.line + ' ' + q) ? 'leg-selected' : ''}">
+                                O ${total.over.line}
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-2">${away.toUpperCase()}</p>
+                        <div class="flex gap-2">
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_spread', away + ' ' + spread.away.line + ' ' + q) ? 'leg-selected' : ''}">
+                                ${spread.away.line} (${spread.away.odds})
+                            </button>
+                            <button onclick='addLeg({market:"${q.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${q}"})' 
+                                class="flex-1 h-10 rounded bg-white/5 border border-white/10 text-xs hover:bg-white/10 ${isLegSelected(q.toLowerCase() + '_total', 'Under ' + total.under.line + ' ' + q) ? 'leg-selected' : ''}">
+                                U ${total.under.line}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+function renderHalves() {
+    const [home, away] = protocol.teams;
+    const halves = ['1st Half', '2nd Half'];
+    
+    // Use main game lines as fallback for halves (simplified)
+    const spread = markets.spread || { home: { line: '-4.5', odds: -110 }, away: { line: '+4.5', odds: -110 } };
+    const total = markets.total || { over: { line: '220.5', odds: -110 }, under: { line: '220.5', odds: -110 } };
+    const moneyline = markets.moneyline || { home: { odds: -150 }, away: { odds: +130 } };
+    
+    let html = '<div class="space-y-4">';
+    
+    halves.forEach((half, idx) => {
+        const halfCode = idx === 0 ? '1H' : '2H';
+        html += `
+            <div class="bg-card rounded-xl p-4 border border-white/5">
+                <h4 class="font-tanker text-lg mb-3 text-neon">${half.toUpperCase()}</h4>
+                <div class="grid grid-cols-7 gap-2 mb-3 text-[10px] font-bold text-gray-500 uppercase text-center">
+                    <div class="col-span-2 text-left pl-2">Team</div>
+                    <div class="col-span-2">Spread</div>
+                    <div class="col-span-2">Total</div>
+                    <div class="col-span-1">ML</div>
+                </div>
+                <div class="grid grid-cols-7 gap-2 mb-2">
+                    <div class="col-span-2 flex items-center">
+                        <span class="font-tanker text-sm">${home.toUpperCase()}</span>
+                    </div>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${home}",line:"${spread.home.line}",odds:${spread.home.odds},selection:"${home} ${spread.home.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_spread', home + ' ' + spread.home.line + ' ' + halfCode) ? 'leg-selected' : ''}">
+                        ${spread.home.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"over",line:"${total.over.line}",odds:${total.over.odds},selection:"Over ${total.over.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_total', 'Over ' + total.over.line + ' ' + halfCode) ? 'leg-selected' : ''}">
+                        O ${total.over.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${home}",odds:${moneyline.home.odds},selection:"${home} ML ${halfCode}"})'
+                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_moneyline', home + ' ML ' + halfCode) ? 'leg-selected' : ''}">
+                        ${moneyline.home.odds}
+                    </button>
+                </div>
+                <div class="grid grid-cols-7 gap-2">
+                    <div class="col-span-2 flex items-center">
+                        <span class="font-tanker text-sm text-gray-400">${away.toUpperCase()}</span>
+                    </div>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_spread",team:"${away}",line:"${spread.away.line}",odds:${spread.away.odds},selection:"${away} ${spread.away.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_spread', away + ' ' + spread.away.line + ' ' + halfCode) ? 'leg-selected' : ''}">
+                        ${spread.away.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_total",side:"under",line:"${total.under.line}",odds:${total.under.odds},selection:"Under ${total.under.line} ${halfCode}"})'
+                        class="col-span-2 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_total', 'Under ' + total.under.line + ' ' + halfCode) ? 'leg-selected' : ''}">
+                        U ${total.under.line}
+                    </button>
+                    <button onclick='addLeg({market:"${halfCode.toLowerCase()}_moneyline",team:"${away}",odds:${moneyline.away.odds},selection:"${away} ML ${halfCode}"})'
+                        class="col-span-1 h-10 rounded bg-white/5 border border-white/10 hover:bg-white/10 text-xs ${isLegSelected(halfCode.toLowerCase() + '_moneyline', away + ' ML ' + halfCode) ? 'leg-selected' : ''}">
+                        ${moneyline.away.odds}
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-500/90 text-white px-6 py-3 rounded-lg z-50 font-bold';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
 }
 
 function showError(message) {
@@ -630,319 +995,4 @@ function navigateTo(screen) {
 
 function goBack() {
     window.history.back();
-}
-
-// =============================================================================
-// Sprint 2: Explainability Section Rendering
-// =============================================================================
-
-function renderExplainabilitySections(data) {
-    const container = document.getElementById('explainability-panels');
-    if (!container) return;
-
-    const sections = data.explainabilitySections;
-    if (!sections) {
-        container.innerHTML = '';
-        return;
-    }
-
-    let html = '<h4 class="font-tanker text-sm text-gray-400 mb-3 tracking-wider">WHY THIS GRADE</h4>';
-
-    // Structural Risk
-    const sr = sections.structuralRisk;
-    if (sr) {
-        html += renderExplainPanel({
-            icon: 'lucide:shield',
-            title: 'STRUCTURAL RISK',
-            headline: sr.headline,
-            level: sr.level,
-            summary: sr.summary,
-            detail: sr.inductorDetail ? formatInductorDetail(sr.inductorDetail) : null,
-            recommendation: sr.recommendation,
-            recommendationReason: sr.recommendationReason,
-            primaryFailureType: sr.primaryFailureType,
-            primaryFailureSeverity: sr.primaryFailureSeverity,
-        });
-    }
-
-    // Correlation
-    const corr = sections.correlation;
-    if (corr) {
-        html += renderExplainPanel({
-            icon: 'lucide:link',
-            title: 'CORRELATION',
-            headline: corr.headline,
-            level: corr.count > 0 ? (corr.penalty > 10 ? 'critical' : 'loaded') : 'stable',
-            summary: corr.summary,
-            detail: corr.details ? formatCorrelationDetails(corr.details, corr.multiplier) : null,
-            penalty: corr.penalty,
-        });
-    }
-
-    // Fragility Breakdown
-    const frag = sections.fragilityBreakdown;
-    if (frag) {
-        html += renderExplainPanel({
-            icon: 'lucide:activity',
-            title: 'FRAGILITY',
-            headline: frag.headline,
-            level: fragilityToLevel(frag.finalFragility),
-            summary: frag.summary,
-            detail: frag.blocks ? formatBlockDetails(frag.blocks) : null,
-            fragility: frag.finalFragility,
-        });
-    }
-
-    // Context Snapshot
-    const ctx = sections.contextSnapshot;
-    if (ctx) {
-        html += renderExplainPanel({
-            icon: 'lucide:cloud',
-            title: 'CONTEXT',
-            headline: ctx.headline,
-            level: ctx.hasContext ? 'loaded' : 'stable',
-            summary: ctx.summary,
-            detail: ctx.modifiers ? formatContextModifiers(ctx.modifiers) : null,
-        });
-    }
-
-    container.innerHTML = html;
-}
-
-function renderExplainPanel(opts) {
-    const levelColors = {
-        stable: { border: 'border-green-500/30', badge: 'bg-green-500/20 text-green-400', dot: 'bg-green-500' },
-        loaded: { border: 'border-yellow-500/30', badge: 'bg-yellow-500/20 text-yellow-400', dot: 'bg-yellow-500' },
-        tense: { border: 'border-orange-500/30', badge: 'bg-orange-500/20 text-orange-400', dot: 'bg-orange-500' },
-        critical: { border: 'border-red-500/30', badge: 'bg-red-500/20 text-red-400', dot: 'bg-red-500' },
-    };
-    const colors = levelColors[opts.level] || levelColors.stable;
-
-    let content = '';
-
-    // Summary (BETTER + BEST tiers)
-    if (opts.summary) {
-        content += `<p class="text-sm text-gray-300 mt-3">${opts.summary}</p>`;
-    }
-
-    // Recommendation (BETTER + BEST)
-    if (opts.recommendation) {
-        const recColors = { accept: 'text-green-400', reduce: 'text-yellow-400', avoid: 'text-red-400' };
-        const recColor = recColors[opts.recommendation] || 'text-gray-400';
-        content += `<div class="mt-2 flex items-center gap-2">
-            <span class="text-xs text-gray-500 uppercase">Action:</span>
-            <span class="text-xs font-bold ${recColor} uppercase">${opts.recommendation}</span>
-        </div>`;
-        if (opts.recommendationReason) {
-            content += `<p class="text-xs text-gray-400 mt-1">${opts.recommendationReason}</p>`;
-        }
-    }
-
-    // Primary failure (BEST)
-    if (opts.primaryFailureType) {
-        const sevColor = opts.primaryFailureSeverity === 'high' ? 'text-red-400' :
-                         opts.primaryFailureSeverity === 'medium' ? 'text-yellow-400' : 'text-gray-400';
-        content += `<div class="mt-2 flex items-center gap-2">
-            <span class="text-xs text-gray-500">Primary risk:</span>
-            <span class="text-xs font-bold ${sevColor}">${opts.primaryFailureType.replace(/_/g, ' ')}</span>
-            <span class="text-[10px] ${sevColor} uppercase">(${opts.primaryFailureSeverity})</span>
-        </div>`;
-    }
-
-    // Penalty badge
-    let penaltyBadge = '';
-    if (opts.penalty !== undefined && opts.penalty > 0) {
-        penaltyBadge = `<span class="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">+${opts.penalty.toFixed(1)}pt</span>`;
-    }
-
-    // Fragility score
-    let fragBadge = '';
-    if (opts.fragility !== undefined) {
-        fragBadge = `<span class="text-[10px] font-bold ${colors.badge} px-1.5 py-0.5 rounded">${opts.fragility.toFixed(1)}/100</span>`;
-    }
-
-    // Detail section (BEST tier - collapsible)
-    let detailHtml = '';
-    if (opts.detail) {
-        detailHtml = `<details class="mt-3">
-            <summary class="text-[10px] text-gray-500 cursor-pointer uppercase tracking-wider hover:text-gray-300 transition-colors">Show Detail</summary>
-            <div class="mt-2 space-y-1">${opts.detail}</div>
-        </details>`;
-    }
-
-    return `
-        <div class="bg-white/[0.02] rounded-xl p-4 border ${colors.border} relative overflow-hidden">
-            <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-2">
-                    <div class="w-1.5 h-1.5 rounded-full ${colors.dot}"></div>
-                    <iconify-icon icon="${opts.icon}" class="text-sm text-gray-400"></iconify-icon>
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${opts.title}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    ${penaltyBadge}
-                    ${fragBadge}
-                </div>
-            </div>
-            <div class="font-tanker text-lg tracking-wide text-white">${opts.headline}</div>
-            ${content}
-            ${detailHtml}
-        </div>
-    `;
-}
-
-function formatInductorDetail(detail) {
-    return `
-        <div class="grid grid-cols-2 gap-2 text-xs">
-            <div class="bg-white/5 rounded p-2">
-                <div class="text-gray-500 text-[10px] uppercase">Final Fragility</div>
-                <div class="font-bold text-white">${detail.finalFragility.toFixed(1)}</div>
-            </div>
-            <div class="bg-white/5 rounded p-2">
-                <div class="text-gray-500 text-[10px] uppercase">Leg Penalty</div>
-                <div class="font-bold text-white">+${detail.legPenalty.toFixed(1)}pt</div>
-            </div>
-            <div class="bg-white/5 rounded p-2">
-                <div class="text-gray-500 text-[10px] uppercase">Corr. Penalty</div>
-                <div class="font-bold text-white">+${detail.correlationPenalty.toFixed(1)}pt</div>
-            </div>
-            <div class="bg-white/5 rounded p-2">
-                <div class="text-gray-500 text-[10px] uppercase">Corr. Multiplier</div>
-                <div class="font-bold text-white">${detail.correlationMultiplier.toFixed(2)}x</div>
-            </div>
-        </div>
-    `;
-}
-
-function formatCorrelationDetails(details, multiplier) {
-    let html = details.map(d => `
-        <div class="flex justify-between items-center p-2 bg-white/5 rounded text-xs">
-            <span class="text-gray-300">${d.type.replace(/_/g, ' ')}</span>
-            <span class="font-bold text-red-400">+${d.penalty.toFixed(1)}pt</span>
-        </div>
-    `).join('');
-    if (multiplier) {
-        html += `<div class="text-[10px] text-gray-500 mt-1">Multiplier: ${multiplier.toFixed(2)}x</div>`;
-    }
-    return html;
-}
-
-function formatBlockDetails(blocks) {
-    return blocks.map(b => `
-        <div class="flex justify-between items-center p-2 bg-white/5 rounded text-xs">
-            <div class="flex-1 min-w-0">
-                <div class="text-gray-300 truncate">${b.selection}</div>
-                <div class="text-[10px] text-gray-500 uppercase">${b.betType.replace(/_/g, ' ')}</div>
-            </div>
-            <div class="text-right shrink-0 ml-3">
-                <div class="text-gray-400">base: ${b.baseFragility.toFixed(2)}</div>
-                <div class="font-bold text-white">eff: ${b.effectiveFragility.toFixed(2)}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function formatContextModifiers(modifiers) {
-    return modifiers.map(m => `
-        <div class="flex justify-between items-center p-2 bg-white/5 rounded text-xs">
-            <div>
-                <span class="text-gray-300 uppercase font-bold">${m.type}</span>
-                <span class="text-gray-500 ml-2">${m.blockSelection}</span>
-            </div>
-            <div class="text-right">
-                <span class="font-bold ${m.delta > 0 ? 'text-red-400' : 'text-green-400'}">
-                    ${m.delta > 0 ? '+' : ''}${m.delta.toFixed(1)}pt
-                </span>
-            </div>
-        </div>
-    `).join('');
-}
-
-function fragilityToLevel(fragility) {
-    if (fragility <= 15) return 'stable';
-    if (fragility <= 35) return 'loaded';
-    if (fragility <= 60) return 'tense';
-    return 'critical';
-}
-
-// =============================================================================
-// Protocol Risk in DNA Results
-// =============================================================================
-
-function renderProtocolRiskInResults(data) {
-    const container = document.getElementById('explainability-panels');
-    if (!container) return;
-
-    const protocolRisk = data.protocolRisk || data.protocol_risk;
-    if (!protocolRisk || !protocolRisk.triggeredCount) return;
-
-    const categoryIcons = {
-        physical: 'lucide:battery-low',
-        tactical: 'lucide:swords',
-        volatility: 'lucide:activity',
-        psychological: 'lucide:brain',
-        market: 'lucide:trending-up',
-    };
-
-    // Build category risk summary
-    const categoryRisks = protocolRisk.categoryRisks || {};
-    const activeCats = Object.entries(categoryRisks)
-        .filter(([_, risk]) => risk !== 'none')
-        .sort((a, b) => {
-            const order = { critical: 0, high: 1, moderate: 2, low: 3 };
-            return (order[a[1]] || 4) - (order[b[1]] || 4);
-        });
-
-    const riskColors = {
-        low: 'text-green-400',
-        moderate: 'text-yellow-400',
-        high: 'text-red-400',
-        critical: 'text-red-300',
-    };
-
-    let catHtml = activeCats.map(([cat, risk]) => {
-        const icon = categoryIcons[cat] || 'lucide:info';
-        const color = riskColors[risk] || 'text-gray-400';
-        return `
-            <div class="flex items-center gap-2 p-2 bg-white/5 rounded text-xs">
-                <iconify-icon icon="${icon}" class="${color}"></iconify-icon>
-                <span class="text-gray-300 capitalize">${cat}</span>
-                <span class="font-bold ${color} ml-auto uppercase text-[10px]">${risk}</span>
-            </div>
-        `;
-    }).join('');
-
-    // Dual evaluation comparison (if present)
-    let dualHtml = '';
-    const dual = protocolRisk.dual_evaluation || protocolRisk.dualEvaluation;
-    if (dual && dual.adjusted) {
-        const impact = dual.adjusted.protocol_impact || dual.adjusted.protocolImpact || 0;
-        const modifier = dual.adjusted.stability_modifier || dual.adjusted.stabilityModifier || 1;
-        dualHtml = `
-            <div class="mt-3 pt-3 border-t border-white/5">
-                <div class="text-[10px] text-gray-500 uppercase mb-2">DNA + Protocol Comparison</div>
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="bg-white/5 rounded p-2">
-                        <div class="text-[10px] text-gray-500">Stability</div>
-                        <div class="font-bold ${modifier < 0.85 ? 'text-red-400' : modifier < 0.95 ? 'text-yellow-400' : 'text-green-400'}">${(modifier * 100).toFixed(0)}%</div>
-                    </div>
-                    <div class="bg-white/5 rounded p-2">
-                        <div class="text-[10px] text-gray-500">Protocol Impact</div>
-                        <div class="font-bold text-red-400">-${(impact * 100).toFixed(1)}%</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // Prepend protocol panel before other explainability sections
-    const protocolPanel = renderExplainPanel({
-        icon: 'lucide:shield-alert',
-        title: 'PROTOCOL INTELLIGENCE',
-        headline: protocolRisk.riskSummary ? protocolRisk.riskSummary.split('.')[0] : 'Contextual Risk Detected',
-        level: protocolRisk.fragilityScore >= 0.5 ? 'critical' : protocolRisk.fragilityScore >= 0.3 ? 'tense' : 'loaded',
-        summary: protocolRisk.riskSummary,
-        detail: catHtml + dualHtml,
-    });
-
-    container.insertAdjacentHTML('afterbegin', protocolPanel);
 }

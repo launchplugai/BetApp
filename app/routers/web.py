@@ -89,10 +89,10 @@ rate_limiter = get_rate_limiter()
 # Routes
 # =============================================================================
 
-@router.get("/", response_class=RedirectResponse)
-async def redirect_root():
-    """Redirect / to /app"""
-    return RedirectResponse(url="/app")
+@router.get("/", response_class=HTMLResponse)
+async def landing_page(request: Request):
+    """Serve landing page at root"""
+    return templates.TemplateResponse("screens/landing.html", {"request": request})
 
 
 @router.get("/ui2", response_class=RedirectResponse)
@@ -104,7 +104,11 @@ async def redirect_ui2():
 @router.get("/app", response_class=HTMLResponse)
 async def canonical_app(request: Request, screen: str = "dashboard"):
     """
-    S16: Neon UI - Complete redesign with dark theme.
+    S-PROT-4B: Dashboard-first routing - dashboard is primary surface.
+    Navigation priority: Dashboard → Protocols → Builder
+    
+    Core Design Rule: Dashboard = orchestration surface
+    Builder = execution tool (secondary access)
     """
     from fastapi.responses import HTMLResponse
     from pathlib import Path
@@ -114,7 +118,10 @@ async def canonical_app(request: Request, screen: str = "dashboard"):
         "dashboard": "screens/dashboard.html",
         "browse": "screens/browse.html",
         "builder": "screens/builder.html",
-        "auth": "screens/auth.html"
+        "auth": "screens/auth.html",
+        "history": "screens/history.html",
+        "protocols": "screens/protocols.html",
+        "protocol": "screens/protocol.html"
     }
     
     template_name = screens.get(screen, "screens/dashboard.html")
@@ -193,3 +200,11 @@ async def redirect_new(screen: str = "dashboard"):
     """Redirect old /new routes to /app"""
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"/app?screen={screen}")
+
+
+@router.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard():
+    """Admin control panel."""
+    from pathlib import Path
+    template_path = Path(__file__).parent.parent / "templates" / "admin" / "dashboard.html"
+    return HTMLResponse(content=template_path.read_text())

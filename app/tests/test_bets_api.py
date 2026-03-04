@@ -1,0 +1,279 @@
+"""Tests for bets history API (S18-D)."""
+
+import pytest
+from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
+
+from app.main import app
+from app.models import User, Bet, get_session, init_db
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
+
+
+@pytest.fixture
+def mock_user():
+    """Create mock user for testing."""
+    user = User(
+        id="user_test123",
+        email="test@example.com",
+        password_hash="hashed_password",
+        name="Test User",
+        tier="GOOD"
+    )
+    return user
+
+
+@pytest.fixture
+def mock_token():
+    """Mock JWT token."""
+    return "mock_jwt_token_12345"
+
+
+@pytest.fixture
+def db_session():
+    """Create test database session."""
+    init_db()
+    session = get_session()
+    yield session
+    session.close()
+
+
+class TestBetHistoryEndpoint:
+    """Tests for GET /api/bets/history endpoint."""
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    def test_history_requires_auth(self, mock_get_user, client):
+        """History endpoint requires authentication."""
+        mock_get_user.return_value = None
+        
+        response = client.get(
+            "/api/bets/history",
+            headers={"Authorization": "Bearer invalid_token"}
+        )
+        
+        assert response.status_code == 401
+        assert "Invalid or expired token" in response.json()["detail"]
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_history_returns_empty_for_new_user(self, mock_get_session, mock_get_user, client, mock_user):
+        """History returns empty list for user with no bets."""
+        mock_get_user.return_value = mock_user
+        
+        # Mock database session
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.count.return_value = 0
+        mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = []
+        mock_db.query.return_value = mock_query
+        mock_get_session.return_value = mock_db
+        
+        response = client.get(
+            "/api/bets/history",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["bets"] == []
+        assert data["total"] == 0
+        assert data["page"] == 1
+        assert data["per_page"] == 10
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_history_returns_bets_with_pagination(self, mock_get_session, mock_get_user, client, mock_user):
+        """History returns paginated bets."""
+        mock_get_user.return_value = mock_user
+        
+        # Mock bet
+        mock_bet = Bet(
+            id="bet_123",
+            user_id=mock_user.id,
+            input_text="Lakers ML + Warriors spread",
+            legs=[
+                {"entity": "Lakers", "market": "moneyline", "value": None, "odds": -150},
+                {"entity": "Warriors", "market": "spread", "value": "-5.5", "odds": -110}
+            ],
+            wager=10000,  # $100.00 in cents
+            total_odds=275,
+            potential_payout=27500,
+            status="pending",
+            verdict="PROCEED WITH CAUTION",
+            confidence=65
+        )
+        
+        # Mock database session
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.count.return_value = 1
+        mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = [mock_bet]
+        mock_db.query.return_value = mock_query
+        mock_get_session.return_value = mock_db
+        
+        response = client.get(
+            "/api/bets/history",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["bets"]) == 1
+        assert data["bets"][0]["id"] == "bet_123"
+        assert data["bets"][0]["status"] == "pending"
+        assert data["bets"][0]["confidence"] == 65
+        assert data["total"] == 1
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    def test_history_supports_status_filter(self, mock_get_user, client, mock_user):
+        """History endpoint accepts status filter."""
+        mock_get_user.return_value = mock_user
+        
+        response = client.get(
+            "/api/bets/history?status=won",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        # Should not error, even if no bets match
+        assert response.status_code == 200
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    def test_history_supports_pagination_params(self, mock_get_user, client, mock_user):
+        """History endpoint accepts page and per_page params."""
+        mock_get_user.return_value = mock_user
+        
+        response = client.get(
+            "/api/bets/history?page=2&per_page=5",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 2
+        assert data["per_page"] == 5
+
+
+class TestBetDetailEndpoint:
+    """Tests for GET /api/bets/{bet_id} endpoint."""
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    def test_bet_detail_requires_auth(self, mock_get_user, client):
+        """Bet detail endpoint requires authentication."""
+        mock_get_user.return_value = None
+        
+        response = client.get(
+            "/api/bets/bet_123",
+            headers={"Authorization": "Bearer invalid_token"}
+        )
+        
+        assert response.status_code == 401
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_bet_detail_returns_404_for_nonexistent(self, mock_get_session, mock_get_user, client, mock_user):
+        """Bet detail returns 404 for non-existent bet."""
+        mock_get_user.return_value = mock_user
+        
+        # Mock database session returning None
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.first.return_value = None
+        mock_db.query.return_value = mock_query
+        mock_get_session.return_value = mock_db
+        
+        response = client.get(
+            "/api/bets/nonexistent_bet",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_bet_detail_returns_bet_data(self, mock_get_session, mock_get_user, client, mock_user):
+        """Bet detail returns full bet data."""
+        mock_get_user.return_value = mock_user
+        
+        # Mock bet
+        mock_bet = Bet(
+            id="bet_123",
+            user_id=mock_user.id,
+            input_text="Lakers ML",
+            legs=[{"entity": "Lakers", "market": "moneyline"}],
+            wager=5000,
+            status="won",
+            actual_payout=9500
+        )
+        
+        # Mock database session
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.first.return_value = mock_bet
+        mock_db.query.return_value = mock_query
+        mock_get_session.return_value = mock_db
+        
+        response = client.get(
+            "/api/bets/bet_123",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "bet_123"
+        assert data["status"] == "won"
+        assert data["wager"] == 5000
+        assert data["actual_payout"] == 9500
+
+
+class TestBetHistoryResponseContract:
+    """Tests for API response contract compliance."""
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_history_response_schema(self, mock_get_session, mock_get_user, client, mock_user):
+        """History response matches expected schema."""
+        mock_get_user.return_value = mock_user
+        
+        # Mock database
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.count.return_value = 0
+        mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = []
+        mock_db.query.return_value = mock_query
+        mock_get_session.return_value = mock_db
+        
+        response = client.get(
+            "/api/bets/history",
+            headers={"Authorization": "Bearer valid_token"}
+        )
+        
+        data = response.json()
+        
+        # Validate schema
+        assert "bets" in data
+        assert "total" in data
+        assert "page" in data
+        assert "per_page" in data
+        assert isinstance(data["bets"], list)
+        assert isinstance(data["total"], int)
+        assert isinstance(data["page"], int)
+        assert isinstance(data["per_page"], int)

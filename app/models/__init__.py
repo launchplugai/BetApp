@@ -20,6 +20,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
     tier = Column(String, default="GOOD")  # GOOD, BETTER, BEST
+    balance = Column(Integer, default=1000000)  # Starting balance: $10,000 in cents
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
     preferences = Column(JSON, default=dict)
@@ -30,6 +31,7 @@ class User(Base):
             "email": self.email,
             "name": self.name,
             "tier": self.tier,
+            "balance": self.balance or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
             "preferences": self.preferences or {}
@@ -57,6 +59,12 @@ class Bet(Base):
     confidence = Column(Integer)  # 0-100
     fragility = Column(Integer)   # 0-100
     
+    # S21-E: History Receipts - DNA snapshot tracking
+    user_dna_snapshot_id = Column(String, nullable=True, index=True)
+    applied_constraints = Column(JSON, default=list)  # List of constraints that were applied
+    blocked_actions = Column(JSON, default=list)  # List of blocked actions with reasons
+    risk_profile_at_bet = Column(String, nullable=True)  # Risk profile used at bet time
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     settled_at = Column(DateTime, nullable=True)
     
@@ -74,8 +82,98 @@ class Bet(Base):
             "verdict": self.verdict,
             "confidence": self.confidence,
             "fragility": self.fragility,
+            "user_dna_snapshot_id": self.user_dna_snapshot_id,
+            "applied_constraints": self.applied_constraints,
+            "blocked_actions": self.blocked_actions,
+            "risk_profile_at_bet": self.risk_profile_at_bet,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "settled_at": self.settled_at.isoformat() if self.settled_at else None
+        }
+
+
+class Transaction(Base):
+    """Transaction log for balance changes (wagers, payouts, refunds)."""
+    __tablename__ = "transactions"
+    
+    id = Column(String, primary_key=True, default=lambda: f"txn_{uuid.uuid4().hex[:8]}")
+    user_id = Column(String, nullable=False, index=True)
+    bet_id = Column(String, nullable=True, index=True)  # Optional - null for non-bet transactions
+    
+    type = Column(String, nullable=False)  # wager, payout, refund
+    amount = Column(Integer, nullable=False)  # Always positive - context determines direction
+    balance_before = Column(Integer, nullable=False)
+    balance_after = Column(Integer, nullable=False)
+    
+    description = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "bet_id": self.bet_id,
+            "type": self.type,
+            "amount": self.amount,
+            "balance_before": self.balance_before,
+            "balance_after": self.balance_after,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class RefreshToken(Base):
+    """Refresh tokens for session management."""
+    __tablename__ = "refresh_tokens"
+    
+    id = Column(String, primary_key=True, default=lambda: f"rt_{uuid.uuid4().hex[:8]}")
+    token_hash = Column(String, nullable=False, index=True)  # SHA256 hash of token
+    user_id = Column(String, nullable=False, index=True)
+    
+    # Session metadata
+    device_info = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    last_used_at = Column(DateTime, nullable=True)
+    
+    # Status
+    is_revoked = Column(Integer, default=0)  # 0 = active, 1 = revoked
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "device_info": self.device_info,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "is_revoked": bool(self.is_revoked)
+        }
+
+
+class TokenBlacklist(Base):
+    """Blacklisted access tokens (for logout)."""
+    __tablename__ = "token_blacklist"
+    
+    id = Column(String, primary_key=True, default=lambda: f"bl_{uuid.uuid4().hex[:8]}")
+    token_jti = Column(String, nullable=False, index=True, unique=True)  # JWT ID
+    user_id = Column(String, nullable=False, index=True)
+    
+    # Blacklist metadata
+    blacklisted_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)  # When token naturally expires
+    reason = Column(String, default="logout")  # logout, revoke, etc.
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "token_jti": self.token_jti,
+            "user_id": self.user_id,
+            "blacklisted_at": self.blacklisted_at.isoformat() if self.blacklisted_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "reason": self.reason
         }
 
 
@@ -107,3 +205,13 @@ def get_session():
 def init_db():
     """Initialize database tables."""
     Base.metadata.create_all(bind=get_engine())
+
+
+# S20: Export notification models
+from app.models.notification_event import NotificationEvent
+from app.models.eligible_opportunity import EligibleOpportunity
+from app.models.user_preferences import UserPreferences
+from app.models.notification import Notification
+from app.models.notification_preferences import NotificationPreferences
+from app.models.user_device import UserDevice
+from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters, reset_telemetry_counters

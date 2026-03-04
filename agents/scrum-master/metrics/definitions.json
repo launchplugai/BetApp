@@ -1,0 +1,42 @@
+{
+  "metric_definitions": {
+    "tasks_completed": {
+      "description": "Tasks marked complete per sprint",
+      "target": "8-12",
+      "type": "count"
+    },
+    "escalation_rate": {
+      "description": "Percentage of tasks requiring human escalation",
+      "target": "< 10%",
+      "type": "percentage"
+    },
+    "test_pass_rate": {
+      "description": "Percentage of tests passing in CI",
+      "target": "> 95%",
+      "type": "percentage"
+    },
+    "days_between_decisions": {
+      "description": "Average days between required human decisions",
+      "target": "> 3",
+      "type": "average"
+    },
+    "autonomy_score": {
+      "description": "Self-calculated score of decision independence (0-100)",
+      "target": "> 80",
+      "type": "score"
+    },
+    "sprint_velocity": {
+      "description": "Story points completed per sprint",
+      "target": "TBD",
+      "type": "count"
+    }
+  },
+  "sprints": {},
+  "daily": {},
+  "aggregated": {
+    "total_tasks_completed": 0,
+    "total_escalations": 0,
+    "avg_escalation_rate": 0,
+    "current_autonomy_score": 0
+  }
+}

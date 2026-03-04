@@ -1,0 +1,41 @@
+{
+  "checkpoint_id": "tess-marching-orders-2026-02-22",
+  "agent": "tess",
+  "manager": "marvin",
+  "timestamp": "2026-02-22T21:25:00Z",
+  "orders": "FIX THE FAILURES",
+  "tasks": [
+    {
+      "id": 1,
+      "task": "Fix dna-matrix test import errors (PYTHONPATH)",
+      "status": "assigned",
+      "due": "2026-02-22T23:00:00Z",
+      "priority": "high"
+    },
+    {
+      "id": 2,
+      "task": "Categorize 127 test failures (bug vs test issue)",
+      "status": "assigned",
+      "due": "2026-02-23T09:00:00Z"
+    },
+    {
+      "id": 3,
+      "task": "Fix critical path failures (auth, bets, payments)",
+      "status": "pending",
+      "depends_on": 2
+    },
+    {
+      "id": 4,
+      "task": "Reach 95% pass rate",
+      "status": "target",
+      "due": "2026-02-24T18:00:00Z"
+    },
+    {
+      "id": 5,
+      "task": "Add degraded mode verification tests",
+      "status": "backlog"
+    }
+  ],
+  "next_checkin": "2026-02-22T22:00:00Z",
+  "status": "active"
+}

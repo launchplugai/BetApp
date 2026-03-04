@@ -23,7 +23,9 @@
       overflow-x: hidden;
     }
 
-    .font-tanker { font-family: 'Tanker', sans-serif; }
+    .font-tanker {
+      font-family: 'Tanker', sans-serif;
+    }
 
     .text-neon-red {
       color: var(--neon-red);
@@ -46,7 +48,7 @@
     }
 
     .grid-bg {
-      background-image:
+      background-image: 
         linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
       background-size: 40px 40px;
@@ -58,53 +60,69 @@
       box-shadow: 0 0 15px rgba(255, 23, 68, 0.3), inset 0 0 10px rgba(255, 23, 68, 0.1);
     }
 
-    .sport-chip-active .sport-logo { filter: brightness(1.2) drop-shadow(0 0 6px rgba(255, 23, 68, 0.6)); }
-    .sport-chip-active .sport-icon { color: var(--neon-red); filter: drop-shadow(0 0 5px rgba(255, 23, 68, 0.8)); }
-    .sport-chip-active .sport-label { color: white; }
+    .sport-chip-active .sport-icon {
+      color: var(--neon-red);
+      filter: drop-shadow(0 0 5px rgba(255, 23, 68, 0.8));
+    }
 
-    .loading-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .sport-chip-active .sport-label {
+      color: white;
+    }
 
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .loading-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
 
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
+    /* Hide scrollbar */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Live indicator - blinking red light */
+    @keyframes blink-red {
+      0%, 100% { opacity: 1; box-shadow: 0 0 10px #ff1744, 0 0 20px #ff1744; }
+      50% { opacity: 0.6; box-shadow: 0 0 5px #ff1744, 0 0 10px #ff1744; }
+    }
+    .live-indicator {
+      animation: blink-red 1s ease-in-out infinite;
+    }
+
+    /* Team logo styling */
     .team-logo {
       width: 48px;
       height: 48px;
       object-fit: contain;
-      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+      filter: drop-shadow(0 0 4px rgba(255,255,255,0.1));
     }
 
-    .team-logo-sm {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
+    /* Game time badge */
+    .game-time {
+      background: linear-gradient(135deg, rgba(255,23,68,0.15), rgba(255,23,68,0.05));
+      border: 1px solid rgba(255,23,68,0.3);
     }
-
-    .league-logo {
-      width: 24px;
-      height: 24px;
-      object-fit: contain;
-      opacity: 0.7;
-    }
-
-    .source-badge {
-      font-size: 9px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    .source-live { background: rgba(0, 200, 83, 0.15); color: #00c853; border: 1px solid rgba(0, 200, 83, 0.3); }
-    .source-mock { background: rgba(255, 255, 255, 0.05); color: #666; border: 1px solid rgba(255, 255, 255, 0.1); }
   </style>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          colors: { 'neon-red': '#ff1744', 'dark-bg': '#050505', 'card-bg': '#0a0a0a' },
-          fontFamily: { tanker: ['Tanker', 'sans-serif'], satoshi: ['Satoshi', 'sans-serif'] }
+          colors: {
+            'neon-red': '#ff1744',
+            'dark-bg': '#050505',
+            'card-bg': '#0a0a0a',
+          },
+          fontFamily: {
+            tanker: ['Tanker', 'sans-serif'],
+            satoshi: ['Satoshi', 'sans-serif'],
+          }
         }
       }
     }
@@ -112,6 +130,7 @@
 </head>
 <body>
   <div class="w-full h-screen flex flex-col relative overflow-hidden">
+    <!-- Background Effects -->
     <div class="absolute inset-0 grid-bg pointer-events-none z-0"></div>
     <div class="absolute top-0 left-0 right-0 h-[400px] glow-bg pointer-events-none z-0"></div>
 
@@ -120,37 +139,39 @@
       <button onclick="goBack()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95 transition-transform">
         <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-300"></iconify-icon>
       </button>
-      <h1 class="font-tanker text-2xl tracking-wide pt-1 text-white">BROWSE GAMES</h1>
-      <div class="w-10 flex justify-end items-center gap-2">
-        <span id="source-indicator" class="source-badge source-mock">MOCK</span>
+      <a href="/" class="flex flex-col items-center hover:opacity-80 transition-opacity">
+        <span class="text-[10px] tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
+        <h1 class="font-tanker text-2xl tracking-wide pt-1 text-white">NEW BET PROTOCOL</h1>
+      </a>
+      <div class="w-10 flex justify-end">
         <div id="connection-status" class="w-2 h-2 rounded-full bg-neon-red shadow-[0_0_10px_#ff1744] animate-pulse"></div>
       </div>
     </header>
 
     <!-- Main Content -->
     <main class="flex-1 overflow-y-auto no-scrollbar pb-[100px] z-10">
-
-      <!-- League Selection — Horizontal scroll with logos -->
-      <section class="px-6 py-5">
+      
+      <!-- Sport Selection Grid -->
+      <section class="px-6 py-6">
         <div class="flex justify-between items-end mb-4">
           <h2 class="font-tanker text-lg text-gray-400 tracking-wider">SELECT LEAGUE</h2>
-          <span id="feed-status" class="text-xs text-neon-red font-bold tracking-widest">LIVE FEED</span>
+          <span class="text-xs text-neon-red font-bold tracking-widest">LIVE FEED ACTIVE</span>
         </div>
-
-        <div id="sport-grid" class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+        
+        <div id="sport-grid" class="grid grid-cols-3 gap-3">
           <!-- Populated by JS -->
         </div>
       </section>
 
-      <!-- Game Count -->
-      <div class="px-6 mb-3 flex justify-between items-center">
-        <span id="game-count" class="text-xs text-gray-500 font-medium tracking-wider uppercase"></span>
-        <div id="data-source" class="text-xs text-gray-600"></div>
-      </div>
+      <!-- Featured Events -->
+      <section class="px-6 pt-2">
+        <div class="flex justify-between items-end mb-4">
+          <h2 id="events-header" class="font-tanker text-lg text-gray-400 tracking-wider">FEATURED TARGETS</h2>
+          <button class="text-xs text-white/60 hover:text-white transition-colors uppercase font-bold tracking-wider">View All ></button>
+        </div>
 
-      <!-- Games List -->
-      <section class="px-6">
         <div id="protocols-list" class="flex flex-col gap-4">
+          <!-- Loading state -->
           <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
             <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING TARGETS...</div>
           </div>
@@ -179,14 +200,17 @@
           <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
           <span class="text-[10px] font-medium">Home</span>
         </button>
+        
         <button class="flex flex-col items-center gap-1 w-12 text-neon-red drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]">
           <iconify-icon icon="lucide:search" class="text-2xl"></iconify-icon>
           <span class="text-[10px] font-medium">Bet</span>
         </button>
+        
         <button onclick="navigateTo('builder')" class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
           <iconify-icon icon="lucide:ticket" class="text-2xl"></iconify-icon>
           <span class="text-[10px] font-medium">Slips</span>
         </button>
+        
         <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
           <iconify-icon icon="lucide:user" class="text-2xl"></iconify-icon>
           <span class="text-[10px] font-medium">Profile</span>
@@ -196,66 +220,170 @@
   </div>
 
   <script>
-    // Use live API first, falls back to mock internally
-    const API_BASE = '/api/live';
-    let currentLeague = 'nba';
+    // S19-D: Protocol Selection Logic (using new /api/games endpoint)
+    const API_BASE = '/api';
+    let currentLeague = 'NBA';
     let protocolsData = [];
+    let sportsData = [];
 
-    // League config with logos and fallback icons
-    const LEAGUE_LOGOS = {
-      nba: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/nba.png&w=100&h=100',
-      nfl: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/nfl.png&w=100&h=100',
-      mlb: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/mlb.png&w=100&h=100',
-      nhl: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/nhl.png&w=100&h=100',
-      soccer: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/eng.1.png&w=100&h=100',
-      mma: 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/ufc.png&w=100&h=100',
+    // Icon map for sport types - using reliable Iconify icons
+    const SPORT_ICONS = {
+      'NBA': 'emojione-monotone:basketball',
+      'NFL': 'fluent:sport-american-football-24-regular',
+      'MLB': 'mdi:baseball',  // Fixed: using Material Design icon
+      'NHL': 'ph:hockey-light',
+      'MLS': 'ph:soccer-ball-light',
+      'EPL': 'ph:soccer-ball-light',
+      'UCL': 'ph:soccer-ball-light',
+      'SOCCER': 'ph:soccer-ball-light',
+      'MMA': 'game-icons:boxing-glove'
     };
 
-    const LEAGUE_ICONS = {
-      nba: 'emojione-monotone:basketball',
-      nfl: 'fluent:sport-american-football-24-regular',
-      mlb: 'guidance:baseball',
-      nhl: 'ph:hockey-light',
-      soccer: 'ph:soccer-ball-light',
-      mma: 'game-icons:boxing-glove',
-    };
+    // Team logo URL builder - uses ESPN CDN
+    function getTeamLogoUrl(teamName, league) {
+      // Map team names to ESPN abbreviations
+      const teamSlugs = {
+        // NBA
+        'Lakers': 'lal', 'Warriors': 'gs', 'Celtics': 'bos', 'Nets': 'bkn',
+        'Knicks': 'ny', 'Suns': 'phx', 'Bucks': 'mil', 'Bulls': 'chi',
+        'Heat': 'mia', '76ers': 'phi', 'Mavericks': 'dal', 'Nuggets': 'den',
+        'Clippers': 'lac', 'Jazz': 'utah', 'Kings': 'sac', 'Pelicans': 'no',
+        'Thunder': 'okc', 'Raptors': 'tor', 'Spurs': 'sa', 'Rockets': 'hou',
+        'Grizzlies': 'mem', 'Hornets': 'cha', 'Pacers': 'ind', 'Pistons': 'det',
+        'Magic': 'orl', 'Hawks': 'atl', 'Wizards': 'wsh', 'Timberwolves': 'min',
+        'Trail Blazers': 'por', 'Cavaliers': 'cle', 'Suns': 'phx',
+        // NHL
+        'Devils': 'nj', 'Sabres': 'buf', 'Capitals': 'wsh', 'Flyers': 'phi',
+        'Rangers': 'nyr', 'Islanders': 'nyi', 'Penguins': 'pit', 'Bruins': 'bos',
+        'Canadiens': 'mtl', 'Senators': 'ott', 'Maple Leafs': 'tor', 'Jets': 'wpg',
+        'Hurricanes': 'car', 'Blue Jackets': 'cbj', 'Red Wings': 'det',
+        'Blackhawks': 'chi', 'Avalanche': 'col', 'Stars': 'dal', 'Wild': 'min',
+        'Predators': 'nsh', 'Blues': 'stl', 'Jets': 'wpg', 'Ducks': 'ana',
+        'Coyotes': 'ari', 'Flames': 'cgy', 'Oilers': 'edm', 'Kings': 'la',
+        'Sharks': 'sj', 'Kraken': 'sea', 'Canucks': 'van', 'Golden Knights': 'vgk',
+        'Lightning': 'tb', 'Panthers': 'fla',
+        // NFL
+        'Cardinals': 'ari', 'Falcons': 'atl', 'Ravens': 'bal', 'Bills': 'buf',
+        'Panthers': 'car', 'Bears': 'chi', 'Bengals': 'cin', 'Browns': 'cle',
+        'Cowboys': 'dal', 'Broncos': 'den', 'Lions': 'det', 'Packers': 'gb',
+        'Texans': 'hou', 'Colts': 'ind', 'Jaguars': 'jax', 'Chiefs': 'kc',
+        'Raiders': 'lv', 'Chargers': 'lac', 'Rams': 'lar', 'Dolphins': 'mia',
+        'Vikings': 'min', 'Patriots': 'ne', 'Saints': 'no', 'Giants': 'nyg',
+        'Jets': 'nyj', 'Eagles': 'phi', 'Steelers': 'pit', '49ers': 'sf',
+        'Seahawks': 'sea', 'Buccaneers': 'tb', 'Titans': 'ten', 'Commanders': 'wsh',
+        // MLB
+        'Diamondbacks': 'ari', 'Braves': 'atl', 'Orioles': 'bal', 'Red Sox': 'bos',
+        'Cubs': 'chc', 'White Sox': 'chw', 'Reds': 'cin', 'Guardians': 'cle',
+        'Rockies': 'col', 'Tigers': 'det', 'Astros': 'hou', 'Royals': 'kc',
+        'Angels': 'laa', 'Dodgers': 'lad', 'Marlins': 'mia', 'Brewers': 'mil',
+        'Twins': 'min', 'Mets': 'nym', 'Yankees': 'nyy', 'Athletics': 'oak',
+        'Phillies': 'phi', 'Pirates': 'pit', 'Padres': 'sd', 'Mariners': 'sea',
+        'Giants': 'sf', 'Cardinals': 'stl', 'Rays': 'tb', 'Rangers': 'tex',
+        'Blue Jays': 'tor', 'Nationals': 'wsh',
+      };
+      
+      // Try to find team slug - check for exact match first, then partial
+      let slug = null;
+      
+      // First try exact match on full name
+      for (const [name, abbr] of Object.entries(teamSlugs)) {
+        if (teamName.toLowerCase() === name.toLowerCase()) {
+          slug = abbr;
+          break;
+        }
+      }
+      
+      // Then try partial match
+      if (!slug) {
+        for (const [name, abbr] of Object.entries(teamSlugs)) {
+          if (teamName.toLowerCase().includes(name.toLowerCase())) {
+            slug = abbr;
+            break;
+          }
+        }
+      }
+      
+      if (slug) {
+        // Map league names to ESPN sport paths
+        const sportPaths = {
+          'NBA': 'nba',
+          'NHL': 'nhl',
+          'NFL': 'nfl',
+          'MLB': 'mlb'
+        };
+        const sportPath = sportPaths[league] || league.toLowerCase();
+        return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${sportPath}/500/${slug}.png&w=100&h=100`;
+      }
+      
+      // Fallback: null (will show team name instead)
+      return null;
+    }
 
-    const SPORTS = [
-      { id: 'nba', name: 'NBA' },
-      { id: 'nfl', name: 'NFL' },
-      { id: 'nhl', name: 'NHL' },
-      { id: 'mlb', name: 'MLB' },
-      { id: 'soccer', name: 'Soccer' },
-      { id: 'mma', name: 'MMA' },
-    ];
+    // Format game time
+    function formatGameTime(startTime) {
+      if (!startTime) return 'TBD';
+      const date = new Date(startTime);
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+      const isTomorrow = new Date(now.setDate(now.getDate() + 1)).toDateString() === date.toDateString();
+      
+      const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      
+      if (isToday) return `Today • ${timeStr}`;
+      if (isTomorrow) return `Tomorrow • ${timeStr}`;
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // Initialize - fetch sports from API then load games
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadSports();
       renderSportGrid();
-      loadProtocols(currentLeague);
+      loadGames(currentLeague);
     });
+
+    async function loadSports() {
+      try {
+        const response = await fetch(`${API_BASE}/sports`);
+        if (response.ok) {
+          sportsData = await response.json();
+        }
+      } catch (err) {
+        console.error('Failed to load sports:', err);
+        // Use fallback sports
+        sportsData = [
+          { id: 'NBA', label: 'NBA', active: true },
+          { id: 'NFL', label: 'NFL', active: true },
+          { id: 'NHL', label: 'NHL', active: true }
+        ];
+      }
+    }
 
     function renderSportGrid() {
       const grid = document.getElementById('sport-grid');
-      grid.innerHTML = SPORTS.map(sport => {
+      
+      // Use API sports or fallback
+      const sports = sportsData.length > 0 ? sportsData : [
+        { id: 'NBA', label: 'NBA', active: true },
+        { id: 'NFL', label: 'NFL', active: true },
+        { id: 'NHL', label: 'NHL', active: true }
+      ];
+      
+      grid.innerHTML = sports.map(sport => {
         const isActive = sport.id === currentLeague;
-        const logo = LEAGUE_LOGOS[sport.id];
-        const icon = LEAGUE_ICONS[sport.id];
+        const isDisabled = !sport.active;
+        const icon = SPORT_ICONS[sport.id] || 'lucide:trophy';
+        
         return `
-          <button
-            onclick="selectLeague('${sport.id}')"
-            class="flex-shrink-0 w-[90px] h-[90px] glass-panel rounded-xl flex flex-col items-center justify-center gap-2 relative transition-all ${
-              isActive ? 'sport-chip-active' : 'hover:bg-white/5'
-            } cursor-pointer"
+          <button 
+            onclick="${isDisabled ? '' : `selectLeague('${sport.id}')`}"
+            class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 relative transition-all ${
+              isActive ? 'sport-chip-active' : ''
+            } ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer'}"
+            ${isDisabled ? 'disabled' : ''}
           >
             ${isActive ? '<div class="absolute top-2 right-2 w-1.5 h-1.5 bg-neon-red rounded-full shadow-[0_0_8px_#ff1744]"></div>' : ''}
-            ${logo ? `
-              <img src="${logo}" alt="${sport.name}" class="w-8 h-8 object-contain ${isActive ? 'sport-logo' : 'opacity-50'}"
-                   onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-              <iconify-icon icon="${icon}" class="text-2xl ${isActive ? 'sport-icon' : 'text-gray-500'}" style="display:none;"></iconify-icon>
-            ` : `
-              <iconify-icon icon="${icon}" class="text-2xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>
-            `}
-            <span class="font-tanker text-sm tracking-wide ${isActive ? 'sport-label text-white' : 'text-gray-500'}">${sport.name}</span>
+            <iconify-icon icon="${icon}" class="text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>
+            <span class="font-tanker text-lg tracking-wide ${isActive ? 'sport-label text-white' : 'text-gray-500'}">${sport.label}</span>
           </button>
         `;
       }).join('');
@@ -264,66 +392,74 @@
     function selectLeague(league) {
       currentLeague = league;
       renderSportGrid();
-      loadProtocols(league);
+      loadGames(league);
     }
 
-    async function loadProtocols(league) {
+    async function loadGames(sport) {
       const list = document.getElementById('protocols-list');
+      if (!list) {
+        console.error('protocols-list element not found');
+        return;
+      }
+      
       list.innerHTML = `
         <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
-          <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING ${league.toUpperCase()} TARGETS...</div>
+          <div class="loading-pulse text-neon-red font-tanker text-xl tracking-wider">SCANNING ${sport.toUpperCase()} TARGETS...</div>
         </div>
       `;
 
       try {
-        const response = await fetch(`${API_BASE}/protocols/available?league=${league}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const data = await response.json();
-        protocolsData = data.protocols || [];
-
-        // Update source indicator
-        const source = data.source || 'mock';
-        const indicator = document.getElementById('source-indicator');
-        if (source === 'live') {
-          indicator.className = 'source-badge source-live';
-          indicator.textContent = 'LIVE';
-        } else {
-          indicator.className = 'source-badge source-mock';
-          indicator.textContent = 'MOCK';
+        console.log('Fetching games for sport:', sport);
+        const response = await fetch(`${API_BASE}/games?sport=${sport}`);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-
-        // Update game count
-        document.getElementById('game-count').textContent =
-          `${protocolsData.length} ${league.toUpperCase()} GAME${protocolsData.length !== 1 ? 'S' : ''} AVAILABLE`;
-
+        
+        const games = await response.json();
+        console.log('Games data:', games);
+        
+        // Transform games to protocol format for rendering
+        protocolsData = games.map(game => ({
+          protocolId: game.id,
+          gameId: game.id,
+          league: game.league,
+          teams: [game.home, game.away],
+          status: game.status,
+          startTime: game.start_time,
+          featured: false,
+          marketsAvailable: ['spread', 'moneyline', 'total'],
+          clock: game.status === 'LIVE' ? 'Live' : null
+        }));
+        
+        console.log('Protocols count:', protocolsData.length);
+        
         renderProtocols(protocolsData);
-
-        const featured = protocolsData.find(p => p.featured);
-        if (featured && featured.aiInsight) showAiInsight(featured.aiInsight);
-        else document.getElementById('ai-insight-section').classList.add('hidden');
-
       } catch (err) {
-        console.error('Failed to load protocols:', err);
+        console.error('Failed to load games:', err);
         list.innerHTML = `
           <div class="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center gap-4">
             <div class="text-red-500 font-tanker text-xl tracking-wider">CONNECTION FAILED</div>
             <div class="text-gray-500 text-sm">${err.message}</div>
-            <button onclick="loadProtocols('${league}')" class="px-4 py-2 bg-neon-red rounded text-white font-bold">RETRY</button>
+            <button onclick="loadGames('${sport}')" class="px-4 py-2 bg-neon-red rounded text-white font-bold">RETRY</button>
           </div>
         `;
       }
     }
 
+    // Legacy alias for compatibility
+    function loadProtocols(league) {
+      return loadGames(league);
+    }
+
     function renderProtocols(protocols) {
       const list = document.getElementById('protocols-list');
-
+      
       if (protocols.length === 0) {
         list.innerHTML = `
-          <div class="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center gap-3">
-            <iconify-icon icon="lucide:calendar-off" class="text-4xl text-gray-600"></iconify-icon>
-            <div class="text-gray-500 font-tanker text-xl tracking-wider">NO GAMES AVAILABLE</div>
-            <div class="text-gray-600 text-sm">Check back later for upcoming ${currentLeague.toUpperCase()} games</div>
+          <div class="glass-panel rounded-2xl p-8 flex items-center justify-center">
+            <div class="text-gray-500 font-tanker text-xl tracking-wider">NO TARGETS AVAILABLE</div>
           </div>
         `;
         return;
@@ -332,180 +468,106 @@
       list.innerHTML = protocols.map(protocol => renderProtocolCard(protocol)).join('');
     }
 
-    function teamLogoHtml(logoUrl, teamName, size = 'normal') {
-      const cls = size === 'small' ? 'team-logo-sm' : 'team-logo';
-      if (logoUrl) {
-        return `<img src="${logoUrl}" alt="${teamName}" class="${cls}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="w-12 h-12 rounded-full bg-gray-800 border border-gray-700 items-center justify-center text-gray-400 font-tanker text-lg" style="display:none;">${teamName.slice(0,3).toUpperCase()}</div>`;
-      }
-      return `<div class="w-12 h-12 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 font-tanker text-lg">${teamName.slice(0,3).toUpperCase()}</div>`;
-    }
-
     function renderProtocolCard(protocol) {
       const isLive = protocol.status === 'LIVE';
       const isFeatured = protocol.featured;
       const [homeTeam, awayTeam] = protocol.teams;
       const score = protocol.score;
-      const homeLogo = protocol.homeLogo || '';
-      const awayLogo = protocol.awayLogo || '';
-      const leagueLogo = protocol.leagueLogo || '';
-      const leagueIcon = LEAGUE_ICONS[protocol.league?.toLowerCase()] || 'lucide:trophy';
-      const odds = protocol.odds || {};
-      const startTime = protocol.startTime ? formatGameTime(protocol.startTime) : '';
-
+      const homeLogo = getTeamLogoUrl(homeTeam, protocol.league);
+      const awayLogo = getTeamLogoUrl(awayTeam, protocol.league);
+      const gameTime = formatGameTime(protocol.startTime);
+      
       return `
-        <div class="glass-panel rounded-2xl p-5 relative overflow-hidden ${isFeatured ? 'border-neon-red' : ''}">
+        <div class="glass-panel rounded-2xl p-4 relative overflow-hidden ${isFeatured ? 'border-neon-red' : ''} ${isLive ? 'border-neon-red/50' : ''}">
           <!-- Card Header -->
-          <div class="flex justify-between items-center mb-5">
+          <div class="flex justify-between items-start mb-4">
             <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
-              ${leagueLogo ?
-                `<img src="${leagueLogo}" alt="${protocol.league}" class="league-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
-                 <iconify-icon icon="${leagueIcon}" class="text-base" style="display:none;"></iconify-icon>` :
-                `<iconify-icon icon="${leagueIcon}" class="text-base"></iconify-icon>`
-              }
+              <iconify-icon icon="${SPORT_ICONS[protocol.league] || 'lucide:trophy'}" class="text-base"></iconify-icon>
               <span>${protocol.league}</span>
-              ${!isLive && startTime ? `<span class="text-gray-600">• ${startTime}</span>` : ''}
             </div>
             ${isLive ? `
-              <div class="flex items-center gap-2 bg-neon-red/10 px-2.5 py-1 rounded-full border border-neon-red/30">
-                <div class="w-1.5 h-1.5 bg-neon-red rounded-full animate-pulse"></div>
-                <span class="text-neon-red text-xs font-bold tracking-wider">${protocol.clock || 'LIVE'}</span>
+              <div class="flex items-center gap-2 bg-neon-red/20 px-3 py-1.5 rounded-lg border border-neon-red/50">
+                <div class="w-2 h-2 bg-neon-red rounded-full live-indicator"></div>
+                <span class="text-neon-red text-xs font-black tracking-widest">LIVE</span>
+                ${protocol.clock ? `<span class="text-neon-red/80 text-xs font-mono">${protocol.clock}</span>` : ''}
               </div>
             ` : `
-              <div class="flex items-center gap-1.5 text-xs text-gray-500">
-                <iconify-icon icon="lucide:clock" class="text-sm"></iconify-icon>
-                <span>Upcoming</span>
+              <div class="game-time px-3 py-1.5 rounded-lg">
+                <span class="text-neon-red text-xs font-bold tracking-wider">${gameTime}</span>
               </div>
             `}
           </div>
 
           <!-- Teams Matchup with Logos -->
-          <div class="flex items-center justify-between mb-5">
-            <!-- Home Team -->
-            <div class="flex flex-col items-center gap-2 flex-1">
-              ${teamLogoHtml(homeLogo, homeTeam)}
-              <span class="font-tanker text-lg leading-none text-white text-center">${homeTeam.toUpperCase()}</span>
-              <span class="text-[10px] text-gray-600 uppercase tracking-widest">Home</span>
-              ${score ? `<span class="font-tanker text-2xl text-white">${score.home}</span>` : ''}
+          <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col items-center gap-2">
+              ${homeLogo ? `<img src="${homeLogo}" alt="${homeTeam}" class="team-logo" onerror="this.style.display='none'">` : ''}
+              <span class="font-tanker text-xl leading-none text-white text-center">${homeTeam.toUpperCase()}</span>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider">Home</span>
+              ${score ? `<span class="font-satoshi text-2xl font-bold mt-1 text-white">${score.home}</span>` : ''}
             </div>
-
-            <!-- VS / Score divider -->
+            
             <div class="flex flex-col items-center px-4">
-              ${score ? `
-                <span class="text-xs text-gray-700 font-bold">VS</span>
-              ` : `
-                <div class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                  <span class="text-xs text-gray-500 font-bold">VS</span>
-                </div>
-              `}
+              <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
+              <div class="w-12 h-[1px] bg-gray-700"></div>
             </div>
 
-            <!-- Away Team -->
-            <div class="flex flex-col items-center gap-2 flex-1">
-              ${teamLogoHtml(awayLogo, awayTeam)}
-              <span class="font-tanker text-lg leading-none text-gray-300 text-center">${awayTeam.toUpperCase()}</span>
-              <span class="text-[10px] text-gray-600 uppercase tracking-widest">Away</span>
-              ${score ? `<span class="font-tanker text-2xl text-gray-400">${score.away}</span>` : ''}
+            <div class="flex flex-col items-center gap-2">
+              ${awayLogo ? `<img src="${awayLogo}" alt="${awayTeam}" class="team-logo" onerror="this.style.display='none'">` : ''}
+              <span class="font-tanker text-xl leading-none text-center text-gray-300">${awayTeam.toUpperCase()}</span>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider">Away</span>
+              ${score ? `<span class="font-satoshi text-2xl font-bold mt-1 text-gray-400">${score.away}</span>` : ''}
             </div>
           </div>
 
-          <!-- Odds Preview -->
-          ${Object.keys(odds).length > 0 ? `
+          <!-- Markets Preview -->
           <div class="grid grid-cols-3 gap-2 mb-4">
-            ${odds.spread ? `
-              <div class="bg-white/5 border border-white/10 rounded-lg py-2 px-1 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 uppercase font-bold mb-1">Spread</span>
-                <span class="text-sm font-bold text-white">${odds.spread.home?.line > 0 ? '+' : ''}${odds.spread.home?.line || '—'}</span>
-                <span class="text-[10px] text-gray-500">${odds.spread.home?.odds || ''}</span>
-              </div>
-            ` : `
-              <div class="bg-white/5 border border-white/10 rounded-lg py-2 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
-                <span class="text-sm font-bold text-white">—</span>
-              </div>
-            `}
-            ${odds.total ? `
-              <div class="bg-white/5 border border-white/10 rounded-lg py-2 px-1 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 uppercase font-bold mb-1">Total</span>
-                <span class="text-sm font-bold text-white">${odds.total.over?.line || '—'}</span>
-                <span class="text-[10px] text-gray-500">O/U</span>
-              </div>
-            ` : `
-              <div class="bg-white/5 border border-white/10 rounded-lg py-2 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
-                <span class="text-sm font-bold text-white">—</span>
-              </div>
-            `}
-            ${odds.moneyline ? `
-              <div class="bg-white/5 border border-white/10 rounded-lg py-2 px-1 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 uppercase font-bold mb-1">ML</span>
-                <span class="text-sm font-bold text-white">${odds.moneyline.home?.odds > 0 ? '+' : ''}${odds.moneyline.home?.odds || '—'}</span>
-                <span class="text-[10px] text-gray-500">${odds.moneyline.away?.odds > 0 ? '+' : ''}${odds.moneyline.away?.odds || ''}</span>
-              </div>
-            ` : `
-              <div class="bg-white/5 border border-white/10 rounded-lg py-2 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 uppercase font-bold">ML</span>
-                <span class="text-sm font-bold text-white">—</span>
-              </div>
-            `}
-          </div>
-          ` : `
-          <div class="grid grid-cols-3 gap-2 mb-4">
-            <div class="bg-white/5 border border-white/10 rounded-lg py-2 flex flex-col items-center">
+            <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
               <span class="text-[10px] text-gray-500 uppercase font-bold">Spread</span>
               <span class="text-sm font-bold text-white">Available</span>
             </div>
-            <div class="bg-white/5 border border-white/10 rounded-lg py-2 flex flex-col items-center">
+            <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
               <span class="text-[10px] text-gray-500 uppercase font-bold">Total</span>
               <span class="text-sm font-bold text-white">Available</span>
             </div>
-            <div class="bg-white/5 border border-white/10 rounded-lg py-2 flex flex-col items-center">
+            <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
               <span class="text-[10px] text-gray-500 uppercase font-bold">Props</span>
-              <span class="text-sm font-bold text-white">${(protocol.marketsAvailable || []).includes('player_props') ? 'Live' : '—'}</span>
+              <span class="text-sm font-bold text-white">${protocol.marketsAvailable.includes('player_props') ? 'Live' : '—'}</span>
             </div>
           </div>
-          `}
 
           <!-- CTA -->
-          <button
+          <button 
             onclick="selectProtocol('${protocol.protocolId}')"
-            class="w-full py-3 ${isFeatured ? 'bg-gradient-to-r from-neon-red to-rose-600 text-white border-white/20 shadow-[0_0_15px_rgba(255,23,68,0.4)]' : 'bg-white/5 text-gray-300 hover:text-white border-white/10 hover:border-white/30'} font-tanker text-lg tracking-wider rounded-lg border active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            class="w-full py-3 ${isFeatured ? 'bg-gradient-to-r from-neon-red to-rose-600 text-white border-white/20 shadow-[0_0_15px_rgba(255,23,68,0.4)] hover:shadow-[0_0_25px_rgba(255,23,68,0.6)]' : 'bg-white/5 text-gray-300 hover:text-white border-white/10 hover:border-white/30'} font-tanker text-lg tracking-wider rounded border active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            <span>ANALYZE THIS GAME</span>
+            <span>SELECT EVENT TARGET</span>
             <iconify-icon icon="lucide:arrow-right" class="text-lg"></iconify-icon>
           </button>
         </div>
       `;
     }
 
-    function formatGameTime(isoString) {
-      try {
-        const d = new Date(isoString);
-        const now = new Date();
-        const diffMs = d - now;
-        const diffHrs = Math.floor(diffMs / 3600000);
-        const diffMins = Math.floor((diffMs % 3600000) / 60000);
-
-        if (diffMs < 0) return 'Started';
-        if (diffHrs < 1) return `${diffMins}m`;
-        if (diffHrs < 24) return `${diffHrs}h ${diffMins}m`;
-
-        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      } catch { return ''; }
-    }
-
     function showAiInsight(text) {
       const section = document.getElementById('ai-insight-section');
-      document.getElementById('ai-insight-text').innerHTML = text;
+      const textEl = document.getElementById('ai-insight-text');
+      textEl.innerHTML = text;
       section.classList.remove('hidden');
     }
 
     function selectProtocol(protocolId) {
       const protocol = protocolsData.find(p => p.protocolId === protocolId);
-      if (!protocol) return;
+      if (!protocol) {
+        console.error('Protocol not found:', protocolId);
+        return;
+      }
 
+      // Store in sessionStorage
       sessionStorage.setItem('dna_protocol_context', JSON.stringify(protocol));
-      window.location.href = `/new?screen=builder&protocolId=${protocolId}`;
+      console.log('ProtocolContext stored:', protocol);
+
+      // Navigate to builder
+      window.location.href = `/app?screen=builder&protocolId=${protocolId}`;
     }
 
     function navigateTo(screen) {
@@ -516,5 +578,6 @@
       window.history.back();
     }
   </script>
+  <script src="/static/js/nav-protocols.js"></script>
 </body>
 </html>

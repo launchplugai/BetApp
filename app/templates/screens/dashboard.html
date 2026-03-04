@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Bet Engine Dashboard</title>
+    <title>DNA Engine - Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
@@ -11,318 +11,398 @@
         :root {
             --neon-red: #ff1744;
             --bg-dark: #050505;
-            --card-bg: #0f0f0f;
+            --card-bg: #0a0a0a;
         }
-        body { background-color: var(--bg-dark); color: #ffffff; }
+        body {
+            font-family: 'Satoshi', sans-serif;
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
         .font-tanker { font-family: 'Tanker', sans-serif; }
-        .font-satoshi { font-family: 'Satoshi', sans-serif; }
-        .neon-text-glow { text-shadow: 0 0 15px rgba(255, 23, 68, 0.6); }
-        .neon-border-glow {
-            border: 1px solid rgba(255, 23, 68, 0.4);
-            box-shadow: 0 0 20px rgba(255, 23, 68, 0.15), inset 0 0 20px rgba(255, 23, 68, 0.05);
-        }
-        .neon-btn {
-            background: linear-gradient(90deg, #d50000 0%, #ff1744 100%);
-            box-shadow: 0 0 25px rgba(255, 23, 68, 0.4);
-            transition: all 0.3s ease;
-        }
-        .neon-btn:active { transform: scale(0.98); box-shadow: 0 0 10px rgba(255, 23, 68, 0.2); }
-        .bg-grid-pattern {
-            background-image:
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .team-logo-sm { width: 28px; height: 28px; object-fit: contain; }
-        .league-logo-sm { width: 20px; height: 20px; object-fit: contain; opacity: 0.6; }
+        .section-spacing { margin-bottom: 2rem; }
     </style>
 </head>
-<body>
-    <div class="w-full min-h-screen bg-[#050505] font-satoshi flex flex-col relative overflow-hidden bg-grid-pattern">
-
-        <!-- Ambient Red Glow -->
-        <div class="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-[#ff1744] rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
-
-        <!-- Header -->
-        <header class="pt-14 pb-2 px-6 flex justify-between items-center z-10 shrink-0">
-            <div class="flex flex-col">
-                <span class="text-xs tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
-                <h1 class="font-tanker text-2xl tracking-wide leading-none">DASHBOARD</h1>
-            </div>
-            <div class="flex items-center gap-4">
-                <button class="relative p-2 rounded-full hover:bg-white/5 transition-colors">
-                    <iconify-icon icon="lucide:bell" class="text-xl text-gray-300"></iconify-icon>
-                    <span class="absolute top-2 right-2 w-2 h-2 bg-[#ff1744] rounded-full shadow-[0_0_8px_#ff1744]"></span>
-                </button>
-                <div class="w-10 h-10 rounded-full border border-gray-700 bg-gray-800 overflow-hidden flex items-center justify-center">
-                    <span id="user-avatar" class="font-tanker text-lg text-gray-400">?</span>
+<body class="min-h-screen bg-[#050505]">
+    <!-- Header -->
+    <header class="px-4 py-4 border-b border-white/5">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <iconify-icon icon="lucide:dna" class="text-2xl text-[#ff1744]"></iconify-icon>
+                <div>
+                    <h1 class="font-tanker text-lg tracking-wide">DNA ENGINE</h1>
+                    <p class="text-xs text-gray-500">COMMAND CENTER</p>
                 </div>
             </div>
-        </header>
-
-        <!-- Main Scroll Area -->
-        <main class="flex-1 overflow-y-auto px-6 pb-32 z-10 no-scrollbar">
-
-            <!-- Account Overview -->
-            <section class="mt-6">
-                <div class="flex items-baseline gap-2 mb-1">
-                    <span class="text-gray-400 text-sm font-medium">Total Balance</span>
-                    <span id="user-tier" class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff1744]/10 text-[#ff1744] border border-[#ff1744]/20 uppercase tracking-wider">Pro</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <h2 class="font-tanker text-[42px] leading-none text-white"><span id="user-balance">$0.00</span></h2>
-                    <div class="flex flex-col items-end">
-                        <span id="user-name" class="text-white text-sm font-bold">Loading...</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Primary CTA -->
-            <button class="w-full mt-8 h-14 neon-btn rounded-xl flex items-center justify-center gap-3 group relative overflow-hidden cursor-pointer" onclick="window.location.href='/app?screen=browse'">
-                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none"></div>
-                <iconify-icon icon="lucide:plus" class="text-xl font-bold"></iconify-icon>
-                <span class="font-tanker text-xl tracking-wide pt-1">START NEW BET PROTOCOL</span>
+            <button onclick="window.location.href='/app?screen=landing'" class="text-gray-400 hover:text-white">
+                <iconify-icon icon="lucide:log-out" class="text-xl"></iconify-icon>
             </button>
+        </div>
+    </header>
 
-            <!-- Quick Stats Grid -->
-            <div class="grid grid-cols-2 gap-4 mt-8">
-                <div class="glass-panel p-4 rounded-xl flex flex-col justify-between h-28 relative overflow-hidden">
-                    <div class="absolute -bottom-4 -right-4 text-gray-800 opacity-20 transform rotate-12">
-                        <iconify-icon icon="lucide:trophy" width="80"></iconify-icon>
-                    </div>
-                    <span class="text-gray-400 text-xs uppercase tracking-wider font-bold">Win Rate</span>
-                    <div>
-                        <span id="stat-win-rate" class="font-tanker text-3xl text-white">-</span>
-                        <span class="font-tanker text-lg text-[#ff1744]">%</span>
-                    </div>
+    <!-- Main Content -->
+    <main class="px-4 py-6 pb-24">
+        <!-- Active Protocols Section -->
+        <section class="section-spacing">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="lucide:activity" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-lg tracking-wide">ACTIVE PROTOCOLS</h2>
                 </div>
-                <div class="glass-panel p-4 rounded-xl flex flex-col justify-between h-28 relative overflow-hidden">
-                    <div class="absolute -bottom-4 -right-4 text-gray-800 opacity-20 transform rotate-12">
-                        <iconify-icon icon="lucide:layers" width="80"></iconify-icon>
-                    </div>
-                    <span class="text-gray-400 text-xs uppercase tracking-wider font-bold">Total Parlays</span>
-                    <div>
-                        <span id="stat-total" class="font-tanker text-3xl text-white">-</span>
-                        <span class="text-xs text-gray-500 font-medium ml-1">Lifetime</span>
-                    </div>
+                <span id="active-protocols-count" class="text-xs text-gray-500">--</span>
+            </div>
+            <div id="active-protocols-container">
+                <!-- Loading state -->
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                    <div class="animate-pulse text-gray-600 font-tanker">LOADING...</div>
                 </div>
             </div>
+        </section>
 
-            <!-- Live Games Ticker -->
-            <section class="mt-8">
-                <div class="flex justify-between items-end mb-4">
-                    <h3 class="font-tanker text-xl tracking-wide flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
-                        TODAY'S GAMES
-                    </h3>
-                    <a href="/app?screen=browse" class="text-xs text-[#ff1744] hover:text-white transition-colors uppercase tracking-wider font-bold">Browse All</a>
+        <!-- Edge Feed Section -->
+        <section class="section-spacing">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="lucide:zap" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-lg tracking-wide">EDGE FEED</h2>
                 </div>
-
-                <div id="live-games-scroll" class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                    <!-- Populated by JS -->
-                    <div class="glass-panel rounded-xl p-4 min-w-[200px] flex items-center justify-center">
-                        <span class="text-gray-600 text-sm">Loading games...</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Active Protocols Section -->
-            <section class="mt-10">
-                <div class="flex justify-between items-end mb-5">
-                    <h3 class="font-tanker text-2xl tracking-wide flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-[#ff1744] animate-pulse shadow-[0_0_10px_#ff1744]"></span>
-                        ACTIVE PROTOCOLS
-                    </h3>
-                    <a href="#" class="text-xs text-gray-500 hover:text-white transition-colors uppercase tracking-wider font-bold">View All</a>
-                </div>
-
-                <div id="active-protocols-list">
-                    <!-- Populated by JS -->
-                </div>
-            </section>
-
-            <div class="h-8"></div>
-        </main>
-
-        <!-- Bottom Navigation -->
-        <nav class="fixed bottom-0 left-0 w-full pb-[34px] pt-4 bg-[#050505]/95 backdrop-blur-md border-t border-white/5" style="z-index: 9999;">
-            <div class="flex justify-around items-center px-4 pointer-events-auto">
-                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 group pointer-events-auto" style="min-width: 60px;">
-                    <div class="relative">
-                        <iconify-icon icon="lucide:layout-dashboard" class="text-2xl text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]"></iconify-icon>
-                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#ff1744] rounded-full"></div>
-                    </div>
-                    <span class="text-[10px] font-medium text-white">Home</span>
-                </a>
-                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:search" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Browse</span>
-                </a>
-                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:plus-circle" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Build</span>
-                </a>
-                <a href="#" onclick="handleLogout(); return false;" class="flex flex-col items-center gap-1 group opacity-50 hover:opacity-100 transition-opacity pointer-events-auto" style="min-width: 60px;">
-                    <iconify-icon icon="lucide:log-out" class="text-2xl text-gray-400 group-hover:text-white transition-colors"></iconify-icon>
-                    <span class="text-[10px] font-medium text-gray-400 group-hover:text-white transition-colors">Logout</span>
-                </a>
+                <span class="text-xs text-gray-500">0 signals</span>
             </div>
-        </nav>
-    </div>
+            <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                <iconify-icon icon="lucide:activity" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                <p class="text-sm text-gray-400 mb-1">No edge signals detected</p>
+                <p class="text-xs text-gray-600">Signals appear when market conditions shift</p>
+            </div>
+        </section>
 
+        <!-- Risk Profile Section -->
+        <section class="section-spacing" id="risk-profile-section">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="lucide:gauge" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-lg tracking-wide">RISK PROFILE</h2>
+                </div>
+                <button id="risk-profile-edit-btn" class="text-xs text-[#ff1744] hover:text-white">Edit →</button>
+            </div>
+            <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-400">Risk Tolerance</span>
+                    <span id="risk-tolerance-value" class="text-sm text-[#ff1744]">--</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-400">Max Exposure</span>
+                    <span id="max-exposure-value" class="text-sm text-gray-500">--</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-400">Kelly Cap</span>
+                    <span id="kelly-cap-value" class="text-sm text-gray-500">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Health Section -->
+        <section class="section-spacing">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="lucide:heart-pulse" class="text-[#ff1744]"></iconify-icon>
+                    <h2 class="font-tanker text-lg tracking-wide">SYSTEM HEALTH</h2>
+                </div>
+                <span class="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">UNKNOWN</span>
+            </div>
+            <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-500 text-xs mb-1">Snapshot Version</p>
+                        <p class="text-gray-400">--</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs mb-1">Confidence Schema</p>
+                        <p class="text-gray-400">--</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs mb-1">Data Freshness</p>
+                        <p class="text-gray-400">--</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs mb-1">Provider Mode</p>
+                        <p class="text-gray-400">--</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-white/5">
+                    <p class="text-gray-500 text-xs">Last Updated</p>
+                    <p class="text-gray-400 text-sm">--</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="grid grid-cols-2 gap-4">
+            <button onclick="window.location.href='/app?screen=builder'" class="bg-[#0a0a0a] border border-white/5 rounded-lg p-6 text-center hover:border-[#ff1744]/50 transition-colors">
+                <iconify-icon icon="lucide:hammer" class="text-2xl text-[#ff1744] mx-auto mb-2"></iconify-icon>
+                <h3 class="font-tanker text-sm">BUILDER</h3>
+                <p class="text-xs text-gray-500">Create new bet</p>
+            </button>
+            <button onclick="window.location.href='/app?screen=browse'" class="bg-[#0a0a0a] border border-white/5 rounded-lg p-6 text-center hover:border-[#ff1744]/50 transition-colors">
+                <iconify-icon icon="lucide:search" class="text-2xl text-[#ff1744] mx-auto mb-2"></iconify-icon>
+                <h3 class="font-tanker text-sm">BROWSE</h3>
+                <p class="text-xs text-gray-500">Find games</p>
+            </button>
+        </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 w-full bg-[#050505]/95 backdrop-blur-md border-t border-white/5 pb-8 pt-4 px-4">
+        <div class="flex justify-around items-center max-w-md mx-auto">
+            <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-[#ff1744]">
+                <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Dashboard</span>
+            </a>
+            <a href="/app?screen=protocol" id="nav-protocol" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors hidden">
+                <iconify-icon icon="lucide:layers" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Protocol</span>
+            </a>
+            <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <div class="w-10 h-10 -mt-6 bg-[#0a0a0a] border border-[#ff1744] rounded-full flex items-center justify-center">
+                    <iconify-icon icon="lucide:plus" class="text-lg text-[#ff1744]"></iconify-icon>
+                </div>
+                <span class="text-[10px] font-medium -mt-1">Builder</span>
+            </a>
+            <a href="/app?screen=browse" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Browse</span>
+            </a>
+            <a href="/app?screen=history" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">History</span>
+            </a>
+            <a href="/app?screen=notifications" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors relative">
+                <div class="relative">
+                    <iconify-icon icon="lucide:bell" class="text-xl"></iconify-icon>
+                    <span id="nav-badge-dashboard" class="absolute -top-1 -right-1 min-w-[16px] h-4 bg-[#ff1744] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 hidden">0</span>
+                </div>
+                <span class="text-[10px] font-medium">Alerts</span>
+            </a>
+        </div>
+    </nav>
+
+    <script src="/static/js/nav-protocols.js"></script>
     <script>
-        const token = sessionStorage.getItem('dna_auth_token');
-        const user = JSON.parse(sessionStorage.getItem('dna_user') || '{}');
-
-        if (!token) {
-            window.location.href = '/app?screen=auth';
-        }
-
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
-        }
-
-        // Load dashboard data
-        async function loadDashboard() {
+        // Fetch and display user preferences
+        async function loadUserPreferences() {
             try {
-                const response = await fetch('/api/dashboard/', {
+                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                
+                const response = await fetch('/api/preferences', { headers });
+                
+                const riskToleranceEl = document.getElementById('risk-tolerance-value');
+                const maxExposureEl = document.getElementById('max-exposure-value');
+                const kellyCapEl = document.getElementById('kelly-cap-value');
+                const editBtn = document.getElementById('risk-profile-edit-btn');
+                
+                if (response.ok) {
+                    const prefs = await response.json();
+                    console.log('User preferences loaded:', prefs);
+                    
+                    // Update Risk Profile section
+                    if (prefs.risk_profile && riskToleranceEl) {
+                        riskToleranceEl.textContent = prefs.risk_profile.charAt(0).toUpperCase() + prefs.risk_profile.slice(1);
+                    }
+                    
+                    // Update Max Exposure (from bankroll_policy)
+                    if (prefs.bankroll_policy && prefs.bankroll_policy.max_units_per_bet && maxExposureEl) {
+                        maxExposureEl.textContent = prefs.bankroll_policy.max_units_per_bet + ' units';
+                    }
+                    
+                    // Update Kelly Cap (unit_size_percent)
+                    if (prefs.bankroll_policy && prefs.bankroll_policy.unit_size_percent && kellyCapEl) {
+                        kellyCapEl.textContent = prefs.bankroll_policy.unit_size_percent + '%';
+                    }
+                    
+                    // Update Edit button to link to onboarding
+                    if (editBtn) {
+                        editBtn.onclick = () => window.location.href = '/onboarding';
+                    }
+                } else if (response.status === 401 || response.status === 404) {
+                    // No preferences yet - show "Set Up" button
+                    if (riskToleranceEl) riskToleranceEl.textContent = 'Not Set';
+                    if (editBtn) {
+                        editBtn.textContent = 'Set Up →';
+                        editBtn.onclick = () => window.location.href = '/onboarding';
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load preferences:', err);
+                // Silently fail - page should still render
+            }
+        }
+        
+        // Load notification count
+        async function loadNotificationCount() {
+            try {
+                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+                if (!token) return;
+                
+                const response = await fetch('/api/notifications?page=1&per_page=1', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-
-                if (response.status === 401) {
-                    sessionStorage.clear();
-                    window.location.href = '/app?screen=auth';
-                    return;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const badge = document.getElementById('nav-badge-dashboard');
+                    if (badge && data.unread_count > 0) {
+                        badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                        badge.classList.remove('hidden');
+                    }
                 }
-
-                const data = await response.json();
-
-                document.getElementById('user-name').textContent = data.user?.name || 'User';
-                document.getElementById('user-avatar').textContent = (data.user?.name || 'U').charAt(0).toUpperCase();
-                document.getElementById('user-tier').textContent = data.user?.tier || 'GOOD';
-                document.getElementById('user-balance').textContent = formatCurrency(data.user?.balance || 0);
-                document.getElementById('stat-win-rate').textContent = data.stats?.win_rate?.toFixed(1) || '0.0';
-                document.getElementById('stat-total').textContent = data.stats?.total_bets || 0;
-
-                renderActiveProtocols(data.active_protocols);
             } catch (err) {
-                console.error('Dashboard load failed:', err);
-                // Still load with defaults
-                document.getElementById('user-name').textContent = user.name || 'User';
-                document.getElementById('user-avatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
+                console.error('Failed to load notification count:', err);
             }
         }
-
-        // Load live games for ticker
-        async function loadLiveGames() {
-            const container = document.getElementById('live-games-scroll');
+        
+        // Load active bets/protocols
+        async function loadActiveProtocols() {
+            const container = document.getElementById('active-protocols-container');
+            const countEl = document.getElementById('active-protocols-count');
+            
             try {
-                const resp = await fetch('/api/live/protocols/available?league=nba');
-                const data = await resp.json();
-                const games = data.protocols || [];
-
-                if (games.length === 0) {
+                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+                
+                // If no token, show guest state
+                if (!token) {
+                    if (countEl) countEl.textContent = '0 active';
                     container.innerHTML = `
-                        <div class="glass-panel rounded-xl p-4 min-w-[240px] flex flex-col items-center justify-center gap-2">
-                            <iconify-icon icon="lucide:calendar" class="text-2xl text-gray-600"></iconify-icon>
-                            <span class="text-gray-500 text-sm">No games right now</span>
-                            <a href="/app?screen=browse" class="text-[#ff1744] text-xs font-bold">Browse all leagues</a>
+                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                            <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
+                            <p class="text-sm text-gray-500 mb-4">Sign in to track your bets and receive signals.</p>
+                            <button onclick="window.location.href='/app?screen=auth'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                SIGN IN
+                            </button>
                         </div>
                     `;
                     return;
                 }
-
-                container.innerHTML = games.slice(0, 8).map(game => {
-                    const [home, away] = game.teams;
-                    const homeLogo = game.homeLogo || '';
-                    const awayLogo = game.awayLogo || '';
-                    const isLive = game.status === 'LIVE';
-                    const score = game.score;
-
-                    return `
-                        <div class="glass-panel rounded-xl p-4 min-w-[220px] flex-shrink-0 cursor-pointer hover:border-white/20 transition-all"
-                             onclick="window.location.href='/app?screen=browse'">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-1.5">
-                                    ${isLive ? `
-                                        <div class="w-1.5 h-1.5 bg-[#ff1744] rounded-full animate-pulse"></div>
-                                        <span class="text-[10px] text-[#ff1744] font-bold tracking-wider">${game.clock || 'LIVE'}</span>
-                                    ` : `
-                                        <span class="text-[10px] text-gray-500 font-medium">Upcoming</span>
-                                    `}
-                                </div>
-                                <span class="text-[10px] text-gray-600 uppercase">${game.league}</span>
-                            </div>
-
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    ${homeLogo ? `<img src="${homeLogo}" class="team-logo-sm" onerror="this.style.display='none'">` : ''}
-                                    <span class="text-sm font-bold text-white">${home}</span>
-                                </div>
-                                ${score ? `<span class="font-tanker text-lg text-white">${score.home}</span>` : ''}
-                            </div>
-
-                            <div class="flex items-center justify-between mt-2">
-                                <div class="flex items-center gap-2">
-                                    ${awayLogo ? `<img src="${awayLogo}" class="team-logo-sm" onerror="this.style.display='none'">` : ''}
-                                    <span class="text-sm font-bold text-gray-400">${away}</span>
-                                </div>
-                                ${score ? `<span class="font-tanker text-lg text-gray-400">${score.away}</span>` : ''}
-                            </div>
-
-                            ${game.odds?.moneyline ? `
-                                <div class="flex justify-between mt-3 pt-2 border-t border-white/5">
-                                    <span class="text-[10px] text-gray-500">ML</span>
-                                    <div class="flex gap-3">
-                                        <span class="text-xs font-bold text-white">${game.odds.moneyline.home?.odds > 0 ? '+' : ''}${game.odds.moneyline.home?.odds || ''}</span>
-                                        <span class="text-xs font-bold text-gray-400">${game.odds.moneyline.away?.odds > 0 ? '+' : ''}${game.odds.moneyline.away?.odds || ''}</span>
-                                    </div>
-                                </div>
-                            ` : ''}
+                
+                // Fetch active/pending bets from history API
+                const response = await fetch('/api/bets/history?status=pending&limit=5', { 
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.status === 401) {
+                    // Token expired or invalid
+                    if (countEl) countEl.textContent = '0 active';
+                    container.innerHTML = `
+                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                            <h3 class="font-tanker text-lg mb-2">SESSION EXPIRED</h3>
+                            <p class="text-sm text-gray-500 mb-4">Please sign in again to view your protocols.</p>
+                            <button onclick="window.location.href='/app?screen=auth'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                SIGN IN
+                            </button>
                         </div>
                     `;
-                }).join('');
-
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const activeBets = data.bets || [];
+                
+                // Update count
+                if (countEl) {
+                    countEl.textContent = `${activeBets.length} active`;
+                    countEl.className = activeBets.length > 0 
+                        ? 'text-xs text-[#ff1744] font-bold' 
+                        : 'text-xs text-gray-500';
+                }
+                
+                if (activeBets.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                            <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
+                            <p class="text-sm text-gray-500 mb-4">Create a bet to track games and receive signals.</p>
+                            <button onclick="window.location.href='/app?screen=builder'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                + CREATE PROTOCOL
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Render active bets as protocol cards
+                container.innerHTML = activeBets.map(bet => renderProtocolCard(bet)).join('');
+                
             } catch (err) {
-                console.error('Live games load failed:', err);
+                console.error('Failed to load active protocols:', err);
                 container.innerHTML = `
-                    <div class="glass-panel rounded-xl p-4 min-w-[200px] flex items-center justify-center">
-                        <span class="text-gray-600 text-sm">Could not load games</span>
+                    <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
+                        <iconify-icon icon="lucide:alert-circle" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
+                        <h3 class="font-tanker text-lg mb-2">ERROR LOADING PROTOCOLS</h3>
+                        <p class="text-sm text-gray-500 mb-4">${err.message}</p>
+                        <button onclick="loadActiveProtocols()" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                            RETRY
+                        </button>
                     </div>
                 `;
             }
         }
-
-        function renderActiveProtocols(protocols) {
-            const list = document.getElementById('active-protocols-list');
-            if (!protocols || protocols.length === 0) {
-                list.innerHTML = `
-                    <div class="glass-panel rounded-xl p-8 text-center">
-                        <iconify-icon icon="lucide:activity" class="text-4xl text-gray-700 mb-3"></iconify-icon>
-                        <p class="text-gray-500 mb-2">No active protocols</p>
-                        <a href="/app?screen=browse" class="text-[#ff1744] text-sm font-bold">Start your first bet →</a>
+        
+        function renderProtocolCard(bet) {
+            const legs = bet.legs || [];
+            const legCount = legs.length;
+            const firstLeg = legs[0] || {};
+            const game = firstLeg.game || firstLeg.entity || 'Unknown Game';
+            const odds = bet.total_odds ? (bet.total_odds > 0 ? `+${bet.total_odds}` : bet.total_odds) : '--';
+            const wager = bet.wager ? `$${(bet.wager / 100).toFixed(2)}` : '$0.00';
+            const potential = bet.potential_payout ? `$${(bet.potential_payout / 100).toFixed(2)}` : '$0.00';
+            
+            return `
+                <div class="bg-[#0a0a0a] border border-[#ff1744]/30 rounded-lg p-4 mb-3 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-[#ff1744]"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[10px] text-[#ff1744] font-bold tracking-widest uppercase">ACTIVE PROTOCOL</span>
+                            <h3 class="font-tanker text-lg text-white mt-1">${legCount} LEG${legCount !== 1 ? 'S' : ''}</h3>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <div class="w-2 h-2 bg-[#ff1744] rounded-full animate-pulse"></div>
+                            <span class="text-xs text-[#ff1744] font-bold">LIVE</span>
+                        </div>
                     </div>
-                `;
-                return;
-            }
+                    <p class="text-sm text-gray-400 mb-3 truncate">${game}</p>
+                    <div class="flex justify-between items-center text-sm">
+                        <div>
+                            <span class="text-gray-500 text-xs block">WAGER</span>
+                            <span class="text-white font-bold">${wager}</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="text-gray-500 text-xs block">ODDS</span>
+                            <span class="text-[#ff1744] font-bold">${odds}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-gray-500 text-xs block">PAYOUT</span>
+                            <span class="text-white font-bold">${potential}</span>
+                        </div>
+                    </div>
+                    <button onclick="window.location.href='/app?screen=history'" class="w-full mt-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs text-gray-400 hover:text-white transition-colors">
+                        VIEW DETAILS
+                    </button>
+                </div>
+            `;
         }
-
-        function handleLogout() {
-            sessionStorage.clear();
-            window.location.href = '/app?screen=auth';
-        }
-
-        // Load everything
-        loadDashboard();
-        loadLiveGames();
+        
+        // Load on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserPreferences();
+            loadNotificationCount();
+            loadActiveProtocols();
+        });
     </script>
 </body>
 </html>
