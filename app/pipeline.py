@@ -182,6 +182,9 @@ class PipelineResponse:
     # Ticket 38B-C2: Grounding score (breakdown of output sources)
     grounding_score: Optional[dict] = None
 
+    # Sprint 2: Explainability sections (tier-gated engine stage breakdown)
+    explainability_sections: Optional[dict] = None
+
     # Metadata
     leg_count: int = 0
     tier: str = "good"
@@ -2418,6 +2421,173 @@ def _fetch_context_for_bet(text: str, correlation_id: Optional[str] = None) -> O
         return None
 
 
+def _build_explainability_sections(
+    tier: Tier,
+    evaluation,
+    blocks,
+    primary_failure: Optional[dict],
+    signal_info: Optional[dict],
+    eval_ctx: Optional[EvaluationContext] = None,
+) -> dict:
+    """
+    Sprint 2: Build tier-gated explainability sections.
+
+    Maps engine stages to UI sections so users understand WHY
+    the engine said what it said.
+
+    Sections:
+    - structural_risk: inductor level + explanation
+    - correlation: detected correlations + penalty
+    - fragility_breakdown: leg penalty + multiplier + final score
+    - context_snapshot: context modifiers applied to blocks
+
+    Tier gating:
+    - GOOD: headline + one-liner per section
+    - BETTER: headline + 2-3 sentence summary
+    - BEST: full breakdown with all detail
+    """
+    metrics = evaluation.metrics
+    leg_count = eval_ctx.leg_count if eval_ctx else (len(blocks) if blocks else 0)
+    inductor = evaluation.inductor
+    correlations = evaluation.correlations
+
+    # --- Structural Risk ---
+    risk_level = inductor.level.value
+    risk_label = {
+        "stable": "Low Risk",
+        "loaded": "Moderate Risk",
+        "tense": "Elevated Risk",
+        "critical": "Critical Risk",
+    }.get(risk_level, "Unknown")
+
+    structural_risk: dict = {"headline": risk_label, "level": risk_level}
+
+    if tier in (Tier.BETTER, Tier.BEST):
+        structural_risk["summary"] = inductor.explanation
+        structural_risk["recommendation"] = evaluation.recommendation.action.value
+        structural_risk["recommendation_reason"] = evaluation.recommendation.reason
+
+    if tier == Tier.BEST:
+        structural_risk["inductor_detail"] = {
+            "final_fragility": metrics.final_fragility,
+            "leg_penalty": metrics.leg_penalty,
+            "correlation_penalty": metrics.correlation_penalty,
+            "correlation_multiplier": metrics.correlation_multiplier,
+        }
+        if primary_failure:
+            structural_risk["primary_failure_type"] = primary_failure.get("type")
+            structural_risk["primary_failure_severity"] = primary_failure.get("severity")
+
+    # --- Correlation ---
+    corr_count = len(correlations)
+    if corr_count == 0:
+        corr_headline = "No Correlations"
+    elif corr_count == 1:
+        corr_headline = "1 Correlation Detected"
+    else:
+        corr_headline = f"{corr_count} Correlations Detected"
+
+    correlation_section: dict = {
+        "headline": corr_headline,
+        "count": corr_count,
+        "penalty": metrics.correlation_penalty,
+    }
+
+    if tier in (Tier.BETTER, Tier.BEST) and corr_count > 0:
+        correlation_section["summary"] = (
+            f"{corr_count} pair(s) of legs share dependent outcomes, "
+            f"adding +{metrics.correlation_penalty:.1f}pt penalty. "
+            f"Correlation multiplier: {metrics.correlation_multiplier:.2f}x."
+        )
+
+    if tier == Tier.BEST and corr_count > 0:
+        correlation_section["details"] = [
+            {
+                "type": c.type,
+                "block_a": str(c.block_a),
+                "block_b": str(c.block_b),
+                "penalty": c.penalty,
+            }
+            for c in correlations
+        ]
+        correlation_section["multiplier"] = metrics.correlation_multiplier
+
+    # --- Fragility Breakdown ---
+    frag = metrics.final_fragility
+    if frag <= 15:
+        frag_headline = "Low Fragility"
+    elif frag <= 35:
+        frag_headline = "Moderate Fragility"
+    elif frag <= 60:
+        frag_headline = "High Fragility"
+    else:
+        frag_headline = "Critical Fragility"
+
+    fragility_section: dict = {
+        "headline": frag_headline,
+        "final_fragility": round(frag, 2),
+    }
+
+    if tier in (Tier.BETTER, Tier.BEST):
+        fragility_section["summary"] = (
+            f"Final fragility is {frag:.1f}/100. "
+            f"Leg penalty: +{metrics.leg_penalty:.1f}pt from {leg_count} leg(s). "
+            f"Correlation penalty: +{metrics.correlation_penalty:.1f}pt."
+        )
+
+    if tier == Tier.BEST:
+        # Per-block fragility
+        block_details = []
+        for b in (blocks or []):
+            block_details.append({
+                "selection": b.selection[:60],
+                "bet_type": b.bet_type.value,
+                "base_fragility": b.base_fragility,
+                "effective_fragility": b.effective_fragility,
+            })
+        fragility_section["blocks"] = block_details
+        fragility_section["leg_penalty"] = metrics.leg_penalty
+        fragility_section["correlation_penalty"] = metrics.correlation_penalty
+        fragility_section["correlation_multiplier"] = metrics.correlation_multiplier
+
+    # --- Context Snapshot ---
+    context_applied = False
+    context_items = []
+    for b in (blocks or []):
+        mods = b.context_modifiers
+        for mod_name in ("weather", "injury", "trade", "role"):
+            mod = getattr(mods, mod_name, None)
+            if mod and mod.applied:
+                context_applied = True
+                context_items.append({
+                    "type": mod_name,
+                    "delta": mod.delta,
+                    "reason": mod.reason,
+                    "block_selection": b.selection[:40],
+                })
+
+    context_section: dict = {
+        "headline": "Context Applied" if context_applied else "No Context Signals",
+        "has_context": context_applied,
+    }
+
+    if tier in (Tier.BETTER, Tier.BEST) and context_applied:
+        context_section["summary"] = (
+            f"{len(context_items)} context modifier(s) applied to blocks. "
+            "Context can only increase fragility, never decrease it."
+        )
+
+    if tier == Tier.BEST and context_applied:
+        context_section["modifiers"] = context_items
+
+    return {
+        "structural_risk": structural_risk,
+        "correlation": correlation_section,
+        "fragility_breakdown": fragility_section,
+        "context_snapshot": context_section,
+    }
+
+
 def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     """
     Run the canonical evaluation pipeline.
@@ -2680,6 +2850,16 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Store current signal for next evaluation
     store_signal_for_session(session_id, signal_info)
 
+    # Step 29: Sprint 2 — Build tier-gated explainability sections
+    explainability_sections = _build_explainability_sections(
+        tier=normalized.tier,
+        evaluation=evaluation,
+        blocks=blocks,
+        primary_failure=primary_failure,
+        signal_info=signal_info,
+        eval_ctx=eval_ctx,
+    )
+
     return PipelineResponse(
         evaluation=evaluation,
         interpretation=interpretation,
@@ -2704,6 +2884,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         structure=structure_snapshot.to_dict(),  # Ticket 38B-A: Structural snapshot
         delta=delta_result.to_dict() if delta_result else None,  # Ticket 38B-B: Change delta
         grounding_score=grounding_score_result.to_dict(),  # Ticket 38B-C2: Grounding score
+        explainability_sections=explainability_sections,  # Sprint 2: Tier-gated engine stage breakdown
         leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
     )

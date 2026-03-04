@@ -470,6 +470,9 @@ function displayResults(data) {
     }
     summaryText.innerHTML = `<div class="mb-2">${summary}</div>${rawDataHtml}`;
 
+    // Sprint 2: Render explainability sections
+    renderExplainabilitySections(data);
+
     // Legs breakdown
     const legResults = data.legs || data.leg_results || [];
     if (legResults.length > 0) {
@@ -477,7 +480,7 @@ function displayResults(data) {
             <h4 class="font-tanker text-sm text-gray-400 mb-3">LEG BREAKDOWN</h4>
             ${legResults.map(leg => {
                 const signal = leg.signal || leg.verdict || '—';
-                const signalColor = signal.toLowerCase().includes('good') || signal.toLowerCase().includes('pass') ? 'text-green-400' : 
+                const signalColor = signal.toLowerCase().includes('good') || signal.toLowerCase().includes('pass') ? 'text-green-400' :
                                    signal.toLowerCase().includes('risk') || signal.toLowerCase().includes('caution') ? 'text-red-400' : 'text-gray-400';
                 return `
                     <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg">
@@ -493,7 +496,7 @@ function displayResults(data) {
 
     // Show results section
     resultsSection.classList.remove('hidden');
-    
+
     // Scroll to results
     resultsSection.scrollIntoView({ behavior: 'smooth' });
 }
@@ -517,4 +520,236 @@ function navigateTo(screen) {
 
 function goBack() {
     window.history.back();
+}
+
+// =============================================================================
+// Sprint 2: Explainability Section Rendering
+// =============================================================================
+
+function renderExplainabilitySections(data) {
+    const container = document.getElementById('explainability-panels');
+    if (!container) return;
+
+    const sections = data.explainabilitySections;
+    if (!sections) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '<h4 class="font-tanker text-sm text-gray-400 mb-3 tracking-wider">WHY THIS GRADE</h4>';
+
+    // Structural Risk
+    const sr = sections.structuralRisk;
+    if (sr) {
+        html += renderExplainPanel({
+            icon: 'lucide:shield',
+            title: 'STRUCTURAL RISK',
+            headline: sr.headline,
+            level: sr.level,
+            summary: sr.summary,
+            detail: sr.inductorDetail ? formatInductorDetail(sr.inductorDetail) : null,
+            recommendation: sr.recommendation,
+            recommendationReason: sr.recommendationReason,
+            primaryFailureType: sr.primaryFailureType,
+            primaryFailureSeverity: sr.primaryFailureSeverity,
+        });
+    }
+
+    // Correlation
+    const corr = sections.correlation;
+    if (corr) {
+        html += renderExplainPanel({
+            icon: 'lucide:link',
+            title: 'CORRELATION',
+            headline: corr.headline,
+            level: corr.count > 0 ? (corr.penalty > 10 ? 'critical' : 'loaded') : 'stable',
+            summary: corr.summary,
+            detail: corr.details ? formatCorrelationDetails(corr.details, corr.multiplier) : null,
+            penalty: corr.penalty,
+        });
+    }
+
+    // Fragility Breakdown
+    const frag = sections.fragilityBreakdown;
+    if (frag) {
+        html += renderExplainPanel({
+            icon: 'lucide:activity',
+            title: 'FRAGILITY',
+            headline: frag.headline,
+            level: fragilityToLevel(frag.finalFragility),
+            summary: frag.summary,
+            detail: frag.blocks ? formatBlockDetails(frag.blocks) : null,
+            fragility: frag.finalFragility,
+        });
+    }
+
+    // Context Snapshot
+    const ctx = sections.contextSnapshot;
+    if (ctx) {
+        html += renderExplainPanel({
+            icon: 'lucide:cloud',
+            title: 'CONTEXT',
+            headline: ctx.headline,
+            level: ctx.hasContext ? 'loaded' : 'stable',
+            summary: ctx.summary,
+            detail: ctx.modifiers ? formatContextModifiers(ctx.modifiers) : null,
+        });
+    }
+
+    container.innerHTML = html;
+}
+
+function renderExplainPanel(opts) {
+    const levelColors = {
+        stable: { border: 'border-green-500/30', badge: 'bg-green-500/20 text-green-400', dot: 'bg-green-500' },
+        loaded: { border: 'border-yellow-500/30', badge: 'bg-yellow-500/20 text-yellow-400', dot: 'bg-yellow-500' },
+        tense: { border: 'border-orange-500/30', badge: 'bg-orange-500/20 text-orange-400', dot: 'bg-orange-500' },
+        critical: { border: 'border-red-500/30', badge: 'bg-red-500/20 text-red-400', dot: 'bg-red-500' },
+    };
+    const colors = levelColors[opts.level] || levelColors.stable;
+
+    let content = '';
+
+    // Summary (BETTER + BEST tiers)
+    if (opts.summary) {
+        content += `<p class="text-sm text-gray-300 mt-3">${opts.summary}</p>`;
+    }
+
+    // Recommendation (BETTER + BEST)
+    if (opts.recommendation) {
+        const recColors = { accept: 'text-green-400', reduce: 'text-yellow-400', avoid: 'text-red-400' };
+        const recColor = recColors[opts.recommendation] || 'text-gray-400';
+        content += `<div class="mt-2 flex items-center gap-2">
+            <span class="text-xs text-gray-500 uppercase">Action:</span>
+            <span class="text-xs font-bold ${recColor} uppercase">${opts.recommendation}</span>
+        </div>`;
+        if (opts.recommendationReason) {
+            content += `<p class="text-xs text-gray-400 mt-1">${opts.recommendationReason}</p>`;
+        }
+    }
+
+    // Primary failure (BEST)
+    if (opts.primaryFailureType) {
+        const sevColor = opts.primaryFailureSeverity === 'high' ? 'text-red-400' :
+                         opts.primaryFailureSeverity === 'medium' ? 'text-yellow-400' : 'text-gray-400';
+        content += `<div class="mt-2 flex items-center gap-2">
+            <span class="text-xs text-gray-500">Primary risk:</span>
+            <span class="text-xs font-bold ${sevColor}">${opts.primaryFailureType.replace(/_/g, ' ')}</span>
+            <span class="text-[10px] ${sevColor} uppercase">(${opts.primaryFailureSeverity})</span>
+        </div>`;
+    }
+
+    // Penalty badge
+    let penaltyBadge = '';
+    if (opts.penalty !== undefined && opts.penalty > 0) {
+        penaltyBadge = `<span class="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">+${opts.penalty.toFixed(1)}pt</span>`;
+    }
+
+    // Fragility score
+    let fragBadge = '';
+    if (opts.fragility !== undefined) {
+        fragBadge = `<span class="text-[10px] font-bold ${colors.badge} px-1.5 py-0.5 rounded">${opts.fragility.toFixed(1)}/100</span>`;
+    }
+
+    // Detail section (BEST tier - collapsible)
+    let detailHtml = '';
+    if (opts.detail) {
+        detailHtml = `<details class="mt-3">
+            <summary class="text-[10px] text-gray-500 cursor-pointer uppercase tracking-wider hover:text-gray-300 transition-colors">Show Detail</summary>
+            <div class="mt-2 space-y-1">${opts.detail}</div>
+        </details>`;
+    }
+
+    return `
+        <div class="bg-white/[0.02] rounded-xl p-4 border ${colors.border} relative overflow-hidden">
+            <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full ${colors.dot}"></div>
+                    <iconify-icon icon="${opts.icon}" class="text-sm text-gray-400"></iconify-icon>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${opts.title}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${penaltyBadge}
+                    ${fragBadge}
+                </div>
+            </div>
+            <div class="font-tanker text-lg tracking-wide text-white">${opts.headline}</div>
+            ${content}
+            ${detailHtml}
+        </div>
+    `;
+}
+
+function formatInductorDetail(detail) {
+    return `
+        <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-white/5 rounded p-2">
+                <div class="text-gray-500 text-[10px] uppercase">Final Fragility</div>
+                <div class="font-bold text-white">${detail.finalFragility.toFixed(1)}</div>
+            </div>
+            <div class="bg-white/5 rounded p-2">
+                <div class="text-gray-500 text-[10px] uppercase">Leg Penalty</div>
+                <div class="font-bold text-white">+${detail.legPenalty.toFixed(1)}pt</div>
+            </div>
+            <div class="bg-white/5 rounded p-2">
+                <div class="text-gray-500 text-[10px] uppercase">Corr. Penalty</div>
+                <div class="font-bold text-white">+${detail.correlationPenalty.toFixed(1)}pt</div>
+            </div>
+            <div class="bg-white/5 rounded p-2">
+                <div class="text-gray-500 text-[10px] uppercase">Corr. Multiplier</div>
+                <div class="font-bold text-white">${detail.correlationMultiplier.toFixed(2)}x</div>
+            </div>
+        </div>
+    `;
+}
+
+function formatCorrelationDetails(details, multiplier) {
+    let html = details.map(d => `
+        <div class="flex justify-between items-center p-2 bg-white/5 rounded text-xs">
+            <span class="text-gray-300">${d.type.replace(/_/g, ' ')}</span>
+            <span class="font-bold text-red-400">+${d.penalty.toFixed(1)}pt</span>
+        </div>
+    `).join('');
+    if (multiplier) {
+        html += `<div class="text-[10px] text-gray-500 mt-1">Multiplier: ${multiplier.toFixed(2)}x</div>`;
+    }
+    return html;
+}
+
+function formatBlockDetails(blocks) {
+    return blocks.map(b => `
+        <div class="flex justify-between items-center p-2 bg-white/5 rounded text-xs">
+            <div class="flex-1 min-w-0">
+                <div class="text-gray-300 truncate">${b.selection}</div>
+                <div class="text-[10px] text-gray-500 uppercase">${b.betType.replace(/_/g, ' ')}</div>
+            </div>
+            <div class="text-right shrink-0 ml-3">
+                <div class="text-gray-400">base: ${b.baseFragility.toFixed(2)}</div>
+                <div class="font-bold text-white">eff: ${b.effectiveFragility.toFixed(2)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function formatContextModifiers(modifiers) {
+    return modifiers.map(m => `
+        <div class="flex justify-between items-center p-2 bg-white/5 rounded text-xs">
+            <div>
+                <span class="text-gray-300 uppercase font-bold">${m.type}</span>
+                <span class="text-gray-500 ml-2">${m.blockSelection}</span>
+            </div>
+            <div class="text-right">
+                <span class="font-bold ${m.delta > 0 ? 'text-red-400' : 'text-green-400'}">
+                    ${m.delta > 0 ? '+' : ''}${m.delta.toFixed(1)}pt
+                </span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function fragilityToLevel(fragility) {
+    if (fragility <= 15) return 'stable';
+    if (fragility <= 35) return 'loaded';
+    if (fragility <= 60) return 'tense';
+    return 'critical';
 }

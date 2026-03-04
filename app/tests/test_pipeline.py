@@ -769,3 +769,266 @@ class TestLegOrderIntegrity:
         # All results should have identical order
         for result in results:
             assert [leg["entity"] for leg in result["legs"]] == ["Lakers", "Celtics", "Heat"]
+
+
+# =============================================================================
+# SPRINT 2: Explainability Sections Tests
+# =============================================================================
+
+
+class TestExplainabilitySections:
+    """
+    Sprint 2: Tests for tier-gated explainability sections.
+
+    Verifies that _build_explainability_sections produces correct
+    sections with proper tier gating.
+    """
+
+    def _make_mock_evaluation(self, fragility=25.0, leg_penalty=10.0,
+                               corr_penalty=0.0, corr_mult=1.0,
+                               level="loaded", action="accept",
+                               correlations=None):
+        """Build a mock evaluation response."""
+        mock = MagicMock()
+        mock.metrics.final_fragility = fragility
+        mock.metrics.leg_penalty = leg_penalty
+        mock.metrics.correlation_penalty = corr_penalty
+        mock.metrics.correlation_multiplier = corr_mult
+        mock.inductor.level.value = level
+        mock.inductor.explanation = "Test explanation for inductor."
+        mock.recommendation.action.value = action
+        mock.recommendation.reason = "Test recommendation reason."
+        mock.correlations = correlations or []
+        return mock
+
+    def _make_blocks(self, count=2):
+        """Build simple mock blocks."""
+        from core.models.leading_light import BetType, ContextModifier, ContextModifiers
+        blocks = []
+        for i in range(count):
+            b = MagicMock()
+            b.selection = f"Leg {i+1} selection"
+            b.bet_type = BetType.ML if i % 2 == 0 else BetType.SPREAD
+            b.base_fragility = 0.08 + (i * 0.02)
+            b.effective_fragility = b.base_fragility
+            mod = ContextModifier(applied=False, delta=0.0, reason=None)
+            b.context_modifiers = ContextModifiers(
+                weather=mod, injury=mod, trade=mod, role=mod
+            )
+            blocks.append(b)
+        return blocks
+
+    def test_good_tier_headlines_only(self):
+        """GOOD tier returns headlines but no summary or detail."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        eval_ = self._make_mock_evaluation()
+        blocks = self._make_blocks()
+        ctx = EvaluationContext(leg_count=2, bet_term="parlay", is_canonical=False)
+
+        result = _build_explainability_sections(
+            tier=Tier.GOOD, evaluation=eval_, blocks=blocks,
+            primary_failure=None, signal_info=None, eval_ctx=ctx,
+        )
+
+        assert "structural_risk" in result
+        assert "correlation" in result
+        assert "fragility_breakdown" in result
+        assert "context_snapshot" in result
+
+        # GOOD: headline present, no summary
+        assert "headline" in result["structural_risk"]
+        assert "summary" not in result["structural_risk"]
+        assert "summary" not in result["fragility_breakdown"]
+
+    def test_better_tier_includes_summaries(self):
+        """BETTER tier includes headline + summary, but no detail."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        eval_ = self._make_mock_evaluation()
+        blocks = self._make_blocks()
+        ctx = EvaluationContext(leg_count=2, bet_term="parlay", is_canonical=False)
+
+        result = _build_explainability_sections(
+            tier=Tier.BETTER, evaluation=eval_, blocks=blocks,
+            primary_failure=None, signal_info=None, eval_ctx=ctx,
+        )
+
+        # BETTER: summary present
+        assert "summary" in result["structural_risk"]
+        assert "summary" in result["fragility_breakdown"]
+
+        # BETTER: no block-level detail
+        assert "blocks" not in result["fragility_breakdown"]
+        assert "inductor_detail" not in result["structural_risk"]
+
+    def test_best_tier_full_breakdown(self):
+        """BEST tier includes headline + summary + full detail."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        eval_ = self._make_mock_evaluation()
+        blocks = self._make_blocks(count=3)
+        ctx = EvaluationContext(leg_count=3, bet_term="parlay", is_canonical=False)
+        pf = {"type": "leg_count", "severity": "medium"}
+
+        result = _build_explainability_sections(
+            tier=Tier.BEST, evaluation=eval_, blocks=blocks,
+            primary_failure=pf, signal_info=None, eval_ctx=ctx,
+        )
+
+        # BEST: full detail
+        assert "inductor_detail" in result["structural_risk"]
+        assert "blocks" in result["fragility_breakdown"]
+        assert len(result["fragility_breakdown"]["blocks"]) == 3
+        assert "primary_failure_type" in result["structural_risk"]
+
+    def test_structural_risk_levels(self):
+        """Structural risk headline maps correctly to inductor level."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        ctx = EvaluationContext(leg_count=1, bet_term="bet", is_canonical=False)
+
+        for level, expected_headline in [
+            ("stable", "Low Risk"),
+            ("loaded", "Moderate Risk"),
+            ("tense", "Elevated Risk"),
+            ("critical", "Critical Risk"),
+        ]:
+            eval_ = self._make_mock_evaluation(level=level)
+            result = _build_explainability_sections(
+                tier=Tier.GOOD, evaluation=eval_, blocks=[],
+                primary_failure=None, signal_info=None, eval_ctx=ctx,
+            )
+            assert result["structural_risk"]["headline"] == expected_headline
+
+    def test_correlation_section_with_correlations(self):
+        """Correlation section shows details when correlations exist."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        mock_corr = MagicMock()
+        mock_corr.type = "same_player_multi_props"
+        mock_corr.block_a = uuid4()
+        mock_corr.block_b = uuid4()
+        mock_corr.penalty = 12.0
+
+        eval_ = self._make_mock_evaluation(
+            corr_penalty=12.0, corr_mult=1.15,
+            correlations=[mock_corr],
+        )
+        blocks = self._make_blocks()
+        ctx = EvaluationContext(leg_count=2, bet_term="parlay", is_canonical=False)
+
+        result = _build_explainability_sections(
+            tier=Tier.BEST, evaluation=eval_, blocks=blocks,
+            primary_failure=None, signal_info=None, eval_ctx=ctx,
+        )
+
+        corr = result["correlation"]
+        assert corr["count"] == 1
+        assert corr["penalty"] == 12.0
+        assert "details" in corr
+        assert len(corr["details"]) == 1
+        assert corr["details"][0]["type"] == "same_player_multi_props"
+        assert corr["multiplier"] == 1.15
+
+    def test_fragility_headlines(self):
+        """Fragility headline maps correctly to fragility buckets."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        ctx = EvaluationContext(leg_count=1, bet_term="bet", is_canonical=False)
+
+        for fragility, expected in [
+            (10.0, "Low Fragility"),
+            (25.0, "Moderate Fragility"),
+            (50.0, "High Fragility"),
+            (80.0, "Critical Fragility"),
+        ]:
+            eval_ = self._make_mock_evaluation(fragility=fragility)
+            result = _build_explainability_sections(
+                tier=Tier.GOOD, evaluation=eval_, blocks=[],
+                primary_failure=None, signal_info=None, eval_ctx=ctx,
+            )
+            assert result["fragility_breakdown"]["headline"] == expected
+
+    def test_context_snapshot_no_context(self):
+        """Context snapshot shows 'No Context Signals' when none applied."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+
+        eval_ = self._make_mock_evaluation()
+        blocks = self._make_blocks()
+        ctx = EvaluationContext(leg_count=2, bet_term="parlay", is_canonical=False)
+
+        result = _build_explainability_sections(
+            tier=Tier.BEST, evaluation=eval_, blocks=blocks,
+            primary_failure=None, signal_info=None, eval_ctx=ctx,
+        )
+
+        assert result["context_snapshot"]["headline"] == "No Context Signals"
+        assert result["context_snapshot"]["has_context"] is False
+
+    def test_context_snapshot_with_context(self):
+        """Context snapshot shows details when context modifiers are applied."""
+        from app.pipeline import _build_explainability_sections, EvaluationContext
+        from core.models.leading_light import ContextModifier, ContextModifiers
+
+        eval_ = self._make_mock_evaluation()
+
+        # Build block with applied weather context
+        b = MagicMock()
+        b.selection = "Lakers ML"
+        b.bet_type = MagicMock()
+        b.bet_type.value = "ml"
+        b.base_fragility = 0.08
+        b.effective_fragility = 0.11
+        weather_mod = ContextModifier(applied=True, delta=3.0, reason="Rain expected")
+        default_mod = ContextModifier(applied=False, delta=0.0, reason=None)
+        b.context_modifiers = ContextModifiers(
+            weather=weather_mod, injury=default_mod,
+            trade=default_mod, role=default_mod,
+        )
+
+        ctx = EvaluationContext(leg_count=1, bet_term="bet", is_canonical=False)
+
+        result = _build_explainability_sections(
+            tier=Tier.BEST, evaluation=eval_, blocks=[b],
+            primary_failure=None, signal_info=None, eval_ctx=ctx,
+        )
+
+        assert result["context_snapshot"]["has_context"] is True
+        assert result["context_snapshot"]["headline"] == "Context Applied"
+        assert len(result["context_snapshot"]["modifiers"]) == 1
+        assert result["context_snapshot"]["modifiers"][0]["type"] == "weather"
+        assert result["context_snapshot"]["modifiers"][0]["delta"] == 3.0
+
+    def test_sections_in_full_pipeline(self):
+        """Explainability sections are present in full pipeline response."""
+        normalized = airlock_ingest("Lakers ML + Celtics -5.5", tier="good")
+        response = run_evaluation(normalized)
+
+        assert response.explainability_sections is not None
+        assert "structural_risk" in response.explainability_sections
+        assert "correlation" in response.explainability_sections
+        assert "fragility_breakdown" in response.explainability_sections
+        assert "context_snapshot" in response.explainability_sections
+
+    def test_best_tier_pipeline_has_block_details(self):
+        """BEST tier pipeline response includes per-block fragility details."""
+        normalized = airlock_ingest(
+            "Lakers ML + Celtics -5.5 + LeBron O27.5 pts", tier="best"
+        )
+        response = run_evaluation(normalized)
+        sections = response.explainability_sections
+
+        assert "blocks" in sections["fragility_breakdown"]
+        assert len(sections["fragility_breakdown"]["blocks"]) == 3
+
+    def test_good_tier_pipeline_no_block_details(self):
+        """GOOD tier pipeline response does NOT include per-block details."""
+        normalized = airlock_ingest(
+            "Lakers ML + Celtics -5.5 + LeBron O27.5 pts", tier="good"
+        )
+        response = run_evaluation(normalized)
+        sections = response.explainability_sections
+
+        assert "blocks" not in sections["fragility_breakdown"]
+        assert "summary" not in sections["structural_risk"]
