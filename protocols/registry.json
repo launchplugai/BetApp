@@ -1,0 +1,266 @@
+{
+  "version": "1.0",
+  "description": "Protocol catalog — declarative config for all contextual intelligence protocols",
+  "protocols": [
+    {
+      "protocolId": "back_to_back_fatigue",
+      "name": "Back-to-Back Fatigue",
+      "category": "physical",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["schedule", "rest_days"],
+      "weights": {"riskWeight": 0.12, "maxImpact": -0.12},
+      "thresholds": {"restDaysCritical": 0, "restDaysShort": 1},
+      "explainTemplates": {
+        "title": "Back-to-back fatigue risk",
+        "analystSummary": "Team on zero rest: expect ~3% shooting efficiency drop, ~1.5 more turnovers, reduced minutes efficiency.",
+        "userSummary": {
+          "risk_averse": "This team is playing on zero rest. Back-to-back games are one of the strongest predictors of underperformance. Consider avoiding.",
+          "aggressive": "Short rest creates variance. If you're betting the other side, there's an edge here.",
+          "novice": "One of these teams played last night too. Tired teams make more mistakes and miss more shots.",
+          "expert": "B2B schedule spot: historical efficiency delta -3.2% 3PT, +1.5 TOV/game. Factor into player props and totals."
+        }
+      }
+    },
+    {
+      "protocolId": "travel_stress",
+      "name": "Travel Stress",
+      "category": "physical",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["travel_miles", "altitude", "timezone"],
+      "weights": {"riskWeight": 0.10, "maxImpact": -0.10},
+      "thresholds": {"travelMilesModerate": 800, "travelMilesHigh": 1500, "altitudeThreshold": 4500},
+      "explainTemplates": {
+        "title": "Travel and altitude stress",
+        "analystSummary": "Cross-country travel or altitude exposure creates measurable fatigue and conditioning disadvantage.",
+        "userSummary": {
+          "risk_averse": "Long travel or altitude change adds hidden fatigue. Teams visiting Denver especially struggle with conditioning.",
+          "aggressive": "Travel fatigue is baked into some lines but not all. Look for mispriced visitor spreads.",
+          "novice": "When teams fly across the country or play at high altitude, they tend to get tired faster.",
+          "expert": "Travel delta: >1500mi cross-country + altitude >5000ft historically shows ~8% home advantage boost."
+        }
+      }
+    },
+    {
+      "protocolId": "pace_shock",
+      "name": "Pace Shock",
+      "category": "tactical",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["team_pace"],
+      "weights": {"riskWeight": 0.08, "maxImpact": -0.08},
+      "thresholds": {"paceDeltaModerate": 5, "paceDeltaHigh": 8},
+      "explainTemplates": {
+        "title": "Pace mismatch volatility",
+        "analystSummary": "Large pace differential creates scoring variance. Totals become structurally unstable.",
+        "userSummary": {
+          "risk_averse": "These teams play at very different speeds. That makes scoring unpredictable — totals bets are risky.",
+          "aggressive": "Pace mismatch = mispriced totals. If you like volatility, this is your game.",
+          "novice": "One team plays fast and the other plays slow. This makes it hard to predict the final score.",
+          "expert": "Pace delta >6 poss/game: over/under pricing carries elevated variance. Consider alt lines or halves."
+        }
+      }
+    },
+    {
+      "protocolId": "defensive_mismatch",
+      "name": "Defensive Mismatch",
+      "category": "tactical",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["defensive_rating", "injuries"],
+      "weights": {"riskWeight": 0.08, "maxImpact": -0.08},
+      "thresholds": {"defRatingGapModerate": 3.0, "defRatingGapHigh": 6.0},
+      "explainTemplates": {
+        "title": "Defensive matchup vulnerability",
+        "analystSummary": "Significant defensive rating gap or key defender absence creates scoring opportunity spike.",
+        "userSummary": {
+          "risk_averse": "One side has a clear defensive advantage. Bets on the weaker defense carry extra risk.",
+          "aggressive": "Defensive gap means scoring opportunities. Player props on the offensive side could be undervalued.",
+          "novice": "One team is much better at defense. The weaker team might give up a lot of points.",
+          "expert": "Defensive rating differential >6pts/100poss creates exploitable scoring asymmetry. Check opponent paint usage."
+        }
+      }
+    },
+    {
+      "protocolId": "pace_collapse",
+      "name": "Pace Collapse",
+      "category": "tactical",
+      "enabled": true,
+      "tier": "ELITE",
+      "inputs": ["team_pace", "defensive_rating", "is_playoff"],
+      "weights": {"riskWeight": 0.10, "maxImpact": -0.10},
+      "thresholds": {"slowPace": 96, "strongDef": 108},
+      "explainTemplates": {
+        "title": "Pace collapse risk",
+        "analystSummary": "Both teams play slow with strong defense. Playoff-style games amplify this. Totals bets become dangerous.",
+        "userSummary": {
+          "risk_averse": "Both teams are likely to slow this game down. Over bets are especially risky.",
+          "aggressive": "If you see value in the under, the defensive profiles support it. But it's a grind game — low ceiling for props.",
+          "novice": "Both teams like to play slow, tough defense. Don't expect a high-scoring game.",
+          "expert": "Dual slow-pace + sub-108 DRtg: historical pace collapse frequency ~35% in these matchups. Unders with caution."
+        }
+      }
+    },
+    {
+      "protocolId": "foul_trouble",
+      "name": "Foul Trouble",
+      "category": "volatility",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["referee_crew", "foul_rate"],
+      "weights": {"riskWeight": 0.08, "maxImpact": -0.08},
+      "thresholds": {"foulRateModerate": 1.5, "foulRateHigh": 3.0},
+      "explainTemplates": {
+        "title": "Foul trouble risk",
+        "analystSummary": "Referee crew calls significantly more fouls than average. Star minutes at risk, game flow disrupted.",
+        "userSummary": {
+          "risk_averse": "This referee crew is whistle-happy. Star players could get in foul trouble and see reduced minutes.",
+          "aggressive": "High-foul refs mean more free throws and game stoppages. Consider the over if both teams attack the paint.",
+          "novice": "The referees tonight call a lot of fouls. Star players might sit out more than usual.",
+          "expert": "Crew foul rate +3.0 above avg: star player minute volatility increases ~15%. Factor into prop minutes thresholds."
+        }
+      }
+    },
+    {
+      "protocolId": "lineup_instability",
+      "name": "Lineup Instability",
+      "category": "volatility",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["lineup_changes", "injuries", "starter_status"],
+      "weights": {"riskWeight": 0.10, "maxImpact": -0.10},
+      "thresholds": {"changesModerate": 2, "changesHigh": 3},
+      "explainTemplates": {
+        "title": "Lineup instability",
+        "analystSummary": "Multiple rotation changes or new starting lineup creates chemistry uncertainty and higher variance outcomes.",
+        "userSummary": {
+          "risk_averse": "This team has significant lineup changes. New combinations mean unpredictable chemistry — higher risk.",
+          "aggressive": "Lineup chaos creates mispricing. If the market hasn't adjusted to the new rotation, there's an edge.",
+          "novice": "This team changed their lineup a lot recently. New player combinations don't always work well together.",
+          "expert": "3+ lineup changes with starter out: correlation tags shift, prop baselines unreliable. Structural variance elevated."
+        }
+      }
+    },
+    {
+      "protocolId": "injury_shadow",
+      "name": "Injury Shadow",
+      "category": "volatility",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["injuries", "minutes_restrictions"],
+      "weights": {"riskWeight": 0.10, "maxImpact": -0.12},
+      "thresholds": {},
+      "explainTemplates": {
+        "title": "Injury shadow effect",
+        "analystSummary": "Star returning on restricted minutes or key player absence creates mispricing in props and team lines.",
+        "userSummary": {
+          "risk_averse": "A key player is injured or on restricted minutes. The odds may not fully reflect this — be careful with related bets.",
+          "aggressive": "Injury-related mispricing is one of the best edges in sports betting. Look for value on the replacement players.",
+          "novice": "An important player is hurt or limited. This changes how well the team can play.",
+          "expert": "Star on minutes restriction: market overvalues presence vs actual impact. Check prop lines for deflated alternatives."
+        }
+      }
+    },
+    {
+      "protocolId": "revenge_game",
+      "name": "Revenge Game",
+      "category": "psychological",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["player_history", "trade_history"],
+      "weights": {"riskWeight": 0.06, "maxImpact": -0.06},
+      "thresholds": {"recentTradeGames": 5},
+      "explainTemplates": {
+        "title": "Revenge game motivation",
+        "analystSummary": "Player facing former team shows historical usage rate spike of ~3-5%. Props may be undervalued but variance increases.",
+        "userSummary": {
+          "risk_averse": "A player is facing their old team. They'll be extra motivated, but emotional play can go either way.",
+          "aggressive": "Revenge games are real. Usage spikes of 3-5% are well-documented. Look at the over on their props.",
+          "novice": "A player is going up against the team that traded them. They usually try extra hard in these games.",
+          "expert": "Revenge narrative: +3-5% USG% historical, but sample size warning. Value in points/assists over, fade rebounds."
+        }
+      }
+    },
+    {
+      "protocolId": "momentum",
+      "name": "Momentum",
+      "category": "psychological",
+      "enabled": true,
+      "tier": "PRO",
+      "inputs": ["win_loss_streak", "clutch_rating"],
+      "weights": {"riskWeight": 0.05, "maxImpact": -0.05},
+      "thresholds": {"streakModerate": 3, "streakHigh": 5},
+      "explainTemplates": {
+        "title": "Momentum and streaks",
+        "analystSummary": "Extended streaks create regression risk (wins) or morale uncertainty (losses). Not blindly directional.",
+        "userSummary": {
+          "risk_averse": "Long streaks often end. Whether winning or losing, the pattern is unlikely to continue forever.",
+          "aggressive": "Streaks are noise until they aren't. The market overreacts to both hot and cold teams — find the disconnect.",
+          "novice": "This team has been winning (or losing) a lot lately. Streaks can change at any time.",
+          "expert": "Win streak >5: regression probability ~62% next game. Loss streak >5: bounce-back rate ~55%. Context-dependent."
+        }
+      }
+    },
+    {
+      "protocolId": "sharp_movement",
+      "name": "Sharp Movement",
+      "category": "market",
+      "enabled": true,
+      "tier": "ELITE",
+      "inputs": ["line_movement", "public_betting_pct"],
+      "weights": {"riskWeight": 0.12, "maxImpact": -0.12},
+      "thresholds": {"lineMovementModerate": 1.0, "lineMovementHigh": 2.0, "publicImbalance": 65.0},
+      "explainTemplates": {
+        "title": "Sharp money detection",
+        "analystSummary": "Line moved against public betting percentages. Professional bettors see something the market hasn't priced in.",
+        "userSummary": {
+          "risk_averse": "Professional bettors are betting the opposite of the public. That's usually a warning sign.",
+          "aggressive": "Sharp money is the strongest market signal. When pros disagree with the public, follow the money.",
+          "novice": "The betting line moved in the opposite direction of what most people are betting. Smart money might know something.",
+          "expert": "Reverse line movement: >2pt against >65% public action. Steam move probability high. CLV tracking recommended."
+        }
+      }
+    },
+    {
+      "protocolId": "trap_line",
+      "name": "Trap Line",
+      "category": "market",
+      "enabled": true,
+      "tier": "ELITE",
+      "inputs": ["line_movement", "public_betting_pct"],
+      "weights": {"riskWeight": 0.10, "maxImpact": -0.10},
+      "thresholds": {"trapPublicThreshold": 70.0, "trapLineMove": 0.5},
+      "explainTemplates": {
+        "title": "Bookmaker trap line",
+        "analystSummary": "Line moving toward heavy public side. Books are comfortable with the exposure — potential trap.",
+        "userSummary": {
+          "risk_averse": "The line is making the popular bet look even better. That's suspicious — bookmakers rarely lose.",
+          "aggressive": "Classic trap setup. If 70%+ of the public is on one side and the line keeps moving their way, fade the public.",
+          "novice": "The odds keep moving to make the popular pick look better. But the bookmakers might be setting a trap.",
+          "expert": "Trap line pattern: >70% public + line movement toward public side. Historical public side win rate ~42% in this pattern."
+        }
+      }
+    },
+    {
+      "protocolId": "whistle_shift",
+      "name": "Whistle Shift",
+      "category": "market",
+      "enabled": true,
+      "tier": "ELITE",
+      "inputs": ["referee_crew", "home_advantage_delta"],
+      "weights": {"riskWeight": 0.06, "maxImpact": -0.06},
+      "thresholds": {"homeAdvantageThreshold": 2.0},
+      "explainTemplates": {
+        "title": "Officiating bias pattern",
+        "analystSummary": "Referee crew shows historical bias in home advantage. Spread bets should account for officiating tendencies.",
+        "userSummary": {
+          "risk_averse": "This referee crew tends to favor the home team. If you're betting on the visitor, factor in an extra disadvantage.",
+          "aggressive": "Ref tendencies are underpriced. If the crew historically gives home teams +2 points, that's not in the spread.",
+          "novice": "Some referee crews tend to make calls that help the home team more than others.",
+          "expert": "Crew home advantage delta: +2.0pts historical. Adjust spread expectation accordingly. Granular crew data available."
+        }
+      }
+    }
+  ]
+}

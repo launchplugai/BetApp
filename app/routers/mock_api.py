@@ -225,3 +225,71 @@ async def get_protocol_risk(protocol_id: str):
     risk = pipeline.run(context)
 
     return risk.to_dict()
+
+
+@router.get("/protocols/catalog")
+async def get_protocol_catalog():
+    """Get the full protocol catalog with tier gating info.
+
+    Returns all protocols organized by category with their
+    tier requirements and enabled status.
+    """
+    from core.protocols.registry_loader import (
+        get_protocol_catalog,
+        get_registry_version,
+    )
+
+    return {
+        "version": get_registry_version(),
+        "catalog": get_protocol_catalog(),
+    }
+
+
+@router.get("/protocols/shadow-stats")
+async def get_shadow_stats():
+    """Get shadow compare statistics.
+
+    Shows how often protocol results differ from core-only results.
+    Used for calibration and premium tier justification.
+    """
+    from core.protocols.shadow_logger import get_log_stats
+
+    return get_log_stats()
+
+
+@router.get("/protocols/{protocol_id}/risk/styled")
+async def get_protocol_risk_styled(
+    protocol_id: str,
+    style: str = "novice",
+):
+    """Run protocol analysis with user-style adapted messaging.
+
+    Styles: risk_averse, aggressive, novice, expert
+    """
+    game_id = None
+    for league_protocols in MOCK_PROTOCOLS.values():
+        for protocol in league_protocols:
+            if protocol["protocolId"] == protocol_id:
+                game_id = protocol["gameId"]
+                break
+
+    if not game_id:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+
+    context = MOCK_PROTOCOL_CONTEXTS.get(game_id)
+    if not context:
+        return {"protocols_triggered": 0, "risk_summary": "No contextual data available"}
+
+    from core.protocols.pipeline import ProtocolPipeline, initialize_protocols
+    from core.protocols.messaging import adapt_risk_summary
+
+    initialize_protocols()
+    pipeline = ProtocolPipeline()
+    risk = pipeline.run(context)
+
+    if style not in ("risk_averse", "aggressive", "novice", "expert"):
+        style = "novice"
+
+    result = risk.to_dict()
+    result["messaging"] = adapt_risk_summary(risk, user_style=style)
+    return result

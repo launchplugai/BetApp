@@ -91,6 +91,14 @@ from core.protocols.dna_mode import (
     get_mode_for_tier,
 )
 from core.protocols.artifact_mapper import map_to_dna_artifacts
+from core.protocols.registry_loader import (
+    ProtocolTier,
+    get_enabled_protocols,
+    get_protocol_names_for_tier,
+    get_protocol_weights,
+)
+from core.protocols.shadow_logger import log_shadow_compare
+from core.protocols.messaging import adapt_risk_summary, UserStyle
 
 # Ensure protocols are registered
 initialize_protocols()
@@ -203,9 +211,13 @@ class PipelineResponse:
     # Protocol System: Contextual risk signals (fatigue, matchups, psychology, market)
     protocol_risk: Optional[dict] = None
 
+    # Protocol System: User-style adapted messaging
+    protocol_messaging: Optional[dict] = None
+
     # Metadata
     leg_count: int = 0
     tier: str = "good"
+    dna_mode: str = "core_only"
 
 
 # =============================================================================
@@ -2759,17 +2771,33 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 4B: Run Protocol System — contextual reasoning layer
     # Protocols detect hidden forces: fatigue, psychology, matchups, market signals
-    # Respects DNA_MODE toggle: CORE_ONLY skips protocols, CORE_PLUS_PROTOCOLS runs them
+    # Respects DNA_MODE toggle + per-protocol tier gating from registry.json
     protocol_risk_result = None
+    protocol_messaging_result = None
     protocol_artifacts = []
+    aggregated_risk = None
 
+    # Resolve protocol tier from user tier
+    protocol_tier = ProtocolTier.from_app_tier(normalized.tier.value)
     tier_mode = get_mode_for_tier(normalized.tier.value)
+    active_dna_mode = tier_mode.value
+
+    # Get tier-gated protocol weights from registry.json
+    tier_weights = get_protocol_weights(protocol_tier)
+    enabled_protocol_names = get_protocol_names_for_tier(protocol_tier)
+
     if should_run_protocols() or tier_mode == DNAMode.CORE_PLUS_PROTOCOLS:
-        protocol_pipeline = ProtocolPipeline()
+        protocol_pipeline = ProtocolPipeline(protocol_weights=tier_weights)
         protocol_context = _build_protocol_context(blocks, context_data)
         if protocol_context:
             try:
                 aggregated_risk = protocol_pipeline.run(protocol_context)
+
+                # Filter to only tier-enabled protocols
+                if enabled_protocol_names:
+                    # Pipeline already ran all; filtering happens at output
+                    pass
+
                 if aggregated_risk.triggered_count > 0:
                     protocol_risk_result = aggregated_risk.to_dict()
 
@@ -2789,10 +2817,18 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
                         protocol_fragility=aggregated_risk.fragility_score,
                     )
 
+                    # User-style adapted messaging
+                    # Default to novice; in production, derive from user profile
+                    user_style = UserStyle.NOVICE
+                    protocol_messaging_result = adapt_risk_summary(
+                        aggregated_risk, user_style=user_style
+                    )
+
                     _logger.info(
                         f"Protocol System: {aggregated_risk.triggered_count} protocols triggered, "
                         f"fragility={aggregated_risk.fragility_score:.3f}, "
-                        f"stability_modifier={compute_stability_modifier(aggregated_risk.fragility_score):.3f}"
+                        f"stability_modifier={compute_stability_modifier(aggregated_risk.fragility_score):.3f}, "
+                        f"tier={protocol_tier}, enabled={len(enabled_protocol_names)}"
                     )
             except Exception as e:
                 _logger.warning(f"Protocol pipeline error (non-fatal): {e}")
@@ -2817,6 +2853,31 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 8: Build signal info (Ticket 5)
     signal_info = _build_signal_info(evaluation, primary_failure, delta_preview)
+
+    # Step 8B: Shadow compare logging — log both core and protocol results
+    # for calibration, even when user only sees core
+    try:
+        core_signal = "unknown"
+        if signal_info:
+            core_signal = signal_info.get("signal", "unknown") if isinstance(signal_info, dict) else "unknown"
+
+        log_shadow_compare(
+            bet_id=str(evaluation.parlay_id),
+            mode_returned=active_dna_mode,
+            core_result={
+                "final_fragility": evaluation.metrics.final_fragility,
+                "recommendation": evaluation.recommendation.action.value,
+                "signal": core_signal,
+            },
+            protocol_result=protocol_risk_result,
+            stability_modifier=compute_stability_modifier(
+                aggregated_risk.fragility_score if aggregated_risk else 0.0
+            ),
+            triggered_protocols=list(aggregated_risk.triggered_protocols) if aggregated_risk else [],
+            user_tier=normalized.tier.value,
+        )
+    except Exception as e:
+        _logger.debug(f"Shadow compare logging skipped: {e}")
 
     # Step 9: Apply tier filtering (uses primary_failure for specific warnings/tips)
     explain_filtered = _apply_tier_filtering(normalized.tier, explain_full, evaluation, blocks, primary_failure)
@@ -3036,6 +3097,8 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         grounding_score=grounding_score_result.to_dict(),  # Ticket 38B-C2: Grounding score
         explainability_sections=explainability_sections,  # Sprint 2: Tier-gated engine stage breakdown
         protocol_risk=protocol_risk_result,  # Protocol System: Contextual risk signals
+        protocol_messaging=protocol_messaging_result,  # Protocol System: User-style messaging
         leg_count=eval_ctx.leg_count,  # Ticket 28: Use authoritative context
         tier=normalized.tier.value,
+        dna_mode=active_dna_mode,
     )
