@@ -1,30 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Engine - Command Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
-    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --neon-red: #ff1744;
-            --bg-dark: #050505;
-            --card-bg: #0a0a0a;
-        }
-        body {
-            font-family: 'Satoshi', sans-serif;
-            background-color: var(--bg-dark);
-            color: #ffffff;
-            margin: 0;
-            padding: 0;
-        }
-        .font-tanker { font-family: 'Tanker', sans-serif; }
-        .section-spacing { margin-bottom: 2rem; }
-    </style>
-</head>
-<body class="min-h-screen bg-[#050505]">
+{% extends "base.html" %}
+
+{% block title %}DNA Engine - Command Center{% endblock %}
+
+{% block extra_head %}
+<style>
+    .section-spacing { margin-bottom: 2rem; }
+</style>
+{% endblock %}
+
+{% block body %}
     <!-- Header -->
     <header class="px-4 py-4 border-b border-white/5">
         <div class="flex items-center justify-between">
@@ -35,14 +19,14 @@
                     <p class="text-xs text-gray-500">COMMAND CENTER</p>
                 </div>
             </div>
-            <button onclick="window.location.href='/app?screen=landing'" class="text-gray-400 hover:text-white">
+            <button onclick="AUTH.logout()" class="text-gray-400 hover:text-white">
                 <iconify-icon icon="lucide:log-out" class="text-xl"></iconify-icon>
             </button>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="px-4 py-6 pb-24">
+    <main class="px-4 py-6 pb-28">
         <!-- Active Protocols Section -->
         <section class="section-spacing">
             <div class="flex items-center justify-between mb-4">
@@ -53,7 +37,6 @@
                 <span id="active-protocols-count" class="text-xs text-gray-500">--</span>
             </div>
             <div id="active-protocols-container">
-                <!-- Loading state -->
                 <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
                     <div class="animate-pulse text-gray-600 font-tanker">LOADING...</div>
                 </div>
@@ -83,7 +66,7 @@
                     <iconify-icon icon="lucide:gauge" class="text-[#ff1744]"></iconify-icon>
                     <h2 class="font-tanker text-lg tracking-wide">RISK PROFILE</h2>
                 </div>
-                <button id="risk-profile-edit-btn" class="text-xs text-[#ff1744] hover:text-white">Edit →</button>
+                <button id="risk-profile-edit-btn" class="text-xs text-[#ff1744] hover:text-white">Edit &rarr;</button>
             </div>
             <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-4 space-y-3">
                 <div class="flex justify-between items-center">
@@ -150,104 +133,52 @@
             </button>
         </section>
     </main>
+{% endblock %}
 
-    <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 left-0 w-full bg-[#050505]/95 backdrop-blur-md border-t border-white/5 pb-8 pt-4 px-4">
-        <div class="flex justify-around items-center max-w-md mx-auto">
-            <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-[#ff1744]">
-                <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
-                <span class="text-[10px] font-medium">Dashboard</span>
-            </a>
-            <a href="/app?screen=protocol" id="nav-protocol" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors hidden">
-                <iconify-icon icon="lucide:layers" class="text-xl"></iconify-icon>
-                <span class="text-[10px] font-medium">Protocol</span>
-            </a>
-            <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
-                <div class="w-10 h-10 -mt-6 bg-[#0a0a0a] border border-[#ff1744] rounded-full flex items-center justify-center">
-                    <iconify-icon icon="lucide:plus" class="text-lg text-[#ff1744]"></iconify-icon>
-                </div>
-                <span class="text-[10px] font-medium -mt-1">Builder</span>
-            </a>
-            <a href="/app?screen=browse" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
-                <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
-                <span class="text-[10px] font-medium">Browse</span>
-            </a>
-            <a href="/app?screen=history" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
-                <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
-                <span class="text-[10px] font-medium">History</span>
-            </a>
-            <a href="/app?screen=notifications" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors relative">
-                <div class="relative">
-                    <iconify-icon icon="lucide:bell" class="text-xl"></iconify-icon>
-                    <span id="nav-badge-dashboard" class="absolute -top-1 -right-1 min-w-[16px] h-4 bg-[#ff1744] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 hidden">0</span>
-                </div>
-                <span class="text-[10px] font-medium">Alerts</span>
-            </a>
-        </div>
-    </nav>
-
-    <script src="/static/js/nav-protocols.js"></script>
+{% block scripts %}
     <script>
-        // Fetch and display user preferences
         async function loadUserPreferences() {
             try {
-                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
-                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                
-                const response = await fetch('/api/preferences', { headers });
-                
+                const response = await AUTH.fetch('/api/preferences');
+
                 const riskToleranceEl = document.getElementById('risk-tolerance-value');
                 const maxExposureEl = document.getElementById('max-exposure-value');
                 const kellyCapEl = document.getElementById('kelly-cap-value');
                 const editBtn = document.getElementById('risk-profile-edit-btn');
-                
+
                 if (response.ok) {
                     const prefs = await response.json();
-                    console.log('User preferences loaded:', prefs);
-                    
-                    // Update Risk Profile section
+
                     if (prefs.risk_profile && riskToleranceEl) {
                         riskToleranceEl.textContent = prefs.risk_profile.charAt(0).toUpperCase() + prefs.risk_profile.slice(1);
                     }
-                    
-                    // Update Max Exposure (from bankroll_policy)
                     if (prefs.bankroll_policy && prefs.bankroll_policy.max_units_per_bet && maxExposureEl) {
                         maxExposureEl.textContent = prefs.bankroll_policy.max_units_per_bet + ' units';
                     }
-                    
-                    // Update Kelly Cap (unit_size_percent)
                     if (prefs.bankroll_policy && prefs.bankroll_policy.unit_size_percent && kellyCapEl) {
                         kellyCapEl.textContent = prefs.bankroll_policy.unit_size_percent + '%';
                     }
-                    
-                    // Update Edit button to link to onboarding
                     if (editBtn) {
-                        editBtn.onclick = () => window.location.href = '/onboarding';
+                        editBtn.onclick = () => window.location.href = '/app?screen=onboarding';
                     }
                 } else if (response.status === 401 || response.status === 404) {
-                    // No preferences yet - show "Set Up" button
                     if (riskToleranceEl) riskToleranceEl.textContent = 'Not Set';
                     if (editBtn) {
                         editBtn.textContent = 'Set Up →';
-                        editBtn.onclick = () => window.location.href = '/onboarding';
+                        editBtn.onclick = () => window.location.href = '/app?screen=onboarding';
                     }
                 }
             } catch (err) {
                 console.error('Failed to load preferences:', err);
-                // Silently fail - page should still render
             }
         }
-        
-        // Load notification count
+
         async function loadNotificationCount() {
             try {
-                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
-                if (!token) return;
-                
-                const response = await fetch('/api/notifications?page=1&per_page=1', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
+                if (!AUTH.isAuthenticated()) return;
+
+                const response = await AUTH.fetch('/api/notifications?page=1&per_page=1');
+
                 if (response.ok) {
                     const data = await response.json();
                     const badge = document.getElementById('nav-badge-dashboard');
@@ -260,28 +191,22 @@
                 console.error('Failed to load notification count:', err);
             }
         }
-        
-        // Load active bets/protocols
+
         async function loadActiveProtocols() {
             const container = document.getElementById('active-protocols-container');
             const countEl = document.getElementById('active-protocols-count');
 
             try {
-                const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
                 let activeBets = [];
 
-                // Try authenticated bets first
-                if (token) {
-                    const response = await fetch('/api/bets/history?status=pending&limit=5', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                if (AUTH.isAuthenticated()) {
+                    const response = await AUTH.fetch('/api/bets/history?status=pending&limit=5');
                     if (response.ok) {
                         const data = await response.json();
                         activeBets = data.bets || [];
                     }
                 }
 
-                // If no auth or no bets, load available protocols from mock API
                 if (activeBets.length === 0) {
                     const protoResp = await fetch('/api/mock/protocols/available');
                     if (protoResp.ok) {
@@ -298,7 +223,6 @@
                     }
                 }
 
-                // Update count for authenticated bets
                 if (countEl) {
                     countEl.textContent = `${activeBets.length} active`;
                     countEl.className = activeBets.length > 0
@@ -328,7 +252,6 @@
                     <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
                         <iconify-icon icon="lucide:alert-circle" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
                         <h3 class="font-tanker text-lg mb-2">ERROR LOADING PROTOCOLS</h3>
-                        <p class="text-sm text-gray-500 mb-4">${err.message}</p>
                         <button onclick="loadActiveProtocols()" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
                             RETRY
                         </button>
@@ -357,22 +280,13 @@
                         <div class="flex items-center gap-1">
                             <div class="w-2 h-2 bg-[#ff1744] rounded-full animate-pulse"></div>
                             <span class="text-xs text-[#ff1744] font-bold">LIVE</span>
-                            ${proto.clock ? `<span class="text-xs text-[#ff1744]/70 ml-1">${proto.clock}</span>` : ''}
                         </div>
                         ` : `
                         <span class="text-xs text-gray-500">SCHEDULED</span>
                         `}
                     </div>
-                    ${score ? `
-                    <div class="flex gap-4 text-sm mb-2">
-                        <span class="text-white font-bold">${teams[0]} ${score.home}</span>
-                        <span class="text-gray-600">-</span>
-                        <span class="text-gray-400">${teams[1]} ${score.away}</span>
-                    </div>
-                    ` : ''}
                     <div class="flex justify-between items-center text-sm">
                         <span class="text-gray-500 text-xs">${markets} markets available</span>
-                        ${proto.aiInsight ? `<span class="text-xs text-[#ff1744]/70 truncate max-w-[60%]">${proto.aiInsight}</span>` : ''}
                     </div>
                 </div>
             `;
@@ -422,12 +336,10 @@
             `;
         }
 
-        // Load on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadUserPreferences();
             loadNotificationCount();
             loadActiveProtocols();
         });
     </script>
-</body>
-</html>
+{% endblock %}

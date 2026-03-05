@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DNA Bet Engine{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@300,400,500,700,900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#050505',
+                        card: '#0a0a0a',
+                        neon: '#ff1744',
+                    },
+                    fontFamily: {
+                        tanker: ['Tanker', 'sans-serif'],
+                        satoshi: ['Satoshi', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --neon-red: #ff1744;
+            --bg-dark: #050505;
+            --card-bg: #0a0a0a;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+        }
+        body {
+            font-family: 'Satoshi', sans-serif;
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        .font-tanker { font-family: 'Tanker', sans-serif; }
+        .text-neon-red { color: var(--neon-red); }
+        .bg-neon-red { background-color: var(--neon-red); }
+        .glass-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-[#050505]">
+    {% block body %}{% endblock %}
+
+    {% block nav %}
+    {% if active_screen is defined and active_screen not in ['landing', 'auth'] %}
+    <nav id="nav" class="fixed bottom-0 left-0 w-full bg-[#050505]/95 backdrop-blur-md border-t border-white/5 pb-8 pt-4 px-6 z-30">
+        <div class="flex items-center justify-between">
+            <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 w-12 {{ 'text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]' if active_screen == 'dashboard' else 'text-gray-500 hover:text-white' }} transition-colors">
+                <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Home</span>
+            </a>
+            <a href="/app?screen=browse" class="flex flex-col items-center gap-1 w-12 {{ 'text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]' if active_screen == 'browse' else 'text-gray-500 hover:text-white' }} transition-colors">
+                <iconify-icon icon="lucide:search" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Browse</span>
+            </a>
+            <a href="/app?screen=builder" class="flex flex-col items-center gap-1 w-12 {{ 'text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]' if active_screen == 'builder' else 'text-gray-500 hover:text-white' }} transition-colors">
+                <iconify-icon icon="lucide:ticket" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Builder</span>
+            </a>
+            <a href="/app?screen=history" class="flex flex-col items-center gap-1 w-12 relative {{ 'text-[#ff1744] drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]' if active_screen == 'history' else 'text-gray-500 hover:text-white' }} transition-colors">
+                <iconify-icon icon="lucide:clock" class="text-2xl"></iconify-icon>
+                <span class="text-[10px] font-medium">History</span>
+            </a>
+        </div>
+    </nav>
+    {% endif %}
+    {% endblock %}
+
+    <script src="/static/js/auth.js"></script>
+    {% if active_screen is defined and active_screen not in ['landing', 'auth'] %}
+    <script>
+        // Auth guard for authenticated screens
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if require_auth is defined and require_auth %}
+            AUTH.requireAuth();
+            {% endif %}
+        });
+    </script>
+    {% endif %}
+    <script src="/static/js/nav-protocols.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

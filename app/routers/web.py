@@ -92,7 +92,12 @@ rate_limiter = get_rate_limiter()
 @router.get("/", response_class=HTMLResponse)
 async def landing_page(request: Request):
     """Serve landing page at root"""
-    return templates.TemplateResponse("screens/landing.html", {"request": request})
+    return templates.TemplateResponse("screens/landing.html", {
+        "request": request,
+        "active_screen": "landing",
+        "require_auth": False,
+        "git_sha": git_sha,
+    })
 
 
 @router.get("/ui2", response_class=RedirectResponse)
@@ -101,36 +106,42 @@ async def redirect_ui2():
     return RedirectResponse(url="/app")
 
 
+# Screen registry: template path, whether auth is required
+SCREENS = {
+    "landing":      {"template": "screens/landing.html",      "require_auth": False},
+    "auth":         {"template": "screens/auth.html",          "require_auth": False},
+    "onboarding":   {"template": "screens/onboarding.html",    "require_auth": True},
+    "dashboard":    {"template": "screens/dashboard.html",     "require_auth": True},
+    "browse":       {"template": "screens/browse.html",        "require_auth": True},
+    "builder":      {"template": "screens/builder.html",       "require_auth": True},
+    "history":      {"template": "screens/history.html",       "require_auth": True},
+    "protocol":     {"template": "screens/protocol.html",      "require_auth": True},
+    "notifications":{"template": "screens/notifications.html", "require_auth": True},
+}
+
+
 @router.get("/app", response_class=HTMLResponse)
 async def canonical_app(request: Request, screen: str = "dashboard"):
     """
-    S-PROT-4B: Dashboard-first routing - dashboard is primary surface.
-    Navigation priority: Dashboard → Protocols → Builder
-    
-    Core Design Rule: Dashboard = orchestration surface
-    Builder = execution tool (secondary access)
+    Single entry point for all app screens.
+    Renders via Jinja2 with shared base.html layout context.
     """
-    from fastapi.responses import HTMLResponse
-    from pathlib import Path
-    
-    screens = {
-        "landing": "screens/landing.html",
-        "dashboard": "screens/dashboard.html",
-        "browse": "screens/browse.html",
-        "builder": "screens/builder.html",
-        "auth": "screens/auth.html",
-        "history": "screens/history.html",
-        "protocols": "screens/protocols.html",
-        "protocol": "screens/protocol.html"
-    }
-    
-    template_name = screens.get(screen, "screens/dashboard.html")
+    screen_config = SCREENS.get(screen)
+    if not screen_config:
+        return HTMLResponse(content="<h1>Screen not found</h1>", status_code=404)
+
+    template_name = screen_config["template"]
     template_path = Path(__file__).parent.parent / "templates" / template_name
-    
+
     if not template_path.exists():
         return HTMLResponse(content="<h1>Screen not found</h1>", status_code=404)
-    
-    return HTMLResponse(content=template_path.read_text())
+
+    return templates.TemplateResponse(template_name, {
+        "request": request,
+        "active_screen": screen,
+        "require_auth": screen_config["require_auth"],
+        "git_sha": git_sha,
+    })
 
 
 @router.post("/app/evaluate")
@@ -203,8 +214,11 @@ async def redirect_new(screen: str = "dashboard"):
 
 
 @router.get("/admin", response_class=HTMLResponse)
-async def admin_dashboard():
+async def admin_dashboard(request: Request):
     """Admin control panel."""
-    from pathlib import Path
-    template_path = Path(__file__).parent.parent / "templates" / "admin" / "dashboard.html"
-    return HTMLResponse(content=template_path.read_text())
+    return templates.TemplateResponse("admin/dashboard.html", {
+        "request": request,
+        "active_screen": "admin",
+        "require_auth": True,
+        "git_sha": git_sha,
+    })

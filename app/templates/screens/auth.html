@@ -1,28 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DNA Bet Engine - Sign In</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
-  <style>
-    body {
-      background-color: #050505;
-      font-family: 'Satoshi', sans-serif;
-    }
-    .font-tanker {
-      font-family: 'Tanker', sans-serif;
-    }
-    .glass-panel {
-      background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-  </style>
-</head>
-<body class="flex items-center justify-center min-h-screen text-white">
-  
+{% extends "base.html" %}
+
+{% block title %}DNA Bet Engine - Sign In{% endblock %}
+
+{% block nav %}{% endblock %}
+
+{% block body %}
+<div class="flex items-center justify-center min-h-screen">
   <div class="w-full max-w-md px-6">
     <!-- Logo/Brand -->
     <div class="text-center mb-8">
@@ -32,12 +15,8 @@
 
     <!-- Tab Switcher -->
     <div class="flex gap-2 mb-6">
-      <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-3 rounded-lg font-bold bg-[#ff1744] text-white">
-        Sign In
-      </button>
-      <button id="tab-register" onclick="switchTab('register')" class="flex-1 py-3 rounded-lg font-bold bg-white/5 text-gray-400">
-        Create Account
-      </button>
+      <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-3 rounded-lg font-bold bg-[#ff1744] text-white">Sign In</button>
+      <button id="tab-register" onclick="switchTab('register')" class="flex-1 py-3 rounded-lg font-bold bg-white/5 text-gray-400">Create Account</button>
     </div>
 
     <!-- Login Form -->
@@ -45,44 +24,17 @@
       <form onsubmit="handleLogin(event)">
         <div class="mb-4">
           <label class="block text-sm font-medium mb-2">Email</label>
-          <input
-            type="email"
-            id="login-email"
-            required
-            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
-            placeholder="you@example.com"
-          >
+          <input type="email" id="login-email" required class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none" placeholder="you@example.com">
         </div>
-
         <div class="mb-4">
           <label class="block text-sm font-medium mb-2">Password</label>
-          <input
-            type="password"
-            id="login-password"
-            required
-            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
-            placeholder="••••••••"
-          >
+          <input type="password" id="login-password" required class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none" placeholder="••••••••">
         </div>
-
-        <!-- Remember Me Toggle -->
         <div class="flex items-center gap-2 mb-6">
-          <input
-            type="checkbox"
-            id="login-remember"
-            class="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#ff1744] focus:ring-[#ff1744]"
-          >
+          <input type="checkbox" id="login-remember" class="w-4 h-4 rounded border-gray-600 bg-black/50 text-[#ff1744] focus:ring-[#ff1744]">
           <label for="login-remember" class="text-sm text-gray-400">Remember me on this device</label>
         </div>
-
-        <button
-          type="submit"
-          id="login-btn"
-          class="w-full py-3 rounded-lg font-tanker text-lg tracking-wider bg-[#ff1744] hover:bg-[#ff1744]/80 transition-colors"
-        >
-          SIGN IN
-        </button>
-
+        <button type="submit" id="login-btn" class="w-full py-3 rounded-lg font-tanker text-lg tracking-wider bg-[#ff1744] hover:bg-[#ff1744]/80 transition-colors">SIGN IN</button>
         <p id="login-error" class="mt-4 text-red-500 text-sm text-center hidden"></p>
       </form>
     </div>
@@ -92,60 +44,31 @@
       <form onsubmit="handleRegister(event)">
         <div class="mb-4">
           <label class="block text-sm font-medium mb-2">Name</label>
-          <input
-            type="text"
-            id="register-name"
-            required
-            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
-            placeholder="Your name"
-          >
+          <input type="text" id="register-name" required class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none" placeholder="Your name">
         </div>
-
         <div class="mb-4">
           <label class="block text-sm font-medium mb-2">Email</label>
-          <input
-            type="email"
-            id="register-email"
-            required
-            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
-            placeholder="you@example.com"
-          >
+          <input type="email" id="register-email" required class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none" placeholder="you@example.com">
         </div>
-
         <div class="mb-6">
           <label class="block text-sm font-medium mb-2">Password</label>
-          <input
-            type="password"
-            id="register-password"
-            required
-            minlength="8"
-            class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none"
-            placeholder="At least 8 characters"
-          >
+          <input type="password" id="register-password" required minlength="8" class="w-full px-4 py-3 rounded-lg bg-black/50 border border-white/10 focus:border-[#ff1744] outline-none" placeholder="At least 8 characters">
           <p class="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
         </div>
-
-        <button
-          type="submit"
-          id="register-btn"
-          class="w-full py-3 rounded-lg font-tanker text-lg tracking-wider bg-[#ff1744] hover:bg-[#ff1744]/80 transition-colors"
-        >
-          CREATE ACCOUNT
-        </button>
-
+        <button type="submit" id="register-btn" class="w-full py-3 rounded-lg font-tanker text-lg tracking-wider bg-[#ff1744] hover:bg-[#ff1744]/80 transition-colors">CREATE ACCOUNT</button>
         <p id="register-error" class="mt-4 text-red-500 text-sm text-center hidden"></p>
       </form>
     </div>
 
-    <!-- Demo Mode Link -->
     <div class="mt-6 text-center">
-      <a href="/app?screen=browse" class="text-sm text-gray-500 hover:text-white transition-colors">
-        Continue without account
-      </a>
+      <a href="/app?screen=browse" class="text-sm text-gray-500 hover:text-white transition-colors">Continue without account</a>
     </div>
   </div>
+</div>
+{% endblock %}
 
-  <script>
+{% block scripts %}
+<script>
     function switchTab(tab) {
       const loginTab = document.getElementById('tab-login');
       const registerTab = document.getElementById('tab-register');
@@ -171,11 +94,10 @@
 
     async function handleLogin(event) {
       event.preventDefault();
-      
       const btn = document.getElementById('login-btn');
       const errorEl = document.getElementById('login-error');
       const rememberMe = document.getElementById('login-remember').checked;
-      
+
       btn.disabled = true;
       btn.textContent = 'SIGNING IN...';
       errorEl.classList.add('hidden');
@@ -189,24 +111,12 @@
             password: document.getElementById('login-password').value
           })
         });
-
         const data = await response.json();
 
-        // S18-E: Handle new token format (access_token + refresh_token)
         if (data.success && (data.access_token || data.token)) {
           const accessToken = data.access_token || data.token;
           const refreshToken = data.refresh_token;
-          
-          // Store tokens with remember me preference
-          if (rememberMe) {
-            localStorage.setItem('dna_auth_token', accessToken);
-            localStorage.setItem('dna_refresh_token', refreshToken);
-            localStorage.setItem('dna_remember_me', 'true');
-          } else {
-            sessionStorage.setItem('dna_auth_token', accessToken);
-            sessionStorage.setItem('dna_refresh_token', refreshToken);
-          }
-          
+          AUTH.setTokens(accessToken, refreshToken, rememberMe);
           sessionStorage.setItem('dna_user', JSON.stringify(data.user));
           window.location.href = '/app?screen=dashboard';
         } else {
@@ -224,10 +134,9 @@
 
     async function handleRegister(event) {
       event.preventDefault();
-      
       const btn = document.getElementById('register-btn');
       const errorEl = document.getElementById('register-error');
-      
+
       btn.disabled = true;
       btn.textContent = 'CREATING ACCOUNT...';
       errorEl.classList.add('hidden');
@@ -242,19 +151,13 @@
             password: document.getElementById('register-password').value
           })
         });
-
         const data = await response.json();
 
-        // S18-E: Handle new token format
         if (data.success && (data.access_token || data.token)) {
           const accessToken = data.access_token || data.token;
           const refreshToken = data.refresh_token;
-          
-          // Default to session storage for new registrations
-          sessionStorage.setItem('dna_auth_token', accessToken);
-          sessionStorage.setItem('dna_refresh_token', refreshToken);
+          AUTH.setTokens(accessToken, refreshToken, false);
           sessionStorage.setItem('dna_user', JSON.stringify(data.user));
-          
           window.location.href = '/app?screen=dashboard';
         } else {
           errorEl.textContent = data.error || 'Registration failed';
@@ -269,10 +172,9 @@
       }
     }
 
-    // Check if already logged in
-    if (sessionStorage.getItem('dna_auth_token')) {
+    // Redirect if already logged in
+    if (AUTH.isAuthenticated()) {
       window.location.href = '/app?screen=dashboard';
     }
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}

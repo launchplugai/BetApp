@@ -1,45 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Bet Engine - Parlay Builder</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
-    <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        dark: '#050505',
-                        card: '#0a0a0a',
-                        neon: '#ff1744',
-                    },
-                    fontFamily: {
-                        tanker: ['Tanker', 'sans-serif'],
-                        satoshi: ['Satoshi', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .glass-panel {
-            background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .leg-selected {
-            background: rgba(255, 23, 68, 0.1) !important;
-            border-color: #ff1744 !important;
-        }
-    </style>
-</head>
-<body class="bg-dark text-white font-satoshi overflow-hidden">
+{% extends "base.html" %}
 
+{% block title %}DNA Bet Engine - Parlay Builder{% endblock %}
+
+{% block extra_head %}
+<style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .glass-panel {
+        background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .leg-selected {
+        background: rgba(255, 23, 68, 0.1) !important;
+        border-color: #ff1744 !important;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
     <div class="w-full h-screen flex flex-col relative">
         <!-- Header -->
         <header class="shrink-0 pt-14 pb-4 px-6 flex items-center justify-between z-20 bg-dark/80 backdrop-blur-md border-b border-white/5">
@@ -56,8 +35,8 @@
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto no-scrollbar pb-32">
-            
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-28">
+
             <!-- Game Header -->
             <section id="game-header" class="px-4 py-6">
                 <div class="glass-panel rounded-2xl p-5 relative">
@@ -65,7 +44,7 @@
                 </div>
             </section>
 
-            <!-- Protocol Intelligence Signals (populated by JS) -->
+            <!-- Protocol Intelligence Signals -->
             <section id="protocol-signals" class="px-4 hidden"></section>
 
             <!-- Market Tabs -->
@@ -76,8 +55,6 @@
                     <button onclick="switchMarket('quarters')" id="tab-quarters" class="shrink-0 px-4 py-2 rounded-lg bg-card text-gray-400 text-xs font-bold">QUARTERS</button>
                     <button onclick="switchMarket('halves')" id="tab-halves" class="shrink-0 px-4 py-2 rounded-lg bg-card text-gray-400 text-xs font-bold">HALVES</button>
                 </div>
-
-                <!-- Market Content -->
                 <div id="market-content"></div>
             </section>
 
@@ -93,13 +70,12 @@
 
                 <div id="legs-list" class="space-y-3 mb-6"></div>
 
-                <!-- Wager & Summary -->
                 <div class="bg-card rounded-xl p-5 border border-white/5">
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-sm text-gray-400">Total Odds</span>
-                        <span id="total-odds" class="font-tanker text-xl text-neon">—</span>
+                        <span id="total-odds" class="font-tanker text-xl text-neon">&mdash;</span>
                     </div>
-                    
+
                     <div class="relative mb-3">
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-2 block">Wager Amount</label>
                         <div class="flex items-center bg-dark border border-white/10 rounded-lg">
@@ -108,7 +84,6 @@
                         </div>
                     </div>
 
-                    <!-- Quick Bet Shortcuts -->
                     <div class="grid grid-cols-4 gap-2 mb-5">
                         <button type="button" onclick="setWager(10)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$10</button>
                         <button type="button" onclick="setWager(50)" class="bg-white/5 border border-white/10 rounded-lg py-2 text-xs font-bold hover:bg-neon/20 hover:border-neon/50 transition-colors">$50</button>
@@ -130,79 +105,38 @@
                     <iconify-icon icon="lucide:zap"></iconify-icon>
                 </button>
 
-                <!-- Submit Bet Button (Priority 1) -->
                 <button id="submit-bet-btn" onclick="submitBet()" disabled class="w-full mt-3 bg-white/10 border-2 border-neon text-white font-tanker text-lg py-3 rounded-xl cursor-not-allowed uppercase flex items-center justify-center gap-2 hover:bg-neon/20 transition-colors">
                     <span>SUBMIT BET</span>
                     <iconify-icon icon="lucide:send"></iconify-icon>
                 </button>
             </section>
 
-            <!-- DNA Results Panel (hidden by default) -->
+            <!-- DNA Results Panel -->
             <section id="results-section" class="px-4 mt-8 mb-8 hidden">
                 <div class="glass-panel rounded-2xl p-6 border border-neon/30">
                     <div class="flex items-center gap-3 mb-6">
                         <iconify-icon icon="lucide:dna" class="text-2xl text-neon"></iconify-icon>
                         <h3 class="font-tanker text-xl">DNA ANALYSIS</h3>
                     </div>
-
-                    <!-- Verdict Badge -->
                     <div id="verdict-container" class="flex justify-center mb-6">
                         <div id="verdict-badge" class="px-6 py-3 rounded-xl font-tanker text-2xl tracking-wider"></div>
                     </div>
-
-                    <!-- Confidence Score -->
                     <div class="flex justify-between items-center mb-6 p-4 bg-white/5 rounded-lg">
                         <span class="text-sm text-gray-400">Confidence Score</span>
                         <span id="confidence-score" class="font-tanker text-xl"></span>
                     </div>
-
-                    <!-- Summary -->
                     <div id="summary-text" class="text-sm text-gray-300 mb-6 p-4 bg-white/5 rounded-lg"></div>
-
-                    <!-- Sprint 2: Explainability Sections -->
                     <div id="explainability-panels" class="space-y-4 mb-6"></div>
-
-                    <!-- Legs Breakdown -->
                     <div id="legs-breakdown" class="space-y-3"></div>
-
-                    <!-- Close Button -->
                     <button onclick="closeResults()" class="w-full mt-6 py-3 border border-white/20 rounded-lg text-gray-400 hover:text-white hover:border-white/40 transition-colors font-bold uppercase text-sm">
                         Close Analysis
                     </button>
                 </div>
             </section>
         </main>
-
-        <!-- Bottom Nav -->
-        <footer class="shrink-0 bg-dark/95 backdrop-blur-xl border-t border-white/5 pb-[34px] pt-4 px-6">
-            <nav id="nav" class="flex justify-between items-center">
-                <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
-                    <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
-                    <span class="text-[10px] font-medium">Dashboard</span>
-                </a>
-                <a href="/app?screen=protocol" id="nav-protocol" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors hidden">
-                    <iconify-icon icon="lucide:layers" class="text-xl"></iconify-icon>
-                    <span class="text-[10px] font-medium">Protocol</span>
-                </a>
-                <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-neon">
-                    <div class="w-12 h-12 -mt-8 bg-card border border-neon rounded-full flex items-center justify-center">
-                        <iconify-icon icon="lucide:plus" class="text-2xl text-neon"></iconify-icon>
-                    </div>
-                    <span class="text-[10px] font-bold text-neon mt-1">Builder</span>
-                </a>
-                <a href="/app?screen=browse" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
-                    <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
-                    <span class="text-[10px] font-medium">Browse</span>
-                </a>
-                <a href="/app?screen=history" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
-                    <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
-                    <span class="text-[10px] font-medium">History</span>
-                </a>
-            </nav>
-        </footer>
     </div>
+{% endblock %}
 
+{% block scripts %}
     <script src="/static/js/builder.js"></script>
-    <script src="/static/js/nav-protocols.js"></script>
-</body>
-</html>
+{% endblock %}
