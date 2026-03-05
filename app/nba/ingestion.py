@@ -156,7 +156,7 @@ class NBADataIngestion:
             game = DimGame(
                 game_id=game_id,
                 game_date=datetime.strptime(
-                    str(game_data['GAME_DATE_EST']), 
+                    str(game_data['GAME_DATE_EST'])[:10],
                     "%Y-%m-%d"
                 ).date(),
                 season=season,
