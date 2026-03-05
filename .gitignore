@@ -64,3 +64,6 @@ Thumbs.db
 # uv package manager
 uv.lock
 .env
+
+node_modules/
+test-results/

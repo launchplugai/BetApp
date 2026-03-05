@@ -60,11 +60,14 @@ class DimPlayer(Base):
     
     # Status
     active = Column(Boolean, default=True)
-    
+
+    # Media
+    photo_url = Column(String(300))  # NBA CDN headshot URL
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
-    
+
     __table_args__ = (
         Index('idx_player_name', 'last_name', 'first_name'),
     )

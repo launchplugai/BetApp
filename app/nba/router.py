@@ -8,7 +8,7 @@ from typing import Optional, List
 from datetime import date, datetime
 from pydantic import BaseModel
 
-from app.nba.models import Base, DimTeam, DimGame
+from app.nba.models import Base, DimTeam, DimGame, DimPlayer
 from app.nba.heuristics import NBAHeuristics, get_comprehensive_edge
 from app.nba.cache import get_cache, NBACache
 from app.nba.database import get_db_session
@@ -74,6 +74,17 @@ class TeamInfo(BaseModel):
     full_name: str
 
 
+class PlayerInfo(BaseModel):
+    player_id: int
+    first_name: str
+    last_name: str
+    full_name: str
+    team_id: Optional[int]
+    position: Optional[str]
+    photo_url: Optional[str]
+    active: bool
+
+
 class GameInfo(BaseModel):
     game_id: str
     game_date: str
@@ -117,6 +128,78 @@ async def get_teams():
         ]
         cache.set_historical(cache_key, result)
         return result
+    finally:
+        db.close()
+
+
+@router.get("/players", response_model=List[PlayerInfo])
+async def get_players(
+    team: Optional[str] = Query(None, description="Filter by team abbreviation"),
+    active_only: bool = Query(True, description="Only return active players")
+):
+    """
+    Get NBA players with headshot photo URLs.
+
+    Optional filter by team abbreviation (e.g. ?team=LAL).
+    """
+    cache = get_cache()
+    cache_key = f"players:team:{team or 'all'}:active:{active_only}"
+
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+
+    db = get_db_session()
+    try:
+        query = db.query(DimPlayer)
+        if active_only:
+            query = query.filter_by(active=True)
+        if team:
+            team_obj = db.query(DimTeam).filter_by(
+                abbreviation=team.upper()
+            ).first()
+            if not team_obj:
+                raise HTTPException(404, f"Team not found: {team}")
+            query = query.filter_by(team_id=team_obj.team_id)
+
+        players = query.order_by(DimPlayer.last_name).all()
+        result = [
+            PlayerInfo(
+                player_id=p.player_id,
+                first_name=p.first_name,
+                last_name=p.last_name,
+                full_name=p.full_name,
+                team_id=p.team_id,
+                position=p.position,
+                photo_url=p.photo_url,
+                active=p.active
+            )
+            for p in players
+        ]
+        cache.set_historical(cache_key, result)
+        return result
+    finally:
+        db.close()
+
+
+@router.get("/players/{player_id}", response_model=PlayerInfo)
+async def get_player(player_id: int):
+    """Get a single player by ID with headshot photo URL."""
+    db = get_db_session()
+    try:
+        player = db.query(DimPlayer).filter_by(player_id=player_id).first()
+        if not player:
+            raise HTTPException(404, f"Player not found: {player_id}")
+        return PlayerInfo(
+            player_id=player.player_id,
+            first_name=player.first_name,
+            last_name=player.last_name,
+            full_name=player.full_name,
+            team_id=player.team_id,
+            position=player.position,
+            photo_url=player.photo_url,
+            active=player.active
+        )
     finally:
         db.close()
 

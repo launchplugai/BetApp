@@ -94,18 +94,22 @@ class NBADataIngestion:
                 player_id=player_data['id']
             ).first()
             
+            photo_url = f"https://cdn.nba.com/headshots/nba/latest/1040x760/{player_data['id']}.png"
+
             if not player:
                 player = DimPlayer(
                     player_id=player_data['id'],
                     first_name=player_data.get('first_name', ''),
                     last_name=player_data.get('last_name', ''),
                     full_name=player_data.get('full_name', ''),
-                    active=player_data.get('is_active', True)
+                    active=player_data.get('is_active', True),
+                    photo_url=photo_url
                 )
                 self.db.add(player)
                 count += 1
             else:
                 player.active = player_data.get('is_active', True)
+                player.photo_url = photo_url
                 player.updated_at = datetime.utcnow()
         
         self.db.commit()

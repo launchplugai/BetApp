@@ -166,6 +166,35 @@ async def startup_event():
     finally:
         db.close()
 
+    # Run daily ETL to populate today's games and yesterday's results
+    try:
+        from app.nba.ingestion import run_daily_etl
+        from datetime import date, timedelta
+        etl_db = get_db_session()
+        try:
+            yesterday = date.today() - timedelta(days=1)
+            print(f"Running daily ETL for {yesterday}...")
+            run_daily_etl(etl_db, yesterday)
+            print("Daily ETL complete")
+        finally:
+            etl_db.close()
+
+        # Also fetch today's scheduled games
+        etl_db2 = get_db_session()
+        try:
+            from app.nba.ingestion import NBADataIngestion
+            ingestion = NBADataIngestion(etl_db2)
+            today = date.today()
+            season = f"{today.year}-{str(today.year + 1)[-2:]}"
+            games = ingestion.fetch_games_for_date(today)
+            for game_data in games:
+                ingestion.ingest_game(game_data, season)
+            print(f"Fetched {len(games)} games scheduled for today")
+        finally:
+            etl_db2.close()
+    except Exception as e:
+        print(f"Daily ETL failed (non-fatal): {e}")
+
 
 @app.get("/health")
 async def health():

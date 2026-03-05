@@ -66,19 +66,32 @@ def get_db() -> Generator[Session, None, None]:
 def init_database():
     """
     Initialize database schema.
-    
+
     Creates all tables if they don't exist.
     Safe to call multiple times.
     """
     logger.info(f"Initializing NBA database: {DATABASE_URL}")
-    
+
     # Ensure data directory exists
     if "sqlite" in DATABASE_URL:
         db_path = DATABASE_URL.replace("sqlite:///", "")
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-    
+
     # Create tables
     Base.metadata.create_all(bind=engine)
+
+    # Migrate: add photo_url column if missing (SQLite doesn't support ALTER TABLE IF NOT EXISTS)
+    if "sqlite" in DATABASE_URL:
+        from sqlalchemy import text, inspect
+        insp = inspect(engine)
+        if "dim_players" in insp.get_table_names():
+            columns = [c["name"] for c in insp.get_columns("dim_players")]
+            if "photo_url" not in columns:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE dim_players ADD COLUMN photo_url VARCHAR(300)"))
+                    conn.commit()
+                logger.info("Migrated dim_players: added photo_url column")
+
     logger.info("NBA database tables created successfully")
 
 
