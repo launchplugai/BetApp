@@ -145,9 +145,26 @@ async def startup_event():
     print("✅ User database initialized")
     
     # Initialize NBA analytics database
-    from app.nba.database import init_database as init_nba_db
+    from app.nba.database import init_database as init_nba_db, get_db_session
+    from app.nba.models import DimTeam
     init_nba_db()
-    print("✅ NBA analytics database initialized")
+    print("NBA analytics database initialized")
+
+    # Bootstrap NBA teams/players if tables are empty
+    db = get_db_session()
+    try:
+        team_count = db.query(DimTeam).count()
+        if team_count == 0:
+            print("NBA tables empty - bootstrapping teams and players...")
+            from app.nba.database import full_bootstrap
+            result = full_bootstrap()
+            print(f"NBA bootstrap complete: {result}")
+        else:
+            print(f"NBA data present: {team_count} teams loaded")
+    except Exception as e:
+        print(f"NBA bootstrap failed (non-fatal): {e}")
+    finally:
+        db.close()
 
 
 @app.get("/health")
