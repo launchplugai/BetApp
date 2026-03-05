@@ -265,79 +265,63 @@
         async function loadActiveProtocols() {
             const container = document.getElementById('active-protocols-container');
             const countEl = document.getElementById('active-protocols-count');
-            
+
             try {
                 const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
-                
-                // If no token, show guest state
-                if (!token) {
-                    if (countEl) countEl.textContent = '0 active';
-                    container.innerHTML = `
-                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
-                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
-                            <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
-                            <p class="text-sm text-gray-500 mb-4">Sign in to track your bets and receive signals.</p>
-                            <button onclick="window.location.href='/app?screen=auth'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                                SIGN IN
-                            </button>
-                        </div>
-                    `;
-                    return;
+                let activeBets = [];
+
+                // Try authenticated bets first
+                if (token) {
+                    const response = await fetch('/api/bets/history?status=pending&limit=5', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        activeBets = data.bets || [];
+                    }
                 }
-                
-                // Fetch active/pending bets from history API
-                const response = await fetch('/api/bets/history?status=pending&limit=5', { 
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (response.status === 401) {
-                    // Token expired or invalid
-                    if (countEl) countEl.textContent = '0 active';
-                    container.innerHTML = `
-                        <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
-                            <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
-                            <h3 class="font-tanker text-lg mb-2">SESSION EXPIRED</h3>
-                            <p class="text-sm text-gray-500 mb-4">Please sign in again to view your protocols.</p>
-                            <button onclick="window.location.href='/app?screen=auth'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                                SIGN IN
-                            </button>
-                        </div>
-                    `;
-                    return;
+
+                // If no auth or no bets, load available protocols from mock API
+                if (activeBets.length === 0) {
+                    const protoResp = await fetch('/api/mock/protocols/available');
+                    if (protoResp.ok) {
+                        const protoData = await protoResp.json();
+                        const protocols = protoData.protocols || [];
+                        if (protocols.length > 0) {
+                            if (countEl) {
+                                countEl.textContent = `${protocols.length} available`;
+                                countEl.className = 'text-xs text-[#ff1744] font-bold';
+                            }
+                            container.innerHTML = protocols.slice(0, 5).map(p => renderAvailableProtocol(p)).join('');
+                            return;
+                        }
+                    }
                 }
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const data = await response.json();
-                const activeBets = data.bets || [];
-                
-                // Update count
+
+                // Update count for authenticated bets
                 if (countEl) {
                     countEl.textContent = `${activeBets.length} active`;
-                    countEl.className = activeBets.length > 0 
-                        ? 'text-xs text-[#ff1744] font-bold' 
+                    countEl.className = activeBets.length > 0
+                        ? 'text-xs text-[#ff1744] font-bold'
                         : 'text-xs text-gray-500';
                 }
-                
+
                 if (activeBets.length === 0) {
                     container.innerHTML = `
                         <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-8 text-center">
                             <iconify-icon icon="lucide:target" class="text-4xl text-gray-600 mx-auto mb-4"></iconify-icon>
                             <h3 class="font-tanker text-lg mb-2">NO ACTIVE PROTOCOLS</h3>
-                            <p class="text-sm text-gray-500 mb-4">Create a bet to track games and receive signals.</p>
-                            <button onclick="window.location.href='/app?screen=builder'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
-                                + CREATE PROTOCOL
+                            <p class="text-sm text-gray-500 mb-4">Browse games to create your first protocol.</p>
+                            <button onclick="window.location.href='/app?screen=browse'" class="bg-[#ff1744] hover:bg-[#d50000] text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                                BROWSE GAMES
                             </button>
                         </div>
                     `;
                     return;
                 }
-                
-                // Render active bets as protocol cards
-                container.innerHTML = activeBets.map(bet => renderProtocolCard(bet)).join('');
-                
+
+                container.innerHTML = activeBets.map(bet => renderBetCard(bet)).join('');
+
             } catch (err) {
                 console.error('Failed to load active protocols:', err);
                 container.innerHTML = `
@@ -352,8 +336,49 @@
                 `;
             }
         }
-        
-        function renderProtocolCard(bet) {
+
+        function renderAvailableProtocol(proto) {
+            const teams = proto.teams || [];
+            const game = teams.length >= 2 ? `${teams[0]} vs ${teams[1]}` : proto.gameId || 'Game';
+            const isLive = proto.status === 'LIVE';
+            const score = proto.score;
+            const markets = (proto.marketsAvailable || []).length;
+
+            return `
+                <div class="bg-[#0a0a0a] border border-white/10 rounded-lg p-4 mb-3 relative overflow-hidden hover:border-[#ff1744]/30 transition-colors cursor-pointer"
+                     onclick="window.location.href='/app?screen=browse'">
+                    <div class="absolute top-0 left-0 w-1 h-full ${isLive ? 'bg-[#ff1744]' : 'bg-gray-700'}"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[10px] ${isLive ? 'text-[#ff1744]' : 'text-gray-500'} font-bold tracking-widest uppercase">${proto.league} PROTOCOL</span>
+                            <h3 class="font-tanker text-lg text-white mt-1">${game}</h3>
+                        </div>
+                        ${isLive ? `
+                        <div class="flex items-center gap-1">
+                            <div class="w-2 h-2 bg-[#ff1744] rounded-full animate-pulse"></div>
+                            <span class="text-xs text-[#ff1744] font-bold">LIVE</span>
+                            ${proto.clock ? `<span class="text-xs text-[#ff1744]/70 ml-1">${proto.clock}</span>` : ''}
+                        </div>
+                        ` : `
+                        <span class="text-xs text-gray-500">SCHEDULED</span>
+                        `}
+                    </div>
+                    ${score ? `
+                    <div class="flex gap-4 text-sm mb-2">
+                        <span class="text-white font-bold">${teams[0]} ${score.home}</span>
+                        <span class="text-gray-600">-</span>
+                        <span class="text-gray-400">${teams[1]} ${score.away}</span>
+                    </div>
+                    ` : ''}
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-500 text-xs">${markets} markets available</span>
+                        ${proto.aiInsight ? `<span class="text-xs text-[#ff1744]/70 truncate max-w-[60%]">${proto.aiInsight}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBetCard(bet) {
             const legs = bet.legs || [];
             const legCount = legs.length;
             const firstLeg = legs[0] || {};
@@ -361,7 +386,7 @@
             const odds = bet.total_odds ? (bet.total_odds > 0 ? `+${bet.total_odds}` : bet.total_odds) : '--';
             const wager = bet.wager ? `$${(bet.wager / 100).toFixed(2)}` : '$0.00';
             const potential = bet.potential_payout ? `$${(bet.potential_payout / 100).toFixed(2)}` : '$0.00';
-            
+
             return `
                 <div class="bg-[#0a0a0a] border border-[#ff1744]/30 rounded-lg p-4 mb-3 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-1 h-full bg-[#ff1744]"></div>
@@ -396,7 +421,7 @@
                 </div>
             `;
         }
-        
+
         // Load on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadUserPreferences();

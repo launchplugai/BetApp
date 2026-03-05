@@ -226,18 +226,23 @@
     let protocolsData = [];
     let sportsData = [];
 
-    // Icon map for sport types - using reliable Iconify icons
+    // Icon map for sport types - fallback if league logo fails
     const SPORT_ICONS = {
       'NBA': 'emojione-monotone:basketball',
       'NFL': 'fluent:sport-american-football-24-regular',
-      'MLB': 'mdi:baseball',  // Fixed: using Material Design icon
+      'MLB': 'mdi:baseball',
       'NHL': 'ph:hockey-light',
       'MLS': 'ph:soccer-ball-light',
       'EPL': 'ph:soccer-ball-light',
       'UCL': 'ph:soccer-ball-light',
       'SOCCER': 'ph:soccer-ball-light',
-      'MMA': 'game-icons:boxing-glove'
+      'MMA': 'game-icons:boxing-glove',
+      'UFC': 'game-icons:boxing-glove',
+      'TENNIS': 'mdi:tennis'
     };
+
+    // League logo URLs from API - populated on load
+    let leagueLogos = {};
 
     // Team logo URL builder - uses ESPN CDN
     function getTeamLogoUrl(teamName, league) {
@@ -334,9 +339,22 @@
       return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     }
 
+    // Fetch league logos from API
+    async function loadLeagueLogos() {
+      try {
+        const response = await fetch(`${API_BASE}/live/logos/all-leagues`);
+        if (response.ok) {
+          const data = await response.json();
+          leagueLogos = data.logos || {};
+        }
+      } catch (err) {
+        console.error('Failed to load league logos:', err);
+      }
+    }
+
     // Initialize - fetch sports from API then load games
     document.addEventListener('DOMContentLoaded', async () => {
-      await loadSports();
+      await Promise.all([loadSports(), loadLeagueLogos()]);
       renderSportGrid();
       loadGames(currentLeague);
     });
@@ -372,9 +390,10 @@
         const isActive = sport.id === currentLeague;
         const isDisabled = !sport.active;
         const icon = SPORT_ICONS[sport.id] || 'lucide:trophy';
-        
+        const logoUrl = leagueLogos[sport.id.toLowerCase()] || leagueLogos[sport.label.toLowerCase()];
+
         return `
-          <button 
+          <button
             onclick="${isDisabled ? '' : `selectLeague('${sport.id}')`}"
             class="aspect-square glass-panel rounded-xl flex flex-col items-center justify-center gap-2 relative transition-all ${
               isActive ? 'sport-chip-active' : ''
@@ -382,7 +401,10 @@
             ${isDisabled ? 'disabled' : ''}
           >
             ${isActive ? '<div class="absolute top-2 right-2 w-1.5 h-1.5 bg-neon-red rounded-full shadow-[0_0_8px_#ff1744]"></div>' : ''}
-            <iconify-icon icon="${icon}" class="text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>
+            ${logoUrl
+              ? `<img src="${logoUrl}" alt="${sport.label}" class="w-10 h-10 object-contain ${isActive ? '' : 'opacity-50 grayscale'}" onerror="this.outerHTML='<iconify-icon icon=\\'${icon}\\' class=\\'text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}\\'></iconify-icon>'">`
+              : `<iconify-icon icon="${icon}" class="text-3xl ${isActive ? 'sport-icon' : 'text-gray-500'}"></iconify-icon>`
+            }
             <span class="font-tanker text-lg tracking-wide ${isActive ? 'sport-label text-white' : 'text-gray-500'}">${sport.label}</span>
           </button>
         `;
@@ -429,13 +451,30 @@
           status: game.status,
           startTime: game.start_time,
           featured: false,
-          marketsAvailable: ['spread', 'moneyline', 'total'],
+          marketsAvailable: ['spread', 'moneyline', 'total', 'player_props'],
+          propsCount: 0,
           clock: game.status === 'LIVE' ? 'Live' : null
         }));
-        
+
         console.log('Protocols count:', protocolsData.length);
-        
+
         renderProtocols(protocolsData);
+
+        // Async-enrich: fetch prop counts per game in background
+        protocolsData.forEach(async (p) => {
+          try {
+            const oddsResp = await fetch(`${API_BASE}/odds/${p.gameId}`);
+            if (oddsResp.ok) {
+              const odds = await oddsResp.json();
+              const propMarkets = odds.filter(m => m.market.startsWith('player_'));
+              const propSelections = propMarkets.reduce((n, m) => n + (m.selections?.length || 0), 0);
+              p.propsCount = propSelections;
+              // Update the props badge on the card
+              const badge = document.getElementById(`props-badge-${p.gameId}`);
+              if (badge) badge.textContent = propSelections > 0 ? `${propSelections} Props` : '—';
+            }
+          } catch (e) { /* silent */ }
+        });
       } catch (err) {
         console.error('Failed to load games:', err);
         list.innerHTML = `
@@ -482,7 +521,10 @@
           <!-- Card Header -->
           <div class="flex justify-between items-start mb-4">
             <div class="flex items-center gap-2 text-xs text-gray-400 font-medium tracking-wide uppercase">
-              <iconify-icon icon="${SPORT_ICONS[protocol.league] || 'lucide:trophy'}" class="text-base"></iconify-icon>
+              ${leagueLogos[protocol.league.toLowerCase()]
+                ? `<img src="${leagueLogos[protocol.league.toLowerCase()]}" alt="${protocol.league}" class="w-5 h-5 object-contain">`
+                : `<iconify-icon icon="${SPORT_ICONS[protocol.league] || 'lucide:trophy'}" class="text-base"></iconify-icon>`
+              }
               <span>${protocol.league}</span>
             </div>
             ${isLive ? `
@@ -532,7 +574,7 @@
             </div>
             <div class="bg-white/5 border border-white/10 rounded py-2 flex flex-col items-center">
               <span class="text-[10px] text-gray-500 uppercase font-bold">Props</span>
-              <span class="text-sm font-bold text-white">${protocol.marketsAvailable.includes('player_props') ? 'Live' : '—'}</span>
+              <span id="props-badge-${protocol.gameId}" class="text-sm font-bold text-white">Loading...</span>
             </div>
           </div>
 
