@@ -41,7 +41,7 @@ class User(Base):
 class Bet(Base):
     """Stored bet/parlay for history."""
     __tablename__ = "bets"
-    
+
     id = Column(String, primary_key=True, default=lambda: f"bet_{uuid.uuid4().hex[:8]}")
     user_id = Column(String, nullable=False, index=True)
     input_text = Column(String, nullable=False)
@@ -49,25 +49,35 @@ class Bet(Base):
     wager = Column(Integer, default=0)
     total_odds = Column(Integer)
     potential_payout = Column(Integer)
-    
+
     # Result tracking
     status = Column(String, default="pending")  # pending, won, lost, void
     actual_payout = Column(Integer, nullable=True)
-    
+
     # DNA analysis snapshot
     verdict = Column(String)
     confidence = Column(Integer)  # 0-100
     fragility = Column(Integer)   # 0-100
-    
+
+    # Wiring Spec v1.0: Traceability fields
+    evaluation_id = Column(String, nullable=True, index=True)  # Links to evaluation
+    session_id = Column(String, nullable=True, index=True)     # Session correlation
+    protocol_id = Column(String, nullable=True, index=True)    # Protocol used
+    sport = Column(String, nullable=True, index=True)          # Sport category
+    game_ids = Column(JSON, default=list)                      # Game references
+    grade = Column(String, nullable=True, index=True)          # Overall grade (A, B, C, etc.)
+    risk = Column(Integer, nullable=True)                      # Risk score 0-100
+    tags = Column(JSON, default=list)                          # Searchable tags
+
     # S21-E: History Receipts - DNA snapshot tracking
     user_dna_snapshot_id = Column(String, nullable=True, index=True)
     applied_constraints = Column(JSON, default=list)  # List of constraints that were applied
     blocked_actions = Column(JSON, default=list)  # List of blocked actions with reasons
     risk_profile_at_bet = Column(String, nullable=True)  # Risk profile used at bet time
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
     settled_at = Column(DateTime, nullable=True)
-    
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -82,6 +92,14 @@ class Bet(Base):
             "verdict": self.verdict,
             "confidence": self.confidence,
             "fragility": self.fragility,
+            "evaluation_id": self.evaluation_id,
+            "session_id": self.session_id,
+            "protocol_id": self.protocol_id,
+            "sport": self.sport,
+            "game_ids": self.game_ids,
+            "grade": self.grade,
+            "risk": self.risk,
+            "tags": self.tags,
             "user_dna_snapshot_id": self.user_dna_snapshot_id,
             "applied_constraints": self.applied_constraints,
             "blocked_actions": self.blocked_actions,

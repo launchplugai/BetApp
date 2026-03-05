@@ -142,6 +142,9 @@
     "response": {
       "case_convention": "camelCase",
       "always_present": [
+        "evaluationId",
+        "sessionId",
+        "createdAt",
         "evaluation",
         "evaluation.parlayId",
         "evaluation.inductor",
@@ -155,8 +158,13 @@
         "input",
         "input.betText",
         "input.tier",
+        "persist",
+        "persist.canSave",
+        "persist.saveTarget",
+        "persist.evaluationId",
         "_meta",
-        "_meta.elapsedMs"
+        "_meta.elapsedMs",
+        "_meta.requestId"
       ],
       "optional": [
         "context",
@@ -181,7 +189,31 @@
         "delta",
         "groundingScore"
       ]
+    },
+    "error_contract": {
+      "shape": {"error": {"code": "string", "message": "string", "details": "object"}},
+      "description": "All error responses use this standard envelope"
     }
+  },
+
+  "protocol_contract": {
+    "endpoints": {
+      "list": {"method": "GET", "path": "/api/protocols"},
+      "create": {"method": "POST", "path": "/api/protocols"},
+      "detail": {"method": "GET", "path": "/api/protocols/{id}"},
+      "update": {"method": "PATCH", "path": "/api/protocols/{id}"},
+      "archive": {"method": "DELETE", "path": "/api/protocols/{id}"},
+      "snapshot": {"method": "POST", "path": "/api/protocols/{id}/snapshot"},
+      "feed": {"method": "GET", "path": "/api/protocols/{id}/feed"},
+      "snapshot_v2": {"method": "GET", "path": "/api/protocols/{id}/snapshot-v2"}
+    },
+    "model_fields": ["id", "user_id", "sport", "title", "description", "status", "rules", "enabled", "visibility", "context", "created_at", "updated_at"],
+    "rule_types": ["game_context", "team_state", "market", "risk_posture"]
+  },
+
+  "persistence_contract": {
+    "bet_fields": ["id", "user_id", "evaluation_id", "session_id", "protocol_id", "sport", "game_ids", "legs", "grade", "risk", "confidence", "tags", "created_at"],
+    "filterable_by": ["status", "sport", "grade", "protocol_id", "tag", "min_risk", "max_risk", "min_confidence", "start_date", "end_date", "q"]
   },
 
   "session_storage_contracts": [

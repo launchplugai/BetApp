@@ -6,6 +6,8 @@ S6-REFACTOR: Split into template + static files for token efficiency.
 from __future__ import annotations
 
 import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List
 
@@ -177,30 +179,50 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             canonical_legs=canonical_legs,
         )
     except AirlockError as e:
-        # Return structured error with code for tests
+        # Wiring Spec v1.0: Standard error contract
         return JSONResponse(
             status_code=400,
-            content={"error": str(e), "code": e.code, "detail": str(e)}
+            content={"error": {"code": e.code, "message": str(e), "details": {}}}
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Input validation failed: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": {"code": "VALIDATION_FAILED", "message": f"Input validation failed: {str(e)}", "details": {}}}
+        )
 
     # Run evaluation
     result = run_evaluation(normalized)
 
     elapsed = time.perf_counter() - start_time
-    
+
     # Convert to dict and add metadata
     from dataclasses import asdict
     result_dict = asdict(result)
-    result_dict["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
-    
+
+    # Wiring Spec v1.0: evaluationId, sessionId, createdAt, correlationId
+    evaluation_id = f"eval_{uuid.uuid4().hex[:12]}"
+    result_dict["evaluation_id"] = evaluation_id
+    result_dict["session_id"] = request_id  # Use correlation ID as session marker
+    result_dict["created_at"] = datetime.now(timezone.utc).isoformat()
+
+    result_dict["_meta"] = {
+        "elapsed_ms": round(elapsed * 1000, 2),
+        "request_id": request_id,
+    }
+
     # Add input object for API compatibility (tests expect this)
     result_dict["input"] = {
         "bet_text": normalized.input_text,
         "tier": result.tier,
     }
-    
+
+    # Wiring Spec v1.0: persist block
+    result_dict["persist"] = {
+        "can_save": True,
+        "save_target": "/api/bets",
+        "evaluation_id": evaluation_id,
+    }
+
     # Convert snake_case to camelCase for JS frontend compatibility
     result_dict = convert_keys_to_camel(result_dict)
 

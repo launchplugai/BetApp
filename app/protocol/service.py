@@ -15,27 +15,22 @@ def create_protocol(
     sport: str,
     title: str,
     context: dict,
-    targets: Optional[List[dict]] = None
+    targets: Optional[List[dict]] = None,
+    description: Optional[str] = None,
+    rules: Optional[list] = None,
+    visibility: str = "private"
 ) -> Protocol:
     """
     Create a new protocol with optional targets.
-    
-    Args:
-        db: Database session
-        user_id: Owner user ID
-        sport: Sport code (nba, nfl, etc.)
-        title: Protocol title
-        context: Configuration dict
-        targets: Optional list of target dicts
-        
-    Returns:
-        Created Protocol
     """
     protocol = Protocol(
         user_id=user_id,
         sport=sport,
         title=title,
+        description=description,
         status="draft",
+        rules=rules or [],
+        visibility=visibility,
         context=context or {}
     )
     db.add(protocol)
@@ -170,46 +165,116 @@ def update_protocol(
     db: Session,
     protocol: Protocol,
     title: Optional[str] = None,
+    description: Optional[str] = None,
     status: Optional[str] = None,
+    rules: Optional[list] = None,
+    enabled: Optional[bool] = None,
+    visibility: Optional[str] = None,
     context: Optional[dict] = None
 ) -> Protocol:
-    """
-    Update protocol fields.
-    
-    Args:
-        db: Database session
-        protocol: Protocol to update
-        title: New title (optional)
-        status: New status (optional)
-        context: Context updates (optional, merged)
-        
-    Returns:
-        Updated Protocol
-    """
+    """Update protocol fields."""
     if title is not None:
         protocol.title = title
-    
+
+    if description is not None:
+        protocol.description = description
+
     if status is not None:
         protocol.status = status
-    
+
+    if rules is not None:
+        protocol.rules = rules
+
+    if enabled is not None:
+        protocol.enabled = enabled
+
+    if visibility is not None:
+        protocol.visibility = visibility
+
     if context is not None:
-        # Merge context updates
         current = protocol.context or {}
         current.update(context)
         protocol.context = current
-    
+
     db.commit()
     db.refresh(protocol)
     return protocol
 
 
 def archive_protocol(db: Session, protocol: Protocol) -> None:
-    """
-    Archive (soft delete) a protocol.
-    
-    Args:
-        db: Database session
-        protocol: Protocol to archive
-    """
+    """Archive (soft delete) a protocol."""
     protocol.status = "archived"
     db.commit()
+
+
+def generate_protocol_feed(
+    db: Session,
+    protocol: Protocol,
+    limit: int = 20
+) -> list:
+    """
+    Generate protocol feed - match protocol rules against available games.
+
+    Returns a list of FeedCandidate-shaped dicts. Currently returns candidates
+    from protocol targets; will be enriched with rule-based matching as
+    the odds/games APIs mature.
+    """
+    candidates = []
+    rules = protocol.rules or []
+
+    for target in list(protocol.targets)[:limit]:
+        if target.target_type == "game":
+            matched_rule_names = [r.get("name", "unnamed") for r in rules]
+            candidates.append({
+                "game_id": target.external_id,
+                "sport": protocol.sport,
+                "match_reason": f"Game target in protocol '{protocol.title}'",
+                "suggested_legs": [],
+                "alignment_score": 1.0 if not rules else 0.5,
+                "matched_rules": matched_rule_names,
+                "action_payload": {
+                    "protocol_id": protocol.id,
+                    "game_id": target.external_id,
+                    "sport": protocol.sport,
+                }
+            })
+
+    return candidates
+
+
+def generate_snapshot_v2(db: Session, protocol: Protocol) -> dict:
+    """
+    Generate snapshot v2 - performance summary, rule hit rates, top drivers.
+    """
+    items = list(protocol.items)[:50]
+    snapshots = [i for i in items if i.type == "stats_snapshot"]
+
+    rule_names = [r.get("name", "unnamed") for r in (protocol.rules or [])]
+    rule_hits = {name: 0.0 for name in rule_names}
+
+    recent_matches = []
+    for snap in snapshots[:10]:
+        payload = snap.payload or {}
+        recent_matches.append({
+            "item_id": snap.id,
+            "created_at": snap.created_at.isoformat() if snap.created_at else "",
+            "summary": payload.get("summary", {}),
+        })
+        for rule_name in payload.get("matched_rules", []):
+            if rule_name in rule_hits:
+                rule_hits[rule_name] += 1
+
+    total = len(snapshots) or 1
+    rule_hit_rates = {k: round(v / total, 2) for k, v in rule_hits.items()}
+    top_drivers = list(rule_hits.keys())[:5]
+
+    return {
+        "recent_matches": recent_matches,
+        "performance": {
+            "total_snapshots": len(snapshots),
+            "total_items": len(items),
+            "sport": protocol.sport,
+        },
+        "rule_hit_rates": rule_hit_rates,
+        "top_drivers": top_drivers,
+    }

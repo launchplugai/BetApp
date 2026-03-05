@@ -204,7 +204,95 @@ class TestAuthUtility:
 
 
 # ===========================================================================
-# 7. Contract Version
+# 7. Protocol Endpoints Exist
+# ===========================================================================
+
+class TestProtocolEndpoints:
+    """Protocol router must expose all contracted endpoints."""
+
+    @pytest.fixture(scope="class")
+    def protocol_router_code(self):
+        path = REPO_ROOT / "app" / "protocol" / "router.py"
+        assert path.exists(), f"Protocol router not found at {path}"
+        return path.read_text()
+
+    def test_feed_endpoint_exists(self, contracts, protocol_router_code):
+        """GET /api/protocols/{id}/feed must exist."""
+        assert "/feed" in protocol_router_code, (
+            "Protocol feed endpoint not found in router.py"
+        )
+
+    def test_snapshot_v2_endpoint_exists(self, contracts, protocol_router_code):
+        """GET /api/protocols/{id}/snapshot-v2 must exist."""
+        assert "/snapshot-v2" in protocol_router_code, (
+            "Protocol snapshot-v2 endpoint not found in router.py"
+        )
+
+
+# ===========================================================================
+# 8. Bet Model Has Traceability Fields
+# ===========================================================================
+
+class TestBetModelFields:
+    """Bet model must have all spec-required traceability fields."""
+
+    def test_bet_model_has_required_fields(self, contracts):
+        import sys
+        sys.path.insert(0, str(REPO_ROOT))
+        from app.models import Bet
+        column_names = {c.name for c in Bet.__table__.columns}
+        required = contracts["persistence_contract"]["bet_fields"]
+        missing = [f for f in required if f not in column_names]
+        assert not missing, (
+            f"Bet model missing fields: {missing}. "
+            f"Has: {sorted(column_names)}"
+        )
+
+
+# ===========================================================================
+# 9. Protocol Model Has Strategy Fields
+# ===========================================================================
+
+class TestProtocolModelFields:
+    """Protocol model must have rules, enabled, visibility."""
+
+    def test_protocol_model_has_required_fields(self, contracts):
+        import sys
+        sys.path.insert(0, str(REPO_ROOT))
+        from app.protocol.models import Protocol
+        column_names = {c.name for c in Protocol.__table__.columns}
+        required = contracts["protocol_contract"]["model_fields"]
+        missing = [f for f in required if f not in column_names]
+        assert not missing, (
+            f"Protocol model missing fields: {missing}. "
+            f"Has: {sorted(column_names)}"
+        )
+
+
+# ===========================================================================
+# 10. History Filters
+# ===========================================================================
+
+class TestHistoryFilters:
+    """History endpoint must support all contracted filters."""
+
+    @pytest.fixture(scope="class")
+    def bets_router_code(self):
+        path = REPO_ROOT / "app" / "routers" / "bets.py"
+        assert path.exists()
+        return path.read_text()
+
+    def test_history_supports_contracted_filters(self, contracts, bets_router_code):
+        """GET /api/bets/history must accept all filter params."""
+        required_filters = contracts["persistence_contract"]["filterable_by"]
+        for f in required_filters:
+            assert f in bets_router_code, (
+                f"History endpoint missing filter param '{f}' in bets.py"
+            )
+
+
+# ===========================================================================
+# 11. Contract Version & Completeness
 # ===========================================================================
 
 class TestContractMeta:
@@ -221,3 +309,12 @@ class TestContractMeta:
 
     def test_has_auth_contract(self, contracts):
         assert "auth_contract" in contracts
+
+    def test_has_protocol_contract(self, contracts):
+        assert "protocol_contract" in contracts
+
+    def test_has_persistence_contract(self, contracts):
+        assert "persistence_contract" in contracts
+
+    def test_has_error_contract(self, contracts):
+        assert "error_contract" in contracts["evaluate_contract"]

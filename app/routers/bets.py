@@ -47,6 +47,14 @@ class BetHistoryItem(BaseModel):
     # S21-E: DNA receipt fields
     user_dna_snapshot_id: Optional[str] = None
     risk_profile_at_bet: Optional[str] = None
+    # Wiring Spec v1.0: Traceability fields
+    evaluation_id: Optional[str] = None
+    session_id: Optional[str] = None
+    protocol_id: Optional[str] = None
+    sport: Optional[str] = None
+    grade: Optional[str] = None
+    risk: Optional[int] = None
+    tags: List[str] = []
 
 
 class BetHistoryResponse(BaseModel):
@@ -64,49 +72,79 @@ class BetHistoryResponse(BaseModel):
 async def get_bet_history(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     status: Optional[str] = Query(None, description="Filter by status: pending, won, lost, void"),
+    sport: Optional[str] = Query(None, description="Filter by sport"),
+    grade: Optional[str] = Query(None, description="Filter by grade (A, B, C, etc.)"),
+    protocol_id: Optional[str] = Query(None, description="Filter by protocol ID"),
+    tag: Optional[str] = Query(None, description="Filter by tag"),
+    min_risk: Optional[int] = Query(None, ge=0, le=100, description="Minimum risk score"),
+    max_risk: Optional[int] = Query(None, ge=0, le=100, description="Maximum risk score"),
+    min_confidence: Optional[int] = Query(None, ge=0, le=100, description="Minimum confidence"),
+    start_date: Optional[str] = Query(None, description="Start date (ISO format)"),
+    end_date: Optional[str] = Query(None, description="End date (ISO format)"),
+    q: Optional[str] = Query(None, description="Free text search"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=50, description="Items per page")
 ):
     """
-    Get bet history for authenticated user.
-    
-    Query params:
-        - status: Filter by status (pending, won, lost, void)
-        - page: Page number (default 1)
-        - per_page: Items per page (default 10, max 50)
-    
-    Returns:
-        {
-            "bets": [...],
-            "total": 100,
-            "page": 1,
-            "per_page": 10
-        }
+    Get bet history for authenticated user with filtering.
+
+    Wiring Spec v1.0: Supports filtering by status, sport, grade, protocolId,
+    tags, risk range, confidence, date range, and free text.
     """
     user = get_current_user_from_token(credentials.credentials)
-    
+
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
+
     db = get_session()
-    
+
     # Build query
     query = db.query(Bet).filter(Bet.user_id == user.id)
-    
+
     if status:
         query = query.filter(Bet.status == status.lower())
-    
+    if sport:
+        query = query.filter(Bet.sport == sport.lower())
+    if grade:
+        query = query.filter(Bet.grade == grade.upper())
+    if protocol_id:
+        query = query.filter(Bet.protocol_id == protocol_id)
+    if min_risk is not None:
+        query = query.filter(Bet.risk >= min_risk)
+    if max_risk is not None:
+        query = query.filter(Bet.risk <= max_risk)
+    if min_confidence is not None:
+        query = query.filter(Bet.confidence >= min_confidence)
+    if start_date:
+        try:
+            from datetime import datetime as dt
+            start = dt.fromisoformat(start_date.replace("Z", "+00:00"))
+            query = query.filter(Bet.created_at >= start)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            from datetime import datetime as dt
+            end = dt.fromisoformat(end_date.replace("Z", "+00:00"))
+            query = query.filter(Bet.created_at <= end)
+        except ValueError:
+            pass
+    if q:
+        query = query.filter(Bet.input_text.ilike(f"%{q}%"))
+    if tag:
+        # SQLite JSON contains check - search tags array for the tag value
+        query = query.filter(Bet.tags.ilike(f'%"{tag}"%'))
+
     # Get total count
     total = query.count()
-    
+
     # Pagination
     offset = (page - 1) * per_page
     bets = query.order_by(Bet.created_at.desc()).offset(offset).limit(per_page).all()
-    
+
     # Map to response format
     bet_items = []
     for bet in bets:
-        # Parse legs from JSON
         legs = bet.legs or []
         leg_items = [
             BetLeg(
@@ -117,7 +155,7 @@ async def get_bet_history(
             )
             for leg in legs
         ]
-        
+
         bet_items.append(BetHistoryItem(
             id=bet.id,
             input_text=bet.input_text,
@@ -132,9 +170,16 @@ async def get_bet_history(
             created_at=bet.created_at.isoformat() if bet.created_at else "",
             settled_at=bet.settled_at.isoformat() if bet.settled_at else None,
             user_dna_snapshot_id=bet.user_dna_snapshot_id,
-            risk_profile_at_bet=bet.risk_profile_at_bet
+            risk_profile_at_bet=bet.risk_profile_at_bet,
+            evaluation_id=bet.evaluation_id,
+            session_id=bet.session_id,
+            protocol_id=bet.protocol_id,
+            sport=bet.sport,
+            grade=bet.grade,
+            risk=bet.risk,
+            tags=bet.tags or [],
         ))
-    
+
     return BetHistoryResponse(
         bets=bet_items,
         total=total,

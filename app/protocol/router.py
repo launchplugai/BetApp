@@ -53,7 +53,10 @@ async def create_protocol(
         sport=payload.sport,
         title=payload.title,
         context=payload.context or {},
-        targets=targets
+        targets=targets,
+        description=payload.description,
+        rules=payload.rules,
+        visibility=payload.visibility or "private"
     )
     
     return _protocol_to_out(protocol)
@@ -130,7 +133,11 @@ async def update_protocol(
         db=db,
         protocol=protocol,
         title=payload.title,
+        description=payload.description,
         status=payload.status,
+        rules=payload.rules,
+        enabled=payload.enabled,
+        visibility=payload.visibility,
         context=payload.context
     )
     
@@ -202,6 +209,72 @@ async def create_snapshot(
 
 
 # =============================================================================
+# Wiring Spec v1.0: Feed & Snapshot-v2 Endpoints
+# =============================================================================
+
+@router.get("/{protocol_id}/feed", response_model=schemas.ProtocolFeedOut)
+async def get_protocol_feed(
+    protocol_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """
+    Get protocol feed - candidates matching protocol rules.
+
+    Returns opportunities that match the protocol's rule definitions,
+    with match reasons, suggested legs, and builder action payloads.
+    """
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    protocol = service.get_protocol_detail(db, protocol_id, user.id)
+    if not protocol:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+
+    candidates = service.generate_protocol_feed(db, protocol, limit=limit)
+
+    from datetime import datetime, timezone
+    return schemas.ProtocolFeedOut(
+        protocol_id=protocol.id,
+        candidates=candidates,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        rule_count=len(protocol.rules or [])
+    )
+
+
+@router.get("/{protocol_id}/snapshot-v2", response_model=schemas.SnapshotV2Out)
+async def get_snapshot_v2(
+    protocol_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    """
+    Protocol snapshot v2 - performance summary, rule hit rates, top drivers.
+    """
+    user = get_current_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    protocol = service.get_protocol_detail(db, protocol_id, user.id)
+    if not protocol:
+        raise HTTPException(status_code=404, detail="Protocol not found")
+
+    snapshot = service.generate_snapshot_v2(db, protocol)
+
+    from datetime import datetime, timezone
+    return schemas.SnapshotV2Out(
+        protocol_id=protocol.id,
+        recent_matches=snapshot.get("recent_matches", []),
+        performance=snapshot.get("performance", {}),
+        rule_hit_rates=snapshot.get("rule_hit_rates", {}),
+        top_drivers=snapshot.get("top_drivers", []),
+        generated_at=datetime.now(timezone.utc).isoformat()
+    )
+
+
+# =============================================================================
 # Helpers
 # =============================================================================
 
@@ -211,7 +284,11 @@ def _protocol_to_out(protocol: Protocol) -> schemas.ProtocolOut:
         id=protocol.id,
         sport=protocol.sport,
         title=protocol.title,
+        description=protocol.description,
         status=protocol.status,
+        rules=protocol.rules or [],
+        enabled=protocol.enabled if protocol.enabled is not None else True,
+        visibility=protocol.visibility or "private",
         context=protocol.context or {},
         created_at=protocol.created_at.isoformat() if protocol.created_at else "",
         updated_at=protocol.updated_at.isoformat() if protocol.updated_at else "",
