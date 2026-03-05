@@ -20,7 +20,7 @@ from app.routers import leading_light
 from app.routers import panel
 from app.routers import web
 from app.routers import history
-from app.routers import v1_ui
+
 from app.routers import debug
 from app.routers import metrics
 from app.routers import mock_api
@@ -128,7 +128,7 @@ app.include_router(notifications.router)
 app.include_router(leading_light.router)
 app.include_router(panel.router)
 app.include_router(history.router)
-app.include_router(v1_ui.router)
+
 app.include_router(metrics.router)
 
 

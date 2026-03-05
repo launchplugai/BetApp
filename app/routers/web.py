@@ -144,6 +144,7 @@ async def canonical_app(request: Request, screen: str = "dashboard"):
     })
 
 
+@router.post("/api/evaluate")
 @router.post("/app/evaluate")
 async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     """
