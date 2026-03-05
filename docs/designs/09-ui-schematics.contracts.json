@@ -1,0 +1,194 @@
+{
+  "$schema": "09-ui-schematics.contracts.json",
+  "version": "1.0.0",
+  "description": "Machine-checkable UI wiring contracts. Validated by tests/test_wiring_contracts.py.",
+
+  "screens": {
+    "landing": {
+      "template": "screens/landing.html",
+      "require_auth": false,
+      "extends_base": true,
+      "nav_visible": false
+    },
+    "auth": {
+      "template": "screens/auth.html",
+      "require_auth": false,
+      "extends_base": true,
+      "nav_visible": false
+    },
+    "onboarding": {
+      "template": "screens/onboarding.html",
+      "require_auth": true,
+      "extends_base": false,
+      "nav_visible": false
+    },
+    "dashboard": {
+      "template": "screens/dashboard.html",
+      "require_auth": true,
+      "extends_base": true,
+      "nav_visible": true
+    },
+    "browse": {
+      "template": "screens/browse.html",
+      "require_auth": true,
+      "extends_base": true,
+      "nav_visible": true
+    },
+    "builder": {
+      "template": "screens/builder.html",
+      "require_auth": true,
+      "extends_base": true,
+      "nav_visible": true
+    },
+    "history": {
+      "template": "screens/history.html",
+      "require_auth": true,
+      "extends_base": true,
+      "nav_visible": true
+    },
+    "protocol": {
+      "template": "screens/protocol.html",
+      "require_auth": true,
+      "extends_base": true,
+      "nav_visible": true
+    },
+    "notifications": {
+      "template": "screens/notifications.html",
+      "require_auth": true,
+      "extends_base": true,
+      "nav_visible": true
+    }
+  },
+
+  "routes": {
+    "app_entry": {
+      "method": "GET",
+      "path": "/app",
+      "query_param": "screen",
+      "default_screen": "dashboard"
+    },
+    "landing_alias": {
+      "method": "GET",
+      "path": "/",
+      "renders": "screens/landing.html"
+    },
+    "evaluate": {
+      "methods": ["POST"],
+      "paths": ["/api/evaluate", "/app/evaluate"],
+      "canonical": "/api/evaluate"
+    },
+    "legacy_redirects": [
+      {"from": "/ui2", "to": "/app"},
+      {"from": "/new", "to": "/app?screen=dashboard"}
+    ]
+  },
+
+  "auth_contract": {
+    "utility": "AUTH",
+    "source": "/static/js/auth.js",
+    "token_keys": {
+      "access": "dna_auth_token",
+      "refresh": "dna_refresh_token",
+      "user": "dna_user",
+      "remember": "dna_remember_me"
+    },
+    "required_methods": [
+      "getAccessToken",
+      "setTokens",
+      "clearTokens",
+      "isAuthenticated",
+      "getAuthHeaders",
+      "refreshAccessToken",
+      "logout",
+      "requireAuth",
+      "fetch"
+    ],
+    "rules": {
+      "no_raw_token_access": {
+        "description": "Authenticated screens must NOT use raw sessionStorage.getItem('dna_auth_token')",
+        "forbidden_pattern": "sessionStorage\\.getItem\\(['\"]dna_auth_token['\"]\\)",
+        "applies_to_screens": ["dashboard", "browse", "builder", "history", "protocol", "notifications"]
+      },
+      "auth_gate_on_load": {
+        "description": "Screens with require_auth=true get AUTH.requireAuth() from base.html",
+        "mechanism": "base.html injects script block when require_auth is true"
+      }
+    }
+  },
+
+  "template_contract": {
+    "base_template": "base.html",
+    "extends_marker": "{% extends \"base.html\" %}",
+    "required_blocks": ["body"],
+    "optional_blocks": ["title", "extra_head", "nav", "scripts"],
+    "context_variables": {
+      "request": {"type": "Request", "always": true},
+      "active_screen": {"type": "str", "always": true},
+      "require_auth": {"type": "bool", "always": true},
+      "git_sha": {"type": "str", "always": true}
+    },
+    "nav_hidden_screens": ["landing", "auth"]
+  },
+
+  "evaluate_contract": {
+    "request": {
+      "content_type": "application/json",
+      "fields": {
+        "input": {"type": "string", "required": true},
+        "tier": {"type": "string", "required": false, "enum": ["GOOD", "BETTER", "BEST"]},
+        "legs": {"type": "array", "required": false}
+      }
+    },
+    "response": {
+      "case_convention": "camelCase",
+      "always_present": [
+        "evaluation",
+        "evaluation.parlayId",
+        "evaluation.inductor",
+        "evaluation.metrics",
+        "evaluation.correlations",
+        "evaluation.dna",
+        "evaluation.recommendation",
+        "interpretation",
+        "explain",
+        "tier",
+        "input",
+        "input.betText",
+        "input.tier",
+        "_meta",
+        "_meta.elapsedMs"
+      ],
+      "optional": [
+        "context",
+        "nbaHeuristics",
+        "primaryFailure",
+        "deltaPreview",
+        "signalInfo",
+        "entities",
+        "secondaryFactors",
+        "humanSummary",
+        "evaluatedParlay",
+        "notableLegs",
+        "finalVerdict",
+        "gentleGuidance",
+        "nextAction",
+        "confidenceTrend",
+        "groundingWarnings",
+        "sherlockResult",
+        "debugExplainability",
+        "proofSummary",
+        "structure",
+        "delta",
+        "groundingScore"
+      ]
+    }
+  },
+
+  "session_storage_contracts": [
+    {"key": "dna_auth_token", "writer": "auth", "readers": ["AUTH.*"], "type": "string"},
+    {"key": "dna_refresh_token", "writer": "auth", "readers": ["AUTH.*"], "type": "string"},
+    {"key": "dna_user", "writer": "auth", "readers": ["dashboard", "nav"], "type": "object"},
+    {"key": "dna_remember_me", "writer": "auth", "readers": ["AUTH.*"], "type": "string"},
+    {"key": "dna_protocol_context", "writer": "browse", "readers": ["builder"], "type": "object"}
+  ]
+}
