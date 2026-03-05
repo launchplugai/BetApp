@@ -149,19 +149,39 @@ def bootstrap_players():
         db.close()
 
 
+def bootstrap_rosters():
+    """
+    Sync current team rosters to assign team_id and position to players.
+    """
+    from app.nba.ingestion import NBADataIngestion
+
+    logger.info("Bootstrapping rosters...")
+
+    db = get_db_session()
+    try:
+        ingestion = NBADataIngestion(db)
+        count = ingestion.sync_rosters()
+        logger.info(f"Bootstrapped {count} roster assignments")
+        return count
+    finally:
+        db.close()
+
+
 def full_bootstrap():
     """
     Run complete bootstrap sequence.
-    
+
     1. Initialize database
     2. Load teams
     3. Load players
+    4. Sync rosters (team_id + position)
     """
     logger.info("Starting full NBA database bootstrap...")
-    
+
     init_database()
     teams = bootstrap_teams()
     players = bootstrap_players()
-    
-    logger.info(f"Bootstrap complete: {teams} teams, {players} players")
-    return {"teams": teams, "players": players}
+    rosters = bootstrap_rosters()
+
+    logger.info(f"Bootstrap complete: {teams} teams, {players} players, {rosters} roster assignments")
+    return {"teams": teams, "players": players, "rosters": rosters}

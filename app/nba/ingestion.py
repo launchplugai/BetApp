@@ -116,6 +116,46 @@ class NBADataIngestion:
         logger.info(f"Synced {count} new players")
         return count
     
+    def sync_rosters(self) -> int:
+        """
+        Sync current team rosters to populate team_id and position on players.
+        Calls commonteamroster for each team (30 API calls with rate limiting).
+        Returns count of players updated.
+        """
+        import time
+        logger.info("Syncing team rosters...")
+
+        teams = self.db.query(DimTeam).filter_by(active=True).all()
+        updated = 0
+
+        for team in teams:
+            try:
+                roster = commonteamroster.CommonTeamRoster(
+                    team_id=team.team_id,
+                    timeout=30
+                )
+                roster_data = roster.get_normalized_dict()['CommonTeamRoster']
+
+                for row in roster_data:
+                    player = self.db.query(DimPlayer).filter_by(
+                        player_id=row['PLAYER_ID']
+                    ).first()
+                    if player:
+                        player.team_id = team.team_id
+                        player.position = row.get('POSITION', None)
+                        player.updated_at = datetime.utcnow()
+                        updated += 1
+
+                # Rate limit: ~1 req/sec to avoid NBA API throttle
+                time.sleep(0.6)
+            except Exception as e:
+                logger.warning(f"Failed to fetch roster for {team.abbreviation}: {e}")
+                continue
+
+        self.db.commit()
+        logger.info(f"Updated {updated} player roster assignments")
+        return updated
+
     # =========================================================================
     # GAMES & BOX SCORES (Daily ETL)
     # =========================================================================

@@ -163,13 +163,20 @@ async def startup_event():
             print(f"NBA data present: {team_count} teams loaded")
             # Re-sync players to pick up photo_url for existing records
             from app.nba.models import DimPlayer
+            from app.nba.ingestion import NBADataIngestion
             missing_photos = db.query(DimPlayer).filter(DimPlayer.photo_url.is_(None), DimPlayer.active.is_(True)).count()
             if missing_photos > 0:
                 print(f"Updating {missing_photos} players with missing photo URLs...")
-                from app.nba.ingestion import NBADataIngestion
                 ingestion = NBADataIngestion(db)
                 ingestion.sync_players(active_only=True)
                 print("Player photos updated")
+            # Sync rosters if players are missing team assignments
+            missing_teams = db.query(DimPlayer).filter(DimPlayer.team_id.is_(None), DimPlayer.active.is_(True)).count()
+            if missing_teams > 0:
+                print(f"Syncing rosters for {missing_teams} players missing team assignments...")
+                ingestion = NBADataIngestion(db)
+                count = ingestion.sync_rosters()
+                print(f"Roster sync complete: {count} players updated")
     except Exception as e:
         print(f"NBA bootstrap failed (non-fatal): {e}")
     finally:
