@@ -190,6 +190,35 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
             content={"error": {"code": "VALIDATION_FAILED", "message": f"Input validation failed: {str(e)}", "details": {}}}
         )
 
+    # Wiring Spec v1.0: Optionally load user preferences if auth token present
+    preferences_applied = None
+    auth_header = raw_request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            from app.services.auth import get_current_user_from_token
+            from app.models import get_session
+            from app.models.user_preferences import UserPreferences
+            token = auth_header.split(" ", 1)[1]
+            user = get_current_user_from_token(token)
+            if user:
+                db = get_session()
+                prefs = db.query(UserPreferences).filter_by(user_id=user.id).first()
+                if prefs:
+                    prefs_dict = prefs.to_dict()
+                    constraints = prefs_dict.get("constraints", {})
+                    preferences_applied = {
+                        "risk_profile": prefs_dict.get("risk_profile", "balanced"),
+                        "active_constraints": [k for k, v in constraints.items() if v],
+                        "constraint_summary": {
+                            "max_legs": constraints.get("max_legs", 6),
+                            "no_unders": constraints.get("no_unders", False),
+                            "avoid_teams": constraints.get("avoid_teams", []),
+                            "favorite_sports": constraints.get("favorite_sports", []),
+                        },
+                    }
+        except Exception:
+            pass  # Preferences are optional — never block evaluation
+
     # Run evaluation
     result = run_evaluation(normalized)
 
@@ -222,6 +251,10 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         "save_target": "/api/bets",
         "evaluation_id": evaluation_id,
     }
+
+    # Wiring Spec v1.0: preferences_applied block (if authenticated)
+    if preferences_applied:
+        result_dict["preferences_applied"] = preferences_applied
 
     # Convert snake_case to camelCase for JS frontend compatibility
     result_dict = convert_keys_to_camel(result_dict)

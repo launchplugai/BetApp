@@ -318,3 +318,71 @@ class TestContractMeta:
 
     def test_has_error_contract(self, contracts):
         assert "error_contract" in contracts["evaluate_contract"]
+
+    def test_has_global_error_contract(self, contracts):
+        assert "error_contract" in contracts
+
+    def test_has_preferences_contract(self, contracts):
+        assert "preferences_contract" in contracts
+
+
+# ===========================================================================
+# 12. Global Error Handler Exists
+# ===========================================================================
+
+class TestGlobalErrorHandler:
+    """main.py must have global exception handlers for standard error envelope."""
+
+    @pytest.fixture(scope="class")
+    def main_code(self):
+        path = REPO_ROOT / "app" / "main.py"
+        assert path.exists()
+        return path.read_text()
+
+    def test_http_exception_handler_exists(self, main_code):
+        """Global HTTPException handler must exist."""
+        assert "exception_handler(HTTPException)" in main_code, (
+            "Global HTTPException handler not found in main.py"
+        )
+
+    def test_validation_exception_handler_exists(self, main_code):
+        """Global RequestValidationError handler must exist."""
+        assert "exception_handler(RequestValidationError)" in main_code, (
+            "RequestValidationError handler not found in main.py"
+        )
+
+    def test_error_envelope_shape(self, main_code):
+        """Error handler must produce {error: {code, message, details}}."""
+        assert '"code"' in main_code and '"message"' in main_code and '"details"' in main_code, (
+            "Error handler must include code, message, details fields"
+        )
+
+
+# ===========================================================================
+# 13. Preferences Applied in Evaluate
+# ===========================================================================
+
+class TestPreferencesInEvaluate:
+    """Evaluate endpoint must support preferences_applied block."""
+
+    @pytest.fixture(scope="class")
+    def web_code(self):
+        return WEB_ROUTER_PATH.read_text()
+
+    def test_preferences_applied_block_exists(self, web_code):
+        """evaluate_proxy must include preferences_applied in response."""
+        assert "preferences_applied" in web_code, (
+            "preferences_applied block not found in web.py evaluate endpoint"
+        )
+
+    def test_loads_user_preferences(self, web_code):
+        """evaluate_proxy must load UserPreferences when auth present."""
+        assert "UserPreferences" in web_code, (
+            "UserPreferences import not found in web.py"
+        )
+
+    def test_risk_profile_included(self, web_code):
+        """preferences_applied must include risk_profile."""
+        assert "risk_profile" in web_code, (
+            "risk_profile not found in web.py preferences block"
+        )

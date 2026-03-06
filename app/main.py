@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -61,7 +62,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
         if content_length and int(content_length) > MAX_REQUEST_SIZE_BYTES:
             return JSONResponse(
                 status_code=413,
-                content={"detail": "Request entity too large"},
+                content={"error": {"code": "PAYLOAD_TOO_LARGE", "message": "Request entity too large", "details": {}}},
             )
         return await call_next(request)
 
@@ -87,6 +88,55 @@ app = FastAPI(
     description="Semantic identity management system",
     version="0.1.0",
 )
+
+# ---------------------------------------------------------------------------
+# Wiring Spec v1.0: Standard error envelope for ALL endpoints
+# {error: {code: string, message: string, details: object}}
+# ---------------------------------------------------------------------------
+from fastapi import HTTPException
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Convert all HTTPExceptions to the standard error envelope."""
+    code = _status_to_code(exc.status_code)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": {"code": code, "message": str(exc.detail), "details": {}}},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Convert Pydantic validation errors to the standard error envelope."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Request validation failed",
+                "details": {"errors": exc.errors()},
+            }
+        },
+    )
+
+
+def _status_to_code(status_code: int) -> str:
+    """Map HTTP status codes to error code strings."""
+    return {
+        400: "BAD_REQUEST",
+        401: "UNAUTHORIZED",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        409: "CONFLICT",
+        413: "PAYLOAD_TOO_LARGE",
+        422: "VALIDATION_ERROR",
+        429: "RATE_LIMITED",
+        500: "INTERNAL_ERROR",
+        502: "BAD_GATEWAY",
+        503: "SERVICE_UNAVAILABLE",
+    }.get(status_code, f"HTTP_{status_code}")
+
 
 app.add_middleware(
     CORSMiddleware,

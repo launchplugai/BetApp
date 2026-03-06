@@ -216,6 +216,24 @@
     "filterable_by": ["status", "sport", "grade", "protocol_id", "tag", "min_risk", "max_risk", "min_confidence", "start_date", "end_date", "q"]
   },
 
+  "error_contract": {
+    "shape": {"error": {"code": "string", "message": "string", "details": "object"}},
+    "description": "ALL HTTP error responses use this standard envelope via exception handlers in main.py",
+    "applies_to": "all_endpoints",
+    "handler_location": "app/main.py"
+  },
+
+  "preferences_contract": {
+    "description": "When authenticated, evaluate response includes preferencesApplied block",
+    "response_field": "preferencesApplied",
+    "shape": {
+      "riskProfile": "string",
+      "activeConstraints": ["string"],
+      "constraintSummary": "object"
+    },
+    "condition": "Bearer token present in Authorization header"
+  },
+
   "session_storage_contracts": [
     {"key": "dna_auth_token", "writer": "auth", "readers": ["AUTH.*"], "type": "string"},
     {"key": "dna_refresh_token", "writer": "auth", "readers": ["AUTH.*"], "type": "string"},
