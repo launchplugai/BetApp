@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}DNA - Protocol Detail{% endblock %}
+{% block title %}DNA - Game Intelligence{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -15,15 +15,21 @@
         background: linear-gradient(90deg, #d50000 0%, #ff1744 100%);
         box-shadow: 0 0 25px rgba(255, 23, 68, 0.4);
     }
-    .status-badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
-    .status-out { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-    .status-questionable { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-    .status-probable { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-    .status-available { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 23, 68, 0.5);
+    }
+    .stat-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+    .stat-good { color: #22c55e; }
+    .stat-bad { color: #ef4444; }
+    .stat-neutral { color: #f59e0b; }
     .loading-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-    .empty-state { background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); }
-    .bullet-item::before { content: "\2022"; color: var(--neon-red); margin-right: 8px; }
+    .heuristic-tag { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+    .heuristic-positive { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .heuristic-negative { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .heuristic-neutral { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .team-logo { width: 56px; height: 56px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255,255,255,0.1)); }
 </style>
 {% endblock %}
 
@@ -35,30 +41,52 @@
                 <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-400"></iconify-icon>
             </button>
             <h1 class="font-tanker text-xl tracking-wider">
-                <span class="text-white">PROTOCOL</span> <span class="neon-text">DETAIL</span>
+                <span class="text-white">GAME</span> <span class="neon-text">INTELLIGENCE</span>
             </h1>
-            <button onclick="refreshSnapshot()" class="p-2 hover:bg-white/5 rounded-lg transition-colors" id="refresh-btn">
+            <button onclick="refreshData()" class="p-2 hover:bg-white/5 rounded-lg transition-colors" id="refresh-btn">
                 <iconify-icon icon="lucide:refresh-cw" class="text-xl text-gray-400"></iconify-icon>
             </button>
         </div>
     </header>
 
     <main class="pt-20 pb-28 px-4 max-w-lg mx-auto">
-        <!-- Protocol Header -->
-        <div class="glass-panel rounded-2xl p-4 mb-6">
-            <div class="flex items-start justify-between mb-3">
-                <span id="protocol-sport" class="px-2 py-1 rounded text-xs font-bold uppercase bg-red-500/20 text-red-400">NBA</span>
-                <span id="protocol-status" class="text-xs text-gray-500 capitalize">draft</span>
+        <!-- Game Header -->
+        <div class="glass-panel rounded-2xl p-5 mb-6">
+            <div class="flex items-start justify-between mb-4">
+                <span id="game-sport" class="px-2 py-1 rounded text-xs font-bold uppercase bg-red-500/20 text-red-400">NBA</span>
+                <span id="game-status" class="text-xs text-gray-500 capitalize">loading...</span>
             </div>
-            <h2 id="protocol-title" class="font-tanker text-2xl text-white mb-2">Loading...</h2>
-            <p id="protocol-teams" class="text-gray-400 text-sm">-- vs --</p>
+            <div class="flex justify-between items-center">
+                <div class="flex flex-col items-center gap-2 flex-1">
+                    <img id="home-logo" class="team-logo" src="" alt="" onerror="this.style.display='none'">
+                    <span id="home-team" class="font-tanker text-xl text-white text-center">HOME</span>
+                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Home</span>
+                </div>
+                <div class="flex flex-col items-center px-4">
+                    <span class="text-xs text-gray-600 font-bold mb-1">VS</span>
+                    <div class="w-12 h-[1px] bg-gray-700"></div>
+                </div>
+                <div class="flex flex-col items-center gap-2 flex-1">
+                    <img id="away-logo" class="team-logo" src="" alt="" onerror="this.style.display='none'">
+                    <span id="away-team" class="font-tanker text-xl text-gray-300 text-center">AWAY</span>
+                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Away</span>
+                </div>
+            </div>
         </div>
 
-        <button onclick="generateSnapshotV2()" class="w-full btn-primary text-white font-satoshi font-bold py-4 rounded-xl mb-6 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity" id="generate-btn">
-            <iconify-icon icon="lucide:activity" class="text-xl"></iconify-icon>
-            GENERATE INTELLIGENCE SNAPSHOT
+        <!-- CTA: Build Parlay -->
+        <button onclick="goToBuilder()" class="w-full btn-primary text-white font-satoshi font-bold py-4 rounded-xl mb-4 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+            <iconify-icon icon="lucide:zap" class="text-xl"></iconify-icon>
+            BUILD PARLAY
         </button>
 
+        <!-- CTA: Generate Intelligence -->
+        <button onclick="loadIntelligence()" class="w-full btn-secondary text-white font-satoshi font-bold py-3 rounded-xl mb-6 flex items-center justify-center gap-2 hover:bg-white/10 transition-colors" id="intel-btn">
+            <iconify-icon icon="lucide:activity" class="text-xl text-[#ff1744]"></iconify-icon>
+            <span id="intel-btn-text">GENERATE INTELLIGENCE</span>
+        </button>
+
+        <!-- Loading State -->
         <div id="loading-state" class="hidden">
             <div class="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center">
                 <div class="loading-pulse neon-text font-tanker text-xl tracking-wider">ANALYZING DATA...</div>
@@ -66,240 +94,333 @@
             </div>
         </div>
 
+        <!-- Error State -->
         <div id="error-state" class="hidden">
-            <div class="glass-panel rounded-2xl p-6 text-center border-red-500/30">
+            <div class="glass-panel rounded-2xl p-6 text-center border border-red-500/30">
                 <iconify-icon icon="lucide:alert-circle" class="text-4xl text-red-500 mx-auto mb-3"></iconify-icon>
-                <p class="text-red-400 text-sm" id="error-message">Failed to load snapshot</p>
-                <button onclick="loadProtocolData()" class="mt-3 text-white text-sm hover:underline">Retry</button>
+                <p class="text-red-400 text-sm" id="error-message">Failed to load data</p>
+                <button onclick="loadIntelligence()" class="mt-3 text-white text-sm hover:underline">Retry</button>
             </div>
         </div>
 
-        <div id="snapshot-content" class="space-y-4 hidden">
+        <!-- Intelligence Content -->
+        <div id="intel-content" class="space-y-4 hidden">
+
+            <!-- Team Stats Comparison -->
             <div class="section-card rounded-xl p-4">
-                <div class="flex items-center gap-2 mb-3">
-                    <iconify-icon icon="lucide:lightbulb" class="text-xl neon-text"></iconify-icon>
-                    <h3 class="font-tanker text-lg text-white">CONCLUSION</h3>
-                    <span id="confidence-badge" class="ml-auto text-xs font-bold px-2 py-1 rounded bg-gray-800"></span>
+                <div class="flex items-center gap-2 mb-4">
+                    <iconify-icon icon="lucide:bar-chart-3" class="text-xl neon-text"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white">TEAM COMPARISON</h3>
                 </div>
-                <h4 id="conclusion-headline" class="text-white font-bold text-lg mb-3"></h4>
-                <ul id="conclusion-bullets" class="space-y-2 text-gray-300 text-sm"></ul>
-                <div id="conclusion-disclaimers" class="mt-4 pt-3 border-t border-white/10 text-xs text-gray-500 italic"></div>
+                <div id="team-stats-grid" class="space-y-3"></div>
             </div>
-            <div class="section-card rounded-xl p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2"><iconify-icon icon="lucide:heart-pulse" class="text-xl text-red-400"></iconify-icon><h3 class="font-tanker text-lg text-white">INJURIES</h3></div>
-                    <span id="injuries-as-of" class="text-xs text-gray-500"></span>
+
+            <!-- Heuristic Signals -->
+            <div class="section-card rounded-xl p-4" id="heuristics-section">
+                <div class="flex items-center gap-2 mb-4">
+                    <iconify-icon icon="lucide:radar" class="text-xl text-yellow-400"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white">EDGE SIGNALS</h3>
                 </div>
-                <p id="injuries-summary" class="text-gray-300 text-sm mb-3"></p>
-                <div id="injuries-list" class="space-y-2"></div>
-                <div id="injuries-empty" class="empty-state rounded-lg p-4 text-center text-gray-500 text-sm hidden">No injury reports available</div>
+                <div id="heuristics-list" class="flex flex-wrap gap-2"></div>
+                <div id="heuristics-empty" class="text-center text-gray-500 text-sm py-3 hidden">No signals detected</div>
             </div>
-            <div class="section-card rounded-xl p-4">
-                <div class="flex items-center gap-2 mb-3"><iconify-icon icon="lucide:history" class="text-xl text-blue-400"></iconify-icon><h3 class="font-tanker text-lg text-white">MATCHUP HISTORY</h3></div>
-                <div id="matchup-stats" class="grid grid-cols-3 gap-3 mb-4"></div>
-                <div id="matchup-meetings" class="space-y-2"></div>
-                <div id="matchup-empty" class="empty-state rounded-lg p-4 text-center text-gray-500 text-sm hidden">No head-to-head data available</div>
+
+            <!-- Market Intelligence -->
+            <div class="section-card rounded-xl p-4" id="market-section">
+                <div class="flex items-center gap-2 mb-4">
+                    <iconify-icon icon="lucide:trending-up" class="text-xl text-green-400"></iconify-icon>
+                    <h3 class="font-tanker text-lg text-white">MARKET DATA</h3>
+                </div>
+                <div id="market-grid" class="grid grid-cols-2 gap-3"></div>
             </div>
-            <div class="section-card rounded-xl p-4">
-                <div class="flex items-center gap-2 mb-3"><iconify-icon icon="lucide:trending-up" class="text-xl text-green-400"></iconify-icon><h3 class="font-tanker text-lg text-white">TRENDS</h3></div>
-                <div id="trends-content" class="grid grid-cols-2 gap-4"></div>
-            </div>
-            <div class="text-center text-xs text-gray-600 mt-6" id="snapshot-metadata"></div>
+
+            <!-- Data Quality -->
+            <div class="text-center text-xs text-gray-600 mt-6" id="data-metadata"></div>
         </div>
 
-        <div id="no-snapshot-state" class="glass-panel rounded-2xl p-8 text-center">
-            <iconify-icon icon="lucide:file-search" class="text-6xl text-gray-600 mx-auto mb-4"></iconify-icon>
-            <h3 class="font-tanker text-xl text-white mb-2">NO SNAPSHOT YET</h3>
-            <p class="text-gray-400 text-sm">Generate an intelligence snapshot to see injuries, matchup history, and trends.</p>
+        <!-- Initial State (no data loaded) -->
+        <div id="initial-state" class="glass-panel rounded-2xl p-8 text-center">
+            <iconify-icon icon="lucide:dna" class="text-6xl text-gray-600 mx-auto mb-4"></iconify-icon>
+            <h3 class="font-tanker text-xl text-white mb-2">GAME PROTOCOL</h3>
+            <p class="text-gray-400 text-sm">Tap "Generate Intelligence" to pull advanced stats, edge signals, and market analysis for this matchup.</p>
         </div>
     </main>
 {% endblock %}
 
 {% block scripts %}
     <script>
-        let protocolId = null;
-        let protocolData = null;
-        let snapshotData = null;
-        let homeTeamId = null;
-        let awayTeamId = null;
+        let gameData = null;
+        let contextData = null;
+
+        // Team logo helper (same as browse)
+        function getTeamLogoUrl(teamName, league) {
+            const teamSlugs = {
+                'Lakers': 'lal', 'Warriors': 'gs', 'Celtics': 'bos', 'Nets': 'bkn',
+                'Knicks': 'ny', 'Suns': 'phx', 'Bucks': 'mil', 'Bulls': 'chi',
+                'Heat': 'mia', '76ers': 'phi', 'Mavericks': 'dal', 'Nuggets': 'den',
+                'Clippers': 'lac', 'Jazz': 'utah', 'Kings': 'sac', 'Pelicans': 'no',
+                'Thunder': 'okc', 'Raptors': 'tor', 'Spurs': 'sa', 'Rockets': 'hou',
+                'Grizzlies': 'mem', 'Hornets': 'cha', 'Pacers': 'ind', 'Pistons': 'det',
+                'Magic': 'orl', 'Hawks': 'atl', 'Wizards': 'wsh', 'Timberwolves': 'min',
+                'Trail Blazers': 'por', 'Cavaliers': 'cle',
+                'Devils': 'nj', 'Sabres': 'buf', 'Capitals': 'wsh', 'Flyers': 'phi',
+                'Rangers': 'nyr', 'Islanders': 'nyi', 'Penguins': 'pit', 'Bruins': 'bos',
+                'Canadiens': 'mtl', 'Senators': 'ott', 'Maple Leafs': 'tor', 'Jets': 'wpg',
+                'Hurricanes': 'car', 'Blue Jackets': 'cbj', 'Red Wings': 'det',
+                'Blackhawks': 'chi', 'Avalanche': 'col', 'Stars': 'dal', 'Wild': 'min',
+                'Predators': 'nsh', 'Blues': 'stl', 'Ducks': 'ana',
+                'Flames': 'cgy', 'Oilers': 'edm', 'Sharks': 'sj', 'Kraken': 'sea',
+                'Canucks': 'van', 'Golden Knights': 'vgk', 'Lightning': 'tb', 'Panthers': 'fla',
+            };
+            let slug = null;
+            for (const [name, abbr] of Object.entries(teamSlugs)) {
+                if (teamName.toLowerCase().includes(name.toLowerCase())) { slug = abbr; break; }
+            }
+            if (slug) {
+                const sportPaths = { 'NBA': 'nba', 'NHL': 'nhl', 'NFL': 'nfl', 'MLB': 'mlb' };
+                const sportPath = sportPaths[league] || league.toLowerCase();
+                return `https://a.espncdn.com/combiner/i?img=/i/teamlogos/${sportPath}/500/${slug}.png&w=100&h=100`;
+            }
+            return null;
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            protocolId = params.get('protocolId');
-            if (!protocolId) { showError('No protocol ID provided'); return; }
-            loadProtocolData();
-        });
-
-        async function loadProtocolData() {
-            showLoading(false);
-            try {
-                const response = await AUTH.fetch(`/api/protocols/${protocolId}`);
-                if (response.status === 401) { AUTH.logout(); return; }
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                protocolData = await response.json();
-                renderProtocolHeader();
-
-                const gameTarget = protocolData.targets?.find(t => t.target_type === 'game');
-                if (gameTarget?.meta?.home_team_id && gameTarget?.meta?.away_team_id) {
-                    homeTeamId = gameTarget.meta.home_team_id;
-                    awayTeamId = gameTarget.meta.away_team_id;
-                }
-                await loadLatestSnapshot();
-            } catch (err) {
-                console.error('Failed to load protocol:', err);
-                showError(err.message);
-            }
-        }
-
-        async function loadLatestSnapshot() {
-            try {
-                const response = await AUTH.fetch(`/api/protocols/${protocolId}/snapshot-v2/latest`);
-                if (response.ok) {
-                    const data = await response.json();
-                    snapshotData = data.snapshot;
-                    renderSnapshot();
-                } else if (response.status === 404) {
-                    showNoSnapshot();
-                } else {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-            } catch (err) {
-                console.error('Failed to load snapshot:', err);
-                showNoSnapshot();
-            }
-        }
-
-        async function generateSnapshotV2() {
-            if (!homeTeamId || !awayTeamId) { showError('Team IDs not available.'); return; }
-            showLoading(true);
-            try {
-                const response = await AUTH.fetch(
-                    `/api/protocols/${protocolId}/snapshot-v2?home_team_id=${homeTeamId}&away_team_id=${awayTeamId}`,
-                    { method: 'POST' }
-                );
-                if (response.status === 401) { AUTH.logout(); return; }
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || `HTTP ${response.status}`);
-                }
-                const data = await response.json();
-                snapshotData = data.snapshot;
-                renderSnapshot();
-            } catch (err) {
-                console.error('Failed to generate snapshot:', err);
-                showError(err.message);
-            }
-        }
-
-        function renderProtocolHeader() {
-            document.getElementById('protocol-title').textContent = protocolData.title || 'Untitled Protocol';
-            document.getElementById('protocol-sport').textContent = protocolData.sport?.toUpperCase() || 'NBA';
-            document.getElementById('protocol-status').textContent = protocolData.status || 'draft';
-            const teams = protocolData.context?.teams || ['Team A', 'Team B'];
-            document.getElementById('protocol-teams').textContent = `${teams[0]} vs ${teams[1]}`;
-        }
-
-        function renderSnapshot() {
-            if (!snapshotData) { showNoSnapshot(); return; }
-            document.getElementById('loading-state').classList.add('hidden');
-            document.getElementById('error-state').classList.add('hidden');
-            document.getElementById('no-snapshot-state').classList.add('hidden');
-            document.getElementById('snapshot-content').classList.remove('hidden');
-            document.getElementById('generate-btn').classList.remove('hidden');
-            document.getElementById('generate-btn').innerHTML = '<iconify-icon icon="lucide:refresh-cw" class="text-xl"></iconify-icon> REFRESH SNAPSHOT';
-            renderConclusion(snapshotData.conclusion);
-            renderInjuries(snapshotData.injuries);
-            renderMatchupHistory(snapshotData.matchupHistory);
-            renderTrends(snapshotData.trends);
-            const generatedAt = snapshotData.generatedAt ? new Date(snapshotData.generatedAt).toLocaleString() : 'Unknown';
-            document.getElementById('snapshot-metadata').textContent = `Snapshot v${snapshotData.version || 2} \u2022 Generated: ${generatedAt}`;
-        }
-
-        function renderConclusion(conclusion) {
-            if (!conclusion) return;
-            document.getElementById('conclusion-headline').textContent = conclusion.headline || 'No headline available';
-            const confidence = conclusion.confidence || {};
-            const badge = document.getElementById('confidence-badge');
-            badge.textContent = `${confidence.level?.toUpperCase() || 'MEDIUM'} (${Math.round((confidence.score || 0.5) * 100)}%)`;
-            badge.className = `ml-auto text-xs font-bold px-2 py-1 rounded ${getConfidenceClass(confidence.level)}`;
-            document.getElementById('conclusion-bullets').innerHTML = (conclusion.bullets || []).map(b => `<li class="bullet-item">${escapeHtml(b)}</li>`).join('');
-            document.getElementById('conclusion-disclaimers').innerHTML = (conclusion.disclaimers || []).map(d => `* ${escapeHtml(d)}`).join('<br>');
-        }
-
-        function renderInjuries(injuries) {
-            if (!injuries) { document.getElementById('injuries-empty').classList.remove('hidden'); return; }
-            document.getElementById('injuries-as-of').textContent = `As of: ${formatDate(injuries.asOf)}`;
-            document.getElementById('injuries-summary').textContent = injuries.summary || 'No injury summary available';
-            const items = injuries.items || [];
-            const container = document.getElementById('injuries-list');
-            if (items.length === 0) {
-                document.getElementById('injuries-empty').classList.remove('hidden');
-                container.innerHTML = '';
-            } else {
-                document.getElementById('injuries-empty').classList.add('hidden');
-                container.innerHTML = items.map(item => `<div class="flex items-center justify-between bg-white/5 rounded-lg p-3"><div><div class="text-white font-medium">${escapeHtml(item.playerName)}</div><div class="text-gray-500 text-xs">${escapeHtml(item.detail || 'No details')}</div></div><span class="status-badge status-${item.status}">${item.status}</span></div>`).join('');
-            }
-        }
-
-        function renderMatchupHistory(matchup) {
-            if (!matchup || matchup.sampleSize === 0) {
-                document.getElementById('matchup-empty').classList.remove('hidden');
-                document.getElementById('matchup-stats').innerHTML = '';
-                document.getElementById('matchup-meetings').innerHTML = '';
+            // Load game data from sessionStorage (set by browse screen)
+            const stored = sessionStorage.getItem('dna_protocol_context');
+            if (!stored) {
+                showError('No game selected. Go back and pick a game.');
                 return;
             }
-            document.getElementById('matchup-empty').classList.add('hidden');
-            const summary = matchup.summary || {};
-            document.getElementById('matchup-stats').innerHTML = `<div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-2xl font-bold text-white">${matchup.sampleSize}</div><div class="text-gray-500 text-xs">Games</div></div><div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-2xl font-bold text-white">${summary.avgTotalPoints?.toFixed(1) || '\u2014'}</div><div class="text-gray-500 text-xs">Avg Total</div></div><div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-2xl font-bold text-white">${summary.avgMargin?.toFixed(1) || '\u2014'}</div><div class="text-gray-500 text-xs">Avg Margin</div></div>`;
-            document.getElementById('matchup-meetings').innerHTML = (matchup.lastMeetings || []).map(m => `<div class="flex items-center justify-between bg-white/5 rounded-lg p-2 text-sm"><span class="text-gray-400">${formatDate(m.date)}</span><span class="text-white">${m.totalPoints?.toFixed(0) || '\u2014'} pts</span><span class="text-gray-500">${m.margin?.toFixed(0) || '\u2014'} pt margin</span></div>`).join('');
-        }
 
-        function renderTrends(trends) {
-            if (!trends) { document.getElementById('trends-content').innerHTML = '<div class="col-span-2 text-center text-gray-500">No trend data available</div>'; return; }
-            const teamForm = trends.teamForm || {};
-            const homeForm = teamForm.homeLastN || {};
-            const awayForm = teamForm.awayLastN || {};
-            document.getElementById('trends-content').innerHTML = `<div class="bg-white/5 rounded-lg p-3"><div class="text-gray-400 text-xs mb-1">Home Last ${homeForm.n || 10}</div><div class="text-2xl font-bold text-white">${homeForm.wins !== null ? `${homeForm.wins}-${homeForm.losses}` : '\u2014'}</div><div class="text-gray-500 text-xs">${homeForm.netRatingProxy ? `Net: ${homeForm.netRatingProxy.toFixed(1)}` : 'No net rating'}</div></div><div class="bg-white/5 rounded-lg p-3"><div class="text-gray-400 text-xs mb-1">Away Last ${awayForm.n || 10}</div><div class="text-2xl font-bold text-white">${awayForm.wins !== null ? `${awayForm.wins}-${awayForm.losses}` : '\u2014'}</div><div class="text-gray-500 text-xs">${awayForm.netRatingProxy ? `Net: ${awayForm.netRatingProxy.toFixed(1)}` : 'No net rating'}</div></div>`;
-        }
-
-        function getConfidenceClass(level) {
-            switch(level?.toLowerCase()) {
-                case 'high': return 'bg-green-500/20 text-green-400';
-                case 'medium': return 'bg-yellow-500/20 text-yellow-400';
-                case 'low': return 'bg-red-500/20 text-red-400';
-                default: return 'bg-gray-500/20 text-gray-400';
+            try {
+                gameData = JSON.parse(stored);
+            } catch (e) {
+                showError('Invalid game data.');
+                return;
             }
+
+            renderGameHeader();
+        });
+
+        function renderGameHeader() {
+            if (!gameData) return;
+            const [homeTeam, awayTeam] = gameData.teams || ['Home', 'Away'];
+            const league = gameData.league || 'NBA';
+
+            document.getElementById('game-sport').textContent = league.toUpperCase();
+            document.getElementById('game-status').textContent = gameData.status || 'upcoming';
+            document.getElementById('home-team').textContent = homeTeam.toUpperCase();
+            document.getElementById('away-team').textContent = awayTeam.toUpperCase();
+
+            const homeLogo = getTeamLogoUrl(homeTeam, league);
+            const awayLogo = getTeamLogoUrl(awayTeam, league);
+            if (homeLogo) { document.getElementById('home-logo').src = homeLogo; }
+            else { document.getElementById('home-logo').style.display = 'none'; }
+            if (awayLogo) { document.getElementById('away-logo').src = awayLogo; }
+            else { document.getElementById('away-logo').style.display = 'none'; }
+        }
+
+        async function loadIntelligence() {
+            if (!gameData) return;
+
+            const sport = (gameData.league || 'nba').toLowerCase();
+            const gameId = gameData.gameId || gameData.protocolId;
+
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('intel-content').classList.add('hidden');
+            document.getElementById('initial-state').classList.add('hidden');
+            document.getElementById('intel-btn-text').textContent = 'REFRESHING...';
+
+            try {
+                const response = await fetch(`/api/context/${sport}/${gameId}`);
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${response.status}`);
+                }
+
+                contextData = await response.json();
+                renderIntelligence();
+            } catch (err) {
+                console.error('Intelligence load failed:', err);
+                showError(err.message);
+            } finally {
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('intel-btn-text').textContent = 'REFRESH INTELLIGENCE';
+            }
+        }
+
+        function renderIntelligence() {
+            if (!contextData) return;
+
+            document.getElementById('intel-content').classList.remove('hidden');
+            document.getElementById('initial-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+
+            renderTeamStats();
+            renderHeuristics();
+            renderMarketData();
+
+            const fetchedAt = contextData.fetched_at ? new Date(contextData.fetched_at).toLocaleString() : 'Just now';
+            const source = contextData.data_source || 'api';
+            const enriched = contextData.is_enriched ? 'Enriched' : 'Basic';
+            document.getElementById('data-metadata').textContent = `${enriched} data via ${source} | ${fetchedAt}`;
+        }
+
+        function renderTeamStats() {
+            const home = contextData.home_team || {};
+            const away = contextData.away_team || {};
+            const grid = document.getElementById('team-stats-grid');
+
+            const stats = [];
+
+            // Pace
+            if (home.pace || away.pace) {
+                stats.push({ label: 'Pace', home: home.pace?.toFixed(1), away: away.pace?.toFixed(1), unit: 'poss/48' });
+            }
+            // Offensive Rating
+            if (home.offensive_rating || away.offensive_rating) {
+                stats.push({ label: 'Off Rating', home: home.offensive_rating?.toFixed(1), away: away.offensive_rating?.toFixed(1), unit: 'pts/100', higherBetter: true });
+            }
+            // Defensive Rating
+            if (home.defensive_rating || away.defensive_rating) {
+                stats.push({ label: 'Def Rating', home: home.defensive_rating?.toFixed(1), away: away.defensive_rating?.toFixed(1), unit: 'pts/100', higherBetter: false });
+            }
+            // Net Rating
+            if (home.net_rating || away.net_rating) {
+                stats.push({ label: 'Net Rating', home: home.net_rating?.toFixed(1), away: away.net_rating?.toFixed(1), unit: '+/-', higherBetter: true });
+            }
+            // Rest Days
+            if (home.rest_days !== undefined || away.rest_days !== undefined) {
+                stats.push({ label: 'Rest Days', home: home.rest_days, away: away.rest_days, unit: 'days', higherBetter: true });
+            }
+            // Injuries
+            if (home.injury_count || away.injury_count) {
+                stats.push({ label: 'Injuries', home: home.injury_count || 0, away: away.injury_count || 0, unit: 'out', higherBetter: false });
+            }
+
+            if (stats.length === 0) {
+                grid.innerHTML = '<div class="text-center text-gray-500 text-sm py-3">No stat data available for this matchup</div>';
+                return;
+            }
+
+            grid.innerHTML = `
+                <div class="grid grid-cols-3 gap-2 text-center text-[10px] text-gray-500 uppercase font-bold mb-2">
+                    <span>${(contextData.home_team?.team_name || 'Home').toUpperCase()}</span>
+                    <span>STAT</span>
+                    <span>${(contextData.away_team?.team_name || 'Away').toUpperCase()}</span>
+                </div>
+            ` + stats.map(s => {
+                const homeVal = s.home ?? '--';
+                const awayVal = s.away ?? '--';
+                let homeClass = 'text-white';
+                let awayClass = 'text-white';
+
+                if (s.higherBetter !== undefined && homeVal !== '--' && awayVal !== '--') {
+                    const hv = parseFloat(homeVal);
+                    const av = parseFloat(awayVal);
+                    if (s.higherBetter) {
+                        homeClass = hv > av ? 'stat-good' : hv < av ? 'stat-bad' : 'text-white';
+                        awayClass = av > hv ? 'stat-good' : av < hv ? 'stat-bad' : 'text-white';
+                    } else {
+                        homeClass = hv < av ? 'stat-good' : hv > av ? 'stat-bad' : 'text-white';
+                        awayClass = av < hv ? 'stat-good' : av > hv ? 'stat-bad' : 'text-white';
+                    }
+                }
+
+                return `
+                    <div class="grid grid-cols-3 gap-2 items-center py-2 border-b border-white/5">
+                        <span class="text-center font-bold ${homeClass}">${homeVal}</span>
+                        <span class="text-center text-xs text-gray-400">${s.label}</span>
+                        <span class="text-center font-bold ${awayClass}">${awayVal}</span>
+                    </div>`;
+            }).join('');
+        }
+
+        function renderHeuristics() {
+            const heuristics = contextData.heuristics || [];
+            const list = document.getElementById('heuristics-list');
+            const empty = document.getElementById('heuristics-empty');
+
+            if (heuristics.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.innerHTML = heuristics.map(h => {
+                const direction = h.direction || h.sentiment || 'neutral';
+                let cls = 'heuristic-neutral';
+                if (direction === 'positive' || direction === 'bullish') cls = 'heuristic-positive';
+                if (direction === 'negative' || direction === 'bearish') cls = 'heuristic-negative';
+
+                const label = h.label || h.name || h.signal || 'Signal';
+                const detail = h.detail || h.description || '';
+
+                return `
+                    <div class="heuristic-tag ${cls}" title="${escapeHtml(detail)}">
+                        ${escapeHtml(label)}
+                    </div>`;
+            }).join('');
+        }
+
+        function renderMarketData() {
+            const grid = document.getElementById('market-grid');
+            const items = [];
+
+            if (contextData.current_line != null) {
+                const line = contextData.current_line;
+                items.push({ label: 'Current Line', value: (line > 0 ? '+' : '') + line.toFixed(1) });
+            }
+            if (contextData.opening_line != null) {
+                items.push({ label: 'Opening Line', value: (contextData.opening_line > 0 ? '+' : '') + contextData.opening_line.toFixed(1) });
+            }
+            if (contextData.line_movement_delta != null) {
+                const delta = contextData.line_movement_delta;
+                const cls = delta === 0 ? 'text-gray-400' : delta > 0 ? 'stat-good' : 'stat-bad';
+                items.push({ label: 'Line Movement', value: (delta > 0 ? '+' : '') + delta.toFixed(1), cls });
+            }
+            if (contextData.public_betting_pct != null) {
+                items.push({ label: 'Public %', value: contextData.public_betting_pct.toFixed(0) + '%' });
+            }
+
+            // Weather (NFL)
+            if (contextData.weather_impact && contextData.weather_impact !== 'clear') {
+                items.push({ label: 'Weather', value: contextData.weather_impact.toUpperCase(), cls: 'stat-bad' });
+            }
+
+            if (items.length === 0) {
+                document.getElementById('market-section').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('market-section').classList.remove('hidden');
+            grid.innerHTML = items.map(item => `
+                <div class="stat-pill rounded-lg p-3 text-center">
+                    <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">${item.label}</div>
+                    <div class="text-lg font-bold ${item.cls || 'text-white'}">${item.value}</div>
+                </div>
+            `).join('');
+        }
+
+        function goToBuilder() {
+            // Game data is already in sessionStorage
+            const gameId = gameData?.gameId || gameData?.protocolId;
+            window.location.href = `/app?screen=builder&protocolId=${gameId}`;
         }
 
         function goBack() { window.location.href = '/app?screen=browse'; }
-        function refreshSnapshot() { snapshotData ? generateSnapshotV2() : loadProtocolData(); }
-        function showLoading(isGenerating) {
-            document.getElementById('loading-state').classList.remove('hidden');
-            document.getElementById('error-state').classList.add('hidden');
-            document.getElementById('no-snapshot-state').classList.add('hidden');
-            document.getElementById('snapshot-content').classList.add('hidden');
-            document.getElementById('generate-btn').classList.toggle('hidden', isGenerating);
-        }
+        function refreshData() { loadIntelligence(); }
+
         function showError(message) {
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('error-state').classList.remove('hidden');
-            document.getElementById('no-snapshot-state').classList.add('hidden');
-            document.getElementById('snapshot-content').classList.add('hidden');
+            document.getElementById('initial-state').classList.add('hidden');
+            document.getElementById('intel-content').classList.add('hidden');
             document.getElementById('error-message').textContent = message;
         }
-        function showNoSnapshot() {
-            document.getElementById('loading-state').classList.add('hidden');
-            document.getElementById('error-state').classList.add('hidden');
-            document.getElementById('no-snapshot-state').classList.remove('hidden');
-            document.getElementById('snapshot-content').classList.add('hidden');
-            document.getElementById('generate-btn').classList.remove('hidden');
-            document.getElementById('generate-btn').innerHTML = '<iconify-icon icon="lucide:activity" class="text-xl"></iconify-icon> GENERATE INTELLIGENCE SNAPSHOT';
-        }
-        function formatDate(dateString) {
-            if (!dateString) return '\u2014';
-            return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }
+
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');

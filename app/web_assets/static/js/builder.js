@@ -37,9 +37,9 @@ async function loadProtocol() {
     if (stored) {
         try {
             const parsed = JSON.parse(stored);
-            // Validate the stored protocol has a valid game ID format
+            // Accept any stored protocol with a game ID
             const gameId = parsed.gameId || parsed.protocolId;
-            if (gameId && gameId.includes('-at-') && gameId.startsWith('nhl-')) {
+            if (gameId) {
                 protocol = parsed;
                 useStored = true;
             } else {
@@ -52,9 +52,9 @@ async function loadProtocol() {
     }
     
     if (!useStored) {
-        // Fetch first available NHL game as fallback
+        // Fetch first available NBA game as fallback
         try {
-            const gamesResponse = await fetch(`${API_BASE}/games?sport=NHL`);
+            const gamesResponse = await fetch(`${API_BASE}/games?sport=NBA`);
             if (gamesResponse.ok) {
                 const games = await gamesResponse.json();
                 if (games && games.length > 0) {
@@ -76,10 +76,10 @@ async function loadProtocol() {
         }
         // Ultimate fallback
         protocol = {
-            protocolId: 'nhl-edmonton-oilers-at-anaheim-ducks-2026-02-26',
-            league: 'NHL',
-            gameId: 'nhl-edmonton-oilers-at-anaheim-ducks-2026-02-26',
-            teams: ['Anaheim Ducks', 'Edmonton Oilers'],
+            protocolId: 'nba-lal-gsw-tonight',
+            league: 'NBA',
+            gameId: 'nba-lal-gsw-tonight',
+            teams: ['Lakers', 'Warriors'],
             status: 'SCHEDULED',
             clock: null,
             score: null
@@ -91,7 +91,7 @@ async function loadMarkets() {
     if (!protocol) return;
     try {
         // S19-D: Use new /api/odds endpoint
-        const gameId = protocol.gameId || protocol.protocolId || 'lal-gsw-2026-02-09';
+        const gameId = protocol.gameId || protocol.protocolId || 'nba-lal-gsw-tonight';
         const response = await fetch(`${API_BASE}/odds/${gameId}`);
 
         if (!response.ok) {

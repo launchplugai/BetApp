@@ -79,7 +79,7 @@ class MockOddsProvider(OddsProvider):
         
         return [
             Game(
-                id="lal-gsw-2026-02-09",
+                id="nba-lal-gsw-tonight",
                 league="NBA",
                 home="Lakers",
                 away="Warriors",
@@ -87,7 +87,7 @@ class MockOddsProvider(OddsProvider):
                 status="SCHEDULED"
             ),
             Game(
-                id="mia-bos-2026-02-09",
+                id="nba-mia-bos-tonight",
                 league="NBA",
                 home="Heat",
                 away="Celtics",
@@ -95,7 +95,7 @@ class MockOddsProvider(OddsProvider):
                 status="SCHEDULED"
             ),
             Game(
-                id="dal-phx-2026-02-09",
+                id="nba-dal-phx-tonight",
                 league="NBA",
                 home="Mavericks",
                 away="Suns",
@@ -110,7 +110,7 @@ class MockOddsProvider(OddsProvider):
         
         return [
             Game(
-                id="chiefs-bills-2026-02-09",
+                id="nfl-kc-buf-tonight",
                 league="NFL",
                 home="Chiefs",
                 away="Bills",
@@ -125,7 +125,7 @@ class MockOddsProvider(OddsProvider):
         
         return [
             Game(
-                id="tor-mtl-2026-02-09",
+                id="nhl-tor-mtl-tonight",
                 league="NHL",
                 home="Maple Leafs",
                 away="Canadiens",
@@ -573,9 +573,9 @@ class MockOddsProvider(OddsProvider):
         """Mock MLB games."""
         now = datetime.utcnow()
         return [
-            Game(id="mlb-nyy-bos-2026-02-09", league="MLB", home="Yankees", away="Red Sox", start_time=(now + timedelta(hours=3)).isoformat() + "Z", status="SCHEDULED"),
-            Game(id="mlb-lad-sf-2026-02-09", league="MLB", home="Dodgers", away="Giants", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
-            Game(id="mlb-hou-tex-2026-02-09", league="MLB", home="Astros", away="Rangers", start_time=(now + timedelta(hours=5)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="mlb-nyy-bos-tonight", league="MLB", home="Yankees", away="Red Sox", start_time=(now + timedelta(hours=3)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="mlb-lad-sf-tonight", league="MLB", home="Dodgers", away="Giants", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="mlb-hou-tex-tonight", league="MLB", home="Astros", away="Rangers", start_time=(now + timedelta(hours=5)).isoformat() + "Z", status="SCHEDULED"),
         ]
     
     def _get_mlb_odds(self) -> List[MarketOdds]:
@@ -598,9 +598,9 @@ class MockOddsProvider(OddsProvider):
         """Mock Soccer games."""
         now = datetime.utcnow()
         return [
-            Game(id="epl-mci-liv-2026-02-09", league="EPL", home="Man City", away="Liverpool", start_time=(now + timedelta(hours=2)).isoformat() + "Z", status="SCHEDULED"),
-            Game(id="laliga-rm-bar-2026-02-09", league="La Liga", home="Real Madrid", away="Barcelona", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
-            Game(id="ucl-bay-psg-2026-02-09", league="UCL", home="Bayern", away="PSG", start_time=(now + timedelta(hours=6)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="epl-mci-liv-tonight", league="EPL", home="Man City", away="Liverpool", start_time=(now + timedelta(hours=2)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="laliga-rm-bar-tonight", league="La Liga", home="Real Madrid", away="Barcelona", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
+            Game(id="ucl-bay-psg-tonight", league="UCL", home="Bayern", away="PSG", start_time=(now + timedelta(hours=6)).isoformat() + "Z", status="SCHEDULED"),
         ]
     
     def _get_soccer_odds(self) -> List[MarketOdds]:

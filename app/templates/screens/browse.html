@@ -387,7 +387,7 @@
       const protocol = protocolsData.find(p => p.protocolId === protocolId);
       if (!protocol) return;
       sessionStorage.setItem('dna_protocol_context', JSON.stringify(protocol));
-      window.location.href = `/app?screen=builder&protocolId=${protocolId}`;
+      window.location.href = `/app?screen=protocol&gameId=${protocolId}`;
     }
 
     function goBack() { window.history.back(); }
