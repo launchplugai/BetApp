@@ -40,9 +40,13 @@ jobs:
             echo "==> Restarting container"
             docker compose up -d
 
-            echo "==> Waiting for health check"
-            sleep 15
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' betapp)
+            echo "==> Waiting for health check (up to 90s)"
+            for i in $(seq 1 18); do
+              sleep 5
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' betapp)
+              echo "  [${i}] status=${STATUS}"
+              [ "$STATUS" = "healthy" ] && break
+            done
             if [ "$STATUS" != "healthy" ]; then
               echo "ERROR: Container unhealthy after deploy (status: $STATUS)"
               docker logs betapp --tail=30
