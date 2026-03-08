@@ -1,0 +1,52 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "==> Pulling latest code into container build context"
+            cd /docker/betapp
+
+            echo "==> Injecting build identity"
+            GIT_SHA="${{ github.sha }}"
+            BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+            # Update .env with build identity
+            sed -i "s|^GIT_SHA=.*|GIT_SHA=${GIT_SHA}|" .env
+            sed -i "s|^BUILD_TIME_UTC=.*|BUILD_TIME_UTC=${BUILD_TIME}|" .env
+
+            echo "==> Rebuilding image (git clone at build time picks up latest main)"
+            docker compose build --no-cache
+
+            echo "==> Restarting container"
+            docker compose up -d
+
+            echo "==> Waiting for health check"
+            sleep 15
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' betapp)
+            if [ "$STATUS" != "healthy" ]; then
+              echo "ERROR: Container unhealthy after deploy (status: $STATUS)"
+              docker logs betapp --tail=30
+              exit 1
+            fi
+
+            echo "==> Deploy complete — sha=${GIT_SHA} status=${STATUS}"
