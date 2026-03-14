@@ -86,11 +86,12 @@ Recommended first slice:
 
 Read in this order:
 
-1. `docs/index/DOC_INDEX.md`
-2. `docs/ops/CURRENT_EXECUTION_STATE.md`
-3. `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md`
-4. `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md`
-5. `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md`
-6. `docs/architecture/SHERLOCK_DNA_TOUCHPOINT_AUDIT.md`
-7. `docs/contracts/PROTOCOL_DNA_REQUIREMENT_MAP_V1.md`
-8. `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md`
+1. `docs/ops/BOOTSTRAP_PROTOCOL.md`
+2. `docs/index/DOC_INDEX.md`
+3. `docs/ops/CURRENT_EXECUTION_STATE.md`
+4. `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md`
+5. `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md`
+6. `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md`
+7. `docs/architecture/SHERLOCK_DNA_TOUCHPOINT_AUDIT.md`
+8. `docs/contracts/PROTOCOL_DNA_REQUIREMENT_MAP_V1.md`
+9. `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md`

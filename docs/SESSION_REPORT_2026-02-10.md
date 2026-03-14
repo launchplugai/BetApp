@@ -228,7 +228,7 @@ else:
 |----------|---------|----------|
 | `docs/UI_ISSUES.md` | Track known issues | ✅ Created |
 | `docs/DEPLOY_NOTES.md` | Deployment guide | ✅ Created |
-| `docs/sprints/HOW_IT_WORKS_SPRINT.md` | Sprint backlog | ✅ Created |
+| `docs/sprints/HOW_IT_WORKS_SPRINT.md` | Sprint backlog | Removed during canonical bootstrap cleanup on 2026-03-14 |
 | `docs/ui/TEST_PLAN.md` | UI test plan | ✅ Created |
 | `docs/ui/MANUAL_VERIFICATION_CHECKLIST.md` | QA checklist | ✅ Created |
 | `docs/ui/pages/builder.md` | Page packet | ✅ Created |

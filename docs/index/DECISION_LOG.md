@@ -91,6 +91,34 @@ Key constraints:
 
 ---
 
+### 2026-03-14 Canonical Bootstrap And Context Lock
+
+**Context:**
+BetApp now spans enough architecture, governance, UX, and refactor state that chat memory is not a safe primary handoff surface. Older sprint/session docs can conflict with the current restoration path if an agent starts from the wrong place.
+
+**Decision:**
+BetApp now uses a canonical bootstrap and context-lock process.
+
+Canonical bootstrap entrypoint:
+- `docs/ops/BOOTSTRAP_PROTOCOL.md`
+
+Canonical state pair:
+- `docs/ops/CONTEXT_LOCK_PROTOCOL.md`
+- `docs/ops/CURRENT_EXECUTION_STATE.md`
+
+**Consequences:**
+- new chats and reconnects must start from the canonical bootstrap path
+- sprint state is locked into repo docs and local git, not only conversation history
+- old sprint/session docs are historical unless explicitly referenced
+
+**References:**
+- `docs/ops/BOOTSTRAP_PROTOCOL.md`
+- `docs/ops/CONTEXT_LOCK_PROTOCOL.md`
+- `docs/ops/CURRENT_EXECUTION_STATE.md`
+- `docs/adr/ADR-2026-03-14-canonical-bootstrap-and-context-lock.md`
+
+---
+
 <!--
 To add a new decision:
 1. Add a new section at the bottom (before this comment)

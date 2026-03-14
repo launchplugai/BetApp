@@ -48,6 +48,11 @@ The project is moving toward a managed Postgres control plane while keeping the 
 
 Code is the primary source of truth.
 
+For reconnecting work or starting a new implementation thread, use the canonical bootstrap first:
+
+- [docs/ops/BOOTSTRAP_PROTOCOL.md](docs/ops/BOOTSTRAP_PROTOCOL.md)
+- [docs/ops/CURRENT_EXECUTION_STATE.md](docs/ops/CURRENT_EXECUTION_STATE.md)
+
 When you need product and system contracts, start here:
 
 - [docs/contracts/DNA_SCORING_MODEL.md](docs/contracts/DNA_SCORING_MODEL.md)
@@ -62,6 +67,8 @@ Operational docs:
 
 - [docs/ENV_VARIABLES.md](docs/ENV_VARIABLES.md)
 - [docs/deploy.md](docs/deploy.md)
+- [docs/ops/BOOTSTRAP_PROTOCOL.md](docs/ops/BOOTSTRAP_PROTOCOL.md)
+- [docs/ops/CONTEXT_LOCK_PROTOCOL.md](docs/ops/CONTEXT_LOCK_PROTOCOL.md)
 - [docs/ops/SUPABASE_MIGRATION_PLAN.md](docs/ops/SUPABASE_MIGRATION_PLAN.md)
 - [docs/ops/ALEMBIC_MIGRATION_WORKFLOW.md](docs/ops/ALEMBIC_MIGRATION_WORKFLOW.md)
 

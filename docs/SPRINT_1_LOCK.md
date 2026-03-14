@@ -1,9 +1,16 @@
-# SPRINT 1 LOCK ARTIFACT
+# SPRINT 1 LOCK ARTIFACT (HISTORICAL)
 
-**Status:** LOCKED
+**Status:** HISTORICAL
 **Date Locked:** 2026-01-27
 **Lock Commit:** `a95d8f66351722edf729fef9c66dcf626f79a54f`
 **Authority:** Product Owner Decision
+
+This document is historical and not part of the canonical bootstrap path.
+
+For current work, start from:
+
+- `docs/ops/BOOTSTRAP_PROTOCOL.md`
+- `docs/ops/CURRENT_EXECUTION_STATE.md`
 
 ---
 

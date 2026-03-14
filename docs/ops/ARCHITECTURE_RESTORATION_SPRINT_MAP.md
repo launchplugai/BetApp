@@ -161,6 +161,8 @@ Do not:
 
 Every future implementation thread should start from:
 
+- `docs/ops/BOOTSTRAP_PROTOCOL.md`
+- `docs/ops/CURRENT_EXECUTION_STATE.md`
 - `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md`
 - `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md`
 - `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md`

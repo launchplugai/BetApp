@@ -11,6 +11,8 @@ Read these first when joining the project:
 | Document | Status | Purpose |
 |----------|--------|---------|
 | `README.md` | CANONICAL | Product framing, repo reality, and entry points |
+| `docs/ops/BOOTSTRAP_PROTOCOL.md` | CANONICAL | Required bootstrap order for any new chat, reconnect, or agent |
+| `docs/ops/CURRENT_EXECUTION_STATE.md` | ACTIVE | Current implementation state, latest validation, and exact next step |
 | `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md` | CANONICAL | Canonical architecture pivot and current module model |
 | `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md` | CANONICAL | Restored boundary rules for frontend-safe system interaction |
 | `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md` | CANONICAL | Canonical bounded interaction between Sherlock and DNA |
@@ -85,8 +87,9 @@ Read these first when joining the project:
 | `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md` | CANONICAL | Sprint order and guardrails for restoring the Airlock-centered layered architecture | Before starting the next refactor or frontend module work |
 | `docs/ops/AIRLOCK_ROUTE_GAP_AUDIT.md` | CANONICAL | Route-by-route audit of current Airlock membrane coverage | Before implementing Sprint B boundary restoration work |
 | `docs/ops/FRONTEND_BACKEND_CONTRACT_FREEZE_PHASE1.md` | CANONICAL | Phase 1 contract-freeze checklist, route audit, and frontend scaffold recommendation | Before scaffolding the new frontend or freezing Evaluate/OCR/History contracts |
+| `docs/ops/BOOTSTRAP_PROTOCOL.md` | CANONICAL | Required bootstrap order for reconnecting, new chats, or agent handoff | First stop before resuming work |
 | `docs/ops/CONTEXT_LOCK_PROTOCOL.md` | CANONICAL | Required process for locking sprint and handoff state into the repo | Before sprint closeout, context compaction, or chat handoff |
-| `docs/ops/CURRENT_EXECUTION_STATE.md` | ACTIVE | Current implementation state, latest validation, and exact next step | First stop when reconnecting or resuming work |
+| `docs/ops/CURRENT_EXECUTION_STATE.md` | ACTIVE | Current implementation state, latest validation, and exact next step | First stop after bootstrap when reconnecting or resuming work |
 | `docs/ops/deployment-hardening.md` | DRAFT | Deployment hardening notes | When improving operational safety |
 
 ## Governance And Planning
@@ -96,10 +99,10 @@ Read these first when joining the project:
 | `docs/GOVERNANCE.md` | CANONICAL | General governance rules | When unclear about process |
 | `docs/RALPH_LOOP.md` | LOCKED | Feature governance loop | Before proposing major new features |
 | `docs/MASTER_ROADMAP.md` | DRAFT | Product and engineering roadmap | When planning medium-term work |
-| `docs/SPRINT_PLAN.md` | LOCKED | Sprint definitions | When reading historical sprint framing |
+| `docs/SPRINT_PLAN.md` | HISTORICAL | Early sprint framing | Historical reference only |
 | `docs/adr/ADR-2026-03-14-restored-layered-architecture.md` | CANONICAL | ADR locking the restored layered architecture | Before reopening frontend/backend or Airlock boundary debates |
 | `docs/adr/ADR-2026-03-14-governed-adaptation-after-boundary-restoration.md` | CANONICAL | ADR locking the order of adaptation work after boundary restoration | Before proposing self-improving research behavior |
-| `docs/SPRINT_1_LOCK.md` | LOCKED | Early sprint scope lock | Historical reference only |
+| `docs/SPRINT_1_LOCK.md` | HISTORICAL | Early sprint scope lock | Historical reference only |
 | `docs/index/DECISION_LOG.md` | APPEND-ONLY | Architectural decisions | Before major decisions or reversals |
 
 ## Historical And Investigative Docs

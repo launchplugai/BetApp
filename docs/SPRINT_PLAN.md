@@ -1,8 +1,15 @@
-# SPRINT PLAN (LOCKED)
+# SPRINT PLAN (HISTORICAL)
 
-**Status:** LOCKED
+**Status:** HISTORICAL
 **Date Locked:** 2026-01-16
 **Authority:** Product Owner Decision
+
+This document is historical and not part of the canonical bootstrap path.
+
+For current work, start from:
+
+- `docs/ops/BOOTSTRAP_PROTOCOL.md`
+- `docs/ops/CURRENT_EXECUTION_STATE.md`
 
 ---
 
