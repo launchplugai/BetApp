@@ -5,7 +5,7 @@ Single-pane-of-glass view of all platform metrics.
 """
 import logging
 from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, asdict
 
 logger = logging.getLogger(__name__)
@@ -71,12 +71,12 @@ class ReportingEngine:
     """Generate comprehensive reports."""
     
     def __init__(self):
-        self._start_time = datetime.utcnow()
+        self._start_time = datetime.now(timezone.utc)
     
     def generate_super_report(self) -> SuperReport:
         """Generate comprehensive platform report."""
         return SuperReport(
-            generated_at=datetime.utcnow().isoformat(),
+            generated_at=datetime.now(timezone.utc).isoformat(),
             health=self._check_health(),
             performance=self._get_performance_metrics(),
             nba=self._get_nba_metrics(),
@@ -98,14 +98,14 @@ class ReportingEngine:
             checks.append(HealthStatus(
                 component="NBA Database",
                 status="healthy",
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 message="Connection OK"
             ))
         except Exception as e:
             checks.append(HealthStatus(
                 component="NBA Database",
                 status="down",
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 message=str(e)
             ))
         
@@ -117,7 +117,7 @@ class ReportingEngine:
             checks.append(HealthStatus(
                 component="NBA Cache",
                 status="healthy",
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 message=f"{stats['size']} entries, {stats['hit_rate']:.1f}% hit rate",
                 metrics=stats
             ))
@@ -125,7 +125,7 @@ class ReportingEngine:
             checks.append(HealthStatus(
                 component="NBA Cache",
                 status="down",
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 message=str(e)
             ))
         
@@ -133,7 +133,7 @@ class ReportingEngine:
         checks.append(HealthStatus(
             component="REST API",
             status="healthy",
-            last_check=datetime.utcnow().isoformat(),
+            last_check=datetime.now(timezone.utc).isoformat(),
             message="All endpoints responding"
         ))
         
@@ -144,14 +144,14 @@ class ReportingEngine:
             checks.append(HealthStatus(
                 component="nba_api",
                 status="healthy",
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 message="External API reachable"
             ))
         except Exception as e:
             checks.append(HealthStatus(
                 component="nba_api",
                 status="degraded",
-                last_check=datetime.utcnow().isoformat(),
+                last_check=datetime.now(timezone.utc).isoformat(),
                 message=f"Connection issues: {str(e)[:50]}"
             ))
         

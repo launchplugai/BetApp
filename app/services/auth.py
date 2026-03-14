@@ -1,35 +1,56 @@
 """
-Authentication service for DNA Bet Engine.
+Authentication service for BetApp.
 """
 
+import logging
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 import hashlib
 import uuid
 
 from app.models import User, RefreshToken, TokenBlacklist, get_session
 
+logger = logging.getLogger(__name__)
+
 # JWT Configuration
-SECRET_KEY = "your-secret-key-change-in-production"  # TODO: Move to env
+DEV_FALLBACK_SECRET_KEY = "dev-insecure-jwt-secret-change-me"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15  # Short-lived access tokens
 REFRESH_TOKEN_EXPIRE_DAYS = 30    # Long-lived refresh tokens
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _get_auth_settings() -> tuple[str, str, int, int]:
+    """Resolve auth settings from environment with safe development fallback."""
+    environment = os.environ.get("RAILWAY_ENVIRONMENT", "development").lower()
+    secret_key = os.environ.get("JWT_SECRET_KEY") or os.environ.get("AUTH_JWT_SECRET")
+
+    if not secret_key:
+        if environment == "production":
+            raise RuntimeError("JWT_SECRET_KEY must be set in production")
+        secret_key = DEV_FALLBACK_SECRET_KEY
+        logger.warning("JWT_SECRET_KEY not set; using insecure development fallback")
+
+    algorithm = os.environ.get("JWT_ALGORITHM", ALGORITHM)
+    access_expire = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_expire = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", REFRESH_TOKEN_EXPIRE_DAYS))
+    return secret_key, algorithm, access_expire, refresh_expire
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password."""
-    return pwd_context.hash(password)
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> Tuple[str, str]:
@@ -41,11 +62,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     jti = str(uuid.uuid4())
+    secret_key, algorithm, access_expire_minutes, _ = _get_auth_settings()
     
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=access_expire_minutes)
     
     to_encode.update({
         "exp": expire,
@@ -53,7 +75,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         "type": "access"
     })
     
-    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    token = jwt.encode(to_encode, secret_key, algorithm=algorithm)
     return token, jti
 
 
@@ -71,7 +93,8 @@ def create_refresh_token(user_id: str, device_info: Optional[str] = None, ip_add
     token_hash = hashlib.sha256(plain_token.encode()).hexdigest()
     
     # Store in database
-    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    _, _, _, refresh_expire_days = _get_auth_settings()
+    expires_at = datetime.utcnow() + timedelta(days=refresh_expire_days)
     
     refresh_token = RefreshToken(
         token_hash=token_hash,
@@ -159,8 +182,9 @@ def blacklist_access_token(token: str, reason: str = "logout") -> bool:
     Returns True if token was blacklisted, False if already expired/invalid.
     """
     try:
+        secret_key, algorithm, _, _ = _get_auth_settings()
         # Decode without verification to get JTI and exp
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm], options={"verify_exp": False})
         
         jti = payload.get("jti")
         user_id = payload.get("sub")
@@ -197,7 +221,8 @@ def blacklist_access_token(token: str, reason: str = "logout") -> bool:
 def is_token_blacklisted(token: str) -> bool:
     """Check if an access token is blacklisted."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        secret_key, algorithm, _, _ = _get_auth_settings()
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm], options={"verify_exp": False})
         jti = payload.get("jti")
         
         if not jti:
@@ -215,10 +240,24 @@ def is_token_blacklisted(token: str) -> bool:
 def decode_token(token: str) -> Optional[dict]:
     """Decode JWT token."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        secret_key, algorithm, _, _ = _get_auth_settings()
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         return payload
     except JWTError:
         return None
+
+
+def get_user_from_refresh_token(plain_token: str) -> Optional[User]:
+    """Resolve the user associated with a refresh token without requiring a valid access token."""
+    db = get_session()
+    token_hash = hashlib.sha256(plain_token.encode()).hexdigest()
+    try:
+        rt = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
+        if not rt:
+            return None
+        return get_user_by_id(rt.user_id, db)
+    finally:
+        db.close()
 
 
 def get_user_by_email(email: str, db: Optional[Session] = None) -> Optional[User]:

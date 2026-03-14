@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 import httpx
@@ -100,7 +100,7 @@ _SAMPLE_AVAILABILITY_DATA = [
 
 def _get_sample_players() -> list[PlayerAvailability]:
     """Return sample player data as fallback."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     return [
         PlayerAvailability(
             player_id=pid,
@@ -159,7 +159,7 @@ def _fetch_from_nba_official(timeout: int) -> Optional[list[PlayerAvailability]]
 
             data = response.json()
             players = []
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
 
             # Parse NBA official format
             # Structure: list of team objects with injury arrays
@@ -221,7 +221,7 @@ def _fetch_from_espn(timeout: int) -> Optional[list[PlayerAvailability]]:
 
             data = response.json()
             players = []
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
 
             # Parse ESPN format
             # Structure: { "teams": [ { "team": {...}, "injuries": [...] } ] }
@@ -356,7 +356,7 @@ class NBAAvailabilityProvider(ContextProvider):
             self._last_fetch_source = source
             return ContextSnapshot(
                 sport=self.sport,
-                as_of=datetime.utcnow(),
+                as_of=datetime.now(UTC),
                 source=source,
                 players=tuple(players),
                 missing_data=tuple(missing),
@@ -369,7 +369,7 @@ class NBAAvailabilityProvider(ContextProvider):
 
         return ContextSnapshot(
             sport=self.sport,
-            as_of=datetime.utcnow(),
+            as_of=datetime.now(UTC),
             source="sample-fallback",
             players=tuple(_get_sample_players()),
             missing_data=tuple(missing + ["Using sample data as fallback"]),
@@ -381,7 +381,7 @@ class NBAAvailabilityProvider(ContextProvider):
         self._last_fetch_source = "sample-data"
         return ContextSnapshot(
             sport=self.sport,
-            as_of=datetime.utcnow(),
+            as_of=datetime.now(UTC),
             source="sample-data",
             players=tuple(_get_sample_players()),
             missing_data=("Using sample data (live API not enabled)",),
@@ -393,7 +393,7 @@ class NBAAvailabilityProvider(ContextProvider):
         self._last_fetch_source = "error-fallback"
         return ContextSnapshot(
             sport=self.sport,
-            as_of=datetime.utcnow(),
+            as_of=datetime.now(UTC),
             source="error-fallback",
             players=tuple(_get_sample_players()),
             missing_data=(

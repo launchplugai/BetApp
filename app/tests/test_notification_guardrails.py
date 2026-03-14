@@ -5,7 +5,7 @@ through cooldown tracking, daily caps, and kill switch functionality.
 """
 
 import pytest
-from datetime import datetime, timedelta, time
+from datetime import UTC, datetime, timedelta, time
 from unittest.mock import Mock, patch, MagicMock
 
 from app.services.notification_guardrails import (
@@ -169,7 +169,7 @@ class TestCooldown:
         """Notification after cooldown expires is allowed."""
         # Record first notification in the past
         cooldown_key = f"{sample_user_id}:{sample_game_id}"
-        guardrails._cooldowns[cooldown_key] = datetime.utcnow() - timedelta(minutes=61)
+        guardrails._cooldowns[cooldown_key] = datetime.now(UTC) - timedelta(minutes=61)
         
         with patch.object(guardrails, '_in_quiet_hours', return_value=False):
             result = guardrails.can_notify(sample_user_id, sample_game_id)
@@ -182,7 +182,7 @@ class TestCooldown:
         
         # Record first notification 31 minutes ago
         cooldown_key = f"{sample_user_id}:{sample_game_id}"
-        guardrails._cooldowns[cooldown_key] = datetime.utcnow() - timedelta(minutes=31)
+        guardrails._cooldowns[cooldown_key] = datetime.now(UTC) - timedelta(minutes=31)
         
         with patch.object(guardrails, '_in_quiet_hours', return_value=False):
             result = guardrails.can_notify(sample_user_id, sample_game_id, rules=rules)
@@ -250,7 +250,7 @@ class TestEntropy:
         content_hash = "hash_old"
         
         # Add to cache in the past
-        guardrails._entropy_cache[content_hash] = datetime.utcnow() - timedelta(minutes=31)
+        guardrails._entropy_cache[content_hash] = datetime.now(UTC) - timedelta(minutes=31)
         
         with patch.object(guardrails, '_in_quiet_hours', return_value=False):
             result = guardrails.can_notify(
@@ -263,9 +263,9 @@ class TestEntropy:
     def test_cleanup_entropy_cache(self, guardrails):
         """Old entropy cache entries are cleaned up."""
         # Add old entries
-        guardrails._entropy_cache["old_1"] = datetime.utcnow() - timedelta(minutes=90)
-        guardrails._entropy_cache["old_2"] = datetime.utcnow() - timedelta(minutes=120)
-        guardrails._entropy_cache["new_1"] = datetime.utcnow() - timedelta(minutes=10)
+        guardrails._entropy_cache["old_1"] = datetime.now(UTC) - timedelta(minutes=90)
+        guardrails._entropy_cache["old_2"] = datetime.now(UTC) - timedelta(minutes=120)
+        guardrails._entropy_cache["new_1"] = datetime.now(UTC) - timedelta(minutes=10)
         
         guardrails.cleanup_entropy_cache(max_age_minutes=60)
         
@@ -297,8 +297,7 @@ class TestQuietHours:
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_prefs
         
         # Mock current time during quiet hours (23:00)
-        with patch('app.services.notification_guardrails.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2024, 1, 1, 23, 0, 0)
+        with patch('app.services.notification_guardrails.utc_now', return_value=datetime(2024, 1, 1, 23, 0, 0, tzinfo=UTC)):
             
             result = guardrails._in_quiet_hours(sample_user_id)
         
@@ -324,8 +323,7 @@ class TestQuietHours:
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_prefs
         
         # Mock current time outside quiet hours (14:00)
-        with patch('app.services.notification_guardrails.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2024, 1, 1, 14, 0, 0)
+        with patch('app.services.notification_guardrails.utc_now', return_value=datetime(2024, 1, 1, 14, 0, 0, tzinfo=UTC)):
             
             result = guardrails._in_quiet_hours(sample_user_id)
         
@@ -348,8 +346,7 @@ class TestQuietHours:
         mock_session.query.return_value.filter_by.return_value.first.return_value = mock_prefs
         
         # Even at 23:00
-        with patch('app.services.notification_guardrails.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2024, 1, 1, 23, 0, 0)
+        with patch('app.services.notification_guardrails.utc_now', return_value=datetime(2024, 1, 1, 23, 0, 0, tzinfo=UTC)):
             
             result = guardrails._in_quiet_hours(sample_user_id)
         
@@ -374,7 +371,7 @@ class TestRecordNotification:
     
     def test_record_increments_daily_count(self, guardrails, sample_user_id):
         """Recording increments daily count."""
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         
         initial_count = guardrails._daily_counts[sample_user_id][today]
         

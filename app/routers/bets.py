@@ -8,7 +8,8 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import UTC, datetime
+from sqlalchemy.exc import OperationalError
 
 from app.services.auth import get_current_user_from_token
 from app.models import Bet, Transaction, User, get_session
@@ -33,6 +34,7 @@ class BetLeg(BaseModel):
 
 class BetHistoryItem(BaseModel):
     id: str
+    evaluation_id: Optional[str] = None
     input_text: str
     legs: List[BetLeg]
     wager: int
@@ -91,17 +93,29 @@ async def get_bet_history(
     db = get_session()
     
     # Build query
-    query = db.query(Bet).filter(Bet.user_id == user.id)
+    try:
+        query = db.query(Bet).filter(Bet.user_id == user.id)
+    except OperationalError:
+        return BetHistoryResponse(bets=[], total=0, page=page, per_page=per_page)
     
     if status:
-        query = query.filter(Bet.status == status.lower())
+        try:
+            query = query.filter(Bet.status == status.lower())
+        except OperationalError:
+            return BetHistoryResponse(bets=[], total=0, page=page, per_page=per_page)
     
     # Get total count
-    total = query.count()
+    try:
+        total = query.count()
+    except OperationalError:
+        return BetHistoryResponse(bets=[], total=0, page=page, per_page=per_page)
     
     # Pagination
     offset = (page - 1) * per_page
-    bets = query.order_by(Bet.created_at.desc()).offset(offset).limit(per_page).all()
+    try:
+        bets = query.order_by(Bet.created_at.desc()).offset(offset).limit(per_page).all()
+    except OperationalError:
+        return BetHistoryResponse(bets=[], total=0, page=page, per_page=per_page)
     
     # Map to response format
     bet_items = []
@@ -120,6 +134,7 @@ async def get_bet_history(
         
         bet_items.append(BetHistoryItem(
             id=bet.id,
+            evaluation_id=bet.evaluation_id if isinstance(getattr(bet, "evaluation_id", None), str) else None,
             input_text=bet.input_text,
             legs=leg_items,
             wager=bet.wager or 0,
@@ -198,6 +213,7 @@ class CreateBetRequest(BaseModel):
     wager: int  # Amount in cents (e.g., 10000 = $100.00)
     total_odds: Optional[int] = None
     potential_payout: Optional[int] = None
+    evaluation_id: Optional[str] = None
     # Optional: include DNA analysis results
     verdict: Optional[str] = None
     confidence: Optional[int] = None
@@ -213,6 +229,7 @@ class CreateBetResponse(BaseModel):
     constraint_violations: Optional[List[Dict[str, Any]]] = None
     risk_profile: Optional[str] = None
     dna_snapshot_id: Optional[str] = None
+    evaluation_id: Optional[str] = None
 
 
 @router.post("/", response_model=CreateBetResponse)
@@ -299,7 +316,7 @@ async def create_bet(
             id=f"snapshot_{uuid.uuid4().hex[:8]}",
             user_id=user.id,
             preferences=prefs_dict,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(UTC)
         )
         db.add(snapshot)
         db.commit()
@@ -307,7 +324,7 @@ async def create_bet(
         dna_snapshot_id = snapshot.id
         
         # Check constraints on the picks
-        picks = [leg.dict() for leg in request.legs]
+        picks = [leg.model_dump() for leg in request.legs]
         checker = ConstraintChecker(prefs_dict)
         violations = checker.check_picks(picks)
         constraint_violations = [v.to_dict() for v in violations]
@@ -388,8 +405,9 @@ async def create_bet(
         
         bet = Bet(
             user_id=user.id,
+            evaluation_id=request.evaluation_id,
             input_text=request.input_text,
-            legs=[leg.dict() for leg in request.legs],
+            legs=[leg.model_dump() for leg in request.legs],
             wager=request.wager,
             total_odds=request.total_odds,
             potential_payout=potential_payout or request.wager,
@@ -432,7 +450,8 @@ async def create_bet(
             message=f"Bet created successfully. ID: {bet.id}",
             constraint_violations=constraint_violations if constraint_violations else None,
             risk_profile=risk_profile,
-            dna_snapshot_id=dna_snapshot_id
+            dna_snapshot_id=dna_snapshot_id,
+            evaluation_id=request.evaluation_id,
         )
         
     except Exception as e:

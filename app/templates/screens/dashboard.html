@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Engine - Command Center</title>
+    <title>BetApp - Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <link href="https://api.fontshare.com/v2/css?f[]=tanker@400&f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
@@ -108,30 +108,30 @@
                     <iconify-icon icon="lucide:heart-pulse" class="text-[#ff1744]"></iconify-icon>
                     <h2 class="font-tanker text-lg tracking-wide">SYSTEM HEALTH</h2>
                 </div>
-                <span class="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">UNKNOWN</span>
+                <span id="system-health-status" class="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">UNKNOWN</span>
             </div>
             <div class="bg-[#0a0a0a] border border-white/5 rounded-lg p-4">
                 <div class="grid grid-cols-2 gap-4 text-sm">
                     <div>
                         <p class="text-gray-500 text-xs mb-1">Snapshot Version</p>
-                        <p class="text-gray-400">--</p>
+                        <p id="system-snapshot-version" class="text-gray-400">--</p>
                     </div>
                     <div>
                         <p class="text-gray-500 text-xs mb-1">Confidence Schema</p>
-                        <p class="text-gray-400">--</p>
+                        <p id="system-confidence-schema" class="text-gray-400">--</p>
                     </div>
                     <div>
                         <p class="text-gray-500 text-xs mb-1">Data Freshness</p>
-                        <p class="text-gray-400">--</p>
+                        <p id="system-data-freshness" class="text-gray-400">--</p>
                     </div>
                     <div>
                         <p class="text-gray-500 text-xs mb-1">Provider Mode</p>
-                        <p class="text-gray-400">--</p>
+                        <p id="system-provider-mode" class="text-gray-400">--</p>
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-white/5">
                     <p class="text-gray-500 text-xs">Last Updated</p>
-                    <p class="text-gray-400 text-sm">--</p>
+                    <p id="system-last-updated" class="text-gray-400 text-sm">--</p>
                 </div>
             </div>
         </section>
@@ -258,6 +258,55 @@
                 }
             } catch (err) {
                 console.error('Failed to load notification count:', err);
+            }
+        }
+
+        async function loadSystemHealth() {
+            const statusEl = document.getElementById('system-health-status');
+            const snapshotEl = document.getElementById('system-snapshot-version');
+            const schemaEl = document.getElementById('system-confidence-schema');
+            const freshnessEl = document.getElementById('system-data-freshness');
+            const providerModeEl = document.getElementById('system-provider-mode');
+            const updatedEl = document.getElementById('system-last-updated');
+
+            try {
+                const [providerStatus, contracts] = await Promise.all([
+                    fetch('/api/provider/status').then(r => r.json()),
+                    fetch('/debug/contracts').then(r => r.json())
+                ]);
+
+                const mode = providerStatus.mode || 'unknown';
+                const provider = providerStatus.provider || 'unknown';
+                const cacheEntries = providerStatus.cache_entries ?? 0;
+                const cacheTtl = providerStatus.cache_ttl_seconds ?? '--';
+                const snapshotVersion =
+                    contracts.service?.version ||
+                    contracts.build?.git_sha ||
+                    '--';
+                const scoringVersion =
+                    contracts.contracts?.DNA_PRIMITIVES_CONTRACT ||
+                    contracts.contracts?.SYSTEM_CONTRACT_SDS ||
+                    '--';
+                const now = new Date().toLocaleString();
+
+                if (statusEl) {
+                    statusEl.textContent = mode === 'live' ? 'LIVE' : 'MOCK';
+                    statusEl.className = mode === 'live'
+                        ? 'text-xs bg-emerald-900/40 text-emerald-300 px-2 py-1 rounded'
+                        : 'text-xs bg-amber-900/40 text-amber-300 px-2 py-1 rounded';
+                }
+                if (snapshotEl) snapshotEl.textContent = snapshotVersion;
+                if (schemaEl) schemaEl.textContent = scoringVersion;
+                if (freshnessEl) freshnessEl.textContent = `${cacheEntries} cached / TTL ${cacheTtl}s`;
+                if (providerModeEl) providerModeEl.textContent = `${mode} via ${provider}`;
+                if (updatedEl) updatedEl.textContent = now;
+            } catch (err) {
+                console.error('Failed to load system health:', err);
+                if (statusEl) {
+                    statusEl.textContent = 'DEGRADED';
+                    statusEl.className = 'text-xs bg-red-900/40 text-red-300 px-2 py-1 rounded';
+                }
+                if (updatedEl) updatedEl.textContent = 'Health check unavailable';
             }
         }
         
@@ -427,6 +476,7 @@
             loadUserPreferences();
             loadNotificationCount();
             loadActiveProtocols();
+            loadSystemHealth();
         });
     </script>
 </body>

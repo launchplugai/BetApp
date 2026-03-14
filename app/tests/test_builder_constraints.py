@@ -11,7 +11,7 @@ Tests API endpoints with constraints:
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.main import app
 from app.models import User, Bet, get_session, init_db
@@ -369,7 +369,7 @@ class TestBetHistoryWithDNA:
         mock_bet.confidence = 75
         mock_bet.user_dna_snapshot_id = "snapshot_abc123"
         mock_bet.risk_profile_at_bet = "balanced"
-        mock_bet.created_at = datetime.utcnow()
+        mock_bet.created_at = datetime.now(UTC)
         mock_bet.settled_at = None
         
         # Mock database
@@ -418,7 +418,7 @@ class TestBetHistoryWithDNA:
         mock_bet.applied_constraints = [{"type": "max_legs", "value": 3}]
         mock_bet.blocked_actions = []
         mock_bet.risk_profile_at_bet = "balanced"
-        mock_bet.created_at = datetime.utcnow()
+        mock_bet.created_at = datetime.now(UTC)
         mock_bet.settled_at = None
         mock_bet.to_dict.return_value = {
             "id": "bet_123",
@@ -439,7 +439,7 @@ class TestBetHistoryWithDNA:
             "risk_profile": "balanced",
             "constraints": {"max_legs": 3}
         }
-        mock_snapshot.created_at = datetime.utcnow()
+        mock_snapshot.created_at = datetime.now(UTC)
         
         # Mock database
         mock_db = MagicMock()

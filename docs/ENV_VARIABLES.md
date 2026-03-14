@@ -3,7 +3,7 @@
 **Status:** CANONICAL
 **Last Updated:** 2026-01-29
 
-Complete list of all environment variables used by DNA Matrix.
+Complete list of key environment variables used by BetApp.
 
 ---
 
@@ -46,6 +46,10 @@ Complete list of all environment variables used by DNA Matrix.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes* | OpenAI API key (*required for vision/voice features) |
+| `JWT_SECRET_KEY` | Yes in production | JWT signing secret for auth tokens |
+| `AUTH_JWT_SECRET` | No | Legacy alias for `JWT_SECRET_KEY` |
+| `JWT_ALGORITHM` | No | JWT algorithm override, defaults to `HS256` |
+| `ADMIN_EMAILS` | No | Comma-separated admin email allowlist for internal surfaces like `/api/admin` and `/debug`. Users with `BEST` tier also pass this gating. |
 | `STRIPE_SECRET_KEY` | No | Stripe secret key (billing) |
 | `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook signing secret |
 
@@ -64,8 +68,20 @@ Complete list of all environment variables used by DNA Matrix.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `APP_DATABASE_URL` | `sqlite:///./dna_bets.db` | Primary application database URL. For Postgres/Supabase use `postgresql+psycopg://...` so SQLAlchemy uses the declared psycopg driver. |
+| `NBA_DATABASE_URL` | `sqlite:///./data/nba_analytics.db` | NBA analytics database URL |
 | `DNA_DB_PATH` | `data/dna.db` | SQLite database file path |
 | `DNA_PERSISTENCE` | `true` | Enable alert persistence to SQLite |
+
+## Auth Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET_KEY` | development fallback only | Required in production. Signs and validates access tokens. |
+| `AUTH_JWT_SECRET` | - | Backward-compatible alias for `JWT_SECRET_KEY` |
+| `JWT_ALGORITHM` | `HS256` | Access token signing algorithm |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | Access token lifetime in minutes |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | `30` | Refresh token lifetime in days |
 
 ---
 
@@ -129,7 +145,11 @@ These are automatically set by Railway (do not configure manually):
 
 ### Minimal (Development)
 ```
-# None required - all have defaults
+# SQLite default
+JWT_SECRET_KEY=dev-local-change-me
+
+# Or Postgres/Supabase
+APP_DATABASE_URL=postgresql+psycopg://postgres:password@127.0.0.1:5432/betapp
 ```
 
 ### Minimal (Production)
@@ -180,3 +200,14 @@ Check deployed config via API:
 ```bash
 curl https://dna-production-cb47.up.railway.app/health
 ```
+
+## Postgres Notes
+
+When targeting Postgres or Supabase, prefer URL forms like:
+
+```bash
+APP_DATABASE_URL=postgresql+psycopg://postgres:password@127.0.0.1:5432/betapp
+APP_DATABASE_URL=postgresql+psycopg://postgres.project-ref:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require
+```
+
+This repo now declares `psycopg[binary]` as the Postgres driver for SQLAlchemy 2.x.

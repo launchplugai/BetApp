@@ -55,7 +55,7 @@ class TestHealthEndpoint:
         response = client.get("/health")
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["service"] == "dna-matrix"
+        assert data["service"] == "betapp"
 
 
 class TestHealthGitSha:

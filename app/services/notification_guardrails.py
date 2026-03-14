@@ -6,7 +6,7 @@ high entropy suppression, and kill switch functionality.
 
 import logging
 from typing import Dict, Any, Optional, Set
-from datetime import datetime, timedelta, time
+from datetime import UTC, datetime, timedelta, time
 from collections import defaultdict
 import threading
 
@@ -20,6 +20,18 @@ logger = logging.getLogger(__name__)
 
 # Module-level kill switch for emergency use
 _kill_switch_active = False
+
+
+def utc_now() -> datetime:
+    """Return a timezone-aware UTC timestamp."""
+    return datetime.now(UTC)
+
+
+def ensure_utc(value: datetime) -> datetime:
+    """Normalize naive or aware datetimes to timezone-aware UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class NotificationGuardrails:
@@ -149,7 +161,7 @@ class NotificationGuardrails:
             last_sent = self._cooldowns.get(cooldown_key)
 
             if last_sent:
-                elapsed = datetime.utcnow() - last_sent
+                elapsed = utc_now() - ensure_utc(last_sent)
                 if elapsed < timedelta(minutes=cooldown_minutes):
                     remaining = cooldown_minutes - int(elapsed.total_seconds() / 60)
                     return GuardrailResult(
@@ -169,7 +181,7 @@ class NotificationGuardrails:
         if rules and "max_notifications_per_day" in rules:
             daily_cap = rules["max_notifications_per_day"]
 
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = utc_now().strftime("%Y-%m-%d")
 
         with self._lock:
             current_count = self._daily_counts[user_id][today]
@@ -198,7 +210,7 @@ class NotificationGuardrails:
             first_seen = self._entropy_cache.get(content_hash)
 
             if first_seen:
-                elapsed = datetime.utcnow() - first_seen
+                elapsed = utc_now() - ensure_utc(first_seen)
                 if elapsed < timedelta(minutes=self.entropy_window_minutes):
                     remaining = self.entropy_window_minutes - int(elapsed.total_seconds() / 60)
                     return GuardrailResult(
@@ -209,7 +221,7 @@ class NotificationGuardrails:
                     )
             else:
                 # First time seeing this content
-                self._entropy_cache[content_hash] = datetime.utcnow()
+                self._entropy_cache[content_hash] = utc_now()
 
         return GuardrailResult(allowed=True, reason="", remaining_today=0, beta_gate_pass=True)
     
@@ -240,7 +252,7 @@ class NotificationGuardrails:
             start = time.fromisoformat(start_str)
             end = time.fromisoformat(end_str)
             
-            now = datetime.utcnow().time()
+            now = utc_now().time()
             
             # Handle overnight quiet hours (e.g., 22:00 - 08:00)
             if start > end:
@@ -264,7 +276,7 @@ class NotificationGuardrails:
         if rules and "max_notifications_per_day" in rules:
             daily_cap = rules["max_notifications_per_day"]
         
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = utc_now().strftime("%Y-%m-%d")
         
         with self._lock:
             current_count = self._daily_counts[user_id][today]
@@ -277,10 +289,10 @@ class NotificationGuardrails:
         Updates cooldowns and daily counts.
         """
         cooldown_key = f"{user_id}:{game_id}"
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = utc_now().strftime("%Y-%m-%d")
         
         with self._lock:
-            self._cooldowns[cooldown_key] = datetime.utcnow()
+            self._cooldowns[cooldown_key] = utc_now()
             self._daily_counts[user_id][today] += 1
         
         logger.debug(
@@ -303,7 +315,7 @@ class NotificationGuardrails:
                     "remaining_minutes": 0
                 }
             
-            elapsed = datetime.utcnow() - last_sent
+            elapsed = utc_now() - ensure_utc(last_sent)
             remaining = max(0, self.default_cooldown_minutes - int(elapsed.total_seconds() / 60))
             
             return {
@@ -314,7 +326,7 @@ class NotificationGuardrails:
     
     def get_daily_stats(self, user_id: str) -> Dict[str, Any]:
         """Get daily notification statistics for a user."""
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = utc_now().strftime("%Y-%m-%d")
         
         with self._lock:
             sent_today = self._daily_counts[user_id][today]
@@ -334,12 +346,12 @@ class NotificationGuardrails:
     
     def cleanup_entropy_cache(self, max_age_minutes: int = 60):
         """Clean up old entropy cache entries."""
-        cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
+        cutoff = utc_now() - timedelta(minutes=max_age_minutes)
         
         with self._lock:
             old_keys = [
                 k for k, v in self._entropy_cache.items()
-                if v < cutoff
+                if ensure_utc(v) < cutoff
             ]
             for k in old_keys:
                 del self._entropy_cache[k]

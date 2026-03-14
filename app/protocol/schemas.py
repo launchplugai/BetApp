@@ -2,7 +2,7 @@
 Protocol Schemas - Pydantic models for API
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
@@ -21,6 +21,8 @@ class ProtocolTargetCreate(BaseModel):
 
 class ProtocolTargetOut(BaseModel):
     """Protocol target response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     target_type: str
     provider: str
@@ -28,25 +30,19 @@ class ProtocolTargetOut(BaseModel):
     meta: Dict[str, Any]
     created_at: str
     
-    class Config:
-        from_attributes = True
-
-
 # =============================================================================
 # Item Schemas
 # =============================================================================
 
 class ProtocolItemOut(BaseModel):
     """Protocol item response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     type: str  # stats_snapshot|note|system_event
     payload: Dict[str, Any]
     created_at: str
     
-    class Config:
-        from_attributes = True
-
-
 # =============================================================================
 # Protocol Schemas
 # =============================================================================
@@ -68,6 +64,8 @@ class ProtocolUpdate(BaseModel):
 
 class ProtocolOut(BaseModel):
     """Basic protocol response (for lists)."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     sport: str
     title: str
@@ -78,10 +76,6 @@ class ProtocolOut(BaseModel):
     target_count: int = 0
     item_count: int = 0
     
-    class Config:
-        from_attributes = True
-
-
 class ProtocolDetailOut(ProtocolOut):
     """Detailed protocol with targets and recent items."""
     targets: List[ProtocolTargetOut] = []

@@ -1,5 +1,5 @@
 """
-Core Guard System for DNA Bet Engine
+Core Guard System for BetApp
 
 Request-level enforcement with tracing and logging.
 Used for tier-based access control, rate limiting, and feature gating.

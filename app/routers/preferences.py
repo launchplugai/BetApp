@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import UTC, datetime
 import uuid
 
 from app.models import get_session
@@ -110,8 +110,8 @@ async def get_preferences(user_id: str = Depends(get_current_user_id)):
             user_id=user_id,
             risk_profile="balanced",
             bet_style=["props"],
-            constraints=ConstraintsSchema().dict(),
-            bankroll_policy=BankrollPolicySchema().dict(),
+            constraints=ConstraintsSchema().model_dump(),
+            bankroll_policy=BankrollPolicySchema().model_dump(),
             notification_rules={"enabled": True},  # Default notification rules
             version=1,
             created_at=None,
@@ -136,11 +136,11 @@ async def create_or_update_preferences(
         # Update existing
         prefs.risk_profile = input_data.risk_profile
         prefs.bet_style = input_data.bet_style
-        prefs.constraints = input_data.constraints.dict()
-        prefs.bankroll_policy = input_data.bankroll_policy.dict()
+        prefs.constraints = input_data.constraints.model_dump()
+        prefs.bankroll_policy = input_data.bankroll_policy.model_dump()
         if input_data.notification_rules:
-            prefs.notification_rules = input_data.notification_rules.dict()
-        prefs.updated_at = datetime.utcnow()
+            prefs.notification_rules = input_data.notification_rules.model_dump()
+        prefs.updated_at = datetime.now(UTC)
     else:
         # Create new
         prefs = UserPreferences(
@@ -148,9 +148,9 @@ async def create_or_update_preferences(
             user_id=user_id,
             risk_profile=input_data.risk_profile,
             bet_style=input_data.bet_style,
-            constraints=input_data.constraints.dict(),
-            bankroll_policy=input_data.bankroll_policy.dict(),
-            notification_rules=input_data.notification_rules.dict() if input_data.notification_rules else {},
+            constraints=input_data.constraints.model_dump(),
+            bankroll_policy=input_data.bankroll_policy.model_dump(),
+            notification_rules=input_data.notification_rules.model_dump() if input_data.notification_rules else {},
             version=1
         )
         session.add(prefs)
@@ -176,8 +176,8 @@ async def check_constraints(
         prefs_dict = {
             "risk_profile": "balanced",
             "bet_style": ["props"],
-            "constraints": ConstraintsSchema().dict(),
-            "bankroll_policy": BankrollPolicySchema().dict()
+            "constraints": ConstraintsSchema().model_dump(),
+            "bankroll_policy": BankrollPolicySchema().model_dump()
         }
     else:
         prefs_dict = prefs.to_dict()

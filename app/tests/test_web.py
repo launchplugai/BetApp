@@ -166,6 +166,8 @@ class TestEvaluateEndpoint:
         assert "evaluation" in data
         assert "signalInfo" in data
         assert "proofSummary" in data
+        assert "dnaScoring" in data
+        assert "triggeredProtocols" in data
 
     def test_empty_input_returns_400(self, client):
         """Empty input returns 400 error."""
@@ -202,6 +204,19 @@ class TestEvaluateEndpoint:
         signal = data.get("signalInfo", {})
         assert "signal" in signal
         assert signal["signal"] in ["blue", "green", "yellow", "red"]
+
+    def test_evaluation_includes_canonical_scores(self, client):
+        """Web response exposes contract-aligned scoring payload."""
+        response = client.post("/app/evaluate", json={
+            "input": "Lakers -5.5 + Celtics ML + Heat ML + Knicks ML + Suns ML",
+            "tier": "best"
+        })
+        assert response.status_code == 200
+        data = response.json()
+        scoring = data.get("dnaScoring", {})
+        scores = scoring.get("scores", {})
+        assert set(scores.keys()) == {"confidence", "fragility", "edge", "stability"}
+        assert isinstance(data.get("triggeredProtocols", []), list)
 
     def test_service_disabled_returns_503(self, client_disabled):
         """Disabled service returns 503."""

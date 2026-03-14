@@ -6,7 +6,7 @@
     "buildCommand": "pip install -e ./dna-matrix"
   },
   "deploy": {
-    "startCommand": "PYTHONPATH=/app:/app/dna-matrix:$PYTHONPATH uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}",
+    "startCommand": "sh -c 'PYTHONPATH=/app:/app/dna-matrix:$PYTHONPATH alembic upgrade head && PYTHONPATH=/app:/app/dna-matrix:$PYTHONPATH uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}'",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",

@@ -1,12 +1,11 @@
-"""
-Database models for DNA Bet Engine.
-"""
+"""Database models for BetApp."""
 
-from sqlalchemy import create_engine, Column, String, DateTime, JSON, Integer
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Column, DateTime, Integer, JSON, String
+from sqlalchemy.orm import declarative_base
 from datetime import datetime
 import uuid
+
+from app.db import get_engine as _shared_get_engine, get_session as _shared_get_session
 
 Base = declarative_base()
 
@@ -44,6 +43,7 @@ class Bet(Base):
     
     id = Column(String, primary_key=True, default=lambda: f"bet_{uuid.uuid4().hex[:8]}")
     user_id = Column(String, nullable=False, index=True)
+    evaluation_id = Column(String, nullable=True, index=True)
     input_text = Column(String, nullable=False)
     legs = Column(JSON, default=list)
     wager = Column(Integer, default=0)
@@ -72,6 +72,7 @@ class Bet(Base):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "evaluation_id": self.evaluation_id,
             "input_text": self.input_text,
             "legs": self.legs,
             "wager": self.wager,
@@ -177,29 +178,14 @@ class TokenBlacklist(Base):
         }
 
 
-# Database setup
-_engine = None
-_SessionLocal = None
-
-
 def get_engine():
-    """Get or create database engine."""
-    global _engine
-    if _engine is None:
-        # Use SQLite for now, can switch to PostgreSQL later
-        _engine = create_engine(
-            "sqlite:///./dna_bets.db",
-            connect_args={"check_same_thread": False}
-        )
-    return _engine
+    """Get shared database engine."""
+    return _shared_get_engine()
 
 
 def get_session():
-    """Get a database session."""
-    global _SessionLocal
-    if _SessionLocal is None:
-        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
-    return _SessionLocal()
+    """Get shared database session."""
+    return _shared_get_session()
 
 
 def init_db():
@@ -215,3 +201,7 @@ from app.models.notification import Notification
 from app.models.notification_preferences import NotificationPreferences
 from app.models.user_device import UserDevice
 from app.models.notification_receipt import NotificationReceipt, get_telemetry_counters, reset_telemetry_counters
+from app.models.model_registry import ModelRegistryEntry
+from app.models.evaluation_log import EvaluationLog
+from app.models.learning_proposal import LearningProposal
+from app.models.promotion_audit import PromotionAuditRecord

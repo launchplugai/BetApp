@@ -206,6 +206,21 @@ class TestRunEvaluation:
         result = run_evaluation(normalized)
         assert result.tier == "better"
 
+    def test_includes_canonical_scoring_payload(self):
+        """Pipeline returns contract-aligned DNA scoring payload."""
+        normalized = airlock_ingest("Lakers -5.5", tier="good")
+        result = run_evaluation(normalized)
+        assert result.dna_scoring is not None
+        scores = result.dna_scoring["scores"]
+        assert set(scores.keys()) == {"confidence", "fragility", "edge", "stability"}
+        assert result.dna_scoring["score_model_version"] == "1.2.0"
+
+    def test_includes_triggered_protocols_list(self):
+        """Pipeline always returns a protocol list."""
+        normalized = airlock_ingest("Lakers -5.5", tier="good")
+        result = run_evaluation(normalized)
+        assert isinstance(result.triggered_protocols, list)
+
     def test_good_tier_structured_explain(self):
         """GOOD tier returns structured explain in pipeline response (Ticket 3)."""
         normalized = airlock_ingest("Lakers -5.5", tier="good")
@@ -217,6 +232,8 @@ class TestRunEvaluation:
         # GOOD tier should NOT have BETTER/BEST fields
         assert "summary" not in result.explain
         assert "alerts" not in result.explain
+        assert "dna_scoring" not in result.explain
+        assert "triggered_protocols" not in result.explain
 
     def test_best_tier_full_explain(self):
         """BEST tier returns full explain in pipeline response."""
@@ -224,6 +241,8 @@ class TestRunEvaluation:
         result = run_evaluation(normalized)
         assert "summary" in result.explain
         assert "alerts" in result.explain
+        assert "dna_scoring" in result.explain
+        assert "triggered_protocols" in result.explain
 
 
 class TestRouteIntegration:

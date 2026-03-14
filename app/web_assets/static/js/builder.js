@@ -5,6 +5,39 @@ let markets = null;
 let legs = [];
 let currentMarket = 'main';
 
+function getStoredEvaluationId(result) {
+    if (result && typeof result.evaluation_id === 'string' && result.evaluation_id.trim()) {
+        return result.evaluation_id;
+    }
+    if (result && typeof result.evaluationId === 'string' && result.evaluationId.trim()) {
+        return result.evaluationId;
+    }
+    if (window._builderContext && typeof window._builderContext.evaluationId === 'string' && window._builderContext.evaluationId.trim()) {
+        return window._builderContext.evaluationId;
+    }
+    return null;
+}
+
+function updateDataProvenance(response) {
+    const panel = document.getElementById('data-provenance');
+    if (!panel || !response) return;
+
+    const provider = response.headers.get('X-Data-Provider') || '--';
+    const mode = response.headers.get('X-Data-Mode') || '--';
+    const cacheHit = response.headers.get('X-Data-Cache-Hit');
+    const ageSeconds = response.headers.get('X-Data-Age-Seconds');
+
+    panel.innerHTML = `
+        <div class="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider">
+            <span class="rounded-full border border-white/10 px-2 py-1 text-gray-300">Provider ${provider}</span>
+            <span class="rounded-full border border-white/10 px-2 py-1 text-gray-400">Mode ${mode}</span>
+            <span class="rounded-full border border-white/10 px-2 py-1 text-gray-400">Cache ${cacheHit === 'true' ? 'hit' : 'fresh'}</span>
+            <span class="rounded-full border border-white/10 px-2 py-1 text-gray-500">${ageSeconds ? `Age ${Math.round(parseFloat(ageSeconds))}s` : 'Age now'}</span>
+        </div>
+    `;
+    panel.classList.remove('hidden');
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -56,6 +89,7 @@ async function loadProtocol() {
         try {
             const gamesResponse = await fetch(`${API_BASE}/games?sport=NHL`);
             if (gamesResponse.ok) {
+                updateDataProvenance(gamesResponse);
                 const games = await gamesResponse.json();
                 if (games && games.length > 0) {
                     const game = games[0];
@@ -97,6 +131,8 @@ async function loadMarkets() {
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
+
+        updateDataProvenance(response);
 
         // API returns array, transform to expected structure
         const marketsArray = await response.json();
@@ -638,6 +674,10 @@ async function analyzeWithDNA() {
         }
 
         const result = await response.json();
+        const evaluationId = getStoredEvaluationId(result);
+        if (evaluationId) {
+            result.evaluation_id = evaluationId;
+        }
 
         // Store result
         sessionStorage.setItem('dna_analysis_result', JSON.stringify(result));
@@ -772,6 +812,7 @@ async function submitBet() {
 
     // Get DNA analysis result if available
     const dnaResult = JSON.parse(sessionStorage.getItem('dna_analysis_result') || '{}');
+    const evaluationId = getStoredEvaluationId(dnaResult);
 
     // Calculate total odds
     let totalOdds = 0;
@@ -821,6 +862,10 @@ async function submitBet() {
             verdict: dnaResult.verdict,
             confidence: dnaResult.confidence
         };
+
+        if (evaluationId) {
+            requestBody.evaluation_id = evaluationId;
+        }
 
         const response = await fetch('/api/bets/', {
             method: 'POST',
@@ -988,7 +1033,7 @@ function showError(message) {
 }
 
 function navigateTo(screen) {
-    window.location.href = `/new?screen=${screen}`;
+    window.location.href = `/app?screen=${encodeURIComponent(screen)}`;
 }
 
 function goBack() {

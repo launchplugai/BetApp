@@ -3,25 +3,33 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dna-matrix"
+name = "betapp"
 version = "0.2.1"
-description = "DNA Matrix - Semantic identity management system"
+description = "BetApp - bettor intelligence platform for parlay evaluation and protocol-driven risk analysis"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 dependencies = [
+    "alembic>=1.14.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.1",
+    "python-jose[cryptography]>=3.3.0",
     "python-multipart>=0.0.7",
+    "email-validator>=2.2.0",
     "jinja2>=3.1.0",
     "pytest>=8.0.0,<10.0.0",
     "black>=24.0.0",
     "mypy>=1.8.0",
     "ruff>=0.5.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg[binary]>=3.2.0",
+    "bcrypt>=4.1.0,<5.0.0",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["dna-matrix/tests", "auth/tests", "persistence/tests", "alerts/tests", "context/tests", "billing/tests"]
+testpaths = ["app/tests", "tests", "dna-matrix/tests", "auth/tests", "persistence/tests", "alerts/tests", "context/tests", "billing/tests"]
 pythonpath = [".", "dna-matrix"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
@@ -29,12 +37,12 @@ addopts = "-v --tb=short"
 
 [tool.black]
 line-length = 100
-target-version = ["py310", "py311", "py312"]
+target-version = ["py312"]
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
@@ -50,7 +58,7 @@ ignore = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_ignores = true
 disallow_untyped_defs = true

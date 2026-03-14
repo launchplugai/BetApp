@@ -4,11 +4,28 @@ Pydantic schemas for analytics enrichment
 
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TeamContext(BaseModel):
     """Team-specific context within a game"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "team_id": "bos",
+                "team_name": "Boston Celtics",
+                "pace": 98.5,
+                "offensive_rating": 118.2,
+                "defensive_rating": 110.4,
+                "net_rating": 7.8,
+                "rest_days": 2,
+                "back_to_back": False,
+                "injury_count": 1,
+                "injury_impact_score": 0.15,
+            }
+        }
+    )
+
     team_id: str
     team_name: str
     stats: dict = Field(default_factory=dict, description="Raw advanced stats")
@@ -28,25 +45,21 @@ class TeamContext(BaseModel):
     success_rate: Optional[float] = None  # % of plays with positive EPA
     plays_per_game: Optional[float] = None
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "team_id": "bos",
-                "team_name": "Boston Celtics",
-                "pace": 98.5,
-                "offensive_rating": 118.2,
-                "defensive_rating": 110.4,
-                "net_rating": 7.8,
-                "rest_days": 2,
-                "back_to_back": False,
-                "injury_count": 1,
-                "injury_impact_score": 0.15,
-            }
-        }
-
-
 class GameContext(BaseModel):
     """Enriched game context with advanced statistics"""
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "game_id": "nba-20260221-bos-lal",
+                "sport": "nba",
+                "home_team": {"team_id": "lal", "team_name": "Lakers", "pace": 99.2},
+                "away_team": {"team_id": "bos", "team_name": "Celtics", "pace": 98.1},
+                "data_source": "api",
+                "is_enriched": True,
+            }
+        }
+    )
+
     game_id: str
     sport: Literal["nba", "nfl", "mlb", "nhl"]
     home_team: TeamContext
@@ -80,19 +93,6 @@ class GameContext(BaseModel):
     # Phase 2: Heuristic signals
     heuristics: list[dict] = Field(default_factory=list, description="Detected heuristic signals")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "game_id": "nba-20260221-bos-lal",
-                "sport": "nba",
-                "home_team": {"team_id": "lal", "team_name": "Lakers", "pace": 99.2},
-                "away_team": {"team_id": "bos", "team_name": "Celtics", "pace": 98.1},
-                "data_source": "api",
-                "is_enriched": True,
-            }
-        }
-
-
 class EnrichmentResult(BaseModel):
     """Result wrapper for enrichment operations"""
     success: bool

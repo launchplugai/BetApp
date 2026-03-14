@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from app.providers import OddsResponse, ScoreResponse
 
 
@@ -25,13 +25,12 @@ class TrackedProtocol(BaseModel):
     current_odds: Optional[OddsResponse] = None
     current_score: Optional[ScoreResponse] = None
     legs_snapshot: Optional[List[dict]] = None
+
+    @field_serializer("created_at", "last_updated")
+    def serialize_datetime(self, value: datetime) -> str:
+        """Serialize datetimes as ISO strings."""
+        return value.isoformat()
     
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
-
 class ProtocolTracker:
     """
     Singleton service for tracking active protocols.

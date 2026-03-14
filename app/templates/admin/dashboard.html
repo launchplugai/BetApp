@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - DNA Platform</title>
+    <title>BetApp Admin Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -266,6 +266,114 @@
             font-size: 13px;
             margin-top: 5px;
         }
+
+        .muted {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .governance-item {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid #ff1744;
+            margin-bottom: 12px;
+        }
+
+        .governance-item h4 {
+            font-size: 14px;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .governance-item p {
+            font-size: 13px;
+            color: #bbb;
+            margin-bottom: 8px;
+        }
+
+        .governance-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .status-pending_review,
+        .status-approved {
+            background: rgba(255, 152, 0, 0.16);
+            color: #ffb74d;
+        }
+
+        .status-promoted {
+            background: rgba(76, 175, 80, 0.16);
+            color: #81c784;
+        }
+
+        .status-rejected,
+        .status-rolled_back {
+            background: rgba(244, 67, 54, 0.16);
+            color: #ef5350;
+        }
+
+        .status-draft,
+        .status-superseded {
+            background: rgba(158, 158, 158, 0.16);
+            color: #bdbdbd;
+        }
+
+        .governance-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .governance-form {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #333;
+            border-radius: 6px;
+        }
+
+        .governance-form.hidden {
+            display: none;
+        }
+
+        .governance-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .governance-form textarea,
+        .governance-form input {
+            width: 100%;
+        }
+
+        .governance-pre {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 12px;
+            color: #ddd;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 12px;
+            white-space: pre-wrap;
+        }
         
         @media (max-width: 768px) {
             .grid {
@@ -286,6 +394,7 @@
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab" onclick="switchTab('governance')">Governance</button>
             <button class="tab" onclick="switchTab('config')">Configuration</button>
             <button class="tab" onclick="switchTab('api')">API Management</button>
             <button class="tab" onclick="switchTab('nba')">NBA Analytics</button>
@@ -308,6 +417,44 @@
                 <div class="card">
                     <h3>NBA Analytics</h3>
                     <div id="nba-stats" class="loading">Loading...</div>
+                </div>
+
+                <div class="card">
+                    <h3>Governed Evaluations</h3>
+                    <div id="governance-evaluations" class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Governance Tab -->
+        <div id="governance" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h3>Proposal Summary</h3>
+                    <div id="governance-summary" class="loading">Loading...</div>
+                </div>
+
+                <div class="card">
+                    <h3>Promotion Summary</h3>
+                    <div id="promotion-summary" class="loading">Loading...</div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>Learning Proposals</h3>
+                        <button class="secondary" onclick="loadGovernance()">Refresh</button>
+                    </div>
+                    <div id="proposal-list" class="loading">Loading...</div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>Promotion Audit</h3>
+                        <button class="secondary" onclick="loadGovernance()">Refresh</button>
+                    </div>
+                    <div id="promotion-list" class="loading">Loading...</div>
                 </div>
             </div>
         </div>
@@ -378,6 +525,37 @@
     
     <script>
         let currentConfig = null;
+
+        function getAdminHeaders(includeJson = false) {
+            const token = sessionStorage.getItem('dna_auth_token') || localStorage.getItem('dna_auth_token');
+            const headers = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (includeJson) headers['Content-Type'] = 'application/json';
+            return headers;
+        }
+
+        async function fetchAdminJson(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    ...getAdminHeaders(options.method && options.method !== 'GET'),
+                    ...(options.headers || {})
+                }
+            });
+
+            if (response.status === 401) {
+                throw new Error('Admin login required');
+            }
+            if (response.status === 403) {
+                throw new Error('Admin access requires BEST tier or allowlisted email');
+            }
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Admin request failed');
+            }
+            return data;
+        }
         
         // Tab switching
         function switchTab(tabName) {
@@ -389,6 +567,7 @@
             
             // Load data for active tab
             if (tabName === 'overview') loadOverview();
+            if (tabName === 'governance') loadGovernance();
             if (tabName === 'config') loadConfig();
             if (tabName === 'api') loadEndpoints();
         }
@@ -396,7 +575,12 @@
         // Load overview data
         async function loadOverview() {
             try {
-                const report = await fetch('/api/admin/report/super').then(r => r.json());
+                const [report, providerStatus, governanceSummary, governanceEvaluations] = await Promise.all([
+                    fetchAdminJson('/api/admin/report/super'),
+                    fetchAdminJson('/api/admin/provider-status'),
+                    fetchAdminJson('/api/admin/governance/summary'),
+                    fetchAdminJson('/api/admin/governance/evaluations?limit=5')
+                ]);
                 
                 // Health status
                 const healthHTML = report.health.map(h => `
@@ -421,6 +605,14 @@
                         <label>Error Rate</label>
                         <value>${report.performance.error_rate_percent.toFixed(2)}%</value>
                     </div>
+                    <div class="stat">
+                        <label>Provider Mode</label>
+                        <value>${providerStatus.mode || 'unknown'}</value>
+                    </div>
+                    <div class="stat">
+                        <label>Odds Provider</label>
+                        <value>${providerStatus.provider || 'unknown'}</value>
+                    </div>
                 `;
                 document.getElementById('performance-stats').innerHTML = perfHTML;
                 
@@ -438,8 +630,44 @@
                         <label>Injuries Tracked</label>
                         <value>${report.nba.injuries_tracked}</value>
                     </div>
+                    <div class="stat">
+                        <label>Provider Cache Entries</label>
+                        <value>${providerStatus.cache_entries ?? 0}</value>
+                    </div>
                 `;
                 document.getElementById('nba-stats').innerHTML = nbaHTML;
+
+                // Governance evaluations
+                const governanceHTML = `
+                    <div class="stat">
+                        <label>Total Logs</label>
+                        <value>${governanceSummary.evaluation_logs.total_logs}</value>
+                    </div>
+                    <div class="stat">
+                        <label>Production Versions</label>
+                        <value>${governanceSummary.governance.production_entries}</value>
+                    </div>
+                    <div class="stat">
+                        <label>Avg Calibration Δ</label>
+                        <value>${governanceSummary.evaluation_logs.calibration_summary?.average_adjustment ?? 0}</value>
+                    </div>
+                    <div class="stat">
+                        <label>Adjusted Evaluations</label>
+                        <value>${governanceSummary.evaluation_logs.calibration_summary?.recent_adjusted_count ?? 0}</value>
+                    </div>
+                    ${governanceEvaluations.recent_evaluations.length > 0 ? governanceEvaluations.recent_evaluations.map(item => `
+                        <div class="stat">
+                            <label>${item.sport} ${item.market_type} · ${item.legs} legs</label>
+                            <value>C${item.confidence_score} / Raw ${item.raw_confidence ?? 'n/a'} / Δ${item.calibration_adjustment ?? 0}</value>
+                        </div>
+                    `).join('') : `
+                        <div class="stat">
+                            <label>Recent Evaluations</label>
+                            <value>None</value>
+                        </div>
+                    `}
+                `;
+                document.getElementById('governance-evaluations').innerHTML = governanceHTML;
             } catch (error) {
                 showMessage('Failed to load overview', 'error');
             }
@@ -448,7 +676,7 @@
         // Load configuration
         async function loadConfig() {
             try {
-                const config = await fetch('/api/admin/config').then(r => r.json());
+                const config = await fetchAdminJson('/api/admin/config');
                 currentConfig = config;
                 
                 const formHTML = `
@@ -495,9 +723,8 @@
             };
             
             try {
-                await fetch('/api/admin/config/update', {
+                await fetchAdminJson('/api/admin/config/update', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({updates})
                 });
                 showMessage('Configuration updated successfully', 'success');
@@ -511,7 +738,7 @@
             if (!confirm('Reset configuration to defaults?')) return;
             
             try {
-                await fetch('/api/admin/config/reset', {method: 'POST'});
+                await fetchAdminJson('/api/admin/config/reset', {method: 'POST'});
                 showMessage('Configuration reset to defaults', 'success');
                 loadConfig();
             } catch (error) {
@@ -522,7 +749,7 @@
         // Load API endpoints
         async function loadEndpoints() {
             try {
-                const endpoints = await fetch('/api/admin/api/endpoints').then(r => r.json());
+                const endpoints = await fetchAdminJson('/api/admin/api/endpoints');
                 
                 const html = Object.entries(endpoints).map(([category, eps]) => `
                     <h4 style="margin-top: 20px; color: #fff;">${category.toUpperCase()}</h4>
@@ -542,11 +769,254 @@
                 showMessage('Failed to load endpoints', 'error');
             }
         }
+
+        async function loadGovernance() {
+            try {
+                const [summary, proposalsResponse, promotionsResponse] = await Promise.all([
+                    fetchAdminJson('/api/admin/governance/summary'),
+                    fetchAdminJson('/api/admin/governance/proposals?limit=10'),
+                    fetchAdminJson('/api/admin/governance/promotions?limit=10')
+                ]);
+
+                const proposalSummaryHTML = Object.entries(summary.learning_control.proposal_counts).map(([status, count]) => `
+                    <div class="stat">
+                        <label>${status.replace(/_/g, ' ')}</label>
+                        <value>${count}</value>
+                    </div>
+                `).join('');
+                document.getElementById('governance-summary').innerHTML = proposalSummaryHTML;
+
+                const promotionSummaryHTML = `
+                    <div class="stat">
+                        <label>Total Promotions</label>
+                        <value>${summary.learning_control.promotion_count}</value>
+                    </div>
+                    <div class="stat">
+                        <label>Production Registry Entries</label>
+                        <value>${summary.governance.production_entries}</value>
+                    </div>
+                    <div class="stat">
+                        <label>Total Evaluation Logs</label>
+                        <value>${summary.evaluation_logs.total_logs}</value>
+                    </div>
+                `;
+                document.getElementById('promotion-summary').innerHTML = promotionSummaryHTML;
+
+                const proposals = proposalsResponse.proposals || [];
+                document.getElementById('proposal-list').innerHTML = proposals.length > 0
+                    ? proposals.map(renderProposalItem).join('')
+                    : '<div class="muted">No proposals available.</div>';
+
+                const promotions = promotionsResponse.promotions || [];
+                document.getElementById('promotion-list').innerHTML = promotions.length > 0
+                    ? promotions.map(renderPromotionItem).join('')
+                    : '<div class="muted">No promotions recorded.</div>';
+            } catch (error) {
+                showMessage('Failed to load governance data', 'error');
+            }
+        }
+
+        function renderProposalItem(proposal) {
+            const target = proposal.target || {};
+            const review = proposal.review || {};
+            const entityType = target.entityType || proposal.proposal_type;
+            const reviewNote = review.notes ? `<div class="muted">Review note: ${review.notes}</div>` : '';
+            const approveButton = proposal.status === 'pending_review' || proposal.status === 'approved'
+                ? `<button onclick="openApprovalForm('${proposal.id}', '${entityType}')">Approve</button>`
+                : '';
+
+            return `
+                <div class="governance-item">
+                    <div class="governance-meta">
+                        <span class="status-badge status-${proposal.status}">${proposal.status.replace(/_/g, ' ')}</span>
+                        <span class="muted">${proposal.id}</span>
+                    </div>
+                    <h4>${proposal.proposal_type}</h4>
+                    <p>${proposal.reason}</p>
+                    <div class="muted">Scope: ${(proposal.model_scope || []).join(', ') || 'global'}</div>
+                    <div class="muted">Target: ${(target.entityName || target.entityId || 'unknown')}</div>
+                    ${reviewNote}
+                    <div class="governance-actions">
+                        <button class="secondary" onclick="viewProposal('${proposal.id}')">View</button>
+                        ${approveButton}
+                    </div>
+                    <div id="approve-${proposal.id}" class="governance-form hidden">
+                        <div class="governance-form-grid">
+                            <div class="form-group">
+                                <label>Approved By</label>
+                                <input type="text" id="approve-by-${proposal.id}" value="admin_user">
+                            </div>
+                            <div class="form-group">
+                                <label>Old Version</label>
+                                <input type="text" id="old-version-${proposal.id}" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>New Version</label>
+                                <input type="text" id="new-version-${proposal.id}" value="">
+                            </div>
+                            <div class="form-group">
+                                <label>Rollback Version</label>
+                                <input type="text" id="rollback-version-${proposal.id}" value="">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input type="text" id="approve-notes-${proposal.id}" value="Approved from admin dashboard.">
+                        </div>
+                        <div class="governance-actions">
+                            <button onclick="submitProposalApproval('${proposal.id}')">Confirm Approval</button>
+                            <button class="secondary" onclick="toggleGovernanceForm('approve-${proposal.id}')">Cancel</button>
+                        </div>
+                    </div>
+                    <div id="proposal-view-${proposal.id}" class="governance-pre hidden"></div>
+                </div>
+            `;
+        }
+
+        function renderPromotionItem(promotion) {
+            const metadata = promotion.metadata || {};
+            const rollbackButton = metadata.rollback_event
+                ? ''
+                : `<button onclick="toggleGovernanceForm('rollback-${promotion.id}')">Rollback</button>`;
+            const statusLabel = metadata.rollback_event ? 'rolled_back' : 'promoted';
+
+            return `
+                <div class="governance-item">
+                    <div class="governance-meta">
+                        <span class="status-badge status-${statusLabel}">${statusLabel.replace(/_/g, ' ')}</span>
+                        <span class="muted">${promotion.id}</span>
+                    </div>
+                    <h4>${promotion.new_version}</h4>
+                    <p>${promotion.notes || 'No notes provided.'}</p>
+                    <div class="muted">Proposal: ${promotion.proposal_id} · Approved by: ${promotion.approved_by}</div>
+                    <div class="muted">From ${promotion.old_version} to ${promotion.new_version}</div>
+                    <div class="governance-actions">
+                        ${rollbackButton}
+                    </div>
+                    <div id="rollback-${promotion.id}" class="governance-form hidden">
+                        <div class="governance-form-grid">
+                            <div class="form-group">
+                                <label>Rolled Back By</label>
+                                <input type="text" id="rollback-by-${promotion.id}" value="admin_user">
+                            </div>
+                            <div class="form-group">
+                                <label>Current Version</label>
+                                <input type="text" value="${promotion.new_version}" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input type="text" id="rollback-notes-${promotion.id}" value="Rollback triggered for ${promotion.new_version}.">
+                        </div>
+                        <div class="governance-actions">
+                            <button onclick="submitPromotionRollback('${promotion.id}')">Confirm Rollback</button>
+                            <button class="secondary" onclick="toggleGovernanceForm('rollback-${promotion.id}')">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleGovernanceForm(formId) {
+            const form = document.getElementById(formId);
+            if (form) form.classList.toggle('hidden');
+        }
+
+        async function openApprovalForm(proposalId, entityType) {
+            const formId = `approve-${proposalId}`;
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            try {
+                const hint = await fetchAdminJson(`/api/admin/governance/version-hint?entity_type=${encodeURIComponent(entityType)}`);
+                const oldInput = document.getElementById(`old-version-${proposalId}`);
+                const newInput = document.getElementById(`new-version-${proposalId}`);
+                const rollbackInput = document.getElementById(`rollback-version-${proposalId}`);
+
+                if (oldInput && !oldInput.value) oldInput.value = hint.current_version || '';
+                if (newInput && !newInput.value) newInput.value = hint.suggested_version || '';
+                if (rollbackInput && !rollbackInput.value) rollbackInput.value = hint.rollback_version || hint.current_version || '';
+            } catch (error) {
+                showMessage(error.message || 'Failed to load version hints', 'error');
+            }
+
+            form.classList.remove('hidden');
+        }
+
+        async function viewProposal(proposalId) {
+            try {
+                const proposal = await fetchAdminJson(`/api/admin/governance/proposals/${proposalId}`);
+                const panel = document.getElementById(`proposal-view-${proposalId}`);
+                if (!panel) return;
+                panel.textContent = JSON.stringify(proposal, null, 2);
+                panel.classList.toggle('hidden');
+            } catch (error) {
+                showMessage('Failed to load proposal details', 'error');
+            }
+        }
+
+        async function submitProposalApproval(proposalId) {
+            const approvedBy = document.getElementById(`approve-by-${proposalId}`)?.value?.trim();
+            const oldVersion = document.getElementById(`old-version-${proposalId}`)?.value?.trim();
+            const newVersion = document.getElementById(`new-version-${proposalId}`)?.value?.trim();
+            const rollbackVersion = document.getElementById(`rollback-version-${proposalId}`)?.value?.trim() || oldVersion;
+            const notes = document.getElementById(`approve-notes-${proposalId}`)?.value?.trim() || '';
+
+            if (!approvedBy || !oldVersion || !newVersion) {
+                showMessage('Approval requires approved by, old version, and new version', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`/api/admin/governance/proposals/${proposalId}/approve`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(true),
+                    body: JSON.stringify({
+                        approved_by: approvedBy,
+                        old_version: oldVersion,
+                        new_version: newVersion,
+                        rollback_version: rollbackVersion,
+                        notes
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Approval failed');
+                showMessage(`Proposal promoted to ${result.promotion.new_version}`, 'success');
+                loadGovernance();
+            } catch (error) {
+                showMessage(error.message || 'Failed to approve proposal', 'error');
+            }
+        }
+
+        async function submitPromotionRollback(promotionId) {
+            const rolledBackBy = document.getElementById(`rollback-by-${promotionId}`)?.value?.trim();
+            const notes = document.getElementById(`rollback-notes-${promotionId}`)?.value?.trim() || '';
+
+            if (!rolledBackBy) {
+                showMessage('Rollback requires a user identifier', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`/api/admin/governance/promotions/${promotionId}/rollback`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(true),
+                    body: JSON.stringify({
+                        rolled_back_by: rolledBackBy,
+                        notes
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Rollback failed');
+                showMessage(`Rolled back to ${result.rollback_promotion.new_version}`, 'success');
+                loadGovernance();
+            } catch (error) {
+                showMessage(error.message || 'Failed to rollback promotion', 'error');
+            }
+        }
         
         // Action functions
         async function clearCache() {
             try {
-                const result = await fetch('/api/admin/cache/clear', {method: 'POST'}).then(r => r.json());
+                const result = await fetchAdminJson('/api/admin/cache/clear', {method: 'POST'});
                 showMessage(result.message, 'success');
             } catch (error) {
                 showMessage('Failed to clear cache', 'error');
@@ -555,7 +1025,7 @@
         
         async function clearExpiredCache() {
             try {
-                const result = await fetch('/api/admin/cache/clear-expired', {method: 'POST'}).then(r => r.json());
+                const result = await fetchAdminJson('/api/admin/cache/clear-expired', {method: 'POST'});
                 showMessage(result.message, 'success');
             } catch (error) {
                 showMessage('Failed to clear expired cache', 'error');
@@ -564,7 +1034,7 @@
         
         async function syncTeams() {
             try {
-                const result = await fetch('/api/admin/nba/sync-teams', {method: 'POST'}).then(r => r.json());
+                const result = await fetchAdminJson('/api/admin/nba/sync-teams', {method: 'POST'});
                 showMessage(result.message, 'success');
             } catch (error) {
                 showMessage('Failed to sync teams', 'error');
@@ -573,7 +1043,7 @@
         
         async function syncPlayers() {
             try {
-                const result = await fetch('/api/admin/nba/sync-players', {method: 'POST'}).then(r => r.json());
+                const result = await fetchAdminJson('/api/admin/nba/sync-players', {method: 'POST'});
                 showMessage(result.message, 'success');
             } catch (error) {
                 showMessage('Failed to sync players', 'error');
@@ -582,7 +1052,7 @@
         
         async function scrapeInjuries() {
             try {
-                const result = await fetch('/api/admin/nba/scrape-injuries', {method: 'POST'}).then(r => r.json());
+                const result = await fetchAdminJson('/api/admin/nba/scrape-injuries', {method: 'POST'});
                 showMessage(result.message, 'success');
             } catch (error) {
                 showMessage('Failed to scrape injuries', 'error');
@@ -593,7 +1063,7 @@
             if (!confirm('Run daily ETL? This may take a few minutes.')) return;
             
             try {
-                const result = await fetch('/api/admin/nba/run-etl', {method: 'POST'}).then(r => r.json());
+                const result = await fetchAdminJson('/api/admin/nba/run-etl', {method: 'POST'});
                 showMessage(result.message, 'success');
             } catch (error) {
                 showMessage('Failed to run ETL', 'error');
@@ -602,7 +1072,7 @@
         
         async function generateReport() {
             try {
-                const report = await fetch('/api/admin/report/super').then(r => r.json());
+                const report = await fetchAdminJson('/api/admin/report/super');
                 document.getElementById('full-report').innerHTML = `<pre>${JSON.stringify(report, null, 2)}</pre>`;
             } catch (error) {
                 showMessage('Failed to generate report', 'error');

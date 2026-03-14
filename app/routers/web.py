@@ -1,5 +1,5 @@
 """
-Web UI router - Serves the canonical DNA Bet Engine UI.
+Web UI router - Serves the canonical BetApp UI.
 
 S6-REFACTOR: Split into template + static files for token efficiency.
 """
@@ -7,45 +7,15 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Optional, List
 
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
 
 from app.config import load_config
-from app.airlock import airlock_ingest, AirlockError
+from app.airlock import airlock_ingest, AirlockError, airlock_shape_evaluate_response
 from app.rate_limiter import get_client_ip, get_rate_limiter
-from app.correlation import get_request_id
-
-
-# =============================================================================
-# Request Schema
-# =============================================================================
-
-class CanonicalLeg(BaseModel):
-    """
-    Ticket 27 Part A: Canonical leg representation.
-
-    Each leg is represented exactly once with structured fields.
-    This is the source of truth when present.
-    """
-    entity: str = Field(..., description="Team or player name")
-    market: str = Field(..., description="Market type: moneyline, spread, total, player_prop")
-    value: Optional[str] = Field(default=None, description="Line value (e.g., '-5.5', 'over 220')")
-    raw: str = Field(..., description="Original text as entered")
-
-
-class WebEvaluateRequest(BaseModel):
-    """Request schema for web evaluation."""
-    input: str = Field(..., description="Bet text input")
-    tier: Optional[str] = Field(default=None, description="Plan tier: GOOD, BETTER, or BEST")
-    # Ticket 27: Canonical legs array (optional for backwards compatibility)
-    legs: Optional[List[CanonicalLeg]] = Field(
-        default=None,
-        description="Structured leg data from builder. When present, this is source of truth."
-    )
+from app.schemas.frontend_contracts import WebEvaluateRequestSchema, WebEvaluateResponseSchema
 
 # =============================================================================
 # Router Setup
@@ -53,25 +23,6 @@ class WebEvaluateRequest(BaseModel):
 
 router = APIRouter(tags=["web"])
 
-
-# =============================================================================
-# Serialization Helpers
-# =============================================================================
-
-def snake_to_camel(snake_str: str) -> str:
-    """Convert snake_case to camelCase for JS frontend compatibility."""
-    components = snake_str.split('_')
-    return components[0] + ''.join(x.title() for x in components[1:])
-
-
-def convert_keys_to_camel(obj):
-    """Recursively convert dict keys from snake_case to camelCase."""
-    if isinstance(obj, dict):
-        return {snake_to_camel(k): convert_keys_to_camel(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_keys_to_camel(item) for item in obj]
-    else:
-        return obj
 
 # Template setup
 templates_dir = Path(__file__).parent.parent / "templates"
@@ -92,7 +43,7 @@ rate_limiter = get_rate_limiter()
 @router.get("/", response_class=HTMLResponse)
 async def landing_page(request: Request):
     """Serve landing page at root"""
-    return templates.TemplateResponse("screens/landing.html", {"request": request})
+    return templates.TemplateResponse(request, "screens/landing.html")
 
 
 @router.get("/ui2", response_class=RedirectResponse)
@@ -133,8 +84,12 @@ async def canonical_app(request: Request, screen: str = "dashboard"):
     return HTMLResponse(content=template_path.read_text())
 
 
-@router.post("/app/evaluate")
-async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
+@router.post(
+    "/app/evaluate",
+    response_model=WebEvaluateResponseSchema,
+    summary="Evaluate a bet for the frontend app",
+)
+async def evaluate_proxy(request: WebEvaluateRequestSchema, raw_request: Request):
     """
     Server-side proxy for evaluation requests.
 
@@ -144,7 +99,6 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
     from app.pipeline import run_evaluation
 
     start_time = time.perf_counter()
-    request_id = get_request_id(raw_request) or "unknown"
     client_ip = get_client_ip(raw_request)
 
     # Rate limiting
@@ -174,25 +128,21 @@ async def evaluate_proxy(request: WebEvaluateRequest, raw_request: Request):
         raise HTTPException(status_code=400, detail=f"Input validation failed: {str(e)}")
 
     # Run evaluation
-    result = run_evaluation(normalized)
+    try:
+        result = run_evaluation(normalized)
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"INTERNAL_ERROR: {exc}"},
+        )
 
     elapsed = time.perf_counter() - start_time
     
-    # Convert to dict and add metadata
-    from dataclasses import asdict
-    result_dict = asdict(result)
-    result_dict["_meta"] = {"elapsed_ms": round(elapsed * 1000, 2)}
-    
-    # Add input object for API compatibility (tests expect this)
-    result_dict["input"] = {
-        "bet_text": normalized.input_text,
-        "tier": result.tier,
-    }
-    
-    # Convert snake_case to camelCase for JS frontend compatibility
-    result_dict = convert_keys_to_camel(result_dict)
-
-    return result_dict
+    return airlock_shape_evaluate_response(
+        result=result,
+        normalized=normalized,
+        elapsed_ms=elapsed * 1000,
+    )
 
 # S16: Legacy route redirects
 @router.get("/new")

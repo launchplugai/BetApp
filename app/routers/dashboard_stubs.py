@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from typing import List
 
+from app.build_info import get_short_commit_sha
+
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
 # Feature flag: dashboard command center (default OFF)
@@ -42,22 +44,13 @@ async def get_system_health():
     Read-only, no dependencies on other systems.
     """
     require_dashboard()
-    
-    # Get current git commit (if available)
-    import subprocess
-    try:
-        version = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd="/var/lib/openbot/workdir/target",
-            stderr=subprocess.DEVNULL
-        ).decode().strip()
-    except:
-        version = "unknown"
-    
+
+    version = get_short_commit_sha()
+
     # Calculate uptime (using process start time approximation)
     from app.main import _SERVICE_START_TIME
     uptime_sec = int((datetime.now(timezone.utc) - _SERVICE_START_TIME).total_seconds())
-    
+
     return {
         "status": "ok",
         "version": version,

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DNA Bet Engine - Protocol Selection</title>
+  <title>BetApp - Protocol Selection</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
   <style>
@@ -140,7 +140,7 @@
         <iconify-icon icon="lucide:arrow-left" class="text-xl text-gray-300"></iconify-icon>
       </button>
       <a href="/" class="flex flex-col items-center hover:opacity-80 transition-opacity">
-        <span class="text-[10px] tracking-widest text-gray-500 uppercase font-bold">DNA Engine</span>
+        <span class="text-[10px] tracking-widest text-gray-500 uppercase font-bold">BetApp</span>
         <h1 class="font-tanker text-2xl tracking-wide pt-1 text-white">NEW BET PROTOCOL</h1>
       </a>
       <div class="w-10 flex justify-end">
@@ -156,6 +156,15 @@
         <div class="flex justify-between items-end mb-4">
           <h2 class="font-tanker text-lg text-gray-400 tracking-wider">SELECT LEAGUE</h2>
           <span class="text-xs text-neon-red font-bold tracking-widest">LIVE FEED ACTIVE</span>
+        </div>
+
+        <div id="data-provenance-banner" class="hidden mb-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div class="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wider">
+            <span id="data-provider-chip" class="rounded-full border border-white/10 px-2 py-1 text-gray-300">Provider --</span>
+            <span id="data-mode-chip" class="rounded-full border border-white/10 px-2 py-1 text-gray-400">Mode --</span>
+            <span id="data-cache-chip" class="rounded-full border border-white/10 px-2 py-1 text-gray-400">Cache --</span>
+            <span id="data-age-chip" class="rounded-full border border-white/10 px-2 py-1 text-gray-500">Age --</span>
+          </div>
         </div>
         
         <div id="sport-grid" class="grid grid-cols-3 gap-3">
@@ -243,6 +252,23 @@
 
     // League logo URLs from API - populated on load
     let leagueLogos = {};
+
+    function updateProvenanceBanner(response) {
+      const banner = document.getElementById('data-provenance-banner');
+      if (!banner || !response) return;
+
+      const provider = response.headers.get('X-Data-Provider') || '--';
+      const mode = response.headers.get('X-Data-Mode') || '--';
+      const cacheHit = response.headers.get('X-Data-Cache-Hit');
+      const ageSeconds = response.headers.get('X-Data-Age-Seconds');
+
+      document.getElementById('data-provider-chip').textContent = `Provider ${provider}`;
+      document.getElementById('data-mode-chip').textContent = `Mode ${mode}`;
+      document.getElementById('data-cache-chip').textContent = `Cache ${cacheHit === 'true' ? 'hit' : 'fresh'}`;
+      document.getElementById('data-age-chip').textContent = ageSeconds ? `Age ${Math.round(parseFloat(ageSeconds))}s` : 'Age now';
+
+      banner.classList.remove('hidden');
+    }
 
     // Team logo URL builder - uses ESPN CDN
     function getTeamLogoUrl(teamName, league) {
@@ -363,6 +389,7 @@
       try {
         const response = await fetch(`${API_BASE}/sports`);
         if (response.ok) {
+          updateProvenanceBanner(response);
           sportsData = await response.json();
         }
       } catch (err) {
@@ -438,6 +465,8 @@
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+
+        updateProvenanceBanner(response);
         
         const games = await response.json();
         console.log('Games data:', games);

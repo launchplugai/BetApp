@@ -47,12 +47,17 @@ If health checks fail:
 ## Local Development
 
 ```bash
+# Apply schema first
+PYTHONPATH=.:./dna-matrix:$PYTHONPATH alembic upgrade head
+
 # Run locally
-uvicorn app.main:app --reload --port 8000
+PYTHONPATH=.:./dna-matrix:$PYTHONPATH uvicorn app.main:app --reload --port 8000
 
 # Health check locally
 curl http://localhost:8000/health
 ```
+
+If the governed control-plane schema is missing, app startup now fails clearly and instructs you to run `alembic upgrade head`.
 
 ---
 

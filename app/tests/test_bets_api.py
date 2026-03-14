@@ -22,7 +22,8 @@ def mock_user():
         email="test@example.com",
         password_hash="hashed_password",
         name="Test User",
-        tier="GOOD"
+        tier="GOOD",
+        balance=100000,
     )
     return user
 
@@ -240,6 +241,59 @@ class TestBetDetailEndpoint:
         assert data["actual_payout"] == 9500
 
 
+class TestBetCreateEndpoint:
+    """Tests for POST /api/bets/ endpoint."""
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_create_bet_returns_evaluation_id(self, mock_get_session, mock_get_user, client, mock_user):
+        """Bet creation should persist and return explicit evaluation linkage."""
+        mock_get_user.return_value = mock_user
+
+        mock_db = MagicMock()
+        mock_prefs_query = MagicMock()
+        mock_prefs_query.filter_by.return_value.first.return_value = None
+
+        mock_bet_query = MagicMock()
+        mock_bet_query.filter.return_value.first.return_value = None
+
+        captured_bet = {}
+
+        def mock_add(obj):
+            if isinstance(obj, Bet):
+                captured_bet["bet"] = obj
+                obj.id = "bet_eval_123"
+
+        def mock_query_side_effect(model):
+            model_name = getattr(model, "__name__", "")
+            if model_name == "UserPreferences":
+                return mock_prefs_query
+            return mock_bet_query
+
+        mock_db.add.side_effect = mock_add
+        mock_db.query.side_effect = mock_query_side_effect
+        mock_get_session.return_value = mock_db
+
+        response = client.post(
+            "/api/bets/",
+            json={
+                "input_text": "Warriors ML",
+                "evaluation_id": "eval_123",
+                "legs": [
+                    {"entity": "Warriors", "market": "moneyline", "odds": 150, "selection": "Warriors"}
+                ],
+                "wager": 1000,
+            },
+            headers={"Authorization": "Bearer valid_token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["evaluation_id"] == "eval_123"
+        assert captured_bet["bet"].evaluation_id == "eval_123"
+
+
 class TestBetHistoryResponseContract:
     """Tests for API response contract compliance."""
 
@@ -277,3 +331,43 @@ class TestBetHistoryResponseContract:
         assert isinstance(data["total"], int)
         assert isinstance(data["page"], int)
         assert isinstance(data["per_page"], int)
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_history_includes_evaluation_id_when_present(self, mock_get_session, mock_get_user, client, mock_user):
+        """History responses should expose evaluation linkage."""
+        mock_get_user.return_value = mock_user
+
+        mock_bet = Bet(
+            id="bet_123",
+            user_id=mock_user.id,
+            evaluation_id="eval_hist_123",
+            input_text="Warriors ML",
+            legs=[{"entity": "Warriors", "market": "moneyline", "value": None, "odds": 150}],
+            wager=1000,
+            total_odds=150,
+            potential_payout=2500,
+            status="pending",
+            verdict="PROCEED",
+            confidence=72,
+        )
+
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value = mock_query
+        mock_query.count.return_value = 1
+        mock_query.order_by.return_value = mock_query
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.all.return_value = [mock_bet]
+        mock_db.query.return_value = mock_query
+        mock_get_session.return_value = mock_db
+
+        response = client.get(
+            "/api/bets/history",
+            headers={"Authorization": "Bearer valid_token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["bets"][0]["evaluation_id"] == "eval_hist_123"

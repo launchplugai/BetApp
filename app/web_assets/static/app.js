@@ -1,5 +1,7 @@
 // ============================================================
 // TICKET 9: BUILDER IMPROVEMENT WORKBENCH
+// Legacy parallel workbench path, not the canonical mounted /app surface.
+// See docs/ui/ACTIVE_FRONTEND_OWNERSHIP_MAP.md.
 // ============================================================
 (function() {
     // Elements
@@ -712,7 +714,7 @@
 
             if (response.ok) {
                 // Update context with new evaluation
-                currentEvaluationId = data.evaluationId || null;
+                currentEvaluationId = getEvaluationId(data);
 
                 window._builderContext = {
                     ...window._builderContext,
@@ -778,6 +780,16 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function getEvaluationId(data) {
+        if (data && typeof data.evaluation_id === 'string' && data.evaluation_id.trim()) {
+            return data.evaluation_id;
+        }
+        if (data && typeof data.evaluationId === 'string' && data.evaluationId.trim()) {
+            return data.evaluationId;
+        }
+        return null;
     }
 
     // ============================================================
@@ -1378,7 +1390,7 @@ async function evaluateBundle(bundleText) {
             fixCard.classList.remove('hidden');
             fixCard.onclick = function() {
                 window._fixContext = {
-                    evaluationId: data.evaluationId || null,
+                    evaluationId: getEvaluationId(data),
                     primaryFailure: pf,
                     fastestFix: pf.fastestFix,
                     deltaPreview: dp || null,
@@ -1524,7 +1536,7 @@ async function evaluateBundle(bundleText) {
             improveBtn.disabled = false;
             improveBtn.onclick = function() {
                 window._fixContext = {
-                    evaluationId: data.evaluationId || null,
+                    evaluationId: getEvaluationId(data),
                     primaryFailure: pf,
                     fastestFix: pf.fastestFix,
                     deltaPreview: dp || null,
@@ -1841,7 +1853,7 @@ async function evaluateBundle(bundleText) {
                 const si = data.signalInfo;
                 if (pf && pf.fastestFix) {
                     window._fixContext = {
-                        evaluationId: data.evaluationId || null,
+                        evaluationId: getEvaluationId(data),
                         primaryFailure: pf,
                         fastestFix: pf.fastestFix,
                         deltaPreview: dp || null,
@@ -1859,7 +1871,7 @@ async function evaluateBundle(bundleText) {
     const loopSave = document.getElementById('loop-save');
     if (loopSave) {
         loopSave.addEventListener('click', function() {
-            if (window._lastEvalData && window._lastEvalData.evaluation_id) {
+            if (window._lastEvalData && getEvaluationId(window._lastEvalData)) {
                 loopSave.textContent = 'Saved';
                 loopSave.disabled = true;
                 loopSave.style.background = '#4ade80';

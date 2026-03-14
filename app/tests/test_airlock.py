@@ -12,6 +12,7 @@ import pytest
 
 from app.airlock import (
     airlock_ingest,
+    airlock_shape_evaluate_response,
     AirlockError,
     EmptyInputError,
     InputTooLongError,
@@ -157,6 +158,33 @@ class TestUtilityFunctions:
         assert "better" in tiers
         assert "best" in tiers
         assert len(tiers) == 3
+
+
+class TestOutboundShaping:
+    """Tests for Airlock outbound membrane shaping."""
+
+    def test_shape_evaluate_response_includes_builder_handoff(self):
+        normalized = airlock_ingest("Lakers ML + Celtics ML", tier="best")
+        result = {
+            "tier": "best",
+            "evaluation": {"parlay_id": "eval_123"},
+            "primary_failure": {
+                "type": "leg_count_risk",
+                "description": "Too many stacked legs",
+                "fastestFix": {"action": "trim_legs", "description": "Cut one leg"},
+            },
+            "delta_preview": {"after": {"confidence": 68}},
+            "signal_info": {"signal": "yellow"},
+        }
+
+        shaped = airlock_shape_evaluate_response(result=result, normalized=normalized, elapsed_ms=12.3)
+
+        assert shaped["evaluationId"] == "eval_123"
+        assert shaped["input"]["betText"] == "Lakers ML + Celtics ML"
+        assert shaped["builderHandoff"]["evaluationId"] == "eval_123"
+        assert shaped["builderHandoff"]["inputText"] == "Lakers ML + Celtics ML"
+        assert shaped["builderHandoff"]["fastestFix"]["action"] == "trim_legs"
+        assert shaped["_meta"]["elapsedMs"] == 12.3
 
 
 class TestAirlockErrorBase:

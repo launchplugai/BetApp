@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DNA Bet Engine</title>
+    <title>BetApp</title>
     <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body class="light-theme">
+    <!--
+      Parallel Evaluate/OCR workbench path.
+      Useful for frontend restoration, but not the mounted default /app surface today.
+      See docs/ui/ACTIVE_FRONTEND_OWNERSHIP_MAP.md.
+    -->
     <div class="container">
         <header>
-            <h1>DNA Bet Engine</h1>
+            <h1>BetApp</h1>
             <div class="version-info">
                 <div class="version-badge">
                     v0.2.1 • {{ git_sha }}
@@ -419,11 +424,11 @@
             <div class="ocr-review-gate-content">
                 <div class="ocr-review-gate-title">Review Detected Legs</div>
                 <div class="ocr-review-gate-message">
-                    Some detected legs may need review before analysis. You can edit them in the Builder or proceed anyway.
+                    Some detected legs need review before analysis. Repair the slip first so DNA scores the right structure.
                 </div>
                 <div class="ocr-review-gate-actions">
-                    <button id="gate-review-btn" class="ocr-review-gate-btn secondary">Review legs</button>
-                    <button id="gate-proceed-btn" class="ocr-review-gate-btn primary">Evaluate anyway</button>
+                    <button id="gate-review-btn" class="ocr-review-gate-btn primary">Review and repair</button>
+                    <button id="gate-proceed-btn" class="ocr-review-gate-btn secondary">Use extracted text</button>
                 </div>
             </div>
         </div>

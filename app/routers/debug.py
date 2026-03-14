@@ -17,16 +17,20 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.build_info import get_build_info
 from app.config import load_config
+from app.core.admin_auth import require_internal_admin_user
 from app.proof import get_proof_summary, get_recent_proofs
+from app.services.evaluation_logger import get_evaluation_log_summary
+from app.services.governance_registry import get_learning_control_summary
+from app.services.model_registry import get_governance_summary
 
 _logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/debug", tags=["Debug"])
+router = APIRouter(prefix="/debug", tags=["Debug"], dependencies=[Depends(require_internal_admin_user)])
 
 # =============================================================================
 # Contract Versions
@@ -38,6 +42,7 @@ CONTRACT_VERSIONS = {
     "evaluation_response": "1.0.0",
     "tier_policy": "1.0.0",
     "proof_record": "1.0.0",
+    "learning_system": "1.0.0",
 }
 
 
@@ -200,4 +205,22 @@ async def ocr_health_check():
         },
         "leading_light_enabled": leading_light_enabled,
         "diagnosis": _diagnose()
+    }
+
+
+@router.get("/governance")
+async def governance_status():
+    """
+    Lightweight control-plane status for governed learning infrastructure.
+
+    Returns non-sensitive registry and evaluation log metadata only.
+    """
+    governance = get_governance_summary()
+    evaluation_logs = get_evaluation_log_summary()
+    learning_control = get_learning_control_summary()
+
+    return {
+        "governance": governance,
+        "evaluation_logs": evaluation_logs,
+        "learning_control": learning_control,
     }

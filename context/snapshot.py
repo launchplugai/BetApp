@@ -14,7 +14,7 @@ Key design principles:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -121,7 +121,7 @@ def empty_snapshot(sport: str = "NBA", source: str = "none") -> ContextSnapshot:
     """Create an empty snapshot when no data is available."""
     return ContextSnapshot(
         sport=sport,
-        as_of=datetime.utcnow(),
+        as_of=datetime.now(UTC),
         source=source,
         players=(),
         missing_data=("No data source available",),

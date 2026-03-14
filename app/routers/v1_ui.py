@@ -37,7 +37,7 @@ def _base_template(title: str, content: str, active_nav: str = "") -> str:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{title} - DNA Bet Engine</title>
+    <title>{title} - BetApp</title>
     <style>
         /* Reset */
         *, *::before, *::after {{
@@ -560,7 +560,7 @@ async def v1_home():
     """Landing page with links to Builder and History."""
     content = '''
         <div class="card">
-            <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Welcome to DNA Bet Engine</h1>
+            <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Welcome to BetApp</h1>
             <p style="color: #666; margin-bottom: 1.5rem;">
                 Evaluate your parlays with our tier-gated analysis engine.
             </p>

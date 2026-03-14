@@ -15,7 +15,7 @@ Features:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Lock
 from typing import Optional
 
@@ -33,7 +33,7 @@ class CacheEntry:
 
     def is_expired(self) -> bool:
         """Check if cache entry has expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
 
 class ContextService:
@@ -129,7 +129,7 @@ class ContextService:
         with self._lock:
             self._cache[sport] = CacheEntry(
                 snapshot=snapshot,
-                expires_at=datetime.utcnow() + self._cache_ttl,
+                expires_at=datetime.now(UTC) + self._cache_ttl,
             )
 
     def _find_provider(self, sport: str) -> Optional[ContextProvider]:

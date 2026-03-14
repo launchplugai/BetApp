@@ -233,11 +233,22 @@ def test_dna_quarantine_when_audit_fails():
 
 def test_debug_contracts_endpoint():
     """Debug endpoint should return contract versions and flags."""
+    from unittest.mock import patch
     from fastapi.testclient import TestClient
     from app.main import app
+    from app.models import User
 
     client = TestClient(app)
-    response = client.get("/debug/contracts")
+    best_user = User(
+        id="user_sherlock_debug",
+        email="debug-best@example.com",
+        password_hash="hashed_password",
+        name="Sherlock Debug",
+        tier="BEST",
+    )
+
+    with patch("app.services.auth.get_current_user_from_token", return_value=best_user):
+        response = client.get("/debug/contracts", headers={"Authorization": "Bearer valid_token"})
 
     assert response.status_code == 200
     data = response.json()

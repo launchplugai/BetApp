@@ -20,9 +20,24 @@ from app.admin.notifications import (
     get_telemetry_counters_db,
     get_suppression_breakdown
 )
+from app.core.admin_auth import require_internal_admin_user
 from app.models import get_session
+from app.routers.odds import _provider_status
+from app.services.evaluation_logger import get_evaluation_log_summary, get_recent_evaluation_logs
+from app.services.calibration_analyzer import get_calibration_report
+from app.services.outcome_resolver import enrich_evaluation_log_outcomes
+from app.services.governance_admin import (
+    approve_learning_proposal,
+    get_learning_proposal,
+    get_version_hint,
+    list_learning_proposals,
+    list_promotion_audits,
+    rollback_promotion,
+)
+from app.services.governance_registry import get_learning_control_summary
+from app.services.model_registry import get_governance_summary
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_internal_admin_user)])
 
 
 # =============================================================================
@@ -41,6 +56,21 @@ class ConfigResponse(BaseModel):
     nba: Dict
     heuristics: Dict
     features: Dict
+
+
+class ProposalApprovalRequest(BaseModel):
+    """Admin approval/promotion payload for a governed proposal."""
+    approved_by: str
+    old_version: str
+    new_version: str
+    rollback_version: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class PromotionRollbackRequest(BaseModel):
+    """Admin rollback payload for a governed promotion."""
+    rolled_back_by: str
+    notes: Optional[str] = None
 
 
 # =============================================================================
@@ -140,6 +170,113 @@ async def get_performance_report():
     
     from dataclasses import asdict
     return asdict(report.performance)
+
+
+@router.get("/provider-status")
+async def get_admin_provider_status():
+    """Return provider/cache status for admin dashboards."""
+    return _provider_status()
+
+
+@router.get("/governance/summary")
+async def get_governance_admin_summary():
+    """Return governed control-plane summary for admin surfaces."""
+    return {
+        "governance": get_governance_summary(),
+        "evaluation_logs": get_evaluation_log_summary(),
+        "learning_control": get_learning_control_summary(),
+    }
+
+
+@router.get("/governance/evaluations")
+async def get_governance_evaluations(limit: int = Query(default=10, ge=1, le=50)):
+    """Return recent governed evaluations for admin inspection."""
+    summary = get_evaluation_log_summary()
+    return {
+        "recent_evaluations": get_recent_evaluation_logs(limit=limit),
+        "calibration_summary": summary.get("calibration_summary", {}),
+    }
+
+
+@router.get("/governance/calibration-report")
+async def get_governance_calibration_report(limit: int = Query(default=200, ge=10, le=1000)):
+    """Return a lightweight bucketed calibration report for recent governed evaluations."""
+    return get_calibration_report(limit=limit)
+
+
+@router.post("/governance/outcomes/enrich")
+async def enrich_governance_outcomes(limit: int = Query(default=200, ge=1, le=1000)):
+    """Backfill governed evaluation logs with settled outcomes from stored bets."""
+    return enrich_evaluation_log_outcomes(limit=limit)
+
+
+@router.get("/governance/proposals")
+async def get_governance_proposals(
+    status: Optional[str] = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+):
+    """Return governed learning proposals for admin review."""
+    return {
+        "proposals": list_learning_proposals(status=status, limit=limit),
+    }
+
+
+@router.get("/governance/proposals/{proposal_id}")
+async def get_governance_proposal(proposal_id: str):
+    """Return a single governed learning proposal."""
+    proposal = get_learning_proposal(proposal_id)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return proposal
+
+
+@router.get("/governance/version-hint")
+async def get_governance_version_hint(entity_type: str = Query(...)):
+    """Return current and suggested version values for governed promotions."""
+    return get_version_hint(entity_type)
+
+
+@router.post("/governance/proposals/{proposal_id}/approve")
+async def approve_governance_proposal(proposal_id: str, request: ProposalApprovalRequest):
+    """Approve and promote a governed learning proposal."""
+    try:
+        return approve_learning_proposal(
+            proposal_id=proposal_id,
+            approved_by=request.approved_by,
+            old_version=request.old_version,
+            new_version=request.new_version,
+            rollback_version=request.rollback_version,
+            notes=request.notes,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=404, detail=message) from exc
+        raise HTTPException(status_code=400, detail=message) from exc
+
+
+@router.get("/governance/promotions")
+async def get_governance_promotions(limit: int = Query(default=20, ge=1, le=100)):
+    """Return recent promotion audit records."""
+    return {
+        "promotions": list_promotion_audits(limit=limit),
+    }
+
+
+@router.post("/governance/promotions/{promotion_id}/rollback")
+async def rollback_governance_promotion(promotion_id: str, request: PromotionRollbackRequest):
+    """Rollback a governed promotion to its explicit rollback target."""
+    try:
+        return rollback_promotion(
+            promotion_id=promotion_id,
+            rolled_back_by=request.rolled_back_by,
+            notes=request.notes,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            raise HTTPException(status_code=404, detail=message) from exc
+        raise HTTPException(status_code=400, detail=message) from exc
 
 
 # =============================================================================

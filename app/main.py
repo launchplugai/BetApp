@@ -1,4 +1,5 @@
-"""DNA Matrix API - FastAPI application entrypoint."""
+"""BetApp FastAPI application entrypoint."""
+from contextlib import asynccontextmanager
 import logging
 import os
 from datetime import datetime, timezone
@@ -8,13 +9,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import load_config, log_config_snapshot, get_config_health
+from app.core.admin_auth import require_internal_admin_user
 from app.correlation import CorrelationIdMiddleware
 from app.routers import leading_light
 from app.routers import panel
@@ -26,6 +28,7 @@ from app.routers import metrics
 from app.routers import mock_api
 from app.routers import live_api
 from app.routers import dashboard_stubs
+from app.routers import ocr
 from app.protocol import router as protocol_router
 from app.protocol.recommendation_router import router as recommendation_router
 from app.routers import auth
@@ -82,10 +85,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # Capture service start time for uptime reporting
 _SERVICE_START_TIME = datetime.now(timezone.utc)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run application startup tasks via FastAPI lifespan."""
+    # Import protocol models to register with Base.metadata before init.
+    from app.protocol.models import Protocol, ProtocolItem, ProtocolTarget
+    from app.protocol.recommendation_models import Recommendation, Parlay
+    from app.startup import run_application_startup
+
+    run_application_startup()
+    yield
+
+
 app = FastAPI(
-    title="DNA Matrix",
-    description="Semantic identity management system",
+    title="BetApp",
+    description="Bettor intelligence platform for parlay evaluation, protocol-driven discovery, and explainable risk analysis.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -125,91 +142,12 @@ app.include_router(admin_router)
 app.include_router(voice_router)
 app.include_router(preferences.router)
 app.include_router(notifications.router)
+app.include_router(ocr.router)
 app.include_router(leading_light.router)
 app.include_router(panel.router)
 app.include_router(history.router)
 app.include_router(v1_ui.router)
 app.include_router(metrics.router)
-
-
-# S18: Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database tables."""
-    # Import protocol models to register with Base.metadata
-    from app.protocol.models import Protocol, ProtocolItem, ProtocolTarget
-    from app.protocol.recommendation_models import Recommendation, Parlay
-    
-    from app.models import init_db
-    init_db()
-    print("✅ User database initialized")
-    
-    # Initialize NBA analytics database
-    from app.nba.database import init_database as init_nba_db, get_db_session
-    from app.nba.models import DimTeam
-    init_nba_db()
-    print("NBA analytics database initialized")
-
-    # Bootstrap NBA teams/players if tables are empty
-    db = get_db_session()
-    try:
-        team_count = db.query(DimTeam).count()
-        if team_count == 0:
-            print("NBA tables empty - bootstrapping teams and players...")
-            from app.nba.database import full_bootstrap
-            result = full_bootstrap()
-            print(f"NBA bootstrap complete: {result}")
-        else:
-            print(f"NBA data present: {team_count} teams loaded")
-            # Re-sync players to pick up photo_url for existing records
-            from app.nba.models import DimPlayer
-            from app.nba.ingestion import NBADataIngestion
-            missing_photos = db.query(DimPlayer).filter(DimPlayer.photo_url.is_(None), DimPlayer.active.is_(True)).count()
-            if missing_photos > 0:
-                print(f"Updating {missing_photos} players with missing photo URLs...")
-                ingestion = NBADataIngestion(db)
-                ingestion.sync_players(active_only=True)
-                print("Player photos updated")
-            # Sync rosters if players are missing team assignments
-            missing_teams = db.query(DimPlayer).filter(DimPlayer.team_id.is_(None), DimPlayer.active.is_(True)).count()
-            if missing_teams > 0:
-                print(f"Syncing rosters for {missing_teams} players missing team assignments...")
-                ingestion = NBADataIngestion(db)
-                count = ingestion.sync_rosters()
-                print(f"Roster sync complete: {count} players updated")
-    except Exception as e:
-        print(f"NBA bootstrap failed (non-fatal): {e}")
-    finally:
-        db.close()
-
-    # Run daily ETL to populate today's games and yesterday's results
-    try:
-        from app.nba.ingestion import run_daily_etl
-        from datetime import date, timedelta
-        etl_db = get_db_session()
-        try:
-            yesterday = date.today() - timedelta(days=1)
-            print(f"Running daily ETL for {yesterday}...")
-            run_daily_etl(etl_db, yesterday)
-            print("Daily ETL complete")
-        finally:
-            etl_db.close()
-
-        # Also fetch today's scheduled games
-        etl_db2 = get_db_session()
-        try:
-            from app.nba.ingestion import NBADataIngestion
-            ingestion = NBADataIngestion(etl_db2)
-            today = date.today()
-            season = f"{today.year}-{str(today.year + 1)[-2:]}"
-            games = ingestion.fetch_games_for_date(today)
-            for game_data in games:
-                ingestion.ingest_game(game_data, season)
-            print(f"Fetched {len(games)} games scheduled for today")
-        finally:
-            etl_db2.close()
-    except Exception as e:
-        print(f"Daily ETL failed (non-fatal): {e}")
 
 
 @app.get("/health")
@@ -246,7 +184,7 @@ async def build_info():
     return asdict(get_build_info())
 
 
-@app.get("/debug/contracts")
+@app.get("/debug/contracts", dependencies=[Depends(require_internal_admin_user)])
 async def debug_contracts():
     """
     Debug endpoint for contract verification (Ticket 17).

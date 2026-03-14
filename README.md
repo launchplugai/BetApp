@@ -1,108 +1,106 @@
-# DNA Matrix
+# BetApp
 
-> A decision engine disguised as a data system.
+BetApp is a bettor intelligence platform focused on two jobs:
 
-DNA Matrix models **variation over shared substrate**. Brands, people, companies, products, strategies, AI agents—they all share structural similarity. Meaningful difference comes from margins, weights, interactions, constraints, and rate of change.
+- evaluate existing slips and expose hidden fragility
+- help users discover better legs and protocols with explainable analytics
 
-## The Question It Answers
+The product is not a picks oracle. It is a decision-support system that scores structural quality, surfaces contextual risk, and explains why a bet looks stronger or weaker.
 
-Not "What is this?" but **"What kind of thing is this becoming, and is that safe?"**
+## Product Focus
 
-## Core Primitives (v0.1 Genome)
+Current product priorities:
 
-The system is built on 7 frozen primitives:
+- parlay evaluation first
+- fragility reduction over pure hit-rate theater
+- protocol-driven risk detection
+- clear, explainable reasoning
+- bettor education over blind recommendation
 
-| Primitive | Purpose |
-|-----------|---------|
-| **weight** | Relative importance |
-| **constraint** | Boundary on valid states |
-| **conflict** | Competing forces |
-| **baseline** | Reference state for comparison |
-| **drift** | Deviation from baseline (computed) |
-| **tradeoff** | Exchange of one value for another |
-| **lineage** | Provenance and causal history |
+Primary users today are serious hobbyist bettors, with NBA and NFL as the main sports in scope.
 
-## Key Concepts
+## Repo Reality
 
-- **Organism**: The entity being modeled (brand, person, agent, product, org)
-- **Claim**: Atomic assertion about an organism through a lens
-- **Mutation**: The only way claims change (append-only)
-- **Conflict**: When claims cannot both be true
-- **Projection**: Computed view (matrix, timeline, summary)
+This repository contains the active FastAPI application, UI routes, scoring pipeline, protocol logic, governance substrate, and the nested `dna-matrix` engine package.
 
-## Structural Invariants
+Treat these as the main starting points:
 
-1. Claims are the units of meaning
-2. Mutations are the only way claims change
-3. Lineage is append-only
-4. Constraints attach to claims and validate mutations
-5. Conflicts are relations between claims
-6. Drift and coherence are computed from stored causes
-7. Matrix is a projection, never the source of truth
+- [app/main.py](app/main.py): FastAPI entry point and app wiring
+- [app/pipeline.py](app/pipeline.py): DNA evaluation pipeline
+- [app/routers](app/routers): web and API routes
+- [app/services](app/services): auth, scoring, protocols, governance services
+- [app/models](app/models): SQLAlchemy models
+- [docs/index/DOC_INDEX.md](docs/index/DOC_INDEX.md): current documentation index
 
-## Documentation
+Important note: the top-level `dna-matrix` folder is part of the repo, but the root app is the active product surface.
 
-See `/docs` for full specifications:
+## Current Architecture
 
-| Document | Purpose |
-|----------|---------|
-| [CONCEPT.md](docs/CONCEPT.md) | Why this system exists |
-| [PRINCIPLES.md](docs/PRINCIPLES.md) | Non-negotiable laws |
-| [PRIMITIVES.md](docs/PRIMITIVES.md) | The 7 frozen primitives |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data structures and storage |
-| [INTERACTIONS.md](docs/INTERACTIONS.md) | How primitives affect each other |
-| [CONSTRAINT_LANGUAGE.md](docs/CONSTRAINT_LANGUAGE.md) | Rule syntax and validation |
-| [CONFLICT_DETECTION.md](docs/CONFLICT_DETECTION.md) | When and how conflicts fire |
-| [API_SCHEMAS.md](docs/API_SCHEMAS.md) | Request/response contracts |
-| [SDK_SPECIFICATION.md](docs/SDK_SPECIFICATION.md) | Python SDK design |
-| [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | 8-week build roadmap |
+- Runtime: FastAPI
+- Persistence today: app DB plus separate NBA analytics DB
+- Scoring: DNA scoring model plus protocol modifiers
+- Learning: governed proposal/review/promotion model
+- Deployment: Python app with deployment docs and VPS/Railway artifacts in repo
 
-## Project Structure
+The project is moving toward a managed Postgres control plane while keeping the Python runtime and evaluation stack intact.
 
-```
-dna-matrix/
-├── core/
-│   ├── models/          # Data models (Organism, Claim, etc.)
-│   ├── engine/          # Mutation engine
-│   ├── constraints/     # Constraint language + evaluation
-│   ├── conflicts/       # Conflict detection + resolution
-│   ├── query/           # Evaluate, simulate, diff, explain
-│   └── projections/     # View generation
-├── storage/
-│   └── sqlite/          # SQLite implementation
-├── api/
-│   ├── routes/          # FastAPI endpoints
-│   └── schemas/         # Request/response models
-├── sdk/
-│   └── dna_matrix/      # Python SDK
-├── docs/                # Design specifications
-└── tests/               # Test suite
-```
+## Source Of Truth
 
-## Quick Start
+Code is the primary source of truth.
+
+When you need product and system contracts, start here:
+
+- [docs/contracts/DNA_SCORING_MODEL.md](docs/contracts/DNA_SCORING_MODEL.md)
+- [docs/contracts/PROTOCOL_LIBRARY_V1.md](docs/contracts/PROTOCOL_LIBRARY_V1.md)
+- [docs/contracts/LEARNING_SYSTEM_V1.md](docs/contracts/LEARNING_SYSTEM_V1.md)
+- [docs/contracts/MODEL_REGISTRY_CONTRACT.md](docs/contracts/MODEL_REGISTRY_CONTRACT.md)
+- [docs/contracts/EVALUATION_LOG_CONTRACT.md](docs/contracts/EVALUATION_LOG_CONTRACT.md)
+- [docs/contracts/LEARNING_PROPOSAL_CONTRACT.md](docs/contracts/LEARNING_PROPOSAL_CONTRACT.md)
+- [docs/contracts/PROMOTION_AUDIT_CONTRACT.md](docs/contracts/PROMOTION_AUDIT_CONTRACT.md)
+
+Operational docs:
+
+- [docs/ENV_VARIABLES.md](docs/ENV_VARIABLES.md)
+- [docs/deploy.md](docs/deploy.md)
+- [docs/ops/SUPABASE_MIGRATION_PLAN.md](docs/ops/SUPABASE_MIGRATION_PLAN.md)
+- [docs/ops/ALEMBIC_MIGRATION_WORKFLOW.md](docs/ops/ALEMBIC_MIGRATION_WORKFLOW.md)
+
+## Developer Notes
+
+- `requirements.txt` is currently the reliable dependency source
+- Alembic is the forward migration path
+- existing legacy docs and legacy route files still exist; do not assume every file in the repo is active without checking imports and router registration
+
+## Local Setup
 
 ```bash
-# Clone and setup
-git clone <repo>
-cd dna-matrix
-python -m venv .venv
+uv venv --python 3.12 .venv
 source .venv/bin/activate
+python -m ensurepip --upgrade
 pip install -r requirements.txt
-
-# Run tests
-pytest tests/ -v
 ```
 
-## Development Status
+Use Python 3.12 for local work. The repo declares `python-3.12` in `runtime.txt`, and parts of the nested engine use Python 3.10+ features that fail under 3.9.
 
-**Phase 1: Foundation** (In Progress)
-- [x] Core models (Organism, Claim, Value, etc.)
-- [ ] SQLite storage layer
-- [ ] Mutation engine
-- [ ] Lineage tracking
+Set environment variables from [docs/ENV_VARIABLES.md](docs/ENV_VARIABLES.md). At minimum for auth-capable local work, set:
 
-See [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for full roadmap.
+```bash
+export JWT_SECRET_KEY=dev-local-change-me
+```
 
-## License
+The shell environment may not be populated automatically after reopening the editor.
 
-TBD
+Before starting the app, apply the governed schema:
+
+```bash
+PYTHONPATH=.:./dna-matrix:$PYTHONPATH alembic upgrade head
+PYTHONPATH=.:./dna-matrix:$PYTHONPATH uvicorn app.main:app --reload --port 8000
+```
+
+The app now fails startup clearly if the governance/control-plane schema is missing or not tracked by Alembic.
+
+For a disposable Postgres control-plane smoke test, use:
+
+```bash
+bash scripts/postgres_control_plane_smoke.sh
+```

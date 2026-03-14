@@ -16,7 +16,8 @@ from app.services.auth import (
     validate_refresh_token,
     blacklist_access_token,
     revoke_refresh_token,
-    revoke_all_user_refresh_tokens
+    revoke_all_user_refresh_tokens,
+    get_user_from_refresh_token,
 )
 from app.models import User
 
@@ -173,29 +174,39 @@ async def logout(
     """
     access_token = credentials.credentials
     user = get_current_user_from_token(access_token)
-    
-    if not user:
-        # Token already invalid, still return success
-        return {"success": True, "message": "Logged out"}
-    
-    # Blacklist access token
-    blacklist_access_token(access_token, reason="logout")
-    
+
+    # Always revoke the provided refresh token when present, even if the access
+    # token is already expired or otherwise invalid.
+    refresh_token_revoked = False
+    refresh_token_user = None
+    if request.refresh_token:
+        refresh_token_user = get_user_from_refresh_token(request.refresh_token)
+        refresh_token_revoked = revoke_refresh_token(request.refresh_token)
+
+    effective_user = user or refresh_token_user
+
     # Revoke refresh token(s)
     if request.logout_all:
-        # Logout from all devices
-        revoked_count = revoke_all_user_refresh_tokens(user.id)
+        if not effective_user:
+            return {"success": True, "message": "Logged out"}
+
+        if user:
+            blacklist_access_token(access_token, reason="logout")
+
+        revoked_count = revoke_all_user_refresh_tokens(effective_user.id)
         return {
             "success": True,
             "message": f"Logged out from all devices ({revoked_count} sessions)"
         }
-    elif request.refresh_token:
-        # Revoke specific refresh token
-        revoke_refresh_token(request.refresh_token)
-        return {"success": True, "message": "Logged out successfully"}
-    else:
-        # No refresh token provided, just blacklist access token
-        return {"success": True, "message": "Logged out (access token invalidated)"}
+
+    if user:
+        blacklist_access_token(access_token, reason="logout")
+
+    if request.refresh_token:
+        message = "Logged out successfully" if refresh_token_revoked else "Logged out"
+        return {"success": True, "message": message}
+
+    return {"success": True, "message": "Logged out (access token invalidated)"}
 
 
 # =============================================================================

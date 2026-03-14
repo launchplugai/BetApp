@@ -6,7 +6,7 @@ Preserves existing mock data behavior.
 """
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.providers import (
     OddsProvider,
@@ -75,7 +75,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_nba_games(self) -> List[Game]:
         """Mock NBA games."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         return [
             Game(
@@ -106,7 +106,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_nfl_games(self) -> List[Game]:
         """Mock NFL games."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         return [
             Game(
@@ -121,7 +121,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_nhl_games(self) -> List[Game]:
         """Mock NHL games."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         return [
             Game(
@@ -571,7 +571,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_mlb_games(self) -> List[Game]:
         """Mock MLB games."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return [
             Game(id="mlb-nyy-bos-2026-02-09", league="MLB", home="Yankees", away="Red Sox", start_time=(now + timedelta(hours=3)).isoformat() + "Z", status="SCHEDULED"),
             Game(id="mlb-lad-sf-2026-02-09", league="MLB", home="Dodgers", away="Giants", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
@@ -596,7 +596,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_soccer_games(self) -> List[Game]:
         """Mock Soccer games."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return [
             Game(id="epl-mci-liv-2026-02-09", league="EPL", home="Man City", away="Liverpool", start_time=(now + timedelta(hours=2)).isoformat() + "Z", status="SCHEDULED"),
             Game(id="laliga-rm-bar-2026-02-09", league="La Liga", home="Real Madrid", away="Barcelona", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
@@ -621,7 +621,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_ufc_games(self) -> List[Game]:
         """Mock UFC fights."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return [
             Game(id="ufc-main-001", league="UFC", home="Islam Makhachev", away="Charles Oliveira", start_time=(now + timedelta(hours=6)).isoformat() + "Z", status="SCHEDULED"),
             Game(id="ufc-co-001", league="UFC", home="Sean O'Malley", away="Marlon Vera", start_time=(now + timedelta(hours=4)).isoformat() + "Z", status="SCHEDULED"),
@@ -639,7 +639,7 @@ class MockOddsProvider(OddsProvider):
     
     def _get_tennis_games(self) -> List[Game]:
         """Mock Tennis matches."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return [
             Game(id="wimbledon-m-001", league="Wimbledon", home="Carlos Alcaraz", away="Novak Djokovic", start_time=(now + timedelta(hours=5)).isoformat() + "Z", status="SCHEDULED"),
             Game(id="uso-w-001", league="US Open", home="Iga Swiatek", away="Coco Gauff", start_time=(now + timedelta(hours=3)).isoformat() + "Z", status="SCHEDULED"),

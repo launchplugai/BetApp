@@ -79,6 +79,10 @@ from app.delta_engine import (
 
 # Grounding Score Engine (Ticket 38B-C2)
 from app.grounding_score import compute_grounding_score
+from app.services.dna_protocols import evaluate_tier1_protocols, summarize_protocol_impacts
+from app.services.dna_fragments import build_protocol_dna_fragments
+from app.services.dna_scoring import build_canonical_scoring_payload
+from app.services.evaluation_logger import log_evaluation_event
 
 _logger = logging.getLogger(__name__)
 
@@ -184,6 +188,9 @@ class PipelineResponse:
 
     # Ticket 38B-C2: Grounding score (breakdown of output sources)
     grounding_score: Optional[dict] = None
+    dna_scoring: Optional[dict] = None
+    triggered_protocols: Optional[list] = None
+    explainability_sections: Optional[dict] = None
 
     # Metadata
     leg_count: int = 0
@@ -2258,6 +2265,127 @@ def _build_grounding_warnings(
     return warnings
 
 
+def _build_explainability_sections(
+    *,
+    tier: Tier,
+    evaluation,
+    blocks,
+    primary_failure,
+    signal_info,
+    eval_ctx: Optional[EvaluationContext] = None,
+) -> dict:
+    """
+    Build tier-gated explainability sections for structural risk, correlation,
+    fragility, and context.
+
+    This is a compatibility layer for the Sprint 2 section contract used by
+    tests and downstream UI surfaces.
+    """
+    metrics = evaluation.metrics
+    fragility = float(getattr(metrics, "final_fragility", 0.0))
+    inductor_level = getattr(getattr(evaluation, "inductor", None), "level", None)
+    inductor_level_value = getattr(inductor_level, "value", "loaded")
+
+    structural_headlines = {
+        "stable": "Low Risk",
+        "loaded": "Moderate Risk",
+        "tense": "Elevated Risk",
+        "critical": "Critical Risk",
+    }
+    fragility_headlines = [
+        (20, "Low Fragility"),
+        (40, "Moderate Fragility"),
+        (70, "High Fragility"),
+        (101, "Critical Fragility"),
+    ]
+
+    fragility_headline = next(label for threshold, label in fragility_headlines if fragility < threshold)
+    structural_risk = {
+        "headline": structural_headlines.get(inductor_level_value, "Moderate Risk"),
+    }
+    if tier in (Tier.BETTER, Tier.BEST):
+        structural_risk["summary"] = (
+            getattr(getattr(evaluation, "inductor", None), "explanation", None)
+            or "Structural risk is driven by leg count, dependency, and volatility."
+        )
+    if tier == Tier.BEST:
+        structural_risk["inductor_detail"] = {
+            "level": inductor_level_value,
+            "recommendation_action": getattr(getattr(getattr(evaluation, "recommendation", None), "action", None), "value", None),
+            "recommendation_reason": getattr(getattr(evaluation, "recommendation", None), "reason", None),
+        }
+        if primary_failure and primary_failure.get("type"):
+            structural_risk["primary_failure_type"] = primary_failure["type"]
+
+    correlation = {
+        "count": len(getattr(evaluation, "correlations", []) or []),
+        "penalty": float(getattr(metrics, "correlation_penalty", 0.0)),
+        "multiplier": float(getattr(metrics, "correlation_multiplier", 1.0)),
+    }
+    if tier == Tier.BEST and correlation["count"]:
+        correlation["details"] = [
+            {
+                "type": getattr(item, "type", "unknown"),
+                "block_a": str(getattr(item, "block_a", "")),
+                "block_b": str(getattr(item, "block_b", "")),
+                "penalty": float(getattr(item, "penalty", 0.0)),
+            }
+            for item in (getattr(evaluation, "correlations", []) or [])
+        ]
+
+    fragility_breakdown = {
+        "headline": fragility_headline,
+        "score": fragility,
+    }
+    if tier in (Tier.BETTER, Tier.BEST):
+        fragility_breakdown["summary"] = (
+            f"Final fragility is {fragility:.1f}, with leg penalty "
+            f"{float(getattr(metrics, 'leg_penalty', 0.0)):.1f} and correlation penalty "
+            f"{float(getattr(metrics, 'correlation_penalty', 0.0)):.1f}."
+        )
+    if tier == Tier.BEST:
+        fragility_breakdown["blocks"] = [
+            {
+                "selection": getattr(block, "selection", "Unknown leg"),
+                "bet_type": getattr(getattr(block, "bet_type", None), "value", str(getattr(block, "bet_type", "unknown"))),
+                "base_fragility": float(getattr(block, "base_fragility", 0.0)),
+                "effective_fragility": float(getattr(block, "effective_fragility", 0.0)),
+            }
+            for block in (blocks or [])
+        ]
+
+    context_modifiers = []
+    for block in blocks or []:
+        modifiers = getattr(block, "context_modifiers", None)
+        if not modifiers:
+            continue
+        for modifier_type in ("weather", "injury", "trade", "role"):
+            modifier = getattr(modifiers, modifier_type, None)
+            if modifier and getattr(modifier, "applied", False):
+                context_modifiers.append(
+                    {
+                        "type": modifier_type,
+                        "selection": getattr(block, "selection", "Unknown leg"),
+                        "delta": float(getattr(modifier, "delta", 0.0)),
+                        "reason": getattr(modifier, "reason", None),
+                    }
+                )
+
+    context_snapshot = {
+        "has_context": bool(context_modifiers),
+        "headline": "Context Applied" if context_modifiers else "No Context Signals",
+    }
+    if context_modifiers:
+        context_snapshot["modifiers"] = context_modifiers
+
+    return {
+        "structural_risk": structural_risk,
+        "correlation": correlation,
+        "fragility_breakdown": fragility_breakdown,
+        "context_snapshot": context_snapshot,
+    }
+
+
 # Main Pipeline Function
 # =============================================================================
 
@@ -2680,6 +2808,15 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         has_correlations=has_correlations
     )
 
+    explainability_sections = _build_explainability_sections(
+        tier=normalized.tier,
+        evaluation=evaluation,
+        blocks=blocks,
+        primary_failure=primary_failure,
+        signal_info=signal_info,
+        eval_ctx=eval_ctx,
+    )
+
     # Step 28: S7-B — Compute confidence trend
     previous_signal = get_previous_signal_for_session(session_id)
     confidence_trend = compute_confidence_trend(previous_signal, signal_info)
@@ -2711,6 +2848,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         "structure": structure_snapshot.to_dict(),
         "delta": delta_result.to_dict() if delta_result else None,
         "grounding_score": grounding_score_result.to_dict(),
+        "explainability_sections": explainability_sections,
         "leg_count": eval_ctx.leg_count,
         "tier": normalized.tier.value,
     }
@@ -2739,7 +2877,54 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         nba_heuristics = nba_context_result.get("nba_heuristics")
         # Update confidence from result
         result["confidence"] = nba_context_result.get("confidence", result.get("confidence"))
-    
+
+    # Step 30: Contract-aligned Tier 1 protocol evaluation
+    protocol_dna_fragments = build_protocol_dna_fragments(
+        input_text=normalized.input_text,
+        entities=entities_public,
+        evaluation=evaluation,
+        blocks=blocks,
+        nba_heuristics=nba_heuristics,
+        context_data=context_data,
+    )
+    triggered_protocol_objects = evaluate_tier1_protocols(
+        input_text=normalized.input_text,
+        blocks=blocks,
+        entities=entities_public,
+        evaluation=evaluation,
+        nba_heuristics=nba_heuristics,
+        context_data=context_data,
+        dna_fragments=protocol_dna_fragments,
+    )
+    triggered_protocols = [protocol.to_dict() for protocol in triggered_protocol_objects]
+    protocol_summary = summarize_protocol_impacts(triggered_protocol_objects)
+
+    # Step 31: Contract-aligned scoring payload
+    dna_scoring = build_canonical_scoring_payload(
+        evaluation=evaluation,
+        signal_info=signal_info,
+        triggered_protocols=triggered_protocols,
+        protocol_summary=protocol_summary,
+        primary_failure=primary_failure,
+    )
+
+    if normalized.tier != Tier.GOOD:
+        result["explain"]["triggered_protocols"] = triggered_protocols
+        result["explain"]["dna_scoring"] = dna_scoring
+    result["triggered_protocols"] = triggered_protocols
+    result["dna_scoring"] = dna_scoring
+
+    # Step 32: Governed evaluation logging
+    log_evaluation_event(
+        normalized=normalized,
+        evaluation=evaluation,
+        leg_count=eval_ctx.leg_count,
+        dna_scoring=dna_scoring,
+        triggered_protocols=triggered_protocols,
+        entities=entities_public,
+        primary_failure=primary_failure,
+    )
+
     return PipelineResponse(
         evaluation=result["evaluation"],
         interpretation=result["interpretation"],
@@ -2765,6 +2950,9 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         structure=result["structure"],
         delta=result["delta"],
         grounding_score=result["grounding_score"],
+        dna_scoring=result.get("dna_scoring"),
+        triggered_protocols=result.get("triggered_protocols"),
+        explainability_sections=result.get("explainability_sections"),
         leg_count=result["leg_count"],
         tier=result["tier"],
     )

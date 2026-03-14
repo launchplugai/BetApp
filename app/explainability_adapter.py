@@ -241,7 +241,7 @@ def _build_dna_preview_block(
 
     return ExplainabilityBlock(
         block_type=BlockType.DNA_PREVIEW,
-        title="DNA Matrix Preview",
+        title="BetApp Analysis Preview",
         content={
             "quarantined": dna_artifact.get("quarantined", True),
             "quarantine_label": "Quarantined" if dna_artifact.get("quarantined", True) else "Active",

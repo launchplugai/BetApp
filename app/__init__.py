@@ -1,1 +1,1 @@
-"""DNA Matrix API package."""
+"""BetApp API package."""

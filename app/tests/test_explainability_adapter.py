@@ -308,7 +308,7 @@ class TestDNAPreviewBlock:
         block = _build_dna_preview_block(dna_artifact, 4)
 
         assert block.block_type == BlockType.DNA_PREVIEW
-        assert block.title == "DNA Matrix Preview"
+        assert block.title == "BetApp Analysis Preview"
         assert block.content["quarantined"] is False
         assert block.content["quarantine_label"] == "Active"
         assert block.content["audit_passed"] is True

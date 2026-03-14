@@ -2,7 +2,7 @@
 # Architectural Decision Log
 
 **Status:** APPEND-ONLY
-**Last Updated:** 2026-01-29
+**Last Updated:** 2026-03-14
 
 ---
 
@@ -56,6 +56,38 @@ Key constraints:
 - `docs/mappings/MAP_SHERLOCK_TO_DNA.md` - Translation rules
 - Ticket 16A - Sherlock skeleton implementation
 - Ticket 16B - Contract documentation
+
+---
+
+### 2026-03-14 Restore Layered Architecture Around Airlock
+
+**Context:**
+The repo drifted toward a mixed runtime where frontend templates, frontend JS, backend route shaping, Airlock responsibilities, and Sherlock/DNA concerns were partially blurred. Product direction clarified that the goal is one repo with hard internal module walls, not a two-repo split.
+
+**Decision:**
+BetApp is now canonically organized around:
+
+`Frontend -> Airlock -> Protocol Intent -> Sherlock <-> DNA -> governed output -> Frontend`
+
+Key constraints:
+- Airlock is restored as the membrane, not just a validator
+- Sherlock and DNA are distinct layers in a bounded conversation
+- frontend work must target Airlock contracts, not backend-private payloads
+- adaptive improvement must preserve these boundaries
+
+**Consequences:**
+- frontend/backend separation work is reframed as boundary restoration
+- Airlock becomes a first-class refactor target
+- Sherlock and DNA must be refactored as explicit adjacent layers
+- future adaptation work must wait for boundary restoration, not bypass it
+
+**References:**
+- `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md`
+- `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md`
+- `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md`
+- `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md`
+- `docs/adr/ADR-2026-03-14-restored-layered-architecture.md`
+- `docs/adr/ADR-2026-03-14-governed-adaptation-after-boundary-restoration.md`
 
 ---
 

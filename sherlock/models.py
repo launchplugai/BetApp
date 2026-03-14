@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import List, Optional, Dict, Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # =============================================================================
@@ -66,8 +66,7 @@ class ClaimInput(BaseModel):
     time_bounds: Optional[Dict[str, Any]] = Field(default=None, description="Temporal constraints")
     prior_assumptions: List[str] = Field(default_factory=list, description="Explicit prior assumptions")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 # =============================================================================
@@ -93,8 +92,7 @@ class LockedClaim(BaseModel):
     assumptions: List[str] = Field(default_factory=list, description="Explicit assumptions")
     falsifiability: List[str] = Field(default_factory=list, description="Conditions that would falsify the claim")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     def is_falsifiable(self) -> bool:
         """Returns True if claim has falsifiability conditions."""
@@ -119,8 +117,7 @@ class EvidenceItem(BaseModel):
     summary: str = Field(..., description="Brief summary of evidence")
     reliability: float = Field(..., ge=0.0, le=1.0, description="Reliability score")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 class EvidenceMap(BaseModel):
@@ -133,8 +130,7 @@ class EvidenceMap(BaseModel):
     version: int = Field(..., ge=1, description="Iteration version")
     items: List[EvidenceItem] = Field(default_factory=list, description="Evidence items")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     def total_reliability(self) -> float:
         """Compute average reliability across all items."""
@@ -165,8 +161,7 @@ class ArgumentNode(BaseModel):
     supports: List[str] = Field(default_factory=list, description="IDs of nodes this supports")
     attacks: List[str] = Field(default_factory=list, description="IDs of nodes this attacks")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 class ArgumentGraph(BaseModel):
@@ -179,8 +174,7 @@ class ArgumentGraph(BaseModel):
     version: int = Field(..., ge=1, description="Iteration version")
     nodes: List[ArgumentNode] = Field(default_factory=list, description="Argument nodes")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     def pro_count(self) -> int:
         """Count of pro arguments."""
@@ -208,8 +202,7 @@ class VerdictDraft(BaseModel):
     score_breakdown: Dict[str, float] = Field(default_factory=dict, description="Component scores")
     rationale_bullets: List[str] = Field(default_factory=list, description="Rationale points")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 # =============================================================================
@@ -231,8 +224,7 @@ class LogicAuditResult(BaseModel):
     weighted_score: float = Field(..., ge=0.0, le=1.0, description="Final weighted score")
     failures: List[str] = Field(default_factory=list, description="List of failures/issues")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 # =============================================================================
@@ -253,8 +245,7 @@ class MutationEvent(BaseModel):
     expected_benefit: str = Field(..., description="Expected benefit")
     observed_outcome: Optional[str] = Field(default=None, description="Outcome if applied")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
 
 # =============================================================================
@@ -277,8 +268,7 @@ class IterationArtifacts(BaseModel):
     audit: LogicAuditResult = Field(..., description="Step 5: Logic audit result")
     mutations: List[MutationEvent] = Field(default_factory=list, description="Proposed mutations")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     def is_consistent(self) -> bool:
         """Check if all artifacts have matching version numbers."""
@@ -310,8 +300,7 @@ class FinalReport(BaseModel):
     logic_audit_appendix: List[LogicAuditResult] = Field(default_factory=list, description="All audit results")
     mutation_log: List[MutationEvent] = Field(default_factory=list, description="All mutation events")
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     def to_json(self) -> str:
         """Serialize to JSON string."""

@@ -15,9 +15,9 @@ Airlock does NOT:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 # =============================================================================
@@ -276,6 +276,99 @@ def airlock_ingest(
         session_id=session_id,
         canonical_legs=frozen_legs,
     )
+
+
+def _snake_to_camel(snake_str: str) -> str:
+    """Convert snake_case to camelCase for frontend-safe output shaping."""
+    if snake_str.startswith("_"):
+        return snake_str
+    components = snake_str.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])
+
+
+def _convert_keys_to_camel(obj: Any):
+    """Recursively convert dict keys from snake_case to camelCase."""
+    if isinstance(obj, dict):
+        return {_snake_to_camel(k): _convert_keys_to_camel(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_convert_keys_to_camel(item) for item in obj]
+    return obj
+
+
+def _extract_evaluation_id(result_dict: dict[str, Any]) -> Optional[str]:
+    """Resolve the canonical frontend evaluation identifier from an evaluation result."""
+    evaluation_obj = result_dict.get("evaluation", {})
+    if isinstance(evaluation_obj, dict) and evaluation_obj.get("parlay_id") is not None:
+        return str(evaluation_obj["parlay_id"])
+    if isinstance(result_dict.get("evaluation_id"), str) and result_dict["evaluation_id"].strip():
+        return result_dict["evaluation_id"].strip()
+    return None
+
+
+def build_builder_handoff_payload(
+    result_dict: dict[str, Any],
+    normalized: NormalizedInput,
+    evaluation_id: Optional[str],
+) -> dict[str, Any]:
+    """
+    Shape the minimum viable Builder handoff contract through Airlock.
+
+    This makes the handoff explicit instead of relying on frontend JS to infer
+    its own context from scattered response fields.
+    """
+    primary_failure = result_dict.get("primary_failure")
+    signal_info = result_dict.get("signal_info")
+    delta_preview = result_dict.get("delta_preview")
+    tier_value = result_dict.get("tier", normalized.tier.value)
+    fastest_fix = None
+    if isinstance(primary_failure, dict):
+        fastest_fix = primary_failure.get("fastestFix") or primary_failure.get("fastest_fix")
+
+    return {
+        "evaluation_id": evaluation_id,
+        "input_text": normalized.input_text,
+        "tier": tier_value,
+        "primary_failure": primary_failure,
+        "fastest_fix": fastest_fix,
+        "delta_preview": delta_preview,
+        "signal_info": signal_info,
+    }
+
+
+def airlock_shape_evaluate_response(
+    result: Any,
+    normalized: NormalizedInput,
+    elapsed_ms: Optional[float] = None,
+) -> dict[str, Any]:
+    """
+    Shape the frontend evaluation response through Airlock.
+
+    Airlock owns the frontend-safe boundary:
+    - stable top-level evaluation identifier
+    - explicit builder handoff payload
+    - compatibility input object
+    - camelCase output for web clients
+    """
+    result_dict = asdict(result) if is_dataclass(result) else dict(result)
+    if elapsed_ms is not None:
+        result_dict["_meta"] = {"elapsed_ms": round(elapsed_ms, 2)}
+
+    result_dict["input"] = {
+        "bet_text": normalized.input_text,
+        "tier": result_dict.get("tier", normalized.tier.value),
+    }
+
+    evaluation_id = _extract_evaluation_id(result_dict)
+    if evaluation_id:
+        result_dict["evaluation_id"] = evaluation_id
+
+    result_dict["builder_handoff"] = build_builder_handoff_payload(
+        result_dict=result_dict,
+        normalized=normalized,
+        evaluation_id=evaluation_id,
+    )
+
+    return _convert_keys_to_camel(result_dict)
 
 
 # =============================================================================

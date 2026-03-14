@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 import uuid
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 
 from app.services.protocol_tracker import tracker, TrackedProtocol
 from app.providers import OddsResponse, ScoreResponse
@@ -42,13 +42,12 @@ class DNASuggestion(BaseModel):
     context: Dict
     timestamp: datetime
     acknowledged: bool = False
+
+    @field_serializer("timestamp")
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Serialize timestamps as ISO strings."""
+        return value.isoformat()
     
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
-
 # Configurable suggestion rules
 SUGGESTION_RULES = {
     "spread_movement": {"threshold": 1.0, "severity": SuggestionSeverity.ALERT},

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # =============================================================================
 
-SERVICE_NAME = "dna-matrix"
+SERVICE_NAME = "betapp"
 SERVICE_VERSION = "0.1.0"
 
 # Default values
@@ -59,6 +59,10 @@ class AppConfig:
 
     # Security settings
     max_request_size_bytes: int = DEFAULT_MAX_REQUEST_SIZE_BYTES
+    jwt_secret_present: bool = False
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 30
 
     # Feature flags (OPTIONAL - default disabled)
     leading_light_enabled: bool = False
@@ -181,6 +185,28 @@ def load_config(fail_fast: bool = True) -> AppConfig:
     if size_warning:
         warnings.append(size_warning)
 
+    access_token_expire_minutes, access_warning = _parse_int_env(
+        "ACCESS_TOKEN_EXPIRE_MINUTES", 15, min_value=1
+    )
+    if access_warning:
+        warnings.append(access_warning)
+
+    refresh_token_expire_days, refresh_warning = _parse_int_env(
+        "REFRESH_TOKEN_EXPIRE_DAYS", 30, min_value=1
+    )
+    if refresh_warning:
+        warnings.append(refresh_warning)
+
+    jwt_secret = os.environ.get("JWT_SECRET_KEY") or os.environ.get("AUTH_JWT_SECRET")
+    jwt_secret_present = bool(jwt_secret)
+    jwt_algorithm = os.environ.get("JWT_ALGORITHM", "HS256")
+
+    if environment == "production" and not jwt_secret_present:
+        msg = "JWT_SECRET_KEY is required in production"
+        if fail_fast:
+            raise ConfigurationError(msg)
+        warnings.append(msg)
+
     # Feature flags (OPTIONAL - disabled by default)
     leading_light_enabled = _parse_bool_env("LEADING_LIGHT_ENABLED", False)
     voice_enabled = _parse_bool_env("VOICE_ENABLED", False)
@@ -280,6 +306,10 @@ def load_config(fail_fast: bool = True) -> AppConfig:
         git_sha=git_sha,
         build_time_utc=build_time_utc,
         max_request_size_bytes=max_request_size,
+        jwt_secret_present=jwt_secret_present,
+        jwt_algorithm=jwt_algorithm,
+        access_token_expire_minutes=access_token_expire_minutes,
+        refresh_token_expire_days=refresh_token_expire_days,
         leading_light_enabled=leading_light_enabled,
         voice_enabled=voice_enabled,
         sherlock_enabled=sherlock_enabled,
@@ -313,6 +343,10 @@ def log_config_snapshot(config: AppConfig) -> str:
         f"git_sha={config.git_sha} "
         f"build_time_utc={config.build_time_utc} "
         f"max_request_size_bytes={config.max_request_size_bytes} "
+        f"jwt_secret_present={config.jwt_secret_present} "
+        f"jwt_algorithm={config.jwt_algorithm} "
+        f"access_token_expire_minutes={config.access_token_expire_minutes} "
+        f"refresh_token_expire_days={config.refresh_token_expire_days} "
         f"leading_light_enabled={config.leading_light_enabled} "
         f"voice_enabled={config.voice_enabled} "
         f"sherlock_enabled={config.sherlock_enabled} "

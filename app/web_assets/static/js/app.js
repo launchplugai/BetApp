@@ -1,3 +1,7 @@
+        // Parallel Evaluate/OCR workbench controller.
+        // This script is not the mounted default /app dashboard flow today.
+        // See docs/ui/ACTIVE_FRONTEND_OWNERSHIP_MAP.md.
+
         // State
         let selectedTier = 'good';
         let debugMode = new URLSearchParams(window.location.search).get('debug') === '1';
@@ -18,7 +22,7 @@
             const version = 'v0.2.1';
             const commit = '{git_sha}';
             const timestamp = new Date().toISOString();
-            const debugText = `DNA Bet Engine ${version}\\nCommit: ${commit}\\nTimestamp: ${timestamp}`;
+            const debugText = `BetApp ${version}\\nCommit: ${commit}\\nTimestamp: ${timestamp}`;
             
             navigator.clipboard.writeText(debugText).then(() => {
                 const btn = event.target;

@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from app.config import (
+    ConfigurationError,
     DEFAULT_MAX_REQUEST_SIZE_BYTES,
     MIN_REQUEST_SIZE_BYTES,
     SENSITIVE_SUBSTRINGS,
@@ -24,7 +25,7 @@ class TestLoadConfig:
         with patch.dict(os.environ, {}, clear=True):
             config = load_config()
 
-        assert config.service_name == "dna-matrix"
+        assert config.service_name == "betapp"
         assert config.service_version == "0.1.0"
         assert config.environment == "development"
         assert config.max_request_size_bytes == DEFAULT_MAX_REQUEST_SIZE_BYTES
@@ -34,7 +35,14 @@ class TestLoadConfig:
 
     def test_environment_from_railway(self):
         """Environment is read from RAILWAY_ENVIRONMENT."""
-        with patch.dict(os.environ, {"RAILWAY_ENVIRONMENT": "production"}, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "RAILWAY_ENVIRONMENT": "production",
+                "JWT_SECRET_KEY": "test-production-secret",
+            },
+            clear=True,
+        ):
             config = load_config()
 
         assert config.environment == "production"
@@ -264,3 +272,37 @@ class TestFeatureWarnings:
             config = load_config()
 
         assert not any("OPENAI_API_KEY is not set" in w for w in config.warnings)
+
+
+class TestAuthConfig:
+    """Tests for auth-related configuration."""
+
+    def test_jwt_secret_presence_detected(self):
+        """JWT secret presence is tracked without logging the value."""
+        with patch.dict(os.environ, {"JWT_SECRET_KEY": "super-secret-value"}, clear=True):
+            config = load_config()
+
+        assert config.jwt_secret_present is True
+        snapshot = log_config_snapshot(config)
+        assert "super-secret-value" not in snapshot
+
+    def test_prod_requires_jwt_secret(self):
+        """Production config fails fast when JWT secret is missing."""
+        with patch.dict(os.environ, {"RAILWAY_ENVIRONMENT": "production"}, clear=True):
+            with pytest.raises(ConfigurationError):
+                load_config()
+
+    def test_auth_expiry_overrides_are_loaded(self):
+        """Auth token expiry settings can be overridden via environment."""
+        with patch.dict(
+            os.environ,
+            {
+                "ACCESS_TOKEN_EXPIRE_MINUTES": "25",
+                "REFRESH_TOKEN_EXPIRE_DAYS": "45",
+            },
+            clear=True,
+        ):
+            config = load_config()
+
+        assert config.access_token_expire_minutes == 25
+        assert config.refresh_token_expire_days == 45

@@ -14,6 +14,7 @@ python-multipart>=0.0.7  # CVE-2024-24762 fix
 jinja2>=3.1.0
 
 # Development
+alembic>=1.14.0
 black>=24.0.0
 mypy>=1.8.0
 ruff>=0.5.0
@@ -23,10 +24,10 @@ httpx>=0.27.0
 openai>=1.0.0
 
 # Authentication
-bcrypt>=4.1.0,<5.0.0  # Pin for passlib compatibility
-passlib>=1.7.4
+bcrypt>=4.1.0,<5.0.0
 python-jose[cryptography]>=3.3.0
 sqlalchemy>=2.0.0
+psycopg[binary]>=3.2.0
 email-validator>=2.0.0
 
 # Billing

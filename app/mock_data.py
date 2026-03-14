@@ -1,4 +1,4 @@
-# Mock Data for DNA Bet Engine UI
+# Mock data for BetApp UI
 # S16: Placeholder data until backend APIs are ready
 
 import uuid
