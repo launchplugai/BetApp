@@ -13,6 +13,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
+import app.pipeline as pipeline_module
 from app.airlock import airlock_ingest, NormalizedInput, Tier
 from app.pipeline import (
     run_evaluation,
@@ -185,7 +186,7 @@ class TestRunEvaluation:
         """run_evaluation returns PipelineResponse."""
         normalized = airlock_ingest("Lakers -5.5", tier="good")
         result = run_evaluation(normalized)
-        assert isinstance(result, PipelineResponse)
+        assert isinstance(result, pipeline_module.PipelineResponse)
 
     def test_evaluation_included(self):
         """Response includes evaluation from core engine."""

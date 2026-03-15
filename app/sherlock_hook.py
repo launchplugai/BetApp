@@ -102,6 +102,7 @@ class SherlockHookResult:
     audit_passed: bool
     audit_score: float
     dna_artifact: Optional[DNAArtifact]
+    protocol_context: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dict for JSON serialization."""
@@ -114,6 +115,7 @@ class SherlockHookResult:
             "audit_passed": self.audit_passed,
             "audit_score": self.audit_score,
             "dna_artifact": self.dna_artifact.to_dict() if self.dna_artifact else None,
+            "protocol_context": self.protocol_context,
         }
 
 
@@ -332,6 +334,7 @@ def run_sherlock_hook(
     signal: str,
     primary_failure_type: str,
     leg_count: int,
+    protocol_context: Optional[Dict[str, Any]] = None,
 ) -> Optional[SherlockHookResult]:
     """
     Run Sherlock integration hook.
@@ -372,11 +375,27 @@ def run_sherlock_hook(
         from sherlock import SherlockEngine, ClaimInput
 
         engine = SherlockEngine(mutations_enabled=False)
+        scope = {
+            "mode": "betapp_protocol_context",
+        }
+        prior_assumptions: List[str] = []
+        if protocol_context:
+            scope["protocol_context"] = protocol_context
+            bundle_id = protocol_context.get("protocol_bundle_id")
+            if bundle_id:
+                prior_assumptions.append(f"Protocol bundle in use: {bundle_id}")
+            missing_fragments = protocol_context.get("missing_fragments", []) or []
+            if missing_fragments:
+                prior_assumptions.append(
+                    f"Missing fragments during context resolution: {', '.join(missing_fragments)}"
+                )
         claim_input = ClaimInput(
             claim_text=claim_text,
             iterations=3,
             validation_threshold=0.85,
             evidence_policy={"generate_placeholder": True},
+            scope=scope,
+            prior_assumptions=prior_assumptions,
         )
 
         report = engine.run(claim_input)
@@ -397,6 +416,7 @@ def run_sherlock_hook(
             audit_passed=False,
             audit_score=0.0,
             dna_artifact=None,
+            protocol_context=protocol_context,
         )
 
     # Step 3: Get audit result
@@ -425,4 +445,5 @@ def run_sherlock_hook(
         audit_passed=audit_passed,
         audit_score=audit_score,
         dna_artifact=dna_artifact,
+        protocol_context=protocol_context,
     )

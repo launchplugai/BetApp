@@ -25,14 +25,15 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Added the first thin Sherlock-facing request shape on top of current DNA fragments and routed the NBA fatigue/injury/pace bundle through it.
+Used the thin Sherlock-facing request shape inside the live Sherlock hook for one bounded protocol-aware context path.
 
 Completed in:
 
+- `app/sherlock_hook.py`
+- `app/pipeline.py`
 - `app/services/sherlock_dna_requests.py`
-- `app/services/dna_protocols.py`
+- `app/tests/test_sherlock_integration.py`
 - `app/tests/test_sherlock_dna_requests.py`
-- `app/tests/test_dna_protocols.py`
 - `app/tests/test_pipeline.py`
 
 ## 3. Current Architecture State
@@ -50,7 +51,7 @@ Current runtime truth:
 - Tier 1 protocols can run from explicit DNA fragments
 - pipeline builds and passes protocol fragments explicitly
 - Sherlock-facing request/response shape now exists for the NBA fatigue/injury/pace bundle
-- Sherlock still does not yet orchestrate fragment requests through the live hook
+- live Sherlock hook now carries bounded protocol-aware context for the NBA fatigue/injury/pace bundle
 
 ## 4. Latest Validation
 
@@ -58,29 +59,29 @@ Command:
 
 ```bash
 cd /Users/benaiahross/development/projects/betapp/app-src && \
-.venv312/bin/pytest app/tests/test_dna_fragments.py app/tests/test_dna_protocols.py app/tests/test_pipeline.py -q
+.venv312/bin/pytest app/tests/test_sherlock_dna_requests.py app/tests/test_sherlock_integration.py app/tests/test_dna_protocols.py app/tests/test_pipeline.py -q
 ```
 
 Result:
 
 ```text
-75 passed
+86 passed
 ```
 
 ## 5. Known Debt
 
 - protocols still contain local reasoning logic after request resolution
-- Sherlock hook is still mostly a bounded integration hook, not a live fragment requester
+- Sherlock hook carries protocol-aware context, but still does not orchestrate broader fragment refinement
 - bet/history outputs are not yet fully membrane-shaped
 - broad legacy UI tests still contain historical expectations and are not sprint gates
 
 ## 6. Exact Next Step
 
-Use the new request shape in the live Sherlock hook for one bounded protocol-aware context path.
+Expose the bounded Sherlock protocol context more usefully to downstream explainability/debug surfaces without leaking backend-private structure.
 
 Recommended first slice:
 
-- derive one protocol-aware Sherlock claim or scope bundle from `nba_fatigue_injury_pace_v1`
+- add a normalized summary block or explainability mapping for the active protocol context bundle
 
 ## 7. Bootstrap Docs For Next Chat
 

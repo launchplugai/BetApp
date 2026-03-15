@@ -124,6 +124,8 @@ def test_pipeline_sherlock_runs_when_enabled():
         assert 0.0 <= result.sherlock_result["confidence"] <= 1.0
         assert "audit_passed" in result.sherlock_result
         assert "audit_score" in result.sherlock_result
+        assert "protocol_context" in result.sherlock_result
+        assert result.sherlock_result["protocol_context"]["request"]["protocol_bundle_id"] == "nba_fatigue_injury_pace_v1"
 
         # DNA artifact should be None when DNA_RECORDING_ENABLED=false
         assert result.sherlock_result["dna_artifact"] is None
@@ -332,6 +334,37 @@ def test_sherlock_hook_deterministic():
             assert result1.sherlock_result["verdict"] == result2.sherlock_result["verdict"]
             assert result1.sherlock_result["confidence"] == result2.sherlock_result["confidence"]
             assert result1.sherlock_result["audit_passed"] == result2.sherlock_result["audit_passed"]
+            assert (
+                result1.sherlock_result["protocol_context"]["request"]["protocol_bundle_id"]
+                == result2.sherlock_result["protocol_context"]["request"]["protocol_bundle_id"]
+            )
+
+
+def test_run_sherlock_hook_carries_protocol_context_into_result():
+    from app.sherlock_hook import run_sherlock_hook
+
+    protocol_context = {
+        "request": {"protocol_bundle_id": "nba_fatigue_injury_pace_v1"},
+        "fragments": {"team_schedule_context": {"context_summary": "Rest: LAL 0d vs BOS 1d"}},
+        "missing_fragments": [],
+    }
+
+    result = run_sherlock_hook(
+        sherlock_enabled=True,
+        dna_recording_enabled=False,
+        evaluation_metrics={
+            "final_fragility": 61,
+            "correlation_penalty": 8,
+            "leg_penalty": 12,
+        },
+        signal="yellow",
+        primary_failure_type="correlation",
+        leg_count=3,
+        protocol_context=protocol_context,
+    )
+
+    assert result is not None
+    assert result.protocol_context == protocol_context
 
 
 # =============================================================================

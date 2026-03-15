@@ -81,6 +81,7 @@ from app.delta_engine import (
 from app.grounding_score import compute_grounding_score
 from app.services.dna_protocols import evaluate_tier1_protocols, summarize_protocol_impacts
 from app.services.dna_fragments import build_protocol_dna_fragments
+from app.services.sherlock_dna_requests import build_nba_protocol_context_response
 from app.services.dna_scoring import build_canonical_scoring_payload
 from app.services.evaluation_logger import log_evaluation_event
 
@@ -2642,6 +2643,17 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
         eval_ctx.leg_count,  # Ticket 28: Use eval_ctx
         same_game_info["same_game_count"]
     )
+    provisional_entities_public = {k: v for k, v in entities.items() if not k.startswith("_")}
+    provisional_entities_public["volatility_flag"] = volatility_flag
+    provisional_entities_public["same_game_indicator"] = same_game_info
+    provisional_protocol_dna_fragments = build_protocol_dna_fragments(
+        input_text=normalized.input_text,
+        entities=provisional_entities_public,
+        evaluation=evaluation,
+        blocks=blocks,
+        nba_heuristics=None,
+        context_data=context_data,
+    )
 
     # Step 11: Sprint 2 — Build secondary factors (runners-up from scoring logic)
     # Ticket 28: Pass eval_ctx for authoritative leg_count
@@ -2656,6 +2668,15 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     # Ticket 28: Use eval_ctx.leg_count for consistency
     sherlock_result = None
     if _config.sherlock_enabled:
+        sherlock_protocol_context = build_nba_protocol_context_response(
+            input_text=normalized.input_text,
+            entities=provisional_entities_public,
+            evaluation=evaluation,
+            blocks=blocks,
+            nba_heuristics=None,
+            context_data=context_data,
+            dna_fragments=provisional_protocol_dna_fragments,
+        ).to_dict()
         hook_result = run_sherlock_hook(
             sherlock_enabled=_config.sherlock_enabled,
             dna_recording_enabled=_config.dna_recording_enabled,
@@ -2667,6 +2688,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
             signal=signal_info.get("signal", "yellow") if signal_info else "yellow",
             primary_failure_type=primary_type,
             leg_count=eval_ctx.leg_count,
+            protocol_context=sherlock_protocol_context,
         )
         if hook_result:
             sherlock_result = hook_result.to_dict()
