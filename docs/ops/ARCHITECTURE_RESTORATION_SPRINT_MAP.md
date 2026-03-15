@@ -85,7 +85,7 @@ Exit criteria:
 
 ## Sprint D: Normalize Frontend-Facing Contracts
 
-**Status:** NEXT
+**Status:** COMPLETE
 
 Deliverables:
 
@@ -100,6 +100,8 @@ Exit criteria:
 - legacy additive fields documented as compatibility only
 
 ## Sprint E: Reconcile Active Evaluate Frontend
+
+**Status:** NEXT
 
 Deliverables:
 

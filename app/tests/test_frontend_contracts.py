@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.history_store import create_history_item, get_history_store
 from app.main import app
 
 
@@ -75,3 +76,66 @@ class TestOcrReviewContract:
         assert data["detectedLegs"][0]["legId"].startswith("leg_")
         assert data["detectedLegs"][0]["source"] == "ocr"
         assert data["detectedLegs"][0]["clarity"] in {"clear", "review", "ambiguous"}
+
+
+class TestHistoryContracts:
+    def test_history_list_alias_returns_frontend_safe_shape(self, client):
+        store = get_history_store()
+        store.clear()
+        store.add(
+            create_history_item(
+                {
+                    "signalInfo": {
+                        "signal": "yellow",
+                        "label": "Fixable",
+                        "grade": "C",
+                        "fragilityScore": 63,
+                    }
+                },
+                "Lakers ML + Celtics ML",
+            )
+        )
+
+        response = client.get("/app/history")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "requestId" in data
+        assert isinstance(data["items"], list)
+        assert data["count"] >= 1
+        assert "createdAt" in data["items"][0]
+        assert "inputText" in data["items"][0]
+
+    def test_history_detail_alias_returns_replay_payload(self, client):
+        store = get_history_store()
+        store.clear()
+        item = create_history_item(
+            {
+                "evaluationId": "eval_789",
+                "input": {"betText": "Lakers ML + LeBron over 25.5", "tier": "best"},
+                "signalInfo": {
+                    "signal": "yellow",
+                    "label": "Fixable",
+                    "grade": "C",
+                    "fragilityScore": 63,
+                },
+                "builderHandoff": {
+                    "evaluationId": "eval_789",
+                    "inputText": "Lakers ML + LeBron over 25.5",
+                    "tier": "best",
+                    "protocolContextNote": "Schedule, availability, and pace context was checked before this read.",
+                },
+            },
+            "Lakers ML + LeBron over 25.5",
+        )
+        store.add(item)
+
+        response = client.get(f"/app/history/{item.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "requestId" in data
+        assert data["item"]["id"] == item.id
+        assert "replay" in data["item"]
+        assert data["item"]["replay"]["evaluationId"] == "eval_789"
+        assert data["item"]["replay"]["builderHandoff"]["protocolContextNote"] is not None

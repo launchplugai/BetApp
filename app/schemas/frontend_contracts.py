@@ -101,3 +101,46 @@ class OcrReviewResponseSchema(BaseModel):
     detectedLegs: List[OcrDetectedLegSchema]
     confidence: float = Field(..., ge=0.0, le=1.0)
     requiresReview: bool
+
+
+class HistoryBuilderReplaySchema(BaseModel):
+    """Builder-safe replay context for history detail."""
+
+    evaluationId: Optional[str] = None
+    inputText: str
+    tier: str
+    builderHandoff: Optional[BuilderHandoffSchema] = None
+
+
+class HistoryItemSchema(BaseModel):
+    """Frontend-safe history item summary."""
+
+    model_config = ConfigDict(extra="allow")
+
+    id: str
+    createdAt: str
+    inputText: str
+    sport: Optional[str] = None
+    signal: str
+    label: str
+    grade: str
+    fragilityScore: float
+
+
+class HistoryListResponseSchema(BaseModel):
+    """Frontend-safe history list contract."""
+
+    model_config = ConfigDict(extra="allow")
+
+    requestId: str
+    items: List[HistoryItemSchema]
+    count: int
+
+
+class HistoryItemResponseSchema(BaseModel):
+    """Frontend-safe history replay detail contract."""
+
+    model_config = ConfigDict(extra="allow")
+
+    requestId: str
+    item: Dict[str, Any]

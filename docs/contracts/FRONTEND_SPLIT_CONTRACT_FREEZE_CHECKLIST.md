@@ -34,14 +34,14 @@ This checklist marks each surface as:
 
 | Surface | Route / Source | Status | Notes |
 |---------|----------------|--------|-------|
-| Text Evaluate | `POST /app/evaluate` | `NEEDS_NORMALIZATION` | Stable enough to build against, but payload still mixes backend legacy detail with frontend needs |
+| Text Evaluate | `POST /app/evaluate` | `FROZEN` for first slice | Airlock-shaped request/response contract is explicit; additive fields remain compatibility only |
 | Image Evaluate | `POST /app/evaluate/image` | `NEEDS_NORMALIZATION` | Used by live UI, but should not be the long-term OCR review contract for the new frontend |
 | OCR Review | `POST /api/ocr/review` | `FROZEN` | Dedicated frontend-facing OCR trust-gate contract already exists |
-| Evaluation Result Payload | `app.schemas.frontend_contracts.WebEvaluateResponseSchema` + `/app/evaluate` | `NEEDS_NORMALIZATION` | Top-level `evaluationId` is present, but payload remains additive and broader than necessary |
-| Builder Handoff Payload | frontend state derived from evaluate response | `NEEDS_NORMALIZATION` | No dedicated backend contract doc yet; currently assembled in frontend JS from multiple fields |
+| Evaluation Result Payload | `app.schemas.frontend_contracts.WebEvaluateResponseSchema` + `/app/evaluate` | `FROZEN` for first slice | Minimal required field set is explicit; broader fields remain additive |
+| Builder Handoff Payload | `app.schemas.frontend_contracts.BuilderHandoffSchema` via Airlock shaping | `FROZEN` for first slice | Explicit backend-owned handoff contract now exists |
 | Bet Create | `POST /api/bets/` | `FROZEN` for first slice | Supports `evaluation_id` and returns it |
 | Bet History List | `GET /api/bets/history` | `FROZEN` for first slice | Authenticated list with `evaluation_id` available |
-| History Replay Detail | `GET /history/{item_id}` | `NEEDS_EXTRACTION` | Useful for replay/edit, but not yet aligned as the dedicated frontend contract |
+| History Replay Detail | `GET /history/{item_id}` and `GET /app/history/{item_id}` | `FROZEN` for first slice | Airlock-shaped replay contract now exists, with compatibility raw payload retained |
 
 ## 3. Surface Details
 
@@ -79,7 +79,7 @@ Freeze for first frontend slice with these rules:
 
 ### Status
 
-`NEEDS_NORMALIZATION`
+`FROZEN`
 
 ## 3.2 Image Evaluate
 
@@ -111,7 +111,7 @@ Use `POST /api/ocr/review` as the canonical OCR review path instead.
 
 ### Status
 
-`NEEDS_NORMALIZATION`
+`FROZEN`
 
 ## 3.3 OCR Review
 
@@ -187,9 +187,8 @@ Freeze the minimal supported field set above as required-for-frontend.
 
 ### Current reality
 
-There is no dedicated backend handoff route.
-
-The current frontend builds Builder context from evaluation response fields and history replay data.
+Builder handoff is now explicitly shaped by Airlock and exposed through the
+frontend contract schema.
 
 ### Current frontend fields in use
 
@@ -201,13 +200,10 @@ The current frontend builds Builder context from evaluation response fields and 
 - `signalInfo`
 - `tier`
 
-### Problem
-
-This contract is real in practice, but implicit.
-
 ### Freeze decision
 
-Freeze a builder handoff payload shape at the documentation level before new frontend work starts.
+Freeze the Airlock-shaped builder handoff payload as the canonical first-slice
+handoff contract.
 
 ### Required shape
 
@@ -225,7 +221,7 @@ Freeze a builder handoff payload shape at the documentation level before new fro
 
 ### Status
 
-`NEEDS_NORMALIZATION`
+`FROZEN`
 
 ## 3.6 Bet Create
 
@@ -315,6 +311,10 @@ Freeze for first frontend use.
 
 `GET /history/{item_id}`
 
+Compatibility alias:
+
+`GET /app/history/{item_id}`
+
 ### Current source
 
 - `app/routers/history.py`
@@ -322,28 +322,26 @@ Freeze for first frontend use.
 ### Current strengths
 
 - returns raw evaluation data for replay/edit
+- now includes an explicit frontend-safe `replay` object
+- compatibility alias exists for mounted workbench callers
 
 ### Current issue
 
-- currently separate from `/api/bets/history`
-- not yet framed as the dedicated replay contract for the new frontend
-- uses the in-memory history store and not the authenticated bet-history domain
+- remains separate from `/api/bets/history`
+- still uses the in-memory history store and not the authenticated bet-history domain
 
 ### Freeze decision
 
-Do not treat this as final for the dedicated frontend yet.
+Freeze this as the first-slice replay/detail contract for the separated
+frontend, with these rules:
 
-It needs either:
-
-- extraction into a clearer frontend replay contract
-
-or
-
-- explicit confirmation that replay for the new frontend will come from this endpoint family
+- `requestId`, `item`, and `item.replay` are the supported frontend fields
+- `item.raw` remains compatibility-only
+- `/api/bets/history` remains the canonical persisted bet-history list
 
 ### Status
 
-`NEEDS_EXTRACTION`
+`FROZEN`
 
 ## 4. Required Normalizations Before Frontend Scaffold
 
@@ -400,4 +398,3 @@ The first phase is done when:
 - Builder handoff payload is documented and treated as intentional
 - `evaluationId` versus `evaluation_id` rules are explicit
 - History replay source is decided before frontend History work begins
-

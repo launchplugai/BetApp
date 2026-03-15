@@ -305,6 +305,22 @@ def _extract_evaluation_id(result_dict: dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _get_nested_value(payload: dict[str, Any], *paths: tuple[str, ...]) -> Any:
+    """Return the first non-empty nested value found across candidate paths."""
+    for path in paths:
+        current: Any = payload
+        found = True
+        for key in path:
+            if not isinstance(current, dict) or key not in current:
+                found = False
+                break
+            current = current[key]
+        if found and current is not None:
+            if not isinstance(current, str) or current.strip():
+                return current
+    return None
+
+
 def build_builder_handoff_payload(
     result_dict: dict[str, Any],
     normalized: NormalizedInput,
@@ -342,6 +358,56 @@ def build_builder_handoff_payload(
     }
 
 
+def build_builder_handoff_from_history_raw(
+    raw_result: Optional[dict[str, Any]],
+    item_dict: dict[str, Any],
+) -> Optional[dict[str, Any]]:
+    """Build a frontend-safe Builder handoff from stored history replay data."""
+    if not isinstance(raw_result, dict):
+        return None
+
+    existing_handoff = raw_result.get("builderHandoff")
+    if isinstance(existing_handoff, dict):
+        return existing_handoff
+
+    evaluation_id = _get_nested_value(
+        raw_result,
+        ("evaluationId",),
+        ("evaluation_id",),
+        ("evaluation", "parlayId"),
+        ("evaluation", "parlay_id"),
+    )
+    input_text = (
+        item_dict.get("inputText")
+        or _get_nested_value(raw_result, ("input", "betText"), ("input", "bet_text"))
+        or ""
+    )
+    tier = (
+        _get_nested_value(raw_result, ("input", "tier"), ("tier",))
+        or "good"
+    )
+    primary_failure = raw_result.get("primaryFailure") or raw_result.get("primary_failure")
+    fastest_fix = None
+    if isinstance(primary_failure, dict):
+        fastest_fix = primary_failure.get("fastestFix") or primary_failure.get("fastest_fix")
+
+    return {
+        "evaluationId": str(evaluation_id) if evaluation_id is not None else None,
+        "inputText": input_text,
+        "tier": str(tier),
+        "primaryFailure": primary_failure,
+        "fastestFix": fastest_fix,
+        "deltaPreview": raw_result.get("deltaPreview") or raw_result.get("delta_preview"),
+        "signalInfo": raw_result.get("signalInfo") or raw_result.get("signal_info"),
+        "protocolContextNote": _get_nested_value(
+            raw_result,
+            ("builderHandoff", "protocolContextNote"),
+            ("finalVerdict", "protocolContextNote"),
+            ("final_verdict", "protocol_context_note"),
+        ),
+    }
+
+
 def airlock_shape_evaluate_response(
     result: Any,
     normalized: NormalizedInput,
@@ -376,6 +442,46 @@ def airlock_shape_evaluate_response(
     )
 
     return _convert_keys_to_camel(result_dict)
+
+
+def airlock_shape_history_list_response(
+    items: list[dict[str, Any]],
+    request_id: str,
+) -> dict[str, Any]:
+    """Shape history list output through the Airlock membrane."""
+    return {
+        "requestId": request_id,
+        "items": items,
+        "count": len(items),
+    }
+
+
+def airlock_shape_history_item_response(
+    item_dict: dict[str, Any],
+    request_id: str,
+) -> dict[str, Any]:
+    """Shape history replay detail into a frontend-safe contract."""
+    raw_result = item_dict.get("raw")
+    replay = {
+        "evaluationId": _get_nested_value(
+            item_dict,
+            ("evaluationId",),
+            ("raw", "evaluationId"),
+            ("raw", "evaluation", "parlayId"),
+            ("raw", "evaluation", "parlay_id"),
+        ),
+        "inputText": item_dict.get("inputText")
+        or _get_nested_value(raw_result or {}, ("input", "betText"), ("input", "bet_text"))
+        or "",
+        "tier": _get_nested_value(raw_result or {}, ("input", "tier"), ("tier",)) or "good",
+        "builderHandoff": build_builder_handoff_from_history_raw(raw_result, item_dict),
+    }
+    shaped_item = dict(item_dict)
+    shaped_item["replay"] = replay
+    return {
+        "requestId": request_id,
+        "item": shaped_item,
+    }
 
 
 # =============================================================================

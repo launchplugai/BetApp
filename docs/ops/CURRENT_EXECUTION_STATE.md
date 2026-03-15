@@ -25,18 +25,18 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Tied the Builder protocol-context note into the existing Fastest Fix card so the
-refinement surface now uses the note as part of fix reasoning instead of only
-displaying it separately.
+Finished Sprint D by normalizing the history replay contract through Airlock
+and restoring `/app/history` compatibility aliases for the mounted workbench.
 
 Completed in:
 
 - `app/airlock.py`
 - `app/schemas/frontend_contracts.py`
-- `app/templates/app/index.html`
-- `app/web_assets/static/app.js`
+- `app/routers/history.py`
 - `app/tests/test_airlock.py`
 - `app/tests/test_frontend_contracts.py`
+- `docs/contracts/FRONTEND_SPLIT_CONTRACT_FREEZE_CHECKLIST.md`
+- `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md`
 
 ## 3. Current Architecture State
 
@@ -45,6 +45,7 @@ Completed restoration milestones:
 - Sprint A: architecture canonized
 - Sprint B: Airlock minimum viable membrane restored for Evaluate
 - Sprint C: Sherlock ↔ DNA boundary documented and first fragment seam implemented
+- Sprint D: frontend-facing contracts normalized for the first slice
 
 Current runtime truth:
 
@@ -60,6 +61,8 @@ Current runtime truth:
 - Builder handoff now carries a user-safe `protocolContextNote` through Airlock
 - Builder workbench now renders that `protocolContextNote` in a compact refinement card
 - Builder Fastest Fix reasoning now incorporates the protocol-context note directly
+- history list and replay detail now have Airlock-shaped frontend contracts
+- `/app/history` and `/app/history/{item_id}` now resolve to the canonical history router
 
 ## 4. Latest Validation
 
@@ -73,24 +76,24 @@ cd /Users/benaiahross/development/projects/betapp/app-src && \
 Result:
 
 ```text
-34 passed
+38 passed
 ```
 
 ## 5. Known Debt
 
 - protocols still contain local reasoning logic after request resolution
 - Sherlock hook carries protocol-aware context, but the broader Sherlock engine still does not perform fragment refinement cycles
-- bet/history outputs are not yet fully membrane-shaped
+- persisted bet-history outputs are still separate from the in-memory replay/history contract
 - broad legacy UI tests still contain historical expectations and are not sprint gates
 
 ## 6. Exact Next Step
 
-Carry the same bounded protocol-context hint through one more live user-facing
-surface or tighten the active frontend ownership around the workbench path.
+Start Sprint E: reconcile the active Evaluate frontend so there is one clear
+source of truth for Evaluate/OCR behavior instead of split workbench ownership.
 
 Recommended first slice:
 
-- reuse the bounded protocol-context hint in the mounted `/app` result surface or simplify the duplicate Builder note/card path
+- audit the mounted `/app` history/evaluate workbench JS against the canonical `/app?screen=*` screen set and identify what still owns live Evaluate behavior
 
 ## 7. Bootstrap Docs For Next Chat
 

@@ -9,12 +9,17 @@ They use the same HistoryStore singleton as /app/history endpoints.
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from app.airlock import (
+    airlock_shape_history_item_response,
+    airlock_shape_history_list_response,
+)
 from app.correlation import get_request_id
 
 router = APIRouter(tags=["history"])
 
 
 @router.get("/history")
+@router.get("/app/history")
 async def get_history(raw_request: Request, limit: int = 50):
     """
     Get evaluation history.
@@ -34,14 +39,14 @@ async def get_history(raw_request: Request, limit: int = 50):
     store = get_history_store()
 
     items = store.list(limit=limit)
-    return {
-        "request_id": request_id,
-        "items": [item.to_dict() for item in items],
-        "count": len(items),
-    }
+    return airlock_shape_history_list_response(
+        items=[item.to_dict() for item in items],
+        request_id=request_id,
+    )
 
 
 @router.get("/history/{item_id}")
+@router.get("/app/history/{item_id}")
 async def get_history_item(item_id: str, raw_request: Request):
     """
     Get a specific history item by ID.
@@ -69,7 +74,7 @@ async def get_history_item(item_id: str, raw_request: Request):
             },
         )
 
-    return {
-        "request_id": request_id,
-        "item": item.to_dict_with_raw(),
-    }
+    return airlock_shape_history_item_response(
+        item_dict=item.to_dict_with_raw(),
+        request_id=request_id,
+    )

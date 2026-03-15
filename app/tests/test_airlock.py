@@ -13,6 +13,8 @@ import pytest
 from app.airlock import (
     airlock_ingest,
     airlock_shape_evaluate_response,
+    airlock_shape_history_item_response,
+    airlock_shape_history_list_response,
     AirlockError,
     EmptyInputError,
     InputTooLongError,
@@ -189,6 +191,39 @@ class TestOutboundShaping:
         assert shaped["builderHandoff"]["fastestFix"]["action"] == "trim_legs"
         assert "context was checked before this read" in shaped["builderHandoff"]["protocolContextNote"].lower()
         assert shaped["_meta"]["elapsedMs"] == 12.3
+
+    def test_shape_history_list_response_uses_request_id_and_count(self):
+        items = [{"id": "hist_1", "inputText": "Lakers ML", "createdAt": "2026-03-15T10:00:00Z", "sport": "NBA", "signal": "yellow", "label": "Fixable", "grade": "C", "fragilityScore": 62}]
+        shaped = airlock_shape_history_list_response(items=items, request_id="req_hist_123")
+        assert shaped["requestId"] == "req_hist_123"
+        assert shaped["count"] == 1
+        assert shaped["items"][0]["id"] == "hist_1"
+
+    def test_shape_history_item_response_builds_replay_payload(self):
+        item = {
+            "id": "hist_1",
+            "createdAt": "2026-03-15T10:00:00Z",
+            "inputText": "Lakers ML + LeBron over 25.5",
+            "sport": "NBA",
+            "signal": "yellow",
+            "label": "Fixable",
+            "grade": "C",
+            "fragilityScore": 62,
+            "raw": {
+                "evaluationId": "eval_123",
+                "input": {"betText": "Lakers ML + LeBron over 25.5", "tier": "best"},
+                "primaryFailure": {"fastestFix": {"action": "reduce_props"}},
+                "signalInfo": {"signal": "yellow"},
+                "finalVerdict": {
+                    "protocolContextNote": "Schedule, availability, and pace context was checked before this read."
+                },
+            },
+        }
+        shaped = airlock_shape_history_item_response(item_dict=item, request_id="req_hist_456")
+        assert shaped["requestId"] == "req_hist_456"
+        assert shaped["item"]["replay"]["evaluationId"] == "eval_123"
+        assert shaped["item"]["replay"]["inputText"] == "Lakers ML + LeBron over 25.5"
+        assert shaped["item"]["replay"]["builderHandoff"]["protocolContextNote"] is not None
 
 
 class TestAirlockErrorBase:
