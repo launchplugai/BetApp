@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
 from app.services.dna_fragments import build_protocol_dna_fragments
+from app.services.sherlock_dna_requests import build_nba_protocol_context_response
 
 
 @dataclass(frozen=True)
@@ -296,6 +297,20 @@ def evaluate_tier1_protocols(
     player_availability = fragments.get("player_availability", {}) or {}
     tempo_fragment = fragments.get("game_tempo_context", {}) or {}
     market_sensitivity = fragments.get("market_sensitivity", {}) or {}
+    nba_protocol_context = build_nba_protocol_context_response(
+        input_text=input_text,
+        entities=entities,
+        evaluation=evaluation,
+        blocks=blocks,
+        nba_heuristics=nba_heuristics,
+        context_data=context_data,
+        dna_fragments=fragments,
+    )
+    nba_fragments = nba_protocol_context.fragments
+    schedule_fragment = nba_fragments.get("team_schedule_context", schedule_fragment) or {}
+    player_availability = nba_fragments.get("player_availability", player_availability) or {}
+    tempo_fragment = nba_fragments.get("game_tempo_context", tempo_fragment) or {}
+    market_sensitivity = nba_fragments.get("market_sensitivity", market_sensitivity) or {}
 
     leg_count = int(slip_structure.get("leg_count", len(blocks or [])) or 0)
 

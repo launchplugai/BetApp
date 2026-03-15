@@ -16,6 +16,7 @@ Read these first when joining the project:
 | `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md` | CANONICAL | Canonical architecture pivot and current module model |
 | `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md` | CANONICAL | Restored boundary rules for frontend-safe system interaction |
 | `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md` | CANONICAL | Canonical bounded interaction between Sherlock and DNA |
+| `docs/contracts/SHERLOCK_DNA_REQUEST_CONTRACT.md` | CANONICAL | First Sherlock-facing request/response shape over runtime DNA fragments |
 | `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md` | CANONICAL | Sprint order and guardrails for the architecture restoration refactor |
 | `docs/contracts/DNA_SCORING_MODEL.md` | CANONICAL | Canonical scoring outputs, pipeline, and explanation contract |
 | `docs/contracts/PROTOCOL_LIBRARY_V1.md` | CANONICAL | Protocol definitions, launch tiers, and modifier rules |
@@ -38,6 +39,7 @@ Read these first when joining the project:
 | `docs/contracts/SYSTEM_CONTRACT_SDS.md` | CANONICAL | Sherlock-DNA system dataflow | Before changing Sherlock-DNA integration boundaries |
 | `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md` | CANONICAL | Restored Airlock boundary rules for inbound and outbound contracts | Before changing frontend-facing contracts or Airlock responsibilities |
 | `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md` | CANONICAL | Bounded interaction model between Sherlock synthesis and DNA structured state | Before changing protocol retrieval, Sherlock requests, or DNA exposure shape |
+| `docs/contracts/SHERLOCK_DNA_REQUEST_CONTRACT.md` | CANONICAL | First request/response contract for Sherlock-facing DNA fragment retrieval | Before expanding live Sherlock fragment access |
 | `docs/contracts/SCH_SDK_CONTRACT.md` | CANONICAL | Sherlock library interface | Before changing Sherlock integration code |
 | `docs/contracts/DNA_PRIMITIVES_CONTRACT.md` | CANONICAL | DNA primitive schemas and persistence assumptions | Before changing low-level DNA state modeling |
 | `docs/contracts/MODULE_BOUNDARY_CONTRACT.md` | CANONICAL | Module boundaries and separation rules | Before moving responsibilities across subsystems |
