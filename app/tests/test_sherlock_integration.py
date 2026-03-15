@@ -488,3 +488,31 @@ def test_debug_explainability_includes_dna_preview_when_enabled():
         dna_block = next(b for b in blocks if b["block_type"] == "dna_preview")
         assert "quarantined" in dna_block["content"]
         assert "primitive_counts" in dna_block["content"]
+
+
+def test_final_verdict_includes_protocol_context_note_when_sherlock_enabled():
+    with patch.dict(os.environ, {
+        "SHERLOCK_ENABLED": "true",
+        "DNA_RECORDING_ENABLED": "false",
+    }):
+        import importlib
+        import app.config
+        importlib.reload(app.config)
+
+        import app.pipeline
+        importlib.reload(app.pipeline)
+
+        from app.pipeline import run_evaluation
+        from app.airlock import NormalizedInput, Tier
+
+        test_input = NormalizedInput(
+            input_text="Lakers -5.5 + LeBron over 25.5 points",
+            tier=Tier.GOOD,
+        )
+
+        result = run_evaluation(test_input)
+
+        assert result.final_verdict is not None
+        assert result.final_verdict["protocol_context_note"] is not None
+        assert "context was checked before this read" in result.final_verdict["protocol_context_note"].lower()
+        assert "context was checked before this read" in result.final_verdict["verdict_text"].lower()

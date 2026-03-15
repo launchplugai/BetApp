@@ -25,13 +25,13 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Exposed the bounded Sherlock protocol context in normalized explainability/debug output.
+Mapped the normalized Sherlock protocol context into the user-facing final verdict path.
 
 Completed in:
 
-- `app/explainability_adapter.py`
-- `app/tests/test_explainability_adapter.py`
+- `app/pipeline.py`
 - `app/tests/test_sherlock_integration.py`
+- `app/tests/test_web.py`
 
 ## 3. Current Architecture State
 
@@ -50,6 +50,7 @@ Current runtime truth:
 - Sherlock-facing request/response shape now exists for the NBA fatigue/injury/pace bundle
 - live Sherlock hook now carries bounded protocol-aware context for the NBA fatigue/injury/pace bundle
 - explainability output now exposes that protocol context as a normalized summary block
+- final verdict now includes a user-facing protocol context note when Sherlock context is active
 
 ## 4. Latest Validation
 
@@ -57,13 +58,13 @@ Command:
 
 ```bash
 cd /Users/benaiahross/development/projects/betapp/app-src && \
-.venv312/bin/pytest app/tests/test_explainability_adapter.py app/tests/test_sherlock_integration.py -q
+.venv312/bin/pytest app/tests/test_sherlock_integration.py app/tests/test_web.py -k final_verdict -q
 ```
 
 Result:
 
 ```text
-40 passed
+2 passed
 ```
 
 ## 5. Known Debt
@@ -75,11 +76,11 @@ Result:
 
 ## 6. Exact Next Step
 
-Connect the normalized protocol context block into the broader user-facing explanation path selectively, or use it to drive one richer Sherlock-aware recommendation/protocol summary.
+Use the same protocol-context signal to improve one recommendation or builder-refinement path, not just the final verdict.
 
 Recommended first slice:
 
-- map the protocol context bundle into one higher-level explanation or recommendation surface without exposing raw debug structure
+- use protocol context to sharpen `next_action` or a guided Builder handoff suggestion
 
 ## 7. Bootstrap Docs For Next Chat
 

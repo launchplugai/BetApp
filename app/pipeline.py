@@ -1863,7 +1863,50 @@ def _build_notable_legs(blocks: list, evaluation, primary_failure: dict) -> list
     return notable
 
 
-def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, eval_ctx: Optional[EvaluationContext] = None) -> dict:
+def _build_protocol_context_note(sherlock_result: Optional[dict]) -> Optional[str]:
+    """Build a compact user-facing note from normalized Sherlock protocol context."""
+    if not sherlock_result:
+        return None
+
+    protocol_context = sherlock_result.get("protocol_context") or {}
+    request = protocol_context.get("request", {}) or {}
+    if request.get("protocol_bundle_id") != "nba_fatigue_injury_pace_v1":
+        return None
+
+    resolved_fragments = list((protocol_context.get("fragments") or {}).keys())
+    if not resolved_fragments:
+        return None
+
+    fragment_labels = []
+    if "team_schedule_context" in resolved_fragments:
+        fragment_labels.append("schedule")
+    if "player_availability" in resolved_fragments:
+        fragment_labels.append("availability")
+    if "game_tempo_context" in resolved_fragments:
+        fragment_labels.append("pace")
+
+    if not fragment_labels:
+        return None
+
+    if len(fragment_labels) == 1:
+        joined = fragment_labels[0]
+    elif len(fragment_labels) == 2:
+        joined = f"{fragment_labels[0]} and {fragment_labels[1]}"
+    else:
+        joined = ", ".join(fragment_labels[:-1]) + f", and {fragment_labels[-1]}"
+
+    return f"{joined.capitalize()} context was checked before this read."
+
+
+def _build_final_verdict(
+    evaluation,
+    blocks,
+    entities,
+    primary_failure,
+    signal_info,
+    sherlock_result: Optional[dict] = None,
+    eval_ctx: Optional[EvaluationContext] = None,
+) -> dict:
     """
     Build the final verdict block: 2-4 sentence conclusive summary.
 
@@ -1933,13 +1976,17 @@ def _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_i
         driver = "Correlation and dependency significantly reduce reliability."
         closer = "Simplifying the structure would materially improve hit rate."
 
+    protocol_context_note = _build_protocol_context_note(sherlock_result)
     verdict_text = f"{opener} {core} {driver} {closer}"
+    if protocol_context_note:
+        verdict_text = f"{verdict_text} {protocol_context_note}"
 
     return {
         "verdict_text": verdict_text,
         "tone": tone,
         "grade": grade,
         "signal": signal,
+        "protocol_context_note": protocol_context_note,
     }
 
 
@@ -2778,7 +2825,15 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
 
     # Step 21: Ticket 25 — Build final verdict (conclusive summary)
     # Ticket 28: Pass eval_ctx for authoritative context
-    final_verdict = _build_final_verdict(evaluation, blocks, entities, primary_failure, signal_info, eval_ctx=eval_ctx)
+    final_verdict = _build_final_verdict(
+        evaluation,
+        blocks,
+        entities,
+        primary_failure,
+        signal_info,
+        sherlock_result=sherlock_result,
+        eval_ctx=eval_ctx,
+    )
 
     # Step 22: Ticket 26 — Build gentle guidance (optional adjustment hints)
     gentle_guidance = _build_gentle_guidance(primary_failure, signal_info)
