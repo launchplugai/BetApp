@@ -320,6 +320,12 @@ def build_builder_handoff_payload(
     signal_info = result_dict.get("signal_info")
     delta_preview = result_dict.get("delta_preview")
     tier_value = result_dict.get("tier", normalized.tier.value)
+    final_verdict = result_dict.get("final_verdict")
+    protocol_context_note = None
+    if isinstance(final_verdict, dict):
+        note = final_verdict.get("protocol_context_note")
+        if isinstance(note, str) and note.strip():
+            protocol_context_note = note.strip()
     fastest_fix = None
     if isinstance(primary_failure, dict):
         fastest_fix = primary_failure.get("fastestFix") or primary_failure.get("fastest_fix")
@@ -332,6 +338,7 @@ def build_builder_handoff_payload(
         "fastest_fix": fastest_fix,
         "delta_preview": delta_preview,
         "signal_info": signal_info,
+        "protocol_context_note": protocol_context_note,
     }
 
 

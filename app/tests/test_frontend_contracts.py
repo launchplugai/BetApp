@@ -48,6 +48,7 @@ class TestEvaluateContract:
         assert "primaryFailure" in handoff
         assert "deltaPreview" in handoff
         assert "signalInfo" in handoff
+        assert "protocolContextNote" in handoff
 
 
 class TestOcrReviewContract:

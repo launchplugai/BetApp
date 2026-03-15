@@ -41,6 +41,7 @@ class BuilderHandoffSchema(BaseModel):
     fastestFix: Optional[Dict[str, Any]] = None
     deltaPreview: Optional[Dict[str, Any]] = None
     signalInfo: Optional[Dict[str, Any]] = None
+    protocolContextNote: Optional[str] = None
 
 
 class WebEvaluateResponseSchema(BaseModel):

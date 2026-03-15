@@ -175,6 +175,9 @@ class TestOutboundShaping:
             },
             "delta_preview": {"after": {"confidence": 68}},
             "signal_info": {"signal": "yellow"},
+            "final_verdict": {
+                "protocol_context_note": "Schedule, availability, and pace context was checked before this read."
+            },
         }
 
         shaped = airlock_shape_evaluate_response(result=result, normalized=normalized, elapsed_ms=12.3)
@@ -184,6 +187,7 @@ class TestOutboundShaping:
         assert shaped["builderHandoff"]["evaluationId"] == "eval_123"
         assert shaped["builderHandoff"]["inputText"] == "Lakers ML + Celtics ML"
         assert shaped["builderHandoff"]["fastestFix"]["action"] == "trim_legs"
+        assert "context was checked before this read" in shaped["builderHandoff"]["protocolContextNote"].lower()
         assert shaped["_meta"]["elapsedMs"] == 12.3
 
 

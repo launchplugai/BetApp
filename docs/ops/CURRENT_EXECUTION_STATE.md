@@ -25,13 +25,17 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Used the protocol-context signal to sharpen the user-facing `next_action` guidance path.
+Carried the protocol-context signal into the Airlock-shaped Builder handoff so
+refinement can inherit the same bounded context signal as explanation and next
+action.
 
 Completed in:
 
-- `app/pipeline.py`
-- `app/tests/test_sherlock_integration.py`
-- `app/tests/test_s7_next_action.py`
+- `app/airlock.py`
+- `app/schemas/frontend_contracts.py`
+- `app/web_assets/static/app.js`
+- `app/tests/test_airlock.py`
+- `app/tests/test_frontend_contracts.py`
 
 ## 3. Current Architecture State
 
@@ -52,6 +56,7 @@ Current runtime truth:
 - explainability output now exposes that protocol context as a normalized summary block
 - final verdict now includes a user-facing protocol context note when Sherlock context is active
 - `next_action` can now point users to schedule/availability/pace context when that bundle is active
+- Builder handoff now carries a user-safe `protocolContextNote` through Airlock
 
 ## 4. Latest Validation
 
@@ -59,13 +64,13 @@ Command:
 
 ```bash
 cd /Users/benaiahross/development/projects/betapp/app-src && \
-.venv312/bin/pytest app/tests/test_sherlock_integration.py app/tests/test_s7_next_action.py -q
+.venv312/bin/pytest app/tests/test_airlock.py app/tests/test_frontend_contracts.py app/tests/test_sherlock_integration.py -k 'builder_handoff or protocol_context_note or next_action_can_use_protocol_context' -q
 ```
 
 Result:
 
 ```text
-18 passed
+4 passed
 ```
 
 ## 5. Known Debt
@@ -77,11 +82,12 @@ Result:
 
 ## 6. Exact Next Step
 
-Carry the same protocol-context signal into Builder handoff or guided refinement so the fix path is also context-aware.
+Use the new Builder handoff note inside the live refine flow so Builder does
+something visible with the context, not just carries it.
 
 Recommended first slice:
 
-- use protocol context to sharpen Builder handoff / refine-in-builder guidance
+- add a compact Builder refinement guidance surface backed by `protocolContextNote`
 
 ## 7. Bootstrap Docs For Next Chat
 

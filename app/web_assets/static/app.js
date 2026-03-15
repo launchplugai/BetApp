@@ -723,6 +723,7 @@
                     primaryFailure: data.primaryFailure,
                     fastestFix: data.primaryFailure ? data.primaryFailure.fastestFix : null,
                     deltaPreview: data.deltaPreview,
+                    protocolContextNote: data.builderHandoff ? data.builderHandoff.protocolContextNote : null,
                     inputText: newInputText
                 };
 
@@ -817,6 +818,7 @@
             fastestFix: ctx.fastestFix,
             deltaPreview: ctx.deltaPreview,
             signalInfo: ctx.signalInfo || null,
+            protocolContextNote: ctx.protocolContextNote || null,
             inputText: ctx.inputText,
             tier: ctx.tier || 'good'
         };
@@ -1394,6 +1396,7 @@ async function evaluateBundle(bundleText) {
                     primaryFailure: pf,
                     fastestFix: pf.fastestFix,
                     deltaPreview: dp || null,
+                    protocolContextNote: data.builderHandoff ? data.builderHandoff.protocolContextNote : null,
                     inputText: data.input ? data.input.bet_text : null,
                     signalInfo: si || null,
                     tier: tier || 'good'
@@ -1540,6 +1543,7 @@ async function evaluateBundle(bundleText) {
                     primaryFailure: pf,
                     fastestFix: pf.fastestFix,
                     deltaPreview: dp || null,
+                    protocolContextNote: data.builderHandoff ? data.builderHandoff.protocolContextNote : null,
                     inputText: data.input ? data.input.bet_text : null,
                     signalInfo: si || null,
                     tier: tier || 'good'
@@ -1857,6 +1861,7 @@ async function evaluateBundle(bundleText) {
                         primaryFailure: pf,
                         fastestFix: pf.fastestFix,
                         deltaPreview: dp || null,
+                        protocolContextNote: data.builderHandoff ? data.builderHandoff.protocolContextNote : null,
                         inputText: data.input ? data.input.bet_text : null,
                         signalInfo: si || null,
                         tier: data.input ? data.input.tier : 'good'
@@ -1924,6 +1929,7 @@ async function evaluateBundle(bundleText) {
                         primaryFailure: raw.primaryFailure,
                         fastestFix: raw.primaryFailure.fastestFix,
                         deltaPreview: raw.deltaPreview || null,
+                        protocolContextNote: raw.builderHandoff ? raw.builderHandoff.protocolContextNote : null,
                         inputText: raw.input ? raw.input.bet_text : (data.item.input_text || null),
                         signalInfo: raw.signalInfo || null,
                         tier: raw.input ? raw.input.tier : 'good'
@@ -1935,6 +1941,7 @@ async function evaluateBundle(bundleText) {
                         primaryFailure: raw.primaryFailure || null,
                         fastestFix: null,
                         deltaPreview: raw.deltaPreview || null,
+                        protocolContextNote: raw.builderHandoff ? raw.builderHandoff.protocolContextNote : null,
                         inputText: raw.input ? raw.input.bet_text : (data.item.input_text || null),
                         signalInfo: raw.signalInfo || null,
                         tier: raw.input ? raw.input.tier : 'good'
