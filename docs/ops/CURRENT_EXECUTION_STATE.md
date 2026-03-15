@@ -25,14 +25,14 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Carried the protocol-context signal into the Airlock-shaped Builder handoff so
-refinement can inherit the same bounded context signal as explanation and next
-action.
+Made the Builder handoff note visible in the live workbench path so refinement
+now shows the bounded context note instead of only carrying it in hidden state.
 
 Completed in:
 
 - `app/airlock.py`
 - `app/schemas/frontend_contracts.py`
+- `app/templates/app/index.html`
 - `app/web_assets/static/app.js`
 - `app/tests/test_airlock.py`
 - `app/tests/test_frontend_contracts.py`
@@ -57,6 +57,7 @@ Current runtime truth:
 - final verdict now includes a user-facing protocol context note when Sherlock context is active
 - `next_action` can now point users to schedule/availability/pace context when that bundle is active
 - Builder handoff now carries a user-safe `protocolContextNote` through Airlock
+- Builder workbench now renders that `protocolContextNote` in a compact refinement card
 
 ## 4. Latest Validation
 
@@ -64,13 +65,13 @@ Command:
 
 ```bash
 cd /Users/benaiahross/development/projects/betapp/app-src && \
-.venv312/bin/pytest app/tests/test_airlock.py app/tests/test_frontend_contracts.py app/tests/test_sherlock_integration.py -k 'builder_handoff or protocol_context_note or next_action_can_use_protocol_context' -q
+.venv312/bin/pytest app/tests/test_airlock.py app/tests/test_frontend_contracts.py -q
 ```
 
 Result:
 
 ```text
-4 passed
+34 passed
 ```
 
 ## 5. Known Debt
@@ -82,12 +83,12 @@ Result:
 
 ## 6. Exact Next Step
 
-Use the new Builder handoff note inside the live refine flow so Builder does
-something visible with the context, not just carries it.
+Use the same bounded protocol-context note to improve one concrete Builder fix
+action or refinement hint, not just display it.
 
 Recommended first slice:
 
-- add a compact Builder refinement guidance surface backed by `protocolContextNote`
+- tie `protocolContextNote` to a specific guided fix or refinement suggestion in Builder
 
 ## 7. Bootstrap Docs For Next Chat
 

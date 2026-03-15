@@ -9,6 +9,8 @@
     const builderWorkbench = document.getElementById('builder-workbench');
     const builderUpdating = document.getElementById('builder-updating');
     const toast = document.getElementById('toast');
+    const builderContextCard = document.getElementById('builder-context-card');
+    const builderContextNote = document.getElementById('builder-context-note');
 
     // Fastest Fix elements
     const fastestFixCard = document.getElementById('fastest-fix-card');
@@ -564,6 +566,22 @@
         }
     }
 
+    function renderBuilderProtocolContext() {
+        if (!builderContextCard || !builderContextNote) return;
+
+        const ctx = window._builderContext || {};
+        const note = typeof ctx.protocolContextNote === 'string' ? ctx.protocolContextNote.trim() : '';
+
+        if (!note) {
+            builderContextCard.style.display = 'none';
+            builderContextNote.textContent = '';
+            return;
+        }
+
+        builderContextNote.textContent = note;
+        builderContextCard.style.display = 'block';
+    }
+
     // ============================================================
     // ACTIONS
     // ============================================================
@@ -731,6 +749,7 @@
                 renderFastestFix();
                 renderDeltaPanel();
                 renderSaveButton();
+                renderBuilderProtocolContext();
                 renderLegList(); // Re-render to update affected markers
             } else {
                 console.error('Re-eval failed:', data);
@@ -841,6 +860,7 @@
         renderFastestFix();
         renderDeltaPanel();
         renderSaveButton();
+        renderBuilderProtocolContext();
     }
 
     // ============================================================
@@ -860,6 +880,7 @@
         // Clear context and return to evaluate
         window._fixContext = null;
         window._builderContext = null;
+        renderBuilderProtocolContext();
         switchToTab('evaluate');
     });
 
