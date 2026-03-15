@@ -25,8 +25,9 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Made the Builder handoff note visible in the live workbench path so refinement
-now shows the bounded context note instead of only carrying it in hidden state.
+Tied the Builder protocol-context note into the existing Fastest Fix card so the
+refinement surface now uses the note as part of fix reasoning instead of only
+displaying it separately.
 
 Completed in:
 
@@ -58,6 +59,7 @@ Current runtime truth:
 - `next_action` can now point users to schedule/availability/pace context when that bundle is active
 - Builder handoff now carries a user-safe `protocolContextNote` through Airlock
 - Builder workbench now renders that `protocolContextNote` in a compact refinement card
+- Builder Fastest Fix reasoning now incorporates the protocol-context note directly
 
 ## 4. Latest Validation
 
@@ -83,12 +85,12 @@ Result:
 
 ## 6. Exact Next Step
 
-Use the same bounded protocol-context note to improve one concrete Builder fix
-action or refinement hint, not just display it.
+Carry the same bounded protocol-context hint through one more live user-facing
+surface or tighten the active frontend ownership around the workbench path.
 
 Recommended first slice:
 
-- tie `protocolContextNote` to a specific guided fix or refinement suggestion in Builder
+- reuse the bounded protocol-context hint in the mounted `/app` result surface or simplify the duplicate Builder note/card path
 
 ## 7. Bootstrap Docs For Next Chat
 

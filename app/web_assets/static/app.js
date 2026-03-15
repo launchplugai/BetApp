@@ -501,12 +501,13 @@
         const ctx = window._builderContext || {};
         const pf = ctx.primaryFailure;
         const ff = ctx.fastestFix;
+        const protocolContextNote = typeof ctx.protocolContextNote === 'string' ? ctx.protocolContextNote.trim() : '';
 
         if (!ff || !ff.action) {
             fastestFixCard.classList.add('disabled');
             fastestFixAction.textContent = 'N/A';
-            fastestFixDescription.textContent = 'No fix available';
-            fastestFixReason.textContent = '';
+            fastestFixDescription.textContent = protocolContextNote ? 'Start by checking the context note below' : 'No fix available';
+            fastestFixReason.textContent = protocolContextNote ? 'Context: ' + protocolContextNote : '';
             fastestFixButton.disabled = true;
             fastestFixDisabledReason.classList.add('hidden');
             return;
@@ -528,6 +529,11 @@
             fastestFixReason.textContent = 'Why: ' + pf.description;
         } else {
             fastestFixReason.textContent = '';
+        }
+        if (protocolContextNote) {
+            fastestFixReason.textContent = fastestFixReason.textContent
+                ? fastestFixReason.textContent + ' Context: ' + protocolContextNote
+                : 'Context: ' + protocolContextNote;
         }
 
         // Check if action is supported
