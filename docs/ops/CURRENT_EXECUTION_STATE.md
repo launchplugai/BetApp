@@ -25,16 +25,13 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Used the thin Sherlock-facing request shape inside the live Sherlock hook for one bounded protocol-aware context path.
+Exposed the bounded Sherlock protocol context in normalized explainability/debug output.
 
 Completed in:
 
-- `app/sherlock_hook.py`
-- `app/pipeline.py`
-- `app/services/sherlock_dna_requests.py`
+- `app/explainability_adapter.py`
+- `app/tests/test_explainability_adapter.py`
 - `app/tests/test_sherlock_integration.py`
-- `app/tests/test_sherlock_dna_requests.py`
-- `app/tests/test_pipeline.py`
 
 ## 3. Current Architecture State
 
@@ -52,6 +49,7 @@ Current runtime truth:
 - pipeline builds and passes protocol fragments explicitly
 - Sherlock-facing request/response shape now exists for the NBA fatigue/injury/pace bundle
 - live Sherlock hook now carries bounded protocol-aware context for the NBA fatigue/injury/pace bundle
+- explainability output now exposes that protocol context as a normalized summary block
 
 ## 4. Latest Validation
 
@@ -59,29 +57,29 @@ Command:
 
 ```bash
 cd /Users/benaiahross/development/projects/betapp/app-src && \
-.venv312/bin/pytest app/tests/test_sherlock_dna_requests.py app/tests/test_sherlock_integration.py app/tests/test_dna_protocols.py app/tests/test_pipeline.py -q
+.venv312/bin/pytest app/tests/test_explainability_adapter.py app/tests/test_sherlock_integration.py -q
 ```
 
 Result:
 
 ```text
-86 passed
+40 passed
 ```
 
 ## 5. Known Debt
 
 - protocols still contain local reasoning logic after request resolution
-- Sherlock hook carries protocol-aware context, but still does not orchestrate broader fragment refinement
+- Sherlock hook carries protocol-aware context, but the broader Sherlock engine still does not perform fragment refinement cycles
 - bet/history outputs are not yet fully membrane-shaped
 - broad legacy UI tests still contain historical expectations and are not sprint gates
 
 ## 6. Exact Next Step
 
-Expose the bounded Sherlock protocol context more usefully to downstream explainability/debug surfaces without leaking backend-private structure.
+Connect the normalized protocol context block into the broader user-facing explanation path selectively, or use it to drive one richer Sherlock-aware recommendation/protocol summary.
 
 Recommended first slice:
 
-- add a normalized summary block or explainability mapping for the active protocol context bundle
+- map the protocol context bundle into one higher-level explanation or recommendation surface without exposing raw debug structure
 
 ## 7. Bootstrap Docs For Next Chat
 

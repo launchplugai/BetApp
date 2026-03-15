@@ -42,6 +42,7 @@ class BlockType(str, Enum):
     ARGUMENT_CON = "argument_con"
     VERDICT = "verdict"
     AUDIT = "audit"
+    PROTOCOL_CONTEXT = "protocol_context"
     DNA_PREVIEW = "dna_preview"
 
 
@@ -258,6 +259,43 @@ def _build_dna_preview_block(
     )
 
 
+def _build_protocol_context_block(
+    protocol_context: Dict[str, Any],
+    sequence: int,
+) -> ExplainabilityBlock:
+    """Build a normalized protocol context block for debug/explainability output."""
+    request = protocol_context.get("request", {}) or {}
+    fragments = protocol_context.get("fragments", {}) or {}
+    missing_fragments = protocol_context.get("missing_fragments", []) or []
+    bundle_id = request.get("protocol_bundle_id", "unknown_bundle")
+    resolved_fragment_types = list(fragments.keys())
+
+    headline = (
+        f"{bundle_id} resolved {len(resolved_fragment_types)} fragment(s)"
+        if resolved_fragment_types
+        else f"{bundle_id} resolved no fragments"
+    )
+    if missing_fragments:
+        headline += f"; missing {len(missing_fragments)}"
+
+    return ExplainabilityBlock(
+        block_type=BlockType.PROTOCOL_CONTEXT,
+        title="Protocol Context Bundle",
+        content={
+            "bundle_id": bundle_id,
+            "sport": request.get("sport", "unknown"),
+            "resolved_fragments": resolved_fragment_types,
+            "missing_fragments": missing_fragments,
+            "headline": headline,
+        },
+        metadata={
+            "request_id": request.get("request_id", ""),
+            "assumption_count": len(request.get("assumptions", []) or []),
+        },
+        sequence=sequence,
+    )
+
+
 # =============================================================================
 # Main Adapter Function
 # =============================================================================
@@ -315,7 +353,13 @@ def transform_sherlock_to_explainability(
     blocks.append(_build_audit_block(sherlock_result, sequence))
     sequence += 1
 
-    # Block 5: DNA Preview (if DNA recording was enabled)
+    # Block 5: Protocol Context (if present)
+    protocol_context = sherlock_result.get("protocol_context")
+    if protocol_context:
+        blocks.append(_build_protocol_context_block(protocol_context, sequence))
+        sequence += 1
+
+    # Next block: DNA Preview (if DNA recording was enabled)
     dna_artifact = sherlock_result.get("dna_artifact")
     if dna_artifact:
         blocks.append(_build_dna_preview_block(dna_artifact, sequence))
@@ -327,6 +371,7 @@ def transform_sherlock_to_explainability(
         "confidence": sherlock_result.get("confidence", 0.0),
         "audit_passed": sherlock_result.get("audit_passed", False),
         "iterations": sherlock_result.get("iterations_completed", 0),
+        "has_protocol_context": protocol_context is not None,
         "has_dna_preview": dna_artifact is not None,
     }
 

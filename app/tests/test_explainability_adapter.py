@@ -17,6 +17,7 @@ from app.explainability_adapter import (
     _build_claim_block,
     _build_verdict_block,
     _build_audit_block,
+    _build_protocol_context_block,
     _build_dna_preview_block,
 )
 
@@ -37,6 +38,7 @@ def minimal_sherlock_result():
         "confidence": 0.75,
         "audit_passed": True,
         "audit_score": 0.88,
+        "protocol_context": None,
         "dna_artifact": None,
     }
 
@@ -52,6 +54,21 @@ def full_sherlock_result():
         "confidence": 0.78,
         "audit_passed": True,
         "audit_score": 0.91,
+        "protocol_context": {
+            "request": {
+                "request_id": "req-123",
+                "protocol_bundle_id": "nba_fatigue_injury_pace_v1",
+                "sport": "nba",
+                "assumptions": ["Protocol bundle in use: nba_fatigue_injury_pace_v1"],
+            },
+            "fragments": {
+                "team_schedule_context": {},
+                "player_availability": {},
+                "game_tempo_context": {},
+                "market_sensitivity": {},
+            },
+            "missing_fragments": [],
+        },
         "dna_artifact": {
             "created_at": "2026-01-29T10:00:00+00:00",
             "sherlock_report_id": "rpt-123",
@@ -82,6 +99,7 @@ def failed_audit_sherlock_result():
         "confidence": 0.45,
         "audit_passed": False,
         "audit_score": 0.72,
+        "protocol_context": None,
         "dna_artifact": {
             "created_at": "2026-01-29T10:00:00+00:00",
             "sherlock_report_id": "rpt-456",
@@ -112,6 +130,7 @@ def disabled_sherlock_result():
         "confidence": 0.0,
         "audit_passed": False,
         "audit_score": 0.0,
+        "protocol_context": None,
         "dna_artifact": None,
     }
 
@@ -140,7 +159,7 @@ class TestTransformSherlockToExplainability:
         assert result.generated_at is not None
 
     def test_minimal_result_produces_four_blocks(self, minimal_sherlock_result):
-        """Minimal result without DNA produces 4 blocks."""
+        """Minimal result without protocol context or DNA produces 4 blocks."""
         result = transform_sherlock_to_explainability(minimal_sherlock_result)
 
         assert result is not None
@@ -155,16 +174,17 @@ class TestTransformSherlockToExplainability:
         assert BlockType.AUDIT in block_types
         assert BlockType.DNA_PREVIEW not in block_types
 
-    def test_full_result_produces_five_blocks(self, full_sherlock_result):
-        """Full result with DNA produces 5 blocks."""
+    def test_full_result_produces_six_blocks(self, full_sherlock_result):
+        """Full result with protocol context and DNA produces 6 blocks."""
         result = transform_sherlock_to_explainability(full_sherlock_result)
 
         assert result is not None
         assert result.enabled is True
-        assert len(result.blocks) == 5
+        assert len(result.blocks) == 6
 
         # Verify DNA preview block is included
         block_types = [b.block_type for b in result.blocks]
+        assert BlockType.PROTOCOL_CONTEXT in block_types
         assert BlockType.DNA_PREVIEW in block_types
 
     def test_blocks_have_sequential_ordering(self, full_sherlock_result):
@@ -172,7 +192,7 @@ class TestTransformSherlockToExplainability:
         result = transform_sherlock_to_explainability(full_sherlock_result)
 
         sequences = [b.sequence for b in result.blocks]
-        assert sequences == [0, 1, 2, 3, 4]
+        assert sequences == [0, 1, 2, 3, 4, 5]
 
     def test_summary_contains_key_fields(self, full_sherlock_result):
         """Summary should contain verdict, confidence, audit status."""
@@ -182,6 +202,7 @@ class TestTransformSherlockToExplainability:
         assert result.summary["confidence"] == 0.78
         assert result.summary["audit_passed"] is True
         assert result.summary["iterations"] == 3
+        assert result.summary["has_protocol_context"] is True
         assert result.summary["has_dna_preview"] is True
 
     def test_to_dict_serialization(self, minimal_sherlock_result):
@@ -345,6 +366,45 @@ class TestDNAPreviewBlock:
 
         assert block.metadata["sherlock_report_id"] == "rpt-123"
         assert block.metadata["preview_only"] is True
+
+
+class TestProtocolContextBlock:
+    """Tests for protocol context block builder."""
+
+    def test_builds_correct_structure(self, full_sherlock_result):
+        protocol_context = full_sherlock_result["protocol_context"]
+        block = _build_protocol_context_block(protocol_context, 4)
+
+        assert block.block_type == BlockType.PROTOCOL_CONTEXT
+        assert block.title == "Protocol Context Bundle"
+        assert block.content["bundle_id"] == "nba_fatigue_injury_pace_v1"
+        assert block.content["sport"] == "nba"
+        assert block.content["resolved_fragments"] == [
+            "team_schedule_context",
+            "player_availability",
+            "game_tempo_context",
+            "market_sensitivity",
+        ]
+        assert block.content["missing_fragments"] == []
+        assert "resolved 4 fragment(s)" in block.content["headline"]
+
+    def test_missing_fragments_are_summarized(self):
+        block = _build_protocol_context_block(
+            {
+                "request": {
+                    "request_id": "req-123",
+                    "protocol_bundle_id": "nba_fatigue_injury_pace_v1",
+                    "sport": "nba",
+                    "assumptions": [],
+                },
+                "fragments": {"team_schedule_context": {}},
+                "missing_fragments": ["player_availability", "game_tempo_context"],
+            },
+            0,
+        )
+
+        assert block.content["missing_fragments"] == ["player_availability", "game_tempo_context"]
+        assert "missing 2" in block.content["headline"]
 
 
 # =============================================================================

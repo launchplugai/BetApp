@@ -402,7 +402,7 @@ def test_debug_explainability_when_sherlock_enabled():
         # Should have blocks
         assert "blocks" in result.debug_explainability
         blocks = result.debug_explainability["blocks"]
-        assert len(blocks) >= 4  # At minimum: summary, claim, verdict, audit
+        assert len(blocks) >= 5  # summary, claim, verdict, audit, protocol context
 
         # Verify block types
         block_types = [b["block_type"] for b in blocks]
@@ -410,6 +410,7 @@ def test_debug_explainability_when_sherlock_enabled():
         assert "claim" in block_types
         assert "verdict" in block_types
         assert "audit" in block_types
+        assert "protocol_context" in block_types
 
         # Should have summary
         assert "summary" in result.debug_explainability
@@ -417,6 +418,7 @@ def test_debug_explainability_when_sherlock_enabled():
         assert "verdict" in summary
         assert "confidence" in summary
         assert "audit_passed" in summary
+        assert summary["has_protocol_context"] is True
 
 
 def test_debug_explainability_none_when_sherlock_disabled():
@@ -473,12 +475,13 @@ def test_debug_explainability_includes_dna_preview_when_enabled():
         assert result.debug_explainability is not None
         assert result.debug_explainability["enabled"] is True
 
-        # Should have 5 blocks including DNA preview
+        # Should have 6 blocks including protocol context and DNA preview
         blocks = result.debug_explainability["blocks"]
-        assert len(blocks) == 5
+        assert len(blocks) == 6
 
         # Verify DNA preview block is present
         block_types = [b["block_type"] for b in blocks]
+        assert "protocol_context" in block_types
         assert "dna_preview" in block_types
 
         # Find and verify DNA preview block
