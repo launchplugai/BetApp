@@ -25,13 +25,13 @@ Frontend
 
 ## 2. Most Recent Completed Slice
 
-Mapped the normalized Sherlock protocol context into the user-facing final verdict path.
+Used the protocol-context signal to sharpen the user-facing `next_action` guidance path.
 
 Completed in:
 
 - `app/pipeline.py`
 - `app/tests/test_sherlock_integration.py`
-- `app/tests/test_web.py`
+- `app/tests/test_s7_next_action.py`
 
 ## 3. Current Architecture State
 
@@ -51,6 +51,7 @@ Current runtime truth:
 - live Sherlock hook now carries bounded protocol-aware context for the NBA fatigue/injury/pace bundle
 - explainability output now exposes that protocol context as a normalized summary block
 - final verdict now includes a user-facing protocol context note when Sherlock context is active
+- `next_action` can now point users to schedule/availability/pace context when that bundle is active
 
 ## 4. Latest Validation
 
@@ -58,13 +59,13 @@ Command:
 
 ```bash
 cd /Users/benaiahross/development/projects/betapp/app-src && \
-.venv312/bin/pytest app/tests/test_sherlock_integration.py app/tests/test_web.py -k final_verdict -q
+.venv312/bin/pytest app/tests/test_sherlock_integration.py app/tests/test_s7_next_action.py -q
 ```
 
 Result:
 
 ```text
-2 passed
+18 passed
 ```
 
 ## 5. Known Debt
@@ -76,11 +77,11 @@ Result:
 
 ## 6. Exact Next Step
 
-Use the same protocol-context signal to improve one recommendation or builder-refinement path, not just the final verdict.
+Carry the same protocol-context signal into Builder handoff or guided refinement so the fix path is also context-aware.
 
 Recommended first slice:
 
-- use protocol context to sharpen `next_action` or a guided Builder handoff suggestion
+- use protocol context to sharpen Builder handoff / refine-in-builder guidance
 
 ## 7. Bootstrap Docs For Next Chat
 

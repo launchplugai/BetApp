@@ -516,3 +516,31 @@ def test_final_verdict_includes_protocol_context_note_when_sherlock_enabled():
         assert result.final_verdict["protocol_context_note"] is not None
         assert "context was checked before this read" in result.final_verdict["protocol_context_note"].lower()
         assert "context was checked before this read" in result.final_verdict["verdict_text"].lower()
+
+
+def test_next_action_can_use_protocol_context_when_sherlock_enabled():
+    with patch.dict(os.environ, {
+        "SHERLOCK_ENABLED": "true",
+        "DNA_RECORDING_ENABLED": "false",
+    }):
+        import importlib
+        import app.config
+        importlib.reload(app.config)
+
+        import app.pipeline
+        importlib.reload(app.pipeline)
+
+        from app.pipeline import run_evaluation
+        from app.airlock import NormalizedInput, Tier
+
+        test_input = NormalizedInput(
+            input_text="Lakers ML + LeBron over 25.5 points + game over 228.5",
+            tier=Tier.GOOD,
+        )
+
+        result = run_evaluation(test_input)
+
+        assert result.next_action is not None
+        assert result.signal_info["signal"] in {"yellow", "red"}
+        assert "check the" in result.next_action["suggestion"].lower()
+        assert "context before finalizing this bet" in result.next_action["suggestion"].lower()

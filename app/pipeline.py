@@ -1898,6 +1898,38 @@ def _build_protocol_context_note(sherlock_result: Optional[dict]) -> Optional[st
     return f"{joined.capitalize()} context was checked before this read."
 
 
+def _build_protocol_context_action(sherlock_result: Optional[dict]) -> Optional[str]:
+    """Build a compact action-oriented phrase from normalized Sherlock protocol context."""
+    if not sherlock_result:
+        return None
+
+    protocol_context = sherlock_result.get("protocol_context") or {}
+    request = protocol_context.get("request", {}) or {}
+    if request.get("protocol_bundle_id") != "nba_fatigue_injury_pace_v1":
+        return None
+
+    fragments = protocol_context.get("fragments") or {}
+    labels = []
+    if "team_schedule_context" in fragments:
+        labels.append("schedule")
+    if "player_availability" in fragments:
+        labels.append("availability")
+    if "game_tempo_context" in fragments:
+        labels.append("pace")
+
+    if not labels:
+        return None
+
+    if len(labels) == 1:
+        joined = labels[0]
+    elif len(labels) == 2:
+        joined = f"{labels[0]} and {labels[1]}"
+    else:
+        joined = ", ".join(labels[:-1]) + f", and {labels[-1]}"
+
+    return f"Check the {joined} context before finalizing this bet"
+
+
 def _build_final_verdict(
     evaluation,
     blocks,
@@ -2062,6 +2094,7 @@ def _build_gentle_guidance(primary_failure: dict, signal_info: dict) -> Optional
 def _build_next_action_guidance(
     signal_info: dict,
     primary_failure: Optional[dict],
+    sherlock_result: Optional[dict] = None,
     has_fix: bool = False,
     has_warnings: bool = False,
     has_correlations: bool = False
@@ -2082,6 +2115,7 @@ def _build_next_action_guidance(
         return None
 
     signal = signal_info.get("signal", "yellow")
+    protocol_context_action = _build_protocol_context_action(sherlock_result)
 
     # Priority logic: most urgent action first
     
@@ -2093,6 +2127,10 @@ def _build_next_action_guidance(
     if signal == "red":
         return {"suggestion": "Review the primary failure details to understand the risk"}
     
+    # Yellow signal + warnings → point to warnings
+    if signal == "yellow" and protocol_context_action:
+        return {"suggestion": protocol_context_action}
+
     # Yellow signal + warnings → point to warnings
     if signal == "yellow" and has_warnings:
         return {"suggestion": "Review the warnings before finalizing this bet"}
@@ -2880,6 +2918,7 @@ def run_evaluation(normalized: NormalizedInput) -> PipelineResponse:
     next_action = _build_next_action_guidance(
         signal_info=signal_info,
         primary_failure=primary_failure,
+        sherlock_result=sherlock_result,
         has_fix=has_fix,
         has_warnings=has_warnings,
         has_correlations=has_correlations
