@@ -3,6 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
+from sqlalchemy.exc import OperationalError
 
 from app.main import app
 from app.models import User, Bet, get_session, init_db
@@ -135,6 +136,8 @@ class TestBetHistoryEndpoint:
         assert data["bets"][0]["id"] == "bet_123"
         assert data["bets"][0]["status"] == "pending"
         assert data["bets"][0]["confidence"] == 65
+        assert data["bets"][0]["inputText"] == "Lakers ML + Warriors spread"
+        assert data["bets"][0]["evaluationId"] is None
         assert data["total"] == 1
 
     @patch('app.routers.bets.get_current_user_from_token')
@@ -239,6 +242,120 @@ class TestBetDetailEndpoint:
         assert data["status"] == "won"
         assert data["wager"] == 5000
         assert data["actual_payout"] == 9500
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_bet_detail_includes_replay_payload(self, mock_get_session, mock_get_user, client, mock_user):
+        """Persisted bet detail exposes additive replay context for the new frontend."""
+        mock_get_user.return_value = mock_user
+
+        mock_bet = Bet(
+            id="bet_456",
+            user_id=mock_user.id,
+            evaluation_id="eval_456",
+            input_text="Lakers ML + Celtics ML",
+            legs=[{"entity": "Lakers", "market": "moneyline"}],
+            wager=5000,
+            status="pending",
+            verdict="Fixable",
+            confidence=63,
+        )
+
+        mock_eval_record = MagicMock()
+        mock_eval_record.meta = {"tier": "better"}
+        mock_eval_record.recommendation_details = {
+            "primary_failure": {
+                "type": "stacked_risk",
+                "fastestFix": {"action": "trim_legs", "description": "Cut one leg"},
+            }
+        }
+        mock_eval_record.triggered_protocols = ["schedule_check"]
+
+        mock_db = MagicMock()
+        mock_bet_query = MagicMock()
+        mock_bet_query.filter.return_value = mock_bet_query
+        mock_bet_query.first.return_value = mock_bet
+
+        mock_eval_query = MagicMock()
+        mock_eval_query.filter.return_value = mock_eval_query
+        mock_eval_query.first.return_value = mock_eval_record
+
+        def mock_query_side_effect(model):
+            model_name = getattr(model, "__name__", "")
+            if model_name == "Bet":
+                return mock_bet_query
+            if model_name == "EvaluationLog":
+                return mock_eval_query
+            fallback_query = MagicMock()
+            fallback_query.filter_by.return_value.first.return_value = None
+            return fallback_query
+
+        mock_db.query.side_effect = mock_query_side_effect
+        mock_get_session.return_value = mock_db
+
+        response = client.get(
+            "/api/bets/bet_456",
+            headers={"Authorization": "Bearer valid_token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["evaluationId"] == "eval_456"
+        assert data["replay"]["evaluationId"] == "eval_456"
+        assert data["replay"]["builderHandoff"]["inputText"] == "Lakers ML + Celtics ML"
+        assert data["replay"]["builderHandoff"]["fastestFix"]["action"] == "trim_legs"
+        assert data["replay"]["triggeredProtocols"] == ["schedule_check"]
+
+    @patch('app.routers.bets.get_current_user_from_token')
+    @patch('app.routers.bets.get_session')
+    def test_bet_detail_survives_missing_evaluation_log_table(self, mock_get_session, mock_get_user, client, mock_user):
+        """Bet detail should still work when evaluation log enrichment is unavailable."""
+        mock_get_user.return_value = mock_user
+
+        mock_bet = Bet(
+            id="bet_789",
+            user_id=mock_user.id,
+            evaluation_id="eval_789",
+            input_text="Knicks ML",
+            legs=[{"entity": "Knicks", "market": "moneyline"}],
+            wager=2500,
+            status="pending",
+            verdict="Stored bet",
+            confidence=52,
+        )
+
+        mock_db = MagicMock()
+        mock_bet_query = MagicMock()
+        mock_bet_query.filter.return_value = mock_bet_query
+        mock_bet_query.first.return_value = mock_bet
+
+        mock_eval_query = MagicMock()
+        mock_eval_query.filter.side_effect = OperationalError("select", {}, Exception("missing table"))
+
+        def mock_query_side_effect(model):
+            model_name = getattr(model, "__name__", "")
+            if model_name == "Bet":
+                return mock_bet_query
+            if model_name == "EvaluationLog":
+                return mock_eval_query
+            fallback_query = MagicMock()
+            fallback_query.filter_by.return_value.first.return_value = None
+            return fallback_query
+
+        mock_db.query.side_effect = mock_query_side_effect
+        mock_get_session.return_value = mock_db
+
+        response = client.get(
+            "/api/bets/bet_789",
+            headers={"Authorization": "Bearer valid_token"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["evaluationId"] == "eval_789"
+        assert data["replay"]["evaluationId"] == "eval_789"
+        assert data["replay"]["signalInfo"]["source"] == "bet_fallback"
+        assert data["replay"]["signalInfo"]["isDerivedFallback"] is True
 
 
 class TestBetCreateEndpoint:

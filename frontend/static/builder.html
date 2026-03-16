@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BetApp Builder Handoff</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="console-bar">
+        <div>
+          <p class="eyebrow">BetApp frontend console</p>
+          <h1>Builder handoff terminal</h1>
+        </div>
+        <nav class="console-nav" aria-label="Primary">
+          <a class="console-link" href="/">Evaluate</a>
+          <a class="console-link" href="/review">OCR Review</a>
+          <a class="console-link is-active" href="/builder">Builder</a>
+          <a class="console-link" href="/history">History</a>
+        </nav>
+      </section>
+
+      <section class="hero-card">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Stage 3</p>
+            <h2>Builder handoff</h2>
+            <p class="lede">
+              This console preserves Evaluate context so the next step is a continuation, not a
+              reset. It is state-first today, with the backend handoff contract still to be formalized.
+            </p>
+          </div>
+          <dl class="console-facts">
+            <div>
+              <dt>Route</dt>
+              <dd><code>/builder</code></dd>
+            </div>
+            <div>
+              <dt>Source</dt>
+              <dd><code>localStorage builderHandoff</code></dd>
+            </div>
+            <div>
+              <dt>Action</dt>
+              <dd><code>Re-evaluate saved context</code></dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Current handoff</h2>
+            <span>Frozen frontend state</span>
+          </div>
+
+          <p id="builder-status" class="status">No Builder handoff saved yet.</p>
+
+          <dl class="summary-grid">
+            <div>
+              <dt>evaluationId</dt>
+              <dd id="builder-evaluation-id">missing</dd>
+            </div>
+            <div>
+              <dt>Tier</dt>
+              <dd id="builder-tier">unknown</dd>
+            </div>
+            <div>
+              <dt>Primary failure</dt>
+              <dd id="builder-primary-failure-label">unknown</dd>
+            </div>
+            <div>
+              <dt>Fastest fix</dt>
+              <dd id="builder-fastest-fix-label">unknown</dd>
+            </div>
+          </dl>
+
+          <div class="result-block">
+            <h3>Input text</h3>
+            <pre id="builder-input-text">{}</pre>
+          </div>
+
+          <div class="actions">
+            <button id="reuse-evaluate-btn" type="button">Re-evaluate this handoff</button>
+            <button id="clear-handoff-btn" type="button" class="secondary-button">Clear handoff</button>
+          </div>
+        </section>
+
+        <section class="panel result-panel">
+          <div class="panel-header">
+            <h2>Fix context</h2>
+            <span>Continuation payload inspection</span>
+          </div>
+
+          <div class="result-block">
+            <h3>Primary failure</h3>
+            <pre id="builder-primary-failure">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Fastest fix</h3>
+            <pre id="builder-fastest-fix">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Delta preview</h3>
+            <pre id="builder-delta-preview">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Signal info</h3>
+            <pre id="builder-signal-info">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Saved handoff payload</h3>
+            <pre id="builder-handoff-json">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Latest re-evaluation</h3>
+            <pre id="builder-reeval-json">{}</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/builder.js" type="module"></script>
+  </body>
+  </html>

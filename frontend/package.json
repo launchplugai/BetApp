@@ -1,0 +1,25 @@
+{
+  "name": "betapp-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "build": "node -e \"console.log('No build step for the fallback frontend dev server yet.')\"",
+    "start": "node dev-server.mjs",
+    "lint": "node -e \"console.log('Lint not wired until the Next toolchain is healthy.')\"",
+    "typecheck": "node -e \"console.log('Typecheck deferred until the Next toolchain is healthy.')\""
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.66.0",
+    "next": "^15.2.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BetApp OCR Review</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="console-bar">
+        <div>
+          <p class="eyebrow">BetApp frontend console</p>
+          <h1>OCR review terminal</h1>
+        </div>
+        <nav class="console-nav" aria-label="Primary">
+          <a class="console-link" href="/">Evaluate</a>
+          <a class="console-link is-active" href="/review">OCR Review</a>
+          <a class="console-link" href="/builder">Builder</a>
+          <a class="console-link" href="/history">History</a>
+        </nav>
+      </section>
+
+      <section class="hero-card">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Stage 2</p>
+            <h2>Review before Evaluate</h2>
+            <p class="lede">
+              This console stops at OCR extraction and review. It is deliberately separate from
+              evaluation so the frontend owns correction before the slip moves deeper into the flow.
+            </p>
+          </div>
+          <dl class="console-facts">
+            <div>
+              <dt>Route</dt>
+              <dd><code>/review</code></dd>
+            </div>
+            <div>
+              <dt>Contract</dt>
+              <dd><code>POST /api/ocr/review</code></dd>
+            </div>
+            <div>
+              <dt>Output</dt>
+              <dd><code>rawText + detectedLegs + requiresReview</code></dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Upload image</h2>
+            <span>Contract: POST /api/ocr/review</span>
+          </div>
+
+          <label class="field">
+            <span>API base URL</span>
+            <input id="api-base" type="url" value="http://localhost:8000" />
+          </label>
+
+          <label class="upload-zone" for="ocr-file">
+            <span id="upload-label">Choose a slip screenshot</span>
+            <input id="ocr-file" type="file" accept="image/*" class="sr-only" />
+          </label>
+
+          <p id="status" class="status"></p>
+        </section>
+
+        <section class="panel result-panel">
+          <div class="panel-header">
+            <h2>Review payload</h2>
+            <span>Trust gate inspection</span>
+          </div>
+
+          <dl class="summary-grid">
+            <div>
+              <dt>requestId</dt>
+              <dd id="request-id">not loaded</dd>
+            </div>
+            <div>
+              <dt>Confidence</dt>
+              <dd id="confidence">0%</dd>
+            </div>
+            <div>
+              <dt>Requires review</dt>
+              <dd id="requires-review">unknown</dd>
+            </div>
+            <div>
+              <dt>Detected legs</dt>
+              <dd id="leg-count">0</dd>
+            </div>
+          </dl>
+
+          <div class="result-block">
+            <h3>Detected legs</h3>
+            <div id="legs-empty" class="status">Upload an image to inspect the OCR review payload.</div>
+            <ul id="leg-list" class="leg-list"></ul>
+          </div>
+
+          <div class="result-block">
+            <h3>Raw OCR text</h3>
+            <pre id="raw-text">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Full response</h3>
+            <pre id="response-json">{}</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/review.js" type="module"></script>
+  </body>
+  </html>

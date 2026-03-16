@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BetApp History</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="console-bar">
+        <div>
+          <p class="eyebrow">BetApp frontend console</p>
+          <h1>History replay terminal</h1>
+        </div>
+        <nav class="console-nav" aria-label="Primary">
+          <a class="console-link" href="/">Evaluate</a>
+          <a class="console-link" href="/review">OCR Review</a>
+          <a class="console-link" href="/builder">Builder</a>
+          <a class="console-link is-active" href="/history">History</a>
+        </nav>
+      </section>
+
+      <section class="hero-card">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Stage 4</p>
+            <h2>Replay and receipts</h2>
+            <p class="lede">
+              This console makes the split explicit: persisted bet history is the canonical base,
+              while legacy evaluation history still exists as migration support for replay and refine loops.
+            </p>
+          </div>
+          <dl class="console-facts">
+            <div>
+              <dt>Route</dt>
+              <dd><code>/history</code></dd>
+            </div>
+            <div>
+              <dt>Canonical base</dt>
+              <dd><code>GET /api/bets/history</code></dd>
+            </div>
+            <div>
+              <dt>Support path</dt>
+              <dd><code>GET /app/history</code></dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Persisted bet history</h2>
+            <span>Canonical base: GET /api/bets/history</span>
+          </div>
+
+          <label class="field">
+            <span>API base URL</span>
+            <input id="api-base" type="url" value="http://localhost:8000" />
+          </label>
+
+          <label class="field">
+            <span>Bearer token</span>
+            <input id="auth-token" type="password" placeholder="Optional for authenticated bet history" />
+          </label>
+
+          <div class="actions">
+            <button id="load-bets-btn" type="button">Load bet history</button>
+          </div>
+
+          <p id="bets-status" class="status"></p>
+          <ul id="bets-list" class="record-list"></ul>
+        </section>
+
+        <section class="panel result-panel">
+          <div class="panel-header">
+            <h2>Replay history</h2>
+            <span>Dev support: GET /app/history</span>
+          </div>
+
+          <div class="actions">
+            <button id="load-replay-btn" type="button">Load replay history</button>
+          </div>
+
+          <p id="replay-status" class="status"></p>
+          <ul id="replay-list" class="record-list"></ul>
+        </section>
+      </section>
+
+      <section class="panel history-detail-panel">
+        <div class="panel-header">
+          <h2>Selected history detail</h2>
+          <span>Replay to Builder when available</span>
+        </div>
+
+        <div class="actions">
+          <button id="load-bet-detail-btn" type="button" class="secondary-button">Load selected bet detail</button>
+          <button id="send-to-builder-btn" type="button">Send replay to Builder</button>
+        </div>
+
+        <p id="detail-status" class="status">No history detail loaded yet.</p>
+
+        <div class="result-block">
+          <h3>Summary</h3>
+          <pre id="history-summary">{}</pre>
+        </div>
+
+        <div class="result-block">
+          <h3>Replay payload</h3>
+          <pre id="history-replay">{}</pre>
+        </div>
+
+        <div class="result-block">
+          <h3>Full detail</h3>
+          <pre id="history-detail-json">{}</pre>
+        </div>
+      </section>
+    </main>
+
+    <script src="/history.js" type="module"></script>
+  </body>
+  </html>

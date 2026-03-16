@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BetApp Evaluate</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <section class="console-bar">
+        <div>
+          <p class="eyebrow">BetApp frontend console</p>
+          <h1>Evaluate contract terminal</h1>
+        </div>
+        <nav class="console-nav" aria-label="Primary">
+          <a class="console-link is-active" href="/">Evaluate</a>
+          <a class="console-link" href="/review">OCR Review</a>
+          <a class="console-link" href="/builder">Builder</a>
+          <a class="console-link" href="/history">History</a>
+        </nav>
+      </section>
+
+      <section class="hero-card">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Stage 1</p>
+            <h2>Evaluate-first workbench</h2>
+            <p class="lede">
+              This console is for contract and flow verification. It shows what the frontend sends,
+              what the backend returns, and what gets persisted into Builder handoff state.
+            </p>
+          </div>
+          <dl class="console-facts">
+            <div>
+              <dt>Route</dt>
+              <dd><code>/</code></dd>
+            </div>
+            <div>
+              <dt>Contract</dt>
+              <dd><code>POST /app/evaluate</code></dd>
+            </div>
+            <div>
+              <dt>Output</dt>
+              <dd><code>evaluationId + builderHandoff</code></dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <form id="evaluate-form" class="panel">
+          <div class="panel-header">
+            <h2>Evaluate text input</h2>
+            <span>Contract: POST /app/evaluate</span>
+          </div>
+
+          <label class="field">
+            <span>API base URL</span>
+            <input id="api-base" type="url" value="http://localhost:8000" />
+          </label>
+
+          <label class="field">
+            <span>Slip text</span>
+            <textarea
+              id="input"
+              rows="10"
+              placeholder="Paste a parlay or ticket text here"
+              required
+            ></textarea>
+          </label>
+
+          <label class="field">
+            <span>Tier</span>
+            <select id="tier">
+              <option value="GOOD">GOOD</option>
+              <option value="BETTER" selected>BETTER</option>
+              <option value="BEST">BEST</option>
+            </select>
+          </label>
+
+          <div class="actions">
+            <button type="submit" id="submit-btn">Evaluate</button>
+            <a class="secondary-link" href="/builder">Go to Builder</a>
+          </div>
+
+          <p id="status" class="status"></p>
+        </form>
+
+        <section class="panel result-panel">
+          <div class="panel-header">
+            <h2>Response console</h2>
+            <span>Frozen payload inspection</span>
+          </div>
+
+          <dl class="summary-grid">
+            <div>
+              <dt>evaluationId</dt>
+              <dd id="evaluation-id">not loaded</dd>
+            </div>
+            <div>
+              <dt>Builder handoff</dt>
+              <dd id="builder-ready">not loaded</dd>
+            </div>
+            <div>
+              <dt>Protocols</dt>
+              <dd id="protocol-count">0</dd>
+            </div>
+            <div>
+              <dt>Tier</dt>
+              <dd id="result-tier">unknown</dd>
+            </div>
+          </dl>
+
+          <div class="result-block">
+            <h3>Builder handoff snapshot</h3>
+            <pre id="builder-handoff">{}</pre>
+          </div>
+
+          <div class="result-block">
+            <h3>Full response</h3>
+            <pre id="response-json">{}</pre>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+  </html>

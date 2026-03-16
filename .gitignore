@@ -68,3 +68,6 @@ uv.lock
 node_modules/
 test-results/
 .tmp/
+*.tsbuildinfo
+frontend/.tmp/
+frontend/node_modules_partial_*/

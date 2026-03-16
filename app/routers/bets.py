@@ -13,6 +13,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.services.auth import get_current_user_from_token
 from app.models import Bet, Transaction, User, get_session
+from app.repositories.governance import EvaluationLogRepository
 from app.services.constraint_checker import ConstraintChecker
 
 log = logging.getLogger(__name__)
@@ -35,7 +36,9 @@ class BetLeg(BaseModel):
 class BetHistoryItem(BaseModel):
     id: str
     evaluation_id: Optional[str] = None
+    evaluationId: Optional[str] = None
     input_text: str
+    inputText: Optional[str] = None
     legs: List[BetLeg]
     wager: int
     total_odds: Optional[int]
@@ -45,6 +48,7 @@ class BetHistoryItem(BaseModel):
     verdict: Optional[str]
     confidence: Optional[int]
     created_at: str
+    createdAt: Optional[str] = None
     settled_at: Optional[str]
     # S21-E: DNA receipt fields
     user_dna_snapshot_id: Optional[str] = None
@@ -56,6 +60,63 @@ class BetHistoryResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+def _build_persisted_history_replay(*, bet: Bet, evaluation_record: Any | None) -> Dict[str, Any]:
+    """Build additive replay context for persisted bet detail."""
+    evaluation_meta = (getattr(evaluation_record, "meta", None) or {}) if evaluation_record else {}
+    recommendation_details = (
+        getattr(evaluation_record, "recommendation_details", None) or {}
+    ) if evaluation_record else {}
+    primary_failure = recommendation_details.get("primary_failure") or {}
+    fastest_fix = primary_failure.get("fastestFix") or primary_failure.get("fastest_fix")
+
+    signal_info = None
+    if evaluation_record:
+        signal_info = {
+            "confidence": getattr(bet, "confidence", None),
+            "status": getattr(bet, "status", None),
+            "riskProfile": getattr(bet, "risk_profile_at_bet", None),
+            "source": "evaluation_log",
+        }
+    elif getattr(bet, "confidence", None) is not None or getattr(bet, "verdict", None):
+        signal_info = {
+            "signal": (
+                "green"
+                if isinstance(getattr(bet, "confidence", None), int) and bet.confidence >= 70
+                else "yellow"
+                if isinstance(getattr(bet, "confidence", None), int) and bet.confidence >= 45
+                else "red"
+            ),
+            "label": getattr(bet, "verdict", None) or "Stored bet",
+            "grade": None,
+            "confidence": getattr(bet, "confidence", None),
+            "status": getattr(bet, "status", None),
+            "riskProfile": getattr(bet, "risk_profile_at_bet", None),
+            "source": "bet_fallback",
+            "isDerivedFallback": True,
+        }
+
+    builder_handoff = {
+        "evaluationId": getattr(bet, "evaluation_id", None),
+        "inputText": getattr(bet, "input_text", "") or "",
+        "tier": evaluation_meta.get("tier") or "good",
+        "primaryFailure": primary_failure or None,
+        "fastestFix": fastest_fix or None,
+        "deltaPreview": None,
+        "signalInfo": signal_info,
+        "protocolContextNote": None,
+    }
+
+    return {
+        "evaluationId": getattr(bet, "evaluation_id", None),
+        "inputText": getattr(bet, "input_text", "") or "",
+        "tier": evaluation_meta.get("tier") or "good",
+        "builderHandoff": builder_handoff,
+        "signalInfo": signal_info,
+        "primaryFailure": primary_failure or None,
+        "triggeredProtocols": list(getattr(evaluation_record, "triggered_protocols", None) or []),
+    }
 
 
 # =============================================================================
@@ -135,7 +196,9 @@ async def get_bet_history(
         bet_items.append(BetHistoryItem(
             id=bet.id,
             evaluation_id=bet.evaluation_id if isinstance(getattr(bet, "evaluation_id", None), str) else None,
+            evaluationId=bet.evaluation_id if isinstance(getattr(bet, "evaluation_id", None), str) else None,
             input_text=bet.input_text,
+            inputText=bet.input_text,
             legs=leg_items,
             wager=bet.wager or 0,
             total_odds=bet.total_odds,
@@ -145,6 +208,7 @@ async def get_bet_history(
             verdict=bet.verdict,
             confidence=bet.confidence,
             created_at=bet.created_at.isoformat() if bet.created_at else "",
+            createdAt=bet.created_at.isoformat() if bet.created_at else "",
             settled_at=bet.settled_at.isoformat() if bet.settled_at else None,
             user_dna_snapshot_id=bet.user_dna_snapshot_id,
             risk_profile_at_bet=bet.risk_profile_at_bet
@@ -163,7 +227,7 @@ async def get_bet_detail(
     bet_id: str,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Get single bet details by ID with DNA receipt info."""
+    """Get single bet details by ID with DNA receipt and additive replay info."""
     from app.models.user_dna_snapshot import UserDnaSnapshot
     
     user = get_current_user_from_token(credentials.credentials)
@@ -179,7 +243,21 @@ async def get_bet_detail(
     
     # Build response with DNA receipt info
     response = bet.to_dict()
-    
+    response["evaluationId"] = response.get("evaluation_id")
+    response["inputText"] = response.get("input_text")
+    response["createdAt"] = response.get("created_at")
+
+    evaluation_record = None
+    if bet.evaluation_id:
+        try:
+            evaluation_record = EvaluationLogRepository(db).get_by_evaluation_id(bet.evaluation_id)
+        except OperationalError:
+            evaluation_record = None
+    response["replay"] = _build_persisted_history_replay(
+        bet=bet,
+        evaluation_record=evaluation_record,
+    )
+
     # S21-E: Include DNA snapshot details if available
     if bet.user_dna_snapshot_id:
         snapshot = db.query(UserDnaSnapshot).filter_by(id=bet.user_dna_snapshot_id).first()
