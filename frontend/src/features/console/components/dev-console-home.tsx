@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { DevConsoleShell } from "@/components/dev-console-shell";
 import { EvaluationEnvelopeView } from "@/components/evaluation-envelope-view";
@@ -14,13 +14,11 @@ import {
 } from "@/lib/mocks/evaluation-envelope";
 import {
   type DevMode,
-  getStoredApiBaseUrl,
-  getStoredAuthToken,
-  getStoredDevMode,
   setStoredApiBaseUrl,
   setStoredAuthToken,
   setStoredDevMode,
 } from "@/lib/dev-session";
+import { useDevSession } from "@/lib/use-dev-mode";
 
 const mockOptions: Record<string, EvaluationEnvelope> = {
   evaluate_good: evaluateGoodEnvelopeMock,
@@ -30,17 +28,12 @@ const mockOptions: Record<string, EvaluationEnvelope> = {
 };
 
 export function DevConsoleHome() {
-  const [apiBase, setApiBase] = useState("http://localhost:8000");
-  const [token, setToken] = useState("");
-  const [mode, setMode] = useState<DevMode>("live");
+  const session = useDevSession();
+  const [apiBase, setApiBase] = useState(session.apiBase);
+  const [token, setToken] = useState(session.authToken);
+  const [mode, setMode] = useState<DevMode>(session.mode);
   const [activeMock, setActiveMock] = useState<keyof typeof mockOptions>("evaluate_good");
   const [connectionStatus, setConnectionStatus] = useState("Not checked yet.");
-
-  useEffect(() => {
-    setApiBase(getStoredApiBaseUrl());
-    setToken(getStoredAuthToken());
-    setMode(getStoredDevMode());
-  }, []);
 
   async function checkBackend() {
     setConnectionStatus("Checking backend...");

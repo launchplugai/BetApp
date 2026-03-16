@@ -4,8 +4,8 @@ last_verified_at: 2026-03-16T16:00:00-04:00
 freshness_ttl_hours: 24
 source_chat_state: awaiting_implementation
 active_stream: frontend-dev
-canonical_blocker: "Next/package toolchain instability still blocks trustworthy local Next verification"
-canonical_next_move: "Add shared request/status tracing and route-visible live/mock mode controls to the Next dev console"
+canonical_blocker: "No major blocker; Next typecheck and build now pass locally"
+canonical_next_move: "Visually verify the new route-controls and request-trace surfaces in the Next app, then choose the next dev-console refinement slice"
 last_user_message: "why would they be stable update them or create another document for the strap and link it in the context md.. lets keep your head up stay frosty.. need that new chat to point. to the work lets get it"
 active_question: "point the next fresh chat at the real current BetApp work and keep the wake-up surfaces fresh"
 last_assistant_intent: continue_implementation

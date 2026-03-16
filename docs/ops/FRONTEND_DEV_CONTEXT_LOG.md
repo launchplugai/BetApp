@@ -6,8 +6,8 @@ Last updated: 2026-03-16
 ## Memory Heartbeat
 
 - Active stream: `frontend-dev`
-- Canonical blocker: `Next/package toolchain instability still blocks trustworthy local Next verification`
-- Canonical next move: `Add shared request/status tracing and route-visible live/mock mode controls to the Next dev console`
+- Canonical blocker: `No major blocker; Next typecheck and build now pass locally`
+- Canonical next move: `Visually verify the new route-controls and request-trace surfaces in the Next app, then choose the next dev-console refinement slice`
 - Freshness cadence: `Re-verify after each meaningful slice or within 24 hours while active`
 - Cross-check with: `CONTEXT.md`, `docs/ops/CURRENT_EXECUTION_STATE.md`, `docs/ops/ACTIVE_WAKEUP_TARGET.md`, `docs/ops/FRONTEND_DEV_BOOTSTRAP.md`, `docs/ops/FRONTEND_DEV_BUILD_TRACKER.md`
 
@@ -46,11 +46,14 @@ Use it when:
 - root dev-console home added
 - shared console shell and page-header system added across the Next routes
 - route-level mock mode now drives first-pass behavior across Evaluate, OCR, Builder, and History
+- shared route-controls and request-trace panels now give the main routes one operator pattern
+- shell-level route state now updates from the active route trace
+- frontend dependencies were rebuilt cleanly and the local Next verification path is restored
 
 ## Known Risks
 
-- no trustworthy local Next build yet
-- fallback runtime may still be needed for preview until the toolchain is healthy
+- direct visual verification of the new Next screens is still pending
+- fallback runtime may still be the easiest preview tool even though Next verification is now healthy
 - Builder remains state-driven more than API-driven
 
 ## Recovery Rule

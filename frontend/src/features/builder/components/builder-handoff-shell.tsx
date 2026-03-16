@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { DevConsoleShell } from "@/components/dev-console-shell";
 import { DevPageHeader } from "@/components/dev-page-header";
+import { DevRouteOps } from "@/components/dev-route-ops";
 import { EvaluationEnvelopeView } from "@/components/evaluation-envelope-view";
 import { postEvaluate } from "@/lib/api/evaluate";
 import type { BuilderHandoff } from "@/lib/contracts/evaluate";
@@ -39,51 +40,87 @@ function describeBlock(block: Record<string, unknown> | null | undefined): strin
 }
 
 export function BuilderHandoffShell() {
-  const [handoff, setHandoff] = useState<BuilderHandoff | null>(null);
-  const [status, setStatus] = useState("No Builder handoff saved yet.");
-  const mode = useDevMode();
-
-  useEffect(() => {
+  const [handoff, setHandoff] = useState<BuilderHandoff | null>(() => readHandoff());
+  const [status, setStatus] = useState(() => (readHandoff() ? "Builder handoff loaded." : "No Builder handoff saved yet."));
+  const { mode, setMode } = useDevMode();
+  const activeHandoff = useMemo(() => {
     if (mode === "mock") {
-      const mockHandoff = evaluateRiskEnvelopeMock.zones.actionRail.builderHandoff as BuilderHandoff | null;
-      if (mockHandoff) {
-        setHandoff(mockHandoff);
-        setStatus("Mock Builder handoff loaded.");
-      }
-      return;
+      return (evaluateRiskEnvelopeMock.zones.actionRail.builderHandoff as BuilderHandoff | null) ?? null;
     }
-    const saved = readHandoff();
-    if (saved) {
-      setHandoff(saved);
-      setStatus("Builder handoff loaded.");
-    }
-  }, [mode]);
+    return handoff;
+  }, [handoff, mode]);
+  const displayStatus = mode === "mock" ? "Mock Builder handoff loaded." : status;
 
   const reEvaluateMutation = useMutation({
     mutationFn: async () => {
-      if (!handoff?.inputText) {
+      if (!activeHandoff?.inputText) {
         throw new Error("No Builder handoff available to re-evaluate.");
       }
       return postEvaluate({
-        input: handoff.inputText,
-        tier: handoff.tier,
+        input: activeHandoff.inputText,
+        tier: activeHandoff.tier,
       });
     },
     onSuccess: () => setStatus("Re-evaluation complete."),
     onError: (error) => setStatus(error instanceof Error ? error.message : "Unexpected error"),
   });
 
-  const handoffEnvelope = handoff ? createEnvelopeFromBuilderHandoff(handoff) : null;
+  const handoffEnvelope = activeHandoff ? createEnvelopeFromBuilderHandoff(activeHandoff) : null;
   const reEvaluatedEnvelope =
-    handoff && reEvaluateMutation.data
+    activeHandoff && reEvaluateMutation.data
       ? createEnvelopeFromEvaluate(
           {
-            input: handoff.inputText,
-            tier: handoff.tier,
+            input: activeHandoff.inputText,
+            tier: activeHandoff.tier,
           },
           reEvaluateMutation.data,
         )
       : null;
+  const trace =
+    mode === "mock"
+      ? {
+          label: "Fixture-driven Builder preview",
+          status: "mock" as const,
+          detail: "Rendering the mock Builder handoff without a live re-evaluation.",
+          endpoint: "/builder",
+          method: "local",
+          lastEvent: "Mock Builder handoff loaded from the envelope fixture.",
+        }
+      : reEvaluateMutation.isPending
+        ? {
+            label: "Builder re-evaluation in flight",
+            status: "pending" as const,
+            detail: "Re-running the saved Builder handoff through the frozen Evaluate contract.",
+            endpoint: "/app/evaluate",
+            method: "POST",
+            lastEvent: "Waiting for Builder re-evaluation response.",
+          }
+        : reEvaluateMutation.isError
+          ? {
+              label: "Builder re-evaluation failed",
+              status: "error" as const,
+              detail: status,
+              endpoint: "/app/evaluate",
+              method: "POST",
+              lastEvent: "Latest Builder re-evaluation returned an error.",
+            }
+          : reEvaluateMutation.data
+            ? {
+                label: "Builder re-evaluation ready",
+                status: "success" as const,
+                detail: `Saved handoff re-evaluated as ${reEvaluateMutation.data.evaluationId || "missing-id"}.`,
+                endpoint: "/app/evaluate",
+                method: "POST",
+                lastEvent: "Latest Builder re-evaluation response normalized into an envelope.",
+              }
+            : {
+                label: "Builder route idle",
+                status: "idle" as const,
+                detail: activeHandoff ? "A Builder handoff is loaded and ready for inspection or re-evaluation." : "Load a saved Builder handoff or switch to mock mode.",
+                endpoint: "/builder",
+                method: "local",
+                lastEvent: displayStatus,
+              };
 
   function clearHandoff() {
     if (typeof window !== "undefined") {
@@ -98,6 +135,7 @@ export function BuilderHandoffShell() {
     <DevConsoleShell
       title="Builder handoff terminal"
       subtitle="Continue from saved evaluation state instead of resetting context, and inspect the Builder envelope."
+      routeState={{ status: trace.status, label: trace.label }}
     >
       <DevPageHeader
         stage="Stage 3"
@@ -111,36 +149,45 @@ export function BuilderHandoffShell() {
       />
 
       <section className="panel-grid">
+        <div className="panel-stack">
+        <DevRouteOps
+          routeLabel={<code>/builder</code>}
+          contractLabel={<code>localStorage builderHandoff + POST /app/evaluate</code>}
+          mode={mode}
+          onModeChange={setMode}
+          trace={trace}
+        />
+
         <section className="panel">
           <div className="panel-header">
             <h2>Current handoff</h2>
             <span>Frozen frontend state</span>
           </div>
 
-          <p className="status">{status}</p>
+          <p className="status">{displayStatus}</p>
 
           <dl className="summary-grid">
             <div>
               <dt>evaluationId</dt>
-              <dd>{handoff?.evaluationId || "missing"}</dd>
+              <dd>{activeHandoff?.evaluationId || "missing"}</dd>
             </div>
             <div>
               <dt>Tier</dt>
-              <dd>{handoff?.tier || "unknown"}</dd>
+              <dd>{activeHandoff?.tier || "unknown"}</dd>
             </div>
             <div>
               <dt>Primary failure</dt>
-              <dd>{describeBlock((handoff?.primaryFailure as Record<string, unknown> | null) ?? null)}</dd>
+              <dd>{describeBlock((activeHandoff?.primaryFailure as Record<string, unknown> | null) ?? null)}</dd>
             </div>
             <div>
               <dt>Fastest fix</dt>
-              <dd>{describeBlock((handoff?.fastestFix as Record<string, unknown> | null) ?? null)}</dd>
+              <dd>{describeBlock((activeHandoff?.fastestFix as Record<string, unknown> | null) ?? null)}</dd>
             </div>
           </dl>
 
           <div className="result-block">
             <h3>Input text</h3>
-            <pre>{handoff?.inputText || ""}</pre>
+            <pre>{activeHandoff?.inputText || ""}</pre>
           </div>
 
           <div className="actions">
@@ -152,6 +199,7 @@ export function BuilderHandoffShell() {
             </button>
           </div>
         </section>
+        </div>
 
         <section className="panel result-panel">
           <div className="panel-header">

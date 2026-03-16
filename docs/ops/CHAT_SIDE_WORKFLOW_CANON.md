@@ -27,6 +27,7 @@ This workflow is mandatory while heartbeat mode is active.
 7. Do not start implementation until a startup checksum can be stated cleanly.
 8. Do not skip the self-improvement pass when a real workflow failure mode is discovered.
 9. Do not fake freshness by auto-updating timestamps without a real cross-check of active memory surfaces.
+10. For substantive coding slices, prefer a visible research -> plan -> execute loop with a heartbeat between phases instead of jumping straight from wake-up into editing.
 
 ## Standard Heartbeat
 
@@ -98,6 +99,7 @@ Examples of valid improvements:
 - better state-doc structure
 - better separation between product work and chat-side process work
 - better freshness and mismatch detection across memory surfaces
+- better phase transitions between research, planning, and execution while coding continues
 
 ## Conflict Rule
 

@@ -6,8 +6,8 @@
 ## 0. Memory Heartbeat
 
 - Active stream: `frontend-dev`
-- Canonical blocker: `Next/package toolchain instability still blocks trustworthy local Next verification`
-- Canonical next move: `Add shared request/status tracing and route-visible live/mock mode controls to the Next dev console`
+- Canonical blocker: `No major blocker; Next typecheck and build now pass locally`
+- Canonical next move: `Visually verify the new route-controls and request-trace surfaces in the Next app, then choose the next dev-console refinement slice`
 - Freshness cadence: `Re-verify after each meaningful slice or within 24 hours while active`
 - Cross-check with: `CONTEXT.md`, `docs/ops/ACTIVE_WAKEUP_TARGET.md`, `docs/ops/FRONTEND_DEV_BOOTSTRAP.md`, `docs/ops/FRONTEND_DEV_BUILD_TRACKER.md`, `docs/ops/FRONTEND_DEV_CONTEXT_LOG.md`, `docs/ops/ACTIVE_WORKING_MEMORY_HANDOFF.yaml`
 
@@ -31,7 +31,7 @@ Later user-facing UI/UX polish
 
 ## 2. Most Recent Completed Slice
 
-Completed the first usable dev-dashboard shell for the Next scaffold and wired route-level mock behavior into the main screen set.
+Completed the Next verification recovery slice for the developer console.
 
 Completed in:
 
@@ -40,14 +40,19 @@ Completed in:
 - `frontend/src/lib/mocks/evaluation-envelope.ts`
 - `frontend/src/components/evaluation-envelope-view.tsx`
 - `frontend/src/components/dev-console-shell.tsx`
+- `frontend/src/components/dev-route-ops.tsx`
 - `frontend/src/components/dev-page-header.tsx`
 - `frontend/src/features/console/components/dev-console-home.tsx`
 - `frontend/src/features/evaluate/components/evaluate-workbench.tsx`
 - `frontend/src/features/ocr/components/ocr-review-shell.tsx`
 - `frontend/src/features/builder/components/builder-handoff-shell.tsx`
 - `frontend/src/features/history/components/history-shell.tsx`
+- `frontend/src/lib/contracts/history.ts`
+- `frontend/src/app/globals.css`
 - `frontend/src/lib/dev-session.ts`
 - `frontend/src/lib/use-dev-mode.ts`
+- `frontend/next.config.ts`
+- `frontend/package-lock.json`
 - `docs/ui/EVALUATION_ENVELOPE_BLUEPRINT.md`
 
 ## 3. Current Architecture State
@@ -66,6 +71,10 @@ Current runtime truth:
 - developer session state now has a shared storage layer for API base, auth token, and dev mode
 - the Next routes now share a common console shell and page-header system
 - Evaluate, OCR, Builder, and History all have first-pass route-level `mock` mode behavior
+- Evaluate, OCR Review, Builder, and History now share a visible route-ops surface for mode switching and request/status tracing
+- the shell header now reflects active route state alongside mode, API base, and path
+- frontend dependencies were rebuilt cleanly, restoring local Next module resolution
+- local Next verification now works through both `tsc --noEmit` and `next build`
 
 ## 4. Latest Validation
 
@@ -86,23 +95,34 @@ Frontend validation:
 
 - Fallback server still serves on `http://localhost:3010`
 - Updated fallback console HTML/CSS routes were verified by `curl`
-- Full `next build` is still not available in this environment because package-install/runtime setup remains unhealthy
+- `cd /Users/benaiahross/development/projects/betapp/app-src/frontend && node node_modules/typescript/bin/tsc --noEmit`
+- `cd /Users/benaiahross/development/projects/betapp/app-src/frontend && node node_modules/next/dist/bin/next build`
+
+Result:
+
+- TypeScript verification passes
+- Next production build passes
 
 ## 5. Known Debt
 
-- final Next runtime is still blocked by package-manager/toolchain instability in this environment
 - the fallback frontend is still the only reliable preview runtime
-- route-level live/mock behavior exists, but the dashboard still needs clearer request/status tracing
+- the new route-controls and request-trace surfaces still need direct visual verification in the Next runtime
 - the active wake-up surfaces must be kept fresh before proving new-chat carry-over
-- no full TypeScript/build verification was possible for the new Next work in this environment
 
 ## 6. Exact Next Step
 
-Make the Next scaffold more operationally legible as a developer console.
+Use the restored Next verification path to continue product work safely.
 
 Singular next move:
 
-- add shared request/status tracing and route-visible mode controls so the dashboard explains what it is doing in `live` and `mock` modes
+- visually verify the new route-controls and request-trace surfaces in the Next app, then pick the next dev-console refinement slice
+
+Complete slice target:
+
+- each major route (`/evaluate`, `/evaluate/review`, `/builder`, `/history`) exposes a visible route-local mode control
+- the shared shell can show the current route state without opening form bodies
+- request activity and latest outcome are visible through one shared trace/status pattern instead of four unrelated messages
+- live/mock behavior remains additive and does not reopen backend contracts
 
 Parallel chat-side systems move:
 

@@ -5,6 +5,7 @@ import { ChangeEvent, useState } from "react";
 
 import { DevConsoleShell } from "@/components/dev-console-shell";
 import { DevPageHeader } from "@/components/dev-page-header";
+import { DevRouteOps } from "@/components/dev-route-ops";
 import { EvaluationEnvelopeView } from "@/components/evaluation-envelope-view";
 import { postOcrReview } from "@/lib/api/ocr-review";
 import { createEnvelopeFromOcrReview } from "@/lib/adapters/evaluation-envelope";
@@ -13,7 +14,7 @@ import { useDevMode } from "@/lib/use-dev-mode";
 
 export function OcrReviewShell() {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const mode = useDevMode();
+  const { mode, setMode } = useDevMode();
 
   const ocrMutation = useMutation({
     mutationFn: postOcrReview,
@@ -32,11 +33,57 @@ export function OcrReviewShell() {
 
   const result = ocrMutation.data;
   const envelope = mode === "mock" ? ocrReviewEnvelopeMock : result ? createEnvelopeFromOcrReview(result) : null;
+  const trace =
+    mode === "mock"
+      ? {
+          label: "Fixture-driven OCR review preview",
+          status: "mock" as const,
+          detail: "Rendering the OCR review fixture without uploading an image.",
+          endpoint: "/api/ocr/review",
+          method: "POST",
+          lastEvent: "Mock OCR envelope loaded.",
+        }
+      : ocrMutation.isPending
+        ? {
+            label: "OCR review request in flight",
+            status: "pending" as const,
+            detail: selectedFileName ? `Uploading ${selectedFileName} for OCR review.` : "Uploading selected image for OCR review.",
+            endpoint: "/api/ocr/review",
+            method: "POST",
+            lastEvent: "Waiting for OCR extraction response.",
+          }
+        : ocrMutation.isError
+          ? {
+              label: "OCR review failed",
+              status: "error" as const,
+              detail: (ocrMutation.error as Error).message || "OCR review request failed.",
+              endpoint: "/api/ocr/review",
+              method: "POST",
+              lastEvent: "Latest OCR review attempt returned an error.",
+            }
+          : result
+            ? {
+                label: "OCR review response ready",
+                status: "success" as const,
+                detail: `Review ${result.requestId} returned ${result.detectedLegs.length} detected leg(s).`,
+                endpoint: "/api/ocr/review",
+                method: "POST",
+                lastEvent: "Latest OCR review response normalized into an envelope.",
+              }
+            : {
+                label: "OCR review route idle",
+                status: "idle" as const,
+                detail: "Choose an image or switch to mock mode to inspect the review contract.",
+                endpoint: "/api/ocr/review",
+                method: "POST",
+                lastEvent: "No OCR review request has been sent yet.",
+              };
 
   return (
     <DevConsoleShell
       title="OCR review terminal"
       subtitle="Inspect OCR extraction, trust-gate signals, and the normalized review envelope before Evaluate."
+      routeState={{ status: trace.status, label: trace.label }}
     >
       <DevPageHeader
         stage="Stage 2"
@@ -50,13 +97,20 @@ export function OcrReviewShell() {
       />
 
       <section className="panel-grid">
+        <div className="panel-stack">
+        <DevRouteOps
+          routeLabel={<code>/evaluate/review</code>}
+          contractLabel={<code>POST /api/ocr/review</code>}
+          mode={mode}
+          onModeChange={setMode}
+          trace={trace}
+        />
+
         <section className="panel">
           <div className="panel-header">
             <h2>Upload image</h2>
             <span>Contract: POST /api/ocr/review</span>
           </div>
-
-          {mode === "mock" ? <p className="status">Mock mode is active. OCR upload is bypassed and the screen is rendering the review fixture.</p> : null}
 
           <label className="upload-zone" htmlFor="ocr-file">
             <span>{selectedFileName || "Choose a slip screenshot"}</span>
@@ -77,6 +131,7 @@ export function OcrReviewShell() {
             </p>
           ) : null}
         </section>
+        </div>
 
         <section className="panel result-panel">
           <div className="panel-header">

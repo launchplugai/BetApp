@@ -38,3 +38,24 @@ Main systems decision:
 - build the chat-side operating system modularly
 - keep it separate from BetApp product behavior
 - treat working memory as the next bridge from “same project” to “same thought”
+
+### 2026-03-16: phase-driven coding loop launch
+
+Tested a visible coding loop that does:
+
+- target definition
+- research session
+- plan session
+- execute session
+- heartbeat between phases
+
+Debrief:
+
+- it improved clarity without stalling implementation
+- the heartbeat made phase transitions legible to the user
+- the loop works best when it ends in real edits, validation, and memory refresh instead of stopping after planning
+
+Launch decision:
+
+- treat this as the preferred pattern for substantive coding slices while heartbeat mode is active
+- keep it lightweight and avoid forcing the loop onto trivial tasks

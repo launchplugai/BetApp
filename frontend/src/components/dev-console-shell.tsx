@@ -4,7 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { getStoredApiBaseUrl, getStoredDevMode } from "@/lib/dev-session";
+import { useDevSession } from "@/lib/use-dev-mode";
+
+type RouteStateSummary = {
+  label: string;
+  status: "idle" | "mock" | "pending" | "success" | "error";
+};
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
@@ -14,15 +19,16 @@ function isActive(pathname: string, href: string): boolean {
 export function DevConsoleShell({
   title,
   subtitle,
+  routeState,
   children,
 }: {
   title: string;
   subtitle: string;
+  routeState?: RouteStateSummary;
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const apiBase = typeof window === "undefined" ? "http://localhost:8000" : getStoredApiBaseUrl();
-  const mode = typeof window === "undefined" ? "live" : getStoredDevMode();
+  const session = useDevSession();
 
   const navItems = [
     { href: "/", label: "Console" },
@@ -45,11 +51,21 @@ export function DevConsoleShell({
           <dl className="console-status-grid">
             <div>
               <dt>Mode</dt>
-              <dd>{mode}</dd>
+              <dd>{session.mode}</dd>
             </div>
             <div>
               <dt>API base</dt>
-              <dd>{apiBase}</dd>
+              <dd>{session.apiBase}</dd>
+            </div>
+            <div>
+              <dt>Route state</dt>
+              <dd>
+                {routeState ? (
+                  <span className={`trace-pill trace-${routeState.status}`}>{routeState.label}</span>
+                ) : (
+                  "not set"
+                )}
+              </dd>
             </div>
             <div>
               <dt>Path</dt>
@@ -69,6 +85,16 @@ export function DevConsoleShell({
             </Link>
           ))}
         </nav>
+
+        <section className="scope-banner" aria-label="Scope distinction">
+          <div>
+            <p className="eyebrow">Current lane</p>
+            <h2>Project dev surface</h2>
+          </div>
+          <p className="scope-copy">
+            This console is for BetApp product work only. Chat-side workflow, heartbeat tuning, and repo-memory process work stay outside the app surface.
+          </p>
+        </section>
       </section>
 
       {children}

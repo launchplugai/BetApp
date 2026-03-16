@@ -1,19 +1,20 @@
 :root {
-  color-scheme: light;
-  --bg: #f2ede3;
-  --surface: rgba(255, 252, 247, 0.9);
-  --surface-strong: #fffaf0;
-  --border: rgba(54, 43, 25, 0.18);
-  --text: #241b10;
-  --muted: #655646;
-  --accent: #0f766e;
-  --accent-strong: #115e59;
-  --danger: #b42318;
-  --shadow: 0 24px 60px rgba(64, 39, 8, 0.12);
+  color-scheme: dark;
+  --bg: #020603;
+  --surface: rgba(3, 16, 8, 0.92);
+  --surface-strong: #041b0b;
+  --border: rgba(77, 205, 109, 0.22);
+  --text: #75f58a;
+  --muted: #43b15d;
+  --label: #97ffab;
+  --accent: #39ff66;
+  --accent-strong: #a8ffba;
+  --danger: #ff6b7a;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
   --radius-lg: 24px;
   --radius-md: 16px;
   --radius-sm: 12px;
-  --font-sans: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --font-sans: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 * {
@@ -25,8 +26,8 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top, rgba(15, 118, 110, 0.12), transparent 30%),
-    linear-gradient(180deg, #f8f5ef 0%, var(--bg) 100%);
+    radial-gradient(circle at top, rgba(57, 255, 102, 0.16), transparent 24%),
+    linear-gradient(180deg, #010201 0%, var(--bg) 100%);
   color: var(--text);
   font-family: var(--font-sans);
 }
@@ -86,7 +87,7 @@ select {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.32);
+  background: rgba(4, 27, 11, 0.75);
 }
 
 .console-status-grid dd,
@@ -110,13 +111,36 @@ select {
   border-radius: 999px;
   border: 1px solid var(--border);
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
 }
 
 .console-nav-link.active {
-  background: rgba(15, 118, 110, 0.14);
-  border-color: rgba(17, 94, 89, 0.35);
+  background: rgba(57, 255, 102, 0.1);
+  border-color: rgba(151, 255, 171, 0.42);
   color: var(--accent-strong);
+}
+
+.scope-banner {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(151, 255, 171, 0.24);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(57, 255, 102, 0.08), rgba(4, 27, 11, 0.9)),
+    rgba(4, 27, 11, 0.78);
+}
+
+.scope-banner h2 {
+  margin: 0;
+}
+
+.scope-copy {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.6;
 }
 
 .hero-card {
@@ -127,7 +151,7 @@ select {
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--accent-strong);
+  color: var(--label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.8rem;
@@ -135,7 +159,7 @@ select {
 
 .lede {
   max-width: 56rem;
-  color: var(--muted);
+  color: var(--text);
   line-height: 1.6;
 }
 
@@ -157,6 +181,11 @@ select {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   align-items: start;
+}
+
+.panel-stack {
+  display: grid;
+  gap: 24px;
 }
 
 .panel {
@@ -182,7 +211,7 @@ select {
 .status,
 .field span,
 dt {
-  color: var(--muted);
+  color: var(--label);
 }
 
 .field {
@@ -193,6 +222,7 @@ dt {
 
 textarea,
 select,
+.field input,
 .upload-zone {
   width: 100%;
   border: 1px solid var(--border);
@@ -200,6 +230,11 @@ select,
   background: var(--surface-strong);
   padding: 14px 16px;
   color: var(--text);
+}
+
+textarea::placeholder,
+.field input::placeholder {
+  color: var(--muted);
 }
 
 textarea {
@@ -236,7 +271,7 @@ button,
 button {
   border: 0;
   background: var(--accent);
-  color: white;
+  color: #021508;
   cursor: pointer;
 }
 
@@ -276,11 +311,15 @@ button:disabled {
   margin: 0 0 20px;
 }
 
+.compact-summary-grid {
+  margin-bottom: 16px;
+}
+
 .summary-grid div {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 14px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(4, 27, 11, 0.62);
 }
 
 dt {
@@ -303,8 +342,8 @@ pre {
   padding: 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: #1f2421;
-  color: #f8fafc;
+  background: #010f06;
+  color: var(--accent-strong);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.85rem;
   line-height: 1.5;
@@ -327,7 +366,7 @@ pre {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 14px;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(4, 27, 11, 0.62);
 }
 
 .record-meta {
@@ -347,6 +386,96 @@ pre {
   margin-top: 24px;
 }
 
+.route-ops-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.route-ops-panel::after {
+  content: "";
+  position: absolute;
+  inset: auto -80px -80px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.18), transparent 68%);
+  pointer-events: none;
+}
+
+.trace-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.trace-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.trace-card-top h3 {
+  margin: 0;
+}
+
+.trace-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+}
+
+.trace-idle {
+  color: var(--muted);
+}
+
+.trace-mock {
+  color: var(--accent-strong);
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.trace-pending {
+  color: #8a4b14;
+  background: rgba(215, 153, 63, 0.14);
+}
+
+.trace-success {
+  color: #20654d;
+  background: rgba(26, 127, 86, 0.14);
+}
+
+.trace-error {
+  color: var(--danger);
+  background: rgba(180, 35, 24, 0.1);
+}
+
+.trace-grid {
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trace-grid div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.trace-detail {
+  margin-top: 16px;
+  color: var(--text);
+}
+
 .envelope-stack {
   display: grid;
   gap: 20px;
@@ -362,7 +491,7 @@ pre {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 16px;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(4, 27, 11, 0.54);
 }
 
 .zone-card-wide {
@@ -387,8 +516,10 @@ pre {
   }
 
   .console-shell-top,
+  .scope-banner,
   .hero-grid,
   .panel-grid,
+  .trace-grid,
   .zone-grid,
   .summary-grid {
     grid-template-columns: 1fr;

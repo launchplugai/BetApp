@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import { DevConsoleShell } from "@/components/dev-console-shell";
 import { DevPageHeader } from "@/components/dev-page-header";
+import { DevRouteOps } from "@/components/dev-route-ops";
 import { EvaluationEnvelopeView } from "@/components/evaluation-envelope-view";
 import {
   createEnvelopeFromEvaluationHistoryDetail,
@@ -27,17 +28,11 @@ function prettyJson(value: unknown): string {
 }
 
 export function HistoryShell() {
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => getStoredAuthToken());
   const [selectedBetId, setSelectedBetId] = useState<string | null>(null);
   const [selectedReplay, setSelectedReplay] = useState<Record<string, unknown> | null>(null);
   const [status, setStatus] = useState("No history detail loaded yet.");
-  const mode = useDevMode();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedToken = getStoredAuthToken();
-    if (savedToken) setToken(savedToken);
-  }, []);
+  const { mode, setMode } = useDevMode();
 
   const persistedBetsMutation = useMutation({
     mutationFn: () => getPersistedBetHistory(token || undefined),
@@ -107,11 +102,62 @@ export function HistoryShell() {
     : replayDetailMutation.data
     ? createEnvelopeFromEvaluationHistoryDetail(replayDetailMutation.data)
     : null;
+  const trace =
+    mode === "mock"
+      ? {
+          label: "Fixture-driven History preview",
+          status: "mock" as const,
+          detail: "Rendering fallback-history fixtures instead of live persisted or replay data.",
+          endpoint: "/api/bets/history",
+          method: "GET",
+          lastEvent: "Mock History detail loaded.",
+        }
+      : persistedBetDetailMutation.isPending || replayDetailMutation.isPending || persistedBetsMutation.isPending || replayHistoryMutation.isPending
+        ? {
+            label: "History request in flight",
+            status: "pending" as const,
+            detail: "Loading persisted history, replay history, or selected detail.",
+            endpoint: selectedBetId ? `/api/bets/${selectedBetId}` : "/api/bets/history",
+            method: "GET",
+            lastEvent: "Waiting for History response.",
+          }
+        : persistedBetDetailMutation.isError || replayDetailMutation.isError || persistedBetsMutation.isError || replayHistoryMutation.isError
+          ? {
+              label: "History request failed",
+              status: "error" as const,
+              detail:
+                (persistedBetDetailMutation.error as Error | undefined)?.message ||
+                (replayDetailMutation.error as Error | undefined)?.message ||
+                (persistedBetsMutation.error as Error | undefined)?.message ||
+                (replayHistoryMutation.error as Error | undefined)?.message ||
+                status,
+              endpoint: selectedBetId ? `/api/bets/${selectedBetId}` : "/api/bets/history",
+              method: "GET",
+              lastEvent: "Latest History request returned an error.",
+            }
+          : selectedReplay || persistedBetsMutation.data || replayHistoryMutation.data
+            ? {
+                label: "History data ready",
+                status: "success" as const,
+                detail: status,
+                endpoint: selectedBetId ? `/api/bets/${selectedBetId}` : "/api/bets/history",
+                method: "GET",
+                lastEvent: "History route has live data ready for replay or inspection.",
+              }
+            : {
+                label: "History route idle",
+                status: "idle" as const,
+                detail: "Load persisted history, replay history, or switch to mock mode to inspect the replay surfaces.",
+                endpoint: "/api/bets/history",
+                method: "GET",
+                lastEvent: "No History request has been sent yet.",
+              };
 
   return (
     <DevConsoleShell
       title="History replay terminal"
       subtitle="Inspect persisted history, replay context, and Builder continuation paths from one place."
+      routeState={{ status: trace.status, label: trace.label }}
     >
       <DevPageHeader
         stage="Stage 4"
@@ -125,23 +171,32 @@ export function HistoryShell() {
       />
 
       <section className="panel-grid">
+        <div className="panel-stack">
+        <DevRouteOps
+          routeLabel={<code>/history</code>}
+          contractLabel={<code>GET /api/bets/history + GET /app/history</code>}
+          mode={mode}
+          onModeChange={setMode}
+          trace={trace}
+        >
+          {mode !== "mock" ? (
+            <label className="field">
+              <span>Bearer token</span>
+              <input
+                type="password"
+                value={token}
+                onChange={(event) => rememberToken(event.target.value)}
+                placeholder="Optional for authenticated bet history"
+              />
+            </label>
+          ) : null}
+        </DevRouteOps>
+
         <section className="panel">
           <div className="panel-header">
             <h2>Persisted bet history</h2>
             <span>Canonical base: GET /api/bets/history</span>
           </div>
-
-          {mode === "mock" ? <p className="status">Mock mode is active. This screen is rendering fallback-history fixtures instead of live API responses.</p> : null}
-
-          <label className="field">
-            <span>Bearer token</span>
-            <input
-              type="password"
-              value={token}
-              onChange={(event) => rememberToken(event.target.value)}
-              placeholder="Optional for authenticated bet history"
-            />
-          </label>
 
           <div className="actions">
             <button type="button" onClick={() => persistedBetsMutation.mutate()} disabled={persistedBetsMutation.isPending || mode === "mock"}>
@@ -202,6 +257,7 @@ export function HistoryShell() {
           </ul>
           )}
         </section>
+        </div>
 
         <section className="panel result-panel">
           <div className="panel-header">

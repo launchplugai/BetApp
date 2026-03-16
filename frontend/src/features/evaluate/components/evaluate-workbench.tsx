@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 
 import { DevConsoleShell } from "@/components/dev-console-shell";
 import { DevPageHeader } from "@/components/dev-page-header";
+import { DevRouteOps } from "@/components/dev-route-ops";
 import { EvaluationEnvelopeView } from "@/components/evaluation-envelope-view";
 import { postEvaluate } from "@/lib/api/evaluate";
 import type { EvaluateRequest, EvaluateResponse } from "@/lib/contracts/evaluate";
@@ -22,7 +23,7 @@ export function EvaluateWorkbench() {
   const [input, setInput] = useState("");
   const [tier, setTier] = useState(DEFAULT_TIER);
   const [mockFixture, setMockFixture] = useState<keyof typeof MOCK_OPTIONS>("evaluate_good");
-  const mode = useDevMode();
+  const { mode, setMode } = useDevMode();
 
   const evaluateMutation = useMutation({
     mutationFn: postEvaluate,
@@ -40,11 +41,57 @@ export function EvaluateWorkbench() {
   const request: EvaluateRequest | null = result ? { input, tier } : null;
   const liveEnvelope = result && request ? createEnvelopeFromEvaluate(request, result) : null;
   const envelope = mode === "mock" ? MOCK_OPTIONS[mockFixture] : liveEnvelope;
+  const trace =
+    mode === "mock"
+      ? {
+          label: "Fixture-driven Evaluate preview",
+          status: "mock" as const,
+          detail: `Rendering ${mockFixture} without calling the backend.`,
+          endpoint: "/app/evaluate",
+          method: "POST",
+          lastEvent: `Mock fixture ${mockFixture} selected.`,
+        }
+      : evaluateMutation.isPending
+        ? {
+            label: "Evaluate request in flight",
+            status: "pending" as const,
+            detail: "Sending slip text to the frozen Evaluate contract.",
+            endpoint: "/app/evaluate",
+            method: "POST",
+            lastEvent: "Waiting for Evaluate response.",
+          }
+        : evaluateMutation.isError
+          ? {
+              label: "Evaluate request failed",
+              status: "error" as const,
+              detail: (evaluateMutation.error as Error).message || "Evaluate request failed.",
+              endpoint: "/app/evaluate",
+              method: "POST",
+              lastEvent: "Latest Evaluate attempt returned an error.",
+            }
+          : result
+            ? {
+                label: "Evaluate response ready",
+                status: "success" as const,
+                detail: `Evaluation ${result.evaluationId || "missing-id"} returned ${result.triggeredProtocols.length} protocol signal(s).`,
+                endpoint: "/app/evaluate",
+                method: "POST",
+                lastEvent: "Latest Evaluate response normalized into an envelope.",
+              }
+            : {
+                label: "Evaluate route idle",
+                status: "idle" as const,
+                detail: "Submit slip text or switch to mock mode to inspect the route contract.",
+                endpoint: "/app/evaluate",
+                method: "POST",
+                lastEvent: "No Evaluate request has been sent yet.",
+              };
 
   return (
     <DevConsoleShell
       title="Evaluate contract terminal"
       subtitle="Run the frozen Evaluate contract and inspect the normalized envelope without reopening backend boundaries."
+      routeState={{ status: trace.status, label: trace.label }}
     >
       <DevPageHeader
         stage="Stage 1"
@@ -58,24 +105,30 @@ export function EvaluateWorkbench() {
       />
 
       <section className="panel-grid">
+        <div className="panel-stack">
+        <DevRouteOps
+          routeLabel={<code>/evaluate</code>}
+          contractLabel={<code>POST /app/evaluate</code>}
+          mode={mode}
+          onModeChange={setMode}
+          trace={trace}
+        >
+          {mode === "mock" ? (
+            <label className="field">
+              <span>Mock fixture</span>
+              <select value={mockFixture} onChange={(event) => setMockFixture(event.target.value as keyof typeof MOCK_OPTIONS)}>
+                <option value="evaluate_good">evaluate good</option>
+                <option value="evaluate_risk">evaluate risk</option>
+              </select>
+            </label>
+          ) : null}
+        </DevRouteOps>
+
         <form className="panel" onSubmit={handleSubmit}>
           <div className="panel-header">
             <h2>Evaluate text input</h2>
             <span>Contract: POST /app/evaluate</span>
           </div>
-
-          {mode === "mock" ? (
-            <>
-              <p className="status">Mock mode is active. This screen is rendering fixture-driven Evaluate envelopes.</p>
-              <label className="field">
-                <span>Mock fixture</span>
-                <select value={mockFixture} onChange={(event) => setMockFixture(event.target.value as keyof typeof MOCK_OPTIONS)}>
-                  <option value="evaluate_good">evaluate good</option>
-                  <option value="evaluate_risk">evaluate risk</option>
-                </select>
-              </label>
-            </>
-          ) : null}
 
           <label className="field">
             <span>Slip text</span>
@@ -110,6 +163,7 @@ export function EvaluateWorkbench() {
             </p>
           ) : null}
         </form>
+        </div>
 
         <EvaluateResultPanel result={mode === "mock" ? undefined : result} envelope={envelope} />
       </section>
