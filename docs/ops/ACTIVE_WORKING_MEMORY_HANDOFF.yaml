@@ -1,0 +1,20 @@
+handoff_id: wm_2026_03_16_002
+created_at: 2026-03-16T17:10:00Z
+last_verified_at: 2026-03-16T16:00:00-04:00
+freshness_ttl_hours: 24
+source_chat_state: awaiting_implementation
+active_stream: frontend-dev
+canonical_blocker: "Next/package toolchain instability still blocks trustworthy local Next verification"
+canonical_next_move: "Add shared request/status tracing and route-visible live/mock mode controls to the Next dev console"
+last_user_message: "why would they be stable update them or create another document for the strap and link it in the context md.. lets keep your head up stay frosty.. need that new chat to point. to the work lets get it"
+active_question: "point the next fresh chat at the real current BetApp work and keep the wake-up surfaces fresh"
+last_assistant_intent: continue_implementation
+response_mode: heartbeat_then_execute
+expected_next_response: "Refresh execution state, refresh the active handoff, add a focused wake-up target doc, and then continue BetApp dev-console work."
+linked_memory_docs:
+  - CONTEXT.md
+  - docs/ops/ACTIVE_WAKEUP_TARGET.md
+  - docs/ops/BRAIN_STEM_MODULE.md
+  - docs/ops/CURRENT_EXECUTION_STATE.md
+  - docs/ops/FRONTEND_DEV_BUILD_TRACKER.md
+  - docs/ops/FRONTEND_DEV_CONTEXT_LOG.md

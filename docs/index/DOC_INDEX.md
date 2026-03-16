@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated:** 2026-03-14
+**Last Updated:** 2026-03-16
 
 This index is for the active BetApp application. If a document conflicts with running code, treat code as the source of truth and update the docs.
 
@@ -11,6 +11,7 @@ Read these first when joining the project:
 | Document | Status | Purpose |
 |----------|--------|---------|
 | `README.md` | CANONICAL | Product framing, repo reality, and entry points |
+| `CONTEXT.md` | CANONICAL | Single-file wake-up entry point for fresh chats, reconnects, and external workers | First stop when the goal is rapid repo-memory wake-up |
 | `docs/ops/BOOTSTRAP_PROTOCOL.md` | CANONICAL | Required bootstrap order for any new chat, reconnect, or agent |
 | `docs/ops/CURRENT_EXECUTION_STATE.md` | ACTIVE | Current implementation state, latest validation, and exact next step |
 | `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md` | CANONICAL | Canonical architecture pivot and current module model |
@@ -89,6 +90,31 @@ Read these first when joining the project:
 | `docs/ops/ARCHITECTURE_RESTORATION_SPRINT_MAP.md` | CANONICAL | Sprint order and guardrails for restoring the Airlock-centered layered architecture | Before starting the next refactor or frontend module work |
 | `docs/ops/AIRLOCK_ROUTE_GAP_AUDIT.md` | CANONICAL | Route-by-route audit of current Airlock membrane coverage | Before implementing Sprint B boundary restoration work |
 | `docs/ops/FRONTEND_BACKEND_CONTRACT_FREEZE_PHASE1.md` | CANONICAL | Phase 1 contract-freeze checklist, route audit, and frontend scaffold recommendation | Before scaffolding the new frontend or freezing Evaluate/OCR/History contracts |
+| `docs/ops/FRONTEND_BACKEND_DEPLOY_STATUS.md` | DRAFT | Green/yellow/red deploy-review status and verification checklist for the current frontend/backend split | Before deployment review or separation status meetings |
+| `docs/ops/FRONTEND_PARALLEL_WORKFLOW.md` | DRAFT | Practical workflow for parallel frontend/backend development against frozen contracts | Before adding new frontend slices on top of the phase-one scaffold |
+| `docs/ops/FRONTEND_BACKEND_VISUAL_STATUS_MAP.md` | DRAFT | Visual map of current frontend/backend boundaries, canonical paths, and transitional seams | When sanity-checking whether the separation work still serves the overall goal |
+| `docs/ops/FRONTEND_DEV_BOOTSTRAP.md` | ACTIVE | Fast bootstrap path for frontend-dev continuation, agents, and VPS workers | First stop when resuming the frontend-dev stream |
+| `docs/ops/FRONTEND_DEV_BUILD_TRACKER.md` | ACTIVE | Working definition of usable frontend-dev progress, blockers, and next milestone | Before picking the next frontend-dev build slice |
+| `docs/ops/FRONTEND_DEV_CONTEXT_LOG.md` | ACTIVE | Compact continuity log for frontend-dev work across compaction, handoff, or agent swaps | When recovering frontend-dev state quickly |
+| `docs/ops/CHAT_SIDE_WORKFLOW_CANON.md` | CANONICAL | Canonical chat-side collaboration workflow for heartbeat, continuity, escalation, and small process improvements | Before relying on thread memory or changing the collaboration workflow |
+| `docs/ops/STARTUP_HEARTBEAT_TEMPLATE.md` | ACTIVE | Reusable startup proof/checksum + heartbeat template for fresh chats and reconnects | When booting a new chat or testing wake-up reliability |
+| `docs/ops/MEMORY_HEARTBEAT_PROTOCOL.md` | ACTIVE | Freshness cadence, shared heartbeat fields, and checker workflow for active memory surfaces | Before trusting wake-up docs after drift or long gaps |
+| `docs/ops/ENVIRONMENT_BOOTSTRAP_CHAT_WORKFLOW.md` | ACTIVE | Bootstrap path for the collaboration environment itself, including heartbeat and recovery expectations | First stop when recovering the chat-side operating model |
+| `docs/ops/BULLETPROOF_CHAT_INITIALIZATION_LOOP.md` | CANONICAL | Hardened new-chat and reconnect initialization loop with five explicit reliability passes | Before starting implementation after a fresh chat, reconnect, or continuity wobble |
+| `docs/ops/SOUL.md` | CANONICAL | Enduring agent core for this environment, including chosen traits and anti-drift orientation | Early in bootstrap when restoring core memory and operating posture |
+| `docs/ops/BRAIN_STEM_MODULE.md` | CANONICAL | Packaged autonomic foundation for continuity, startup, recovery, heartbeat, and reflexive conflict handling | Before extending the workflow system with higher-order routing, memory, or orchestration layers |
+| `docs/ops/BRAIN_STEM_PACKAGING_CHECKLIST.md` | ACTIVE | Portable checklist for recreating the brain stem module in new chats, clones, or worker contexts | When porting or validating the continuity foundation elsewhere |
+| `docs/ops/WHOLE_SYSTEM_PLAN.md` | CANONICAL | Modular roadmap for the full chat-side operating system from brain stem through planning and orchestration | When deciding what cognitive/continuity layer should be built next |
+| `docs/ops/WORKING_MEMORY_MODULE.md` | DRAFT | Next-layer spec for preserving the immediate active thought across chat boundaries | Before implementing working-memory relay or "new chat, same thought" continuity |
+| `docs/ops/WORKING_MEMORY_HANDOFF_CONTRACT.md` | DRAFT | Minimal record for carrying the last unresolved thought and expected response into a fresh chat | Before testing or implementing working-memory handoff behavior |
+| `docs/ops/NEW_CHAT_CARRYOVER_PROTOCOL.md` | DRAFT | Step-by-step protocol for using working-memory handoff after brain-stem initialization | Before testing "new chat, same thought" continuity |
+| `docs/ops/WORKING_MEMORY_STORAGE_AND_INJECTION.md` | DRAFT | File-backed storage and manual injection path for the first working-memory carry-over milestone | Before attempting explicit fresh-chat carry-over |
+| `docs/ops/ACTIVE_WORKING_MEMORY_HANDOFF.yaml` | ACTIVE | Current active working-memory relay record for explicit fresh-chat carry-over | When waking up a fresh chat from the latest unresolved thought |
+| `docs/ops/ACTIVE_WAKEUP_TARGET.md` | ACTIVE | Focused current-work target for fresh-chat wake-up when the goal is to point immediately at the real next task | When the next chat needs the shortest path from wake-up to current work |
+| `docs/ops/NEW_CHAT_WAKEUP_PROMPT_TEMPLATE.md` | DRAFT | Prompt template for booting a fresh chat from repo memory and active working-memory handoff | When testing or using explicit fresh-chat carry-over |
+| `docs/ops/SYSTEM_MEMORY_ARCHITECTURE.md` | CANONICAL | Memory-layer map for identity, workflow, active state, working memory, and entry routing | Before extending the chat-side operating system memory model |
+| `docs/ops/SYSTEM_DESIGN_JOURNAL.md` | ACTIVE | Running design journal for the chat-side operating system and its modular evolution | When continuing to build or revisit the system architecture |
+| `docs/ui/EVALUATION_ENVELOPE_BLUEPRINT.md` | DRAFT | Normalized frontend envelope blueprint, 5-zone UI structure, and adapter coverage map | Before wiring new UI work directly to backend route payloads |
 | `docs/ops/BOOTSTRAP_PROTOCOL.md` | CANONICAL | Required bootstrap order for reconnecting, new chats, or agent handoff | First stop before resuming work |
 | `docs/ops/CONTEXT_LOCK_PROTOCOL.md` | CANONICAL | Required process for locking sprint and handoff state into the repo | Before sprint closeout, context compaction, or chat handoff |
 | `docs/ops/CURRENT_EXECUTION_STATE.md` | ACTIVE | Current implementation state, latest validation, and exact next step | First stop after bootstrap when reconnecting or resuming work |

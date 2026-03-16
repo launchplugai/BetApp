@@ -1,7 +1,7 @@
 # Bootstrap Protocol
 
 **Status:** CANONICAL  
-**Last Updated:** 2026-03-14
+**Last Updated:** 2026-03-16
 
 This is the canonical bootstrap path for any new chat, agent, or reconnecting implementation thread.
 
@@ -16,13 +16,18 @@ Provide one reliable startup sequence for resuming work without depending on pri
 Read these in order:
 
 1. `README.md`
-2. `docs/index/DOC_INDEX.md`
-3. `docs/ops/CURRENT_EXECUTION_STATE.md`
-4. `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md`
-5. `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md`
-6. `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md`
-7. active sprint-specific docs referenced by `CURRENT_EXECUTION_STATE.md`
-8. `git status --short`
+2. `CONTEXT.md`
+3. `docs/index/DOC_INDEX.md`
+4. `docs/ops/BRAIN_STEM_MODULE.md`
+5. `docs/ops/SOUL.md`
+6. `docs/ops/CHAT_SIDE_WORKFLOW_CANON.md`
+7. `docs/ops/BULLETPROOF_CHAT_INITIALIZATION_LOOP.md`
+8. `docs/ops/CURRENT_EXECUTION_STATE.md`
+9. `docs/architecture/SYSTEM_RESTORATION_BLUEPRINT.md`
+10. `docs/contracts/AIRLOCK_MEMBRANE_CONTRACT.md`
+11. `docs/contracts/SHERLOCK_DNA_INTERACTION_CONTRACT.md`
+12. active sprint-specific docs referenced by `CURRENT_EXECUTION_STATE.md`
+13. `git status --short`
 
 ## 3. Startup Questions This Must Answer
 
@@ -33,6 +38,16 @@ After bootstrap, the agent must be able to answer:
 - What was just completed?
 - What validation most recently passed?
 - What is the exact next step?
+
+Bootstrap is not complete until those answers are surfaced in a visible in-thread heartbeat update before implementation begins.
+
+Minimum heartbeat proof:
+
+- task
+- status
+- blocker
+- continuity surfaces
+- next move
 
 ## 4. Conflict Rule
 
@@ -51,6 +66,10 @@ The canonical handoff/state pair is:
 
 - `docs/ops/CONTEXT_LOCK_PROTOCOL.md`
 - `docs/ops/CURRENT_EXECUTION_STATE.md`
+
+The canonical chat-side workflow document is:
+
+- `docs/ops/CHAT_SIDE_WORKFLOW_CANON.md`
 
 ## 6. Git Rule
 
