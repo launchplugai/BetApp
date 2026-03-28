@@ -3,12 +3,10 @@ Recommendation Router - API endpoints for bet recommendations and parlays
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.services.auth import get_current_user_from_token
 from app.models import get_session
 from app.protocol.recommendation_models import Recommendation, Parlay
 from app.protocol.recommendation_service import (
@@ -20,7 +18,6 @@ from app.protocol import service as protocol_service
 from app.protocol import schemas
 
 router = APIRouter(prefix="/api/protocols", tags=["recommendations"])
-security = HTTPBearer()
 
 
 def get_db():
@@ -39,28 +36,20 @@ def get_db():
 @router.get("/{protocol_id}/recommendations", response_model=List[dict])
 async def get_recommendations(
     protocol_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Get AI-generated bet recommendations for a protocol.
-    
+
     Generates fresh recommendations based on current snapshot data.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     # Get protocol
-    protocol = protocol_service.get_protocol_detail(db, protocol_id, user.id)
+    protocol = protocol_service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
-    
-    # Get user tier for recommendation quality
-    user_tier = getattr(user, 'tier', 'GOOD')
-    
+
     # Generate recommendations
-    recommendations = generate_recommendations(db, protocol, user_tier)
+    recommendations = generate_recommendations(db, protocol, "GOOD")
     
     return [r.to_dict() for r in recommendations]
 
@@ -68,34 +57,28 @@ async def get_recommendations(
 @router.post("/{protocol_id}/recommendations/refresh")
 async def refresh_recommendations(
     protocol_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Generate fresh recommendations (archive old ones).
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    protocol = protocol_service.get_protocol_detail(db, protocol_id, user.id)
+    protocol = protocol_service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
-    
+
     # Archive old recommendations
     old_recs = db.query(Recommendation).filter(
         Recommendation.protocol_id == protocol_id,
         Recommendation.status == "active"
     ).all()
-    
+
     for rec in old_recs:
         rec.status = "expired"
-    
+
     db.commit()
-    
+
     # Generate new ones
-    user_tier = getattr(user, 'tier', 'GOOD')
-    recommendations = generate_recommendations(db, protocol, user_tier)
+    recommendations = generate_recommendations(db, protocol, "GOOD")
     
     return {
         "success": True,
@@ -118,27 +101,22 @@ class ParlayCreateRequest(BaseModel):
 async def build_parlay(
     protocol_id: str,
     request: ParlayCreateRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Build a parlay from selected recommendations.
-    
+
     Creates a shareable parlay preview that can be converted to a bet.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    # Verify protocol exists and user owns it
-    protocol = protocol_service.get_protocol_detail(db, protocol_id, user.id)
+    # Verify protocol exists
+    protocol = protocol_service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
-    
+
     try:
         parlay = create_parlay_from_recommendations(
             db=db,
-            user_id=user.id,
+            user_id="demo_user",
             recommendation_ids=request.recommendation_ids,
             title=request.title
         )
@@ -160,19 +138,14 @@ async def build_parlay(
 @router.get("/parlays/{parlay_id}/preview", response_model=dict)
 async def get_parlay_preview(
     parlay_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Get detailed preview of a parlay with analysis.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     parlay = db.query(Parlay).filter(
         Parlay.id == parlay_id,
-        Parlay.user_id == user.id
+        Parlay.user_id == "demo_user"
     ).first()
     
     if not parlay:
@@ -251,21 +224,16 @@ class CopyToBetRequest(BaseModel):
 async def copy_parlay_to_bet(
     parlay_id: str,
     request: CopyToBetRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Convert a parlay preview to an actual bet.
-    
+
     Imports the parlay into the user's bet builder.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     parlay = db.query(Parlay).filter(
         Parlay.id == parlay_id,
-        Parlay.user_id == user.id
+        Parlay.user_id == "demo_user"
     ).first()
     
     if not parlay:

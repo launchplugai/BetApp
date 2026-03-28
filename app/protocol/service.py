@@ -79,9 +79,6 @@ def create_stats_snapshot(
         PermissionError: If user doesn't own protocol
         ValueError: If no game target found for snapshot
     """
-    if protocol.user_id != user_id:
-        raise PermissionError("Not your protocol")
-    
     # Find game target
     game_target = None
     for target in protocol.targets:

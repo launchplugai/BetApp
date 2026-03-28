@@ -3,11 +3,9 @@ Protocol Router - API endpoints
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.services.auth import get_current_user_from_token
 from app.models import get_session
 from app.protocol.models import Protocol
 from app.protocol import schemas
@@ -15,7 +13,6 @@ from app.protocol import service
 from app.protocol.sports_integration import generate_natural_language_summary
 
 router = APIRouter(prefix="/api/protocols", tags=["protocols"])
-security = HTTPBearer()
 
 
 def get_db():
@@ -30,26 +27,21 @@ def get_db():
 @router.post("", response_model=schemas.ProtocolOut)
 async def create_protocol(
     payload: schemas.ProtocolCreate,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Create a new protocol.
-    
+
     Creates a protocol workspace with optional targets (games/teams/players).
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     # Convert targets to dicts for service
     targets = None
     if payload.targets:
         targets = [t.model_dump() for t in payload.targets]
-    
+
     protocol = service.create_protocol(
         db=db,
-        user_id=user.id,
+        user_id="demo_user",
         sport=payload.sport,
         title=payload.title,
         context=payload.context or {},
@@ -63,21 +55,16 @@ async def create_protocol(
 async def list_protocols(
     status: Optional[str] = Query(None, description="Filter by status: draft|active|archived"),
     limit: int = Query(50, ge=1, le=100),
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     List user's protocols.
-    
-    Returns protocols owned by the authenticated user.
+
+    Returns protocols owned by the demo user.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     protocols = service.get_user_protocols(
         db=db,
-        user_id=user.id,
+        user_id="demo_user",
         status=status,
         limit=limit
     )
@@ -91,17 +78,12 @@ async def list_protocols(
 @router.get("/{protocol_id}", response_model=schemas.ProtocolDetailOut)
 async def get_protocol(
     protocol_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Get protocol detail with targets and recent items.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    protocol = service.get_protocol_detail(db, protocol_id, user.id)
+    protocol = service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
@@ -112,17 +94,12 @@ async def get_protocol(
 async def update_protocol(
     protocol_id: str,
     payload: schemas.ProtocolUpdate,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Update protocol (title, status, context).
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    protocol = service.get_protocol_detail(db, protocol_id, user.id)
+    protocol = service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
@@ -140,17 +117,12 @@ async def update_protocol(
 @router.delete("/{protocol_id}")
 async def archive_protocol(
     protocol_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Archive (soft delete) a protocol.
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    protocol = service.get_protocol_detail(db, protocol_id, user.id)
+    protocol = service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
     
@@ -162,28 +134,20 @@ async def archive_protocol(
 @router.post("/{protocol_id}/snapshot", response_model=schemas.SnapshotOut)
 async def create_snapshot(
     protocol_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ):
     """
     Create a stats snapshot from NBA analytics system.
-    
+
     Pulls current stats for the protocol's game target and stores as item.
     Data depth depends on user tier (GOOD/BETTER/BEST).
     """
-    user = get_current_user_from_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    protocol = service.get_protocol_detail(db, protocol_id, user.id)
+    protocol = service.get_protocol_detail(db, protocol_id, "demo_user")
     if not protocol:
         raise HTTPException(status_code=404, detail="Protocol not found")
-    
-    # Get user tier for data depth
-    user_tier = getattr(user, 'tier', 'GOOD')
-    
+
     try:
-        item = service.create_stats_snapshot(db, protocol, user.id, user_tier)
+        item = service.create_stats_snapshot(db, protocol, "demo_user", "GOOD")
         
         # Generate natural language summary
         nl_summary = generate_natural_language_summary(item.payload)
