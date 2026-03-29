@@ -74,9 +74,7 @@
                 <span class="text-xs tracking-widest text-gray-500 uppercase font-bold">BetApp</span>
                 <h1 class="font-tanker text-2xl tracking-wide leading-none">BET HISTORY</h1>
             </a>
-            <button onclick="AUTH.logout()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10" title="Logout">
-                <iconify-icon icon="lucide:log-out" class="text-xl text-gray-300"></iconify-icon>
-            </button>
+            <div class="w-10 h-10"></div>
         </header>
 
         <!-- Filter Tabs -->
@@ -201,10 +199,7 @@
         let currentPage = 1;
         let totalPages = 1;
 
-        // Auth guard - redirect if not authenticated
-        if (!AUTH.requireAuth()) {
-            throw new Error('Authentication required');
-        }
+        // Auth disabled — no guard needed
 
         function formatCurrency(amount) {
             return new Intl.NumberFormat('en-US', {
@@ -259,13 +254,10 @@
 
             try {
                 const statusParam = currentFilter !== 'all' ? `&status=${currentFilter}` : '';
-                // S18-E: Use AUTH.fetch for automatic token refresh
-                const response = await AUTH.fetch(`/api/bets/history?page=${currentPage}&per_page=10${statusParam}`);
+                const response = await fetch(`/api/bets/history?page=${currentPage}&per_page=10${statusParam}`);
 
-                if (response.status === 401) {
-                    // Token refresh failed, logout
-                    AUTH.logout();
-                    return;
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 const data = await response.json();

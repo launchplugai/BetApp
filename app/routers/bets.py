@@ -125,19 +125,19 @@ def _build_persisted_history_replay(*, bet: Bet, evaluation_record: Any | None) 
 
 @router.get("/history", response_model=BetHistoryResponse)
 async def get_bet_history(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
     status: Optional[str] = Query(None, description="Filter by status: pending, won, lost, void"),
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(10, ge=1, le=50, description="Items per page")
 ):
     """
-    Get bet history for authenticated user.
-    
+    Get bet history. Auth is optional — if no token, returns all bets.
+
     Query params:
         - status: Filter by status (pending, won, lost, void)
         - page: Page number (default 1)
         - per_page: Items per page (default 10, max 50)
-    
+
     Returns:
         {
             "bets": [...],
@@ -146,16 +146,17 @@ async def get_bet_history(
             "per_page": 10
         }
     """
-    user = get_current_user_from_token(credentials.credentials)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
+    user = None
+    if credentials:
+        user = get_current_user_from_token(credentials.credentials)
+
     db = get_session()
-    
-    # Build query
+
+    # Build query — filter by user if authenticated, otherwise return all
     try:
-        query = db.query(Bet).filter(Bet.user_id == user.id)
+        query = db.query(Bet)
+        if user:
+            query = query.filter(Bet.user_id == user.id)
     except OperationalError:
         return BetHistoryResponse(bets=[], total=0, page=page, per_page=per_page)
     

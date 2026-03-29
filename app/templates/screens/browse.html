@@ -203,29 +203,34 @@
     </main>
 
     <!-- Bottom Navigation -->
-    <footer class="shrink-0 h-[84px] pb-[34px] px-6 bg-[#050505]/90 backdrop-blur-xl border-t border-white/5 fixed bottom-0 w-full z-30">
-      <div class="h-full flex items-center justify-between">
-        <button onclick="navigateTo('dashboard')" class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
-          <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
-          <span class="text-[10px] font-medium">Home</span>
-        </button>
-        
-        <button class="flex flex-col items-center gap-1 w-12 text-neon-red drop-shadow-[0_0_8px_rgba(255,23,68,0.5)]">
-          <iconify-icon icon="lucide:search" class="text-2xl"></iconify-icon>
-          <span class="text-[10px] font-medium">Bet</span>
-        </button>
-        
-        <button onclick="navigateTo('builder')" class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
-          <iconify-icon icon="lucide:ticket" class="text-2xl"></iconify-icon>
-          <span class="text-[10px] font-medium">Slips</span>
-        </button>
-        
-        <button class="flex flex-col items-center gap-1 w-12 text-gray-500 hover:text-white transition-colors">
-          <iconify-icon icon="lucide:user" class="text-2xl"></iconify-icon>
-          <span class="text-[10px] font-medium">Profile</span>
-        </button>
-      </div>
-    </footer>
+    <nav class="fixed bottom-0 left-0 w-full bg-[#050505]/95 backdrop-blur-md border-t border-white/5 pb-8 pt-4 px-4" style="z-index: 9999;">
+        <div class="flex justify-around items-center max-w-md mx-auto">
+            <a href="/app?screen=dashboard" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:layout-grid" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Dashboard</span>
+            </a>
+            <a href="/app?screen=builder" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <div class="w-10 h-10 -mt-6 bg-[#0a0a0a] border border-[#ff1744] rounded-full flex items-center justify-center">
+                    <iconify-icon icon="lucide:plus" class="text-lg text-[#ff1744]"></iconify-icon>
+                </div>
+                <span class="text-[10px] font-medium -mt-1">Builder</span>
+            </a>
+            <a href="/app?screen=browse" class="flex flex-col items-center gap-1 text-[#ff1744]">
+                <iconify-icon icon="lucide:search" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">Browse</span>
+            </a>
+            <a href="/app?screen=history" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors">
+                <iconify-icon icon="lucide:clock" class="text-xl"></iconify-icon>
+                <span class="text-[10px] font-medium">History</span>
+            </a>
+            <a href="/app?screen=notifications" class="flex flex-col items-center gap-1 text-gray-500 hover:text-white transition-colors relative">
+                <div class="relative">
+                    <iconify-icon icon="lucide:bell" class="text-xl"></iconify-icon>
+                </div>
+                <span class="text-[10px] font-medium">Alerts</span>
+            </a>
+        </div>
+    </nav>
   </div>
 
   <script>

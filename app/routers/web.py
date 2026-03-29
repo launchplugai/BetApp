@@ -71,7 +71,7 @@ async def canonical_app(request: Request, screen: str = "dashboard"):
         "builder": "screens/builder.html",
         "auth": "screens/auth.html",
         "history": "screens/history.html",
-        "protocols": "screens/protocols.html",
+        "protocols": "screens/protocol.html",
         "protocol": "screens/protocol.html"
     }
     
